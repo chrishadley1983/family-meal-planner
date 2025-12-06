@@ -61,7 +61,7 @@ Important: Return ONLY the JSON object, no other text.`
 
   try {
     const message = await client.messages.create({
-      model: 'claude-3-5-haiku-20241022',
+      model: 'claude-haiku-4-5',
       max_tokens: 2048,
       messages: [{
         role: 'user',
@@ -114,7 +114,7 @@ Keep it concise and practical.`
 
   try {
     const message = await client.messages.create({
-      model: 'claude-3-5-haiku-20241022',
+      model: 'claude-haiku-4-5',
       max_tokens: 1024,
       messages: [{
         role: 'user',
@@ -207,7 +207,7 @@ Return ONLY the JSON object, no explanatory text before or after.`
 
   try {
     const message = await client.messages.create({
-      model: 'claude-3-5-haiku-20241022',
+      model: 'claude-haiku-4-5',
       max_tokens: 4096,
       messages: [{
         role: 'user',
@@ -260,7 +260,7 @@ Use standard nutrition databases for your calculations. Be as accurate as possib
 
   try {
     const message = await client.messages.create({
-      model: 'claude-3-5-haiku-20241022',
+      model: 'claude-haiku-4-5',
       max_tokens: 1024,
       messages: [{
         role: 'user',
@@ -320,7 +320,7 @@ Be specific and practical in your suggestions.`
 
   try {
     const message = await client.messages.create({
-      model: 'claude-3-5-haiku-20241022',
+      model: 'claude-haiku-4-5',
       max_tokens: 2048,
       messages: [{
         role: 'user',
@@ -434,7 +434,7 @@ Consider: calories per serving vs daily target, macro ratios, ingredient health 
 
   try {
     const message = await client.messages.create({
-      model: 'claude-3-5-haiku-20241022',
+      model: 'claude-haiku-4-5',
       max_tokens: 2048,
       messages: [{
         role: 'user',
@@ -537,7 +537,7 @@ Example tone: "Hi! This looks like a great choice - the protein content will rea
 
   try {
     const message = await client.messages.create({
-      model: 'claude-3-5-haiku-20241022',
+      model: 'claude-haiku-4-5',
       max_tokens: 512,
       messages: [{
         role: 'user',
