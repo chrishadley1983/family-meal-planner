@@ -23,6 +23,8 @@ export default function RecipesPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterCategory, setFilterCategory] = useState('')
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
+  const [importingCSV, setImportingCSV] = useState(false)
+  const [csvImportResult, setCsvImportResult] = useState<string>('')
 
   useEffect(() => {
     fetchRecipes()
@@ -73,6 +75,44 @@ export default function RecipesPage() {
     }
   }
 
+  const handleCSVImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setImportingCSV(true)
+    setCsvImportResult('')
+
+    try {
+      const csvData = await file.text()
+
+      const response = await fetch('/api/recipes/import-csv', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ csvData })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setCsvImportResult(
+          `Successfully imported ${data.imported} recipes.` +
+          (data.failed > 0 ? ` Failed: ${data.failed}` : '')
+        )
+        fetchRecipes() // Refresh the list
+        setTimeout(() => setCsvImportResult(''), 5000)
+      } else {
+        setCsvImportResult(`Error: ${data.error}`)
+      }
+    } catch (error) {
+      console.error('Error importing CSV:', error)
+      setCsvImportResult('Failed to import CSV file')
+    } finally {
+      setImportingCSV(false)
+      // Reset the input
+      event.target.value = ''
+    }
+  }
+
   const toggleFavorite = async (id: string, currentStatus: boolean) => {
     try {
       const response = await fetch(`/api/recipes/${id}/favorite`, {
@@ -120,13 +160,42 @@ export default function RecipesPage() {
             <h1 className="text-3xl font-bold text-gray-900">Recipes</h1>
             <p className="text-gray-600 mt-1">Manage your family recipes</p>
           </div>
-          <Link
-            href="/recipes/new"
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
-            Add Recipe
-          </Link>
+          <div className="flex items-center space-x-3">
+            <Link
+              href="/recipes/new"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              Add Recipe
+            </Link>
+            <label className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 cursor-pointer">
+              {importingCSV ? 'Importing...' : 'Import CSV'}
+              <input
+                type="file"
+                accept=".csv"
+                onChange={handleCSVImport}
+                disabled={importingCSV}
+                className="hidden"
+              />
+            </label>
+            <a
+              href="/recipe-template.csv"
+              download
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm"
+            >
+              Download Template
+            </a>
+          </div>
         </div>
+
+        {csvImportResult && (
+          <div className={`mb-4 p-4 rounded-md ${
+            csvImportResult.includes('Error') || csvImportResult.includes('Failed')
+              ? 'bg-red-50 text-red-800'
+              : 'bg-green-50 text-green-800'
+          }`}>
+            <p className="text-sm">{csvImportResult}</p>
+          </div>
+        )}
 
         <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

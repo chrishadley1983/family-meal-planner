@@ -204,6 +204,59 @@ Important guidelines:
   }
 }
 
+export async function calculateNutrition(ingredients: Array<{
+  ingredientName: string
+  quantity: number
+  unit: string
+}>, servings: number) {
+  const ingredientList = ingredients
+    .map(ing => `${ing.quantity} ${ing.unit} ${ing.ingredientName}`)
+    .join('\n')
+
+  const prompt = `You are a nutrition expert. Analyze these recipe ingredients and calculate the approximate nutrition per serving.
+
+INGREDIENTS (for ${servings} servings):
+${ingredientList}
+
+Calculate and return ONLY a valid JSON object with nutrition per serving:
+{
+  "caloriesPerServing": number,
+  "proteinPerServing": number (grams),
+  "carbsPerServing": number (grams),
+  "fatPerServing": number (grams),
+  "fiberPerServing": number (grams),
+  "sugarPerServing": number (grams),
+  "sodiumPerServing": number (milligrams)
+}
+
+Use standard nutrition databases for your calculations. Be as accurate as possible.`
+
+  try {
+    const message = await client.messages.create({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 1024,
+      messages: [{
+        role: 'user',
+        content: prompt
+      }]
+    })
+
+    const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
+
+    // Extract JSON from response
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      throw new Error('Failed to parse nutrition from Claude response')
+    }
+
+    const nutrition = JSON.parse(jsonMatch[0])
+    return nutrition
+  } catch (error) {
+    console.error('Error calculating nutrition with Claude:', error)
+    throw error
+  }
+}
+
 export async function analyzeRecipePhoto(imageData: string) {
   const prompt = `You are a recipe recognition assistant. Analyze this food photo and identify the dish.
 

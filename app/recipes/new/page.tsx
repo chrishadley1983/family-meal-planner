@@ -31,6 +31,8 @@ export default function NewRecipePage() {
   const [mealCategory, setMealCategory] = useState<string[]>([])
   const [tags, setTags] = useState<string[]>([])
   const [sourceUrl, setSourceUrl] = useState('')
+  const [imageUrl, setImageUrl] = useState('')
+  const [imagePreview, setImagePreview] = useState('')
 
   const [ingredients, setIngredients] = useState<Array<{
     ingredientName: string
@@ -181,6 +183,26 @@ export default function NewRecipePage() {
     }
   }
 
+  const handleRecipeImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Image too large. Please use an image under 5MB.')
+        return
+      }
+
+      // Convert to base64 for storage
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        const base64String = reader.result as string
+        setImageUrl(base64String)
+        setImagePreview(base64String)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
@@ -203,6 +225,7 @@ export default function NewRecipePage() {
           mealCategory,
           tags,
           sourceUrl: sourceUrl || null,
+          imageUrl: imageUrl || null,
           ingredients: ingredients.filter(i => i.ingredientName && i.unit),
           instructions: instructions.filter(i => i.instruction),
         }),
@@ -405,6 +428,25 @@ export default function NewRecipePage() {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Recipe Image</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleRecipeImageChange}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                />
+                {imagePreview && (
+                  <div className="mt-3">
+                    <img
+                      src={imagePreview}
+                      alt="Recipe preview"
+                      className="max-w-sm rounded-lg shadow-md"
+                    />
+                  </div>
+                )}
               </div>
 
               {sourceUrl && (
