@@ -1,8 +1,49 @@
 # Development Server Restart Checklist
 
+## BEFORE Starting Development - GIT WORKFLOW
+
+### 0. Verify You're On The Correct Branch
+
+**CRITICAL:** Always verify you're on the branch with the latest changes!
+
+**Both platforms:**
+```bash
+# Check current branch and latest commit
+git log --oneline -1
+
+# Expected: Should show the latest commit from Claude
+# If you see an old commit, you're on the wrong branch!
+```
+
+**If on wrong branch:**
+```bash
+# Switch to the correct branch (replace with your branch name)
+git checkout claude/connect-github-repo-0161FevHXGtfyoGwKBjYn32Z
+
+# Pull latest changes
+git pull origin claude/connect-github-repo-0161FevHXGtfyoGwKBjYn32Z
+
+# Verify you're on the latest commit
+git log --oneline -1
+```
+
+**Why:** If you're on `main` or another branch, you won't see any of Claude's changes! This is the #1 reason changes don't appear.
+
+---
+
 ## After Every Code Change - MANDATORY STEPS
 
-### 1. Kill All Existing Dev Servers
+### 1. Pull Latest Changes (if Claude made commits)
+
+**Both platforms:**
+```bash
+# Pull latest changes from your branch
+git pull origin <your-branch-name>
+```
+
+**Why:** Ensures you have Claude's latest commits
+
+### 2. Kill All Existing Dev Servers
 
 **Bash/Linux:**
 ```bash
@@ -16,7 +57,7 @@ taskkill /F /IM node.exe 2>$null
 
 **Why:** Prevents multiple servers and port conflicts
 
-### 2. Clear Next.js Build Cache
+### 3. Clear Next.js Build Cache
 
 **Bash/Linux:**
 ```bash
@@ -30,7 +71,7 @@ Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue
 
 **Why:** Ensures fresh compilation of all changes
 
-### 3. Verify No Processes on Port 3000
+### 4. Verify No Processes on Port 3000
 
 **Bash/Linux:**
 ```bash
@@ -54,7 +95,7 @@ lsof -ti:3000 | xargs kill -9
 Get-Process -Id (Get-NetTCPConnection -LocalPort 3000).OwningProcess | Stop-Process -Force
 ```
 
-### 4. Start Dev Server
+### 5. Start Dev Server
 
 **Both platforms:**
 ```bash
@@ -63,7 +104,7 @@ npm run dev
 
 **Why:** Starts the Next.js development server
 
-### 5. Wait for Server Ready
+### 6. Wait for Server Ready
 
 **Bash/Linux:**
 ```bash
@@ -77,7 +118,7 @@ Start-Sleep -Seconds 5
 
 **Why:** Give Turbopack time to compile (usually 2-3 seconds)
 
-### 6. Verify Server is Listening
+### 7. Verify Server is Listening
 
 **Bash/Linux:**
 ```bash
@@ -91,27 +132,29 @@ curl -s http://localhost:3000 | head -20
 
 **Expected:** Should return HTML
 
-### 7. Hard Refresh Browser
+### 8. Hard Refresh Browser
 - **Windows/Linux:** Ctrl + Shift + R
 - **Mac:** Cmd + Shift + R
 **Why:** Clears browser cache of old JavaScript bundles
 
-### 8. Clear Browser Cache (if hard refresh doesn't work)
+### 9. Clear Browser Cache (if hard refresh doesn't work)
 1. Open DevTools (F12)
 2. Application tab → Storage → Clear site data
 3. Close and reopen browser
 
-## Quick One-Liner for Steps 1-4
+## Quick One-Liner (includes git pull + server restart)
 
 **Bash/Linux:**
 ```bash
-pkill -9 -f "next" 2>/dev/null; rm -rf .next && sleep 2 && npm run dev
+git pull origin <branch-name>; pkill -9 -f "next" 2>/dev/null; rm -rf .next && sleep 2 && npm run dev
 ```
 
 **Windows PowerShell:**
 ```powershell
-taskkill /F /IM node.exe 2>$null; if (Test-Path .next) { Remove-Item -Recurse -Force .next }; npm run dev
+git pull origin <branch-name>; taskkill /F /IM node.exe 2>$null; if (Test-Path .next) { Remove-Item -Recurse -Force .next }; npm run dev
 ```
+
+**Replace `<branch-name>` with your actual branch, e.g., `claude/connect-github-repo-0161FevHXGtfyoGwKBjYn32Z`**
 
 ## Troubleshooting
 
