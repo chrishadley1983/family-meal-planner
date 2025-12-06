@@ -1,10 +1,30 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 
 type InputMethod = 'manual' | 'url' | 'photo'
+
+type MacroAnalysis = {
+  perServing: {
+    calories: number
+    protein: number
+    carbs: number
+    fat: number
+    fiber: number
+    sugar: number
+    sodium: number
+  }
+  overallRating: 'green' | 'yellow' | 'red'
+  overallExplanation: string
+  ingredientRatings: Array<{
+    ingredientName: string
+    rating: 'green' | 'yellow' | 'red'
+    reason: string
+  }>
+}
 
 export default function NewRecipePage() {
   const router = useRouter()
@@ -47,7 +67,134 @@ export default function NewRecipePage() {
     instruction: string
   }>>([{ stepNumber: 1, instruction: '' }])
 
+  // New feature states
+  const [scaleIngredients, setScaleIngredients] = useState(true)
+  const [baseServings, setBaseServings] = useState(4)
+  const [baseIngredients, setBaseIngredients] = useState<Array<{ ingredientName: string; quantity: number; unit: string }>>([])
+  const [macroAnalysis, setMacroAnalysis] = useState<MacroAnalysis | null>(null)
+  const [nutritionistFeedback, setNutritionistFeedback] = useState<string>('')
+  const [loadingMacros, setLoadingMacros] = useState(false)
+  const [loadingFeedback, setLoadingFeedback] = useState(false)
+
   const mealCategories = ['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert']
+
+  // Auto-fetch macro analysis when recipe changes
+  useEffect(() => {
+    if (recipeName && ingredients.some(i => i.ingredientName && i.unit)) {
+      // Debounce the analysis fetch
+      const timer = setTimeout(() => {
+        fetchMacroAnalysis()
+      }, 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [recipeName, ingredients, servings])
+
+  // Fetch macro analysis from API
+  const fetchMacroAnalysis = async () => {
+    if (!recipeName || !ingredients.some(i => i.ingredientName && i.unit)) {
+      return
+    }
+
+    setLoadingMacros(true)
+    try {
+      const response = await fetch('/api/recipes/analyze-macros', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipe: {
+            recipeName,
+            servings,
+            ingredients: ingredients.filter(i => i.ingredientName && i.unit),
+          },
+        }),
+      })
+
+      const data = await response.json()
+      if (response.ok && data.analysis) {
+        setMacroAnalysis(data.analysis)
+        // Once we have macro analysis, fetch nutritionist feedback
+        fetchNutritionistFeedback(data.analysis)
+      }
+    } catch (err) {
+      console.error('Failed to fetch macro analysis:', err)
+    } finally {
+      setLoadingMacros(false)
+    }
+  }
+
+  // Fetch nutritionist feedback from API
+  const fetchNutritionistFeedback = async (analysis: MacroAnalysis) => {
+    setLoadingFeedback(true)
+    try {
+      const response = await fetch('/api/recipes/nutritionist-feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipe: {
+            recipeName,
+            description,
+            servings,
+            mealCategory,
+            ingredients: ingredients.filter(i => i.ingredientName && i.unit),
+          },
+          macroAnalysis: analysis,
+        }),
+      })
+
+      const data = await response.json()
+      if (response.ok && data.feedback) {
+        setNutritionistFeedback(data.feedback)
+      }
+    } catch (err) {
+      console.error('Failed to fetch nutritionist feedback:', err)
+    } finally {
+      setLoadingFeedback(false)
+    }
+  }
+
+  // Handle servings change with ingredient scaling
+  const handleServingsChange = (newServings: number) => {
+    if (scaleIngredients && baseServings > 0) {
+      const scaleFactor = newServings / baseServings
+      const scaledIngredients = baseIngredients.map(ing => ({
+        ...ing,
+        quantity: Math.round(ing.quantity * scaleFactor * 100) / 100,
+      }))
+      setIngredients(scaledIngredients)
+    }
+    setServings(newServings)
+  }
+
+  // Toggle scale checkbox
+  const handleScaleToggle = () => {
+    if (!scaleIngredients) {
+      // User is turning ON scaling - capture current state as base
+      setBaseServings(servings)
+      setBaseIngredients(ingredients.map(i => ({
+        ingredientName: i.ingredientName,
+        quantity: i.quantity,
+        unit: i.unit
+      })))
+    }
+    setScaleIngredients(!scaleIngredients)
+  }
+
+  // Get traffic light color class
+  const getTrafficLightClass = (rating: 'green' | 'yellow' | 'red') => {
+    switch (rating) {
+      case 'green': return 'bg-green-500'
+      case 'yellow': return 'bg-yellow-500'
+      case 'red': return 'bg-red-500'
+      default: return 'bg-gray-300'
+    }
+  }
+
+  // Get ingredient rating
+  const getIngredientRating = (ingredientName: string) => {
+    return macroAnalysis?.ingredientRatings?.find(
+      r => r.ingredientName.toLowerCase() === ingredientName.toLowerCase()
+    )
+  }
 
   const handleUrlImport = async () => {
     if (!importUrl) {
@@ -464,14 +611,33 @@ export default function NewRecipePage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Servings *</label>
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
-                    value={servings}
-                    onChange={(e) => setServings(parseInt(e.target.value))}
-                  />
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
+                      value={servings}
+                      onChange={(e) => handleServingsChange(parseInt(e.target.value))}
+                    />
+                    <div className="flex items-center gap-2 mt-1">
+                      <input
+                        type="checkbox"
+                        id="scale-ingredients"
+                        checked={scaleIngredients}
+                        onChange={handleScaleToggle}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        title="When checked, ingredient quantities will automatically scale when you change servings"
+                      />
+                      <label
+                        htmlFor="scale-ingredients"
+                        className="text-xs text-gray-600 whitespace-nowrap cursor-help"
+                        title="When checked, ingredient quantities will automatically scale when you change servings"
+                      >
+                        Scale
+                      </label>
+                    </div>
+                  </div>
                 </div>
 
                 <div>
@@ -557,47 +723,63 @@ export default function NewRecipePage() {
                 </button>
               </div>
 
-              {ingredients.map((ing, index) => (
-                <div key={index} className="grid grid-cols-12 gap-2 items-center">
-                  <input
-                    type="text"
-                    placeholder="Ingredient name"
-                    className="col-span-5 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border text-sm"
-                    value={ing.ingredientName}
-                    onChange={(e) => updateIngredient(index, 'ingredientName', e.target.value)}
-                  />
-                  <input
-                    type="number"
-                    placeholder="Qty"
-                    min="0"
-                    step="0.1"
-                    className="col-span-2 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border text-sm"
-                    value={ing.quantity}
-                    onChange={(e) => updateIngredient(index, 'quantity', parseFloat(e.target.value))}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Unit"
-                    className="col-span-2 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border text-sm"
-                    value={ing.unit}
-                    onChange={(e) => updateIngredient(index, 'unit', e.target.value)}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Notes"
-                    className="col-span-2 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border text-sm"
-                    value={ing.notes || ''}
-                    onChange={(e) => updateIngredient(index, 'notes', e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeIngredient(index)}
-                    className="col-span-1 text-red-600 hover:text-red-800"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
+              {ingredients.map((ing, index) => {
+                const rating = getIngredientRating(ing.ingredientName)
+                return (
+                  <div key={index} className="flex gap-2 items-center">
+                    {/* Traffic Light Indicator */}
+                    {rating && (
+                      <div
+                        className={`w-3 h-3 rounded-full ${getTrafficLightClass(rating.rating)} flex-shrink-0`}
+                        title={rating.reason}
+                      />
+                    )}
+                    {!rating && macroAnalysis && (
+                      <div className="w-3 h-3 rounded-full bg-gray-200 flex-shrink-0" />
+                    )}
+
+                    <div className="grid grid-cols-12 gap-2 items-center flex-1">
+                      <input
+                        type="text"
+                        placeholder="Ingredient name"
+                        className="col-span-5 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border text-sm"
+                        value={ing.ingredientName}
+                        onChange={(e) => updateIngredient(index, 'ingredientName', e.target.value)}
+                      />
+                      <input
+                        type="number"
+                        placeholder="Qty"
+                        min="0"
+                        step="0.1"
+                        className="col-span-2 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border text-sm"
+                        value={ing.quantity}
+                        onChange={(e) => updateIngredient(index, 'quantity', parseFloat(e.target.value))}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Unit"
+                        className="col-span-2 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border text-sm"
+                        value={ing.unit}
+                        onChange={(e) => updateIngredient(index, 'unit', e.target.value)}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Notes"
+                        className="col-span-2 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border text-sm"
+                        value={ing.notes || ''}
+                        onChange={(e) => updateIngredient(index, 'notes', e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeIngredient(index)}
+                        className="col-span-1 text-red-600 hover:text-red-800"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
 
             <div className="bg-white shadow-sm rounded-lg p-6 space-y-4">
@@ -634,6 +816,94 @@ export default function NewRecipePage() {
                 </div>
               ))}
             </div>
+
+            {/* Macro Analysis Section */}
+            {macroAnalysis && (
+              <div className="bg-white shadow-sm rounded-lg p-6 space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-medium text-gray-900">Nutritional Analysis</h3>
+                  <button
+                    type="button"
+                    onClick={fetchMacroAnalysis}
+                    disabled={loadingMacros}
+                    className="px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {loadingMacros ? 'Analyzing...' : 'Refresh'}
+                  </button>
+                </div>
+
+                {/* Overall Rating */}
+                <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg">
+                  <div className={`w-8 h-8 rounded-full ${getTrafficLightClass(macroAnalysis.overallRating)} flex-shrink-0`} />
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900">Overall Rating</p>
+                    <p className="text-sm text-gray-600 mt-1">{macroAnalysis.overallExplanation}</p>
+                  </div>
+                </div>
+
+                {/* Macro Summary */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="text-center p-3 bg-blue-50 rounded-lg">
+                    <p className="text-2xl font-bold text-blue-600">{Math.round(macroAnalysis.perServing.calories)}</p>
+                    <p className="text-xs text-gray-600 mt-1">Calories</p>
+                  </div>
+                  <div className="text-center p-3 bg-purple-50 rounded-lg">
+                    <p className="text-2xl font-bold text-purple-600">{Math.round(macroAnalysis.perServing.protein)}g</p>
+                    <p className="text-xs text-gray-600 mt-1">Protein</p>
+                  </div>
+                  <div className="text-center p-3 bg-green-50 rounded-lg">
+                    <p className="text-2xl font-bold text-green-600">{Math.round(macroAnalysis.perServing.carbs)}g</p>
+                    <p className="text-xs text-gray-600 mt-1">Carbs</p>
+                  </div>
+                  <div className="text-center p-3 bg-yellow-50 rounded-lg">
+                    <p className="text-2xl font-bold text-yellow-600">{Math.round(macroAnalysis.perServing.fat)}g</p>
+                    <p className="text-xs text-gray-600 mt-1">Fat</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div className="text-center">
+                    <p className="font-medium text-gray-700">{Math.round(macroAnalysis.perServing.fiber)}g</p>
+                    <p className="text-xs text-gray-500">Fiber</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="font-medium text-gray-700">{Math.round(macroAnalysis.perServing.sugar)}g</p>
+                    <p className="text-xs text-gray-500">Sugar</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="font-medium text-gray-700">{Math.round(macroAnalysis.perServing.sodium)}mg</p>
+                    <p className="text-xs text-gray-500">Sodium</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Sarah Nutritionist Feedback */}
+            {nutritionistFeedback && (
+              <div className="bg-gradient-to-r from-green-50 to-blue-50 shadow-sm rounded-lg p-6">
+                <div className="flex items-start gap-4">
+                  {/* Sarah Avatar */}
+                  <div className="flex-shrink-0">
+                    <Image
+                      src="/sarah-nutritionist.png"
+                      alt="Sarah - Your AI Nutritionist"
+                      width={80}
+                      height={80}
+                      className="rounded-full border-4 border-white shadow-md"
+                    />
+                  </div>
+
+                  {/* Feedback Content */}
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <h3 className="text-lg font-semibold text-gray-900">Sarah's Nutritionist Tips</h3>
+                      {loadingFeedback && <span className="text-xs text-gray-500">Analyzing...</span>}
+                    </div>
+                    <p className="text-gray-700 leading-relaxed">{nutritionistFeedback}</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="flex justify-end space-x-4">
               <Link
