@@ -130,14 +130,33 @@ Keep it concise and practical.`
 }
 
 export async function parseRecipeFromUrl(url: string, htmlContent: string) {
-  const prompt = `You are a recipe extraction assistant. Parse the following recipe webpage content and extract recipe information.
+  const prompt = `You are an expert recipe extraction assistant. Carefully analyze the HTML content and extract ALL recipe details with high accuracy.
 
 URL: ${url}
 
 HTML CONTENT:
-${htmlContent.substring(0, 15000)}
+${htmlContent.substring(0, 25000)}
 
-Extract and return ONLY a valid JSON object in this exact format:
+CRITICAL INSTRUCTIONS:
+1. **Ingredients**: MUST include quantity + unit + name for EVERY ingredient
+   - Convert fractions to decimals (1/2 = 0.5)
+   - Use standard units (tsp, tbsp, cup, g, kg, ml, l, oz, lb, whole, clove, etc.)
+   - If quantity is missing, use 1 as default
+   - Parse ranges (e.g., "2-3 cups" = 2.5 cups)
+
+2. **Cooking Instructions**: Extract EVERY step in order
+   - Number steps sequentially (1, 2, 3...)
+   - Each step should be a complete instruction
+   - Look for "Method", "Directions", "Instructions", "Steps" sections
+
+3. **Times**: Convert ALL times to minutes
+   - "1 hour" = 60 minutes
+   - "1 hour 30 mins" = 90 minutes
+   - "30 seconds" = 0.5 minutes
+
+4. **Servings**: Extract the number (e.g., "Serves 4" = 4)
+
+Extract and return ONLY a valid JSON object in this EXACT format:
 {
   "recipeName": "string",
   "description": "string or null",
@@ -150,15 +169,15 @@ Extract and return ONLY a valid JSON object in this exact format:
   "ingredients": [
     {
       "ingredientName": "string",
-      "quantity": number,
-      "unit": "string",
-      "notes": "string or null"
+      "quantity": number (REQUIRED - use 1 if not specified),
+      "unit": "string (REQUIRED - use 'whole', 'clove', 'pinch', etc. if no unit)",
+      "notes": "string or null (e.g., 'chopped', 'diced')"
     }
   ],
   "instructions": [
     {
       "stepNumber": number,
-      "instruction": "string"
+      "instruction": "string (complete step description)"
     }
   ],
   "caloriesPerServing": number or null,
@@ -169,14 +188,22 @@ Extract and return ONLY a valid JSON object in this exact format:
   "notes": "string or null"
 }
 
-Important guidelines:
-- Extract all ingredients with their quantities and units
-- Number all instruction steps sequentially
-- If nutrition information is available, include it
-- If prep/cook times are mentioned, convert them to minutes
-- Guess difficulty level based on complexity (Easy/Medium/Hard)
-- Determine appropriate meal categories
-- Return ONLY the JSON object, no other text`
+EXAMPLE of GOOD extraction:
+{
+  "ingredientName": "lean beef mince",
+  "quantity": 500,
+  "unit": "g",
+  "notes": "lean"
+}
+
+EXAMPLE of BAD extraction (missing quantity/unit):
+{
+  "ingredientName": "lean beef mince",
+  "quantity": null,  // WRONG - should never be null!
+  "unit": null       // WRONG - should never be null!
+}
+
+Return ONLY the JSON object, no explanatory text before or after.`
 
   try {
     const message = await client.messages.create({
