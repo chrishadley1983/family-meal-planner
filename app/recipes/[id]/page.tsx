@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { use } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -59,15 +59,59 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
 
   const mealCategories = ['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert']
 
+  // Fetch AI analysis
+  const fetchAIAnalysis = async (recipeData: any) => {
+    if (!recipeData) return
+
+    setLoadingAI(true)
+    try {
+      // Fetch macro analysis
+      const macroResponse = await fetch('/api/recipes/analyze-macros', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipe: {
+            recipeName: recipeData.recipeName,
+            servings: recipeData.servings,
+            ingredients: recipeData.ingredients
+          }
+        })
+      })
+
+      if (macroResponse.ok) {
+        const macroData = await macroResponse.json()
+        setMacroAnalysis(macroData.analysis)
+
+        // Fetch nutritionist feedback
+        const feedbackResponse = await fetch('/api/recipes/nutritionist-feedback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            recipe: {
+              recipeName: recipeData.recipeName,
+              servings: recipeData.servings,
+              mealCategory: recipeData.mealCategory,
+              ingredients: recipeData.ingredients
+            },
+            macroAnalysis: macroData.analysis
+          })
+        })
+
+        if (feedbackResponse.ok) {
+          const feedbackData = await feedbackResponse.json()
+          setNutritionistFeedback(feedbackData.feedback)
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch AI analysis:', err)
+    } finally {
+      setLoadingAI(false)
+    }
+  }
+
   useEffect(() => {
     fetchRecipe()
   }, [id])
-
-  useEffect(() => {
-    if (recipe && !isEditing) {
-      fetchAIAnalysis(recipe)
-    }
-  }, [recipe, isEditing])
 
   const fetchRecipe = async () => {
     try {
@@ -92,6 +136,9 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
       setNotes(data.recipe.notes || '')
       setIngredients(data.recipe.ingredients || [])
       setInstructions(data.recipe.instructions || [])
+
+      // Fetch AI analysis after recipe loads (in view mode)
+      await fetchAIAnalysis(data.recipe)
     } catch (err) {
       router.push('/recipes')
     } finally {
@@ -149,56 +196,6 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
     return macroAnalysis?.ingredientRatings?.find(
       r => r.ingredientName.toLowerCase() === ingredientName.toLowerCase()
     )
-  }
-
-  // Fetch AI analysis
-  const fetchAIAnalysis = async (recipeData: any) => {
-    if (!recipeData) return
-
-    setLoadingAI(true)
-    try {
-      // Fetch macro analysis
-      const macroResponse = await fetch('/api/recipes/analyze-macros', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          recipe: {
-            recipeName: recipeData.recipeName,
-            servings: recipeData.servings,
-            ingredients: recipeData.ingredients
-          }
-        })
-      })
-
-      if (macroResponse.ok) {
-        const macroData = await macroResponse.json()
-        setMacroAnalysis(macroData.analysis)
-
-        // Fetch nutritionist feedback
-        const feedbackResponse = await fetch('/api/recipes/nutritionist-feedback', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            recipe: {
-              recipeName: recipeData.recipeName,
-              servings: recipeData.servings,
-              mealCategory: recipeData.mealCategory,
-              ingredients: recipeData.ingredients
-            },
-            macroAnalysis: macroData.analysis
-          })
-        })
-
-        if (feedbackResponse.ok) {
-          const feedbackData = await feedbackResponse.json()
-          setNutritionistFeedback(feedbackData.feedback)
-        }
-      }
-    } catch (err) {
-      console.error('Failed to fetch AI analysis:', err)
-    } finally {
-      setLoadingAI(false)
-    }
   }
 
   const handleSaveEdit = async () => {
