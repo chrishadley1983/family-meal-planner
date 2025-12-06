@@ -167,9 +167,11 @@ export default function RecipesPage() {
             >
               Add Recipe
             </Link>
-            <label className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 cursor-pointer">
+            <label htmlFor="csv-import" className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 cursor-pointer">
               {importingCSV ? 'Importing...' : 'Import CSV'}
               <input
+                id="csv-import"
+                name="csv-import"
                 type="file"
                 accept=".csv"
                 onChange={handleCSVImport}
