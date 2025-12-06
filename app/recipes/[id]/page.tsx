@@ -61,11 +61,17 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
 
   // Fetch AI analysis
   const fetchAIAnalysis = async (recipeData: any) => {
-    if (!recipeData) return
+    console.log('🔍 fetchAIAnalysis called with recipe:', recipeData?.recipeName)
+    if (!recipeData) {
+      console.log('❌ No recipe data, returning early')
+      return
+    }
 
+    console.log('✅ Starting AI analysis...')
     setLoadingAI(true)
     try {
       // Fetch macro analysis
+      console.log('📡 Calling macro analysis API...')
       const macroResponse = await fetch('/api/recipes/analyze-macros', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -78,11 +84,14 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
         })
       })
 
+      console.log('📊 Macro response status:', macroResponse.status, macroResponse.ok)
       if (macroResponse.ok) {
         const macroData = await macroResponse.json()
+        console.log('✅ Macro analysis received:', macroData)
         setMacroAnalysis(macroData.analysis)
 
         // Fetch nutritionist feedback
+        console.log('📡 Calling nutritionist feedback API...')
         const feedbackResponse = await fetch('/api/recipes/nutritionist-feedback', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -97,14 +106,22 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
           })
         })
 
+        console.log('👩‍⚕️ Feedback response status:', feedbackResponse.status, feedbackResponse.ok)
         if (feedbackResponse.ok) {
           const feedbackData = await feedbackResponse.json()
+          console.log('✅ Nutritionist feedback received:', feedbackData)
           setNutritionistFeedback(feedbackData.feedback)
+        } else {
+          console.log('❌ Feedback request failed')
         }
+      } else {
+        const errorData = await macroResponse.json()
+        console.log('❌ Macro analysis request failed:', errorData)
       }
     } catch (err) {
-      console.error('Failed to fetch AI analysis:', err)
+      console.error('❌ Failed to fetch AI analysis:', err)
     } finally {
+      console.log('🏁 AI analysis complete, loadingAI set to false')
       setLoadingAI(false)
     }
   }
@@ -138,6 +155,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
       setInstructions(data.recipe.instructions || [])
 
       // Fetch AI analysis after recipe loads (in view mode)
+      console.log('🍳 Recipe loaded, calling fetchAIAnalysis...')
       await fetchAIAnalysis(data.recipe)
     } catch (err) {
       router.push('/recipes')
