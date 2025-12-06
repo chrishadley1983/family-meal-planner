@@ -128,3 +128,152 @@ Keep it concise and practical.`
     throw error
   }
 }
+
+export async function parseRecipeFromUrl(url: string, htmlContent: string) {
+  const prompt = `You are a recipe extraction assistant. Parse the following recipe webpage content and extract recipe information.
+
+URL: ${url}
+
+HTML CONTENT:
+${htmlContent.substring(0, 15000)}
+
+Extract and return ONLY a valid JSON object in this exact format:
+{
+  "recipeName": "string",
+  "description": "string or null",
+  "servings": number,
+  "prepTimeMinutes": number or null,
+  "cookTimeMinutes": number or null,
+  "cuisineType": "string or null",
+  "difficultyLevel": "Easy" | "Medium" | "Hard" | null,
+  "mealCategory": ["Breakfast" | "Lunch" | "Dinner" | "Snack" | "Dessert"],
+  "ingredients": [
+    {
+      "ingredientName": "string",
+      "quantity": number,
+      "unit": "string",
+      "notes": "string or null"
+    }
+  ],
+  "instructions": [
+    {
+      "stepNumber": number,
+      "instruction": "string"
+    }
+  ],
+  "caloriesPerServing": number or null,
+  "proteinPerServing": number or null,
+  "carbsPerServing": number or null,
+  "fatPerServing": number or null,
+  "fiberPerServing": number or null,
+  "notes": "string or null"
+}
+
+Important guidelines:
+- Extract all ingredients with their quantities and units
+- Number all instruction steps sequentially
+- If nutrition information is available, include it
+- If prep/cook times are mentioned, convert them to minutes
+- Guess difficulty level based on complexity (Easy/Medium/Hard)
+- Determine appropriate meal categories
+- Return ONLY the JSON object, no other text`
+
+  try {
+    const message = await client.messages.create({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 4096,
+      messages: [{
+        role: 'user',
+        content: prompt
+      }]
+    })
+
+    const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
+
+    // Extract JSON from response
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      throw new Error('Failed to parse recipe from Claude response')
+    }
+
+    const recipe = JSON.parse(jsonMatch[0])
+    return recipe
+  } catch (error) {
+    console.error('Error parsing recipe with Claude:', error)
+    throw error
+  }
+}
+
+export async function analyzeRecipePhoto(imageData: string) {
+  const prompt = `You are a recipe recognition assistant. Analyze this food photo and identify the dish.
+
+Based on the image, provide:
+1. The name of the dish
+2. A list of likely ingredients
+3. Suggested cuisine type
+4. Estimated difficulty level
+5. Suggested meal categories
+
+Return ONLY a valid JSON object in this exact format:
+{
+  "recipeName": "string",
+  "description": "string",
+  "cuisineType": "string or null",
+  "difficultyLevel": "Easy" | "Medium" | "Hard",
+  "mealCategory": ["Breakfast" | "Lunch" | "Dinner" | "Snack" | "Dessert"],
+  "suggestedIngredients": [
+    {
+      "ingredientName": "string",
+      "quantity": number,
+      "unit": "string"
+    }
+  ],
+  "suggestedInstructions": [
+    {
+      "stepNumber": number,
+      "instruction": "string"
+    }
+  ]
+}
+
+Be specific and practical in your suggestions.`
+
+  try {
+    const message = await client.messages.create({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 2048,
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: imageData.startsWith('data:image/png') ? 'image/png' :
+                         imageData.startsWith('data:image/jpeg') ? 'image/jpeg' : 'image/jpeg',
+              data: imageData.replace(/^data:image\/\w+;base64,/, '')
+            }
+          },
+          {
+            type: 'text',
+            text: prompt
+          }
+        ]
+      }]
+    })
+
+    const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
+
+    // Extract JSON from response
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      throw new Error('Failed to parse recipe from Claude response')
+    }
+
+    const recipe = JSON.parse(jsonMatch[0])
+    return recipe
+  } catch (error) {
+    console.error('Error analyzing recipe photo with Claude:', error)
+    throw error
+  }
+}
