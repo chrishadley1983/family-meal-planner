@@ -157,8 +157,8 @@ export default function RecipesPage() {
             <Link href="/dashboard" className="text-blue-600 hover:text-blue-800 mb-2 inline-block">
               ← Back to Dashboard
             </Link>
-            <h1 className="text-3xl font-bold text-gray-900">Recipes</h1>
-            <p className="text-gray-600 mt-1">Manage your family recipes</p>
+            <h1 className="text-3xl font-bold text-red-600">🔴 DEBUG MODE - NEW CODE LOADED 🔴</h1>
+            <p className="text-red-600 mt-1 font-bold">If you see this, the new code is working!</p>
           </div>
           <div className="flex items-center space-x-3">
             <Link
