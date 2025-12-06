@@ -16,4 +16,7 @@ export const prisma = globalForPrisma.prisma ?? new PrismaClient({
   log: ['query', 'error', 'warn'],
 })
 
+// Also export as default for compatibility with cached imports
+export default prisma
+
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
