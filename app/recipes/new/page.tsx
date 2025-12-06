@@ -232,7 +232,8 @@ export default function NewRecipePage() {
       const recipe = data.recipe
       setRecipeName(recipe.recipeName || '')
       setDescription(recipe.description || '')
-      setServings(recipe.servings || 4)
+      const importedServings = recipe.servings || 4
+      setServings(importedServings)
       setPrepTimeMinutes(recipe.prepTimeMinutes || '')
       setCookTimeMinutes(recipe.cookTimeMinutes || '')
       setCuisineType(recipe.cuisineType || '')
@@ -241,12 +242,16 @@ export default function NewRecipePage() {
       setSourceUrl(recipe.sourceUrl || importUrl)
 
       if (recipe.ingredients && recipe.ingredients.length > 0) {
-        setIngredients(recipe.ingredients.map((ing: any) => ({
+        const importedIngredients = recipe.ingredients.map((ing: any) => ({
           ingredientName: ing.ingredientName || '',
           quantity: ing.quantity || 1,
           unit: ing.unit || '',
           notes: ing.notes || ''
-        })))
+        }))
+        setIngredients(importedIngredients)
+        // Initialize base values for scaling
+        setBaseServings(importedServings)
+        setBaseIngredients(importedIngredients.map(i => ({ ...i })))
       }
 
       if (recipe.instructions && recipe.instructions.length > 0) {
