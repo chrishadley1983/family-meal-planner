@@ -357,3 +357,197 @@ Be specific and practical in your suggestions.`
     throw error
   }
 }
+
+export async function analyzeRecipeMacros(params: {
+  recipe: {
+    recipeName: string
+    servings: number
+    ingredients: Array<{
+      ingredientName: string
+      quantity: number
+      unit: string
+    }>
+    caloriesPerServing?: number | null
+    proteinPerServing?: number | null
+    carbsPerServing?: number | null
+    fatPerServing?: number | null
+  }
+  userProfile: {
+    dailyCalorieTarget?: number | null
+    dailyProteinTarget?: number | null
+    dailyCarbsTarget?: number | null
+    dailyFatTarget?: number | null
+    macroTrackingEnabled: boolean
+  }
+}) {
+  const { recipe, userProfile } = params
+
+  const ingredientList = recipe.ingredients
+    .map(ing => `${ing.quantity} ${ing.unit} ${ing.ingredientName}`)
+    .join('\n')
+
+  const prompt = `You are a nutrition expert. Analyze this recipe and provide macro ratings based on the user's dietary goals.
+
+RECIPE:
+Name: ${recipe.recipeName}
+Servings: ${recipe.servings}
+
+INGREDIENTS (per ${recipe.servings} servings):
+${ingredientList}
+
+USER'S DAILY TARGETS:
+${userProfile.macroTrackingEnabled ? `
+- Calories: ${userProfile.dailyCalorieTarget || 2000} kcal
+- Protein: ${userProfile.dailyProteinTarget || 50}g
+- Carbs: ${userProfile.dailyCarbsTarget || 250}g
+- Fat: ${userProfile.dailyFatTarget || 70}g
+` : 'User has not set macro targets - use general healthy eating guidelines (2000 kcal, 50g protein, 250g carbs, 70g fat)'}
+
+Calculate nutrition per serving and rate suitability for this user. Return ONLY a valid JSON object:
+{
+  "perServing": {
+    "calories": number,
+    "protein": number,
+    "carbs": number,
+    "fat": number,
+    "fiber": number,
+    "sugar": number,
+    "sodium": number
+  },
+  "overallRating": "green" | "yellow" | "red",
+  "overallExplanation": "1 sentence why this rating (mention specific macro concern if yellow/red)",
+  "ingredientRatings": [
+    {
+      "ingredientName": "string",
+      "rating": "green" | "yellow" | "red",
+      "reason": "1 sentence (e.g., 'High in saturated fat' or 'Good protein source')"
+    }
+  ]
+}
+
+Rating criteria:
+- GREEN: Aligns well with user's targets, healthy ingredient
+- YELLOW: Moderate concern (e.g., slightly high in calories/fat/sugar for user's goals)
+- RED: Poor fit for user's goals (e.g., very high fat when user needs low-fat, excessive calories)
+
+Consider: calories per serving vs daily target, macro ratios, ingredient health profiles.`
+
+  try {
+    const message = await client.messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 2048,
+      messages: [{
+        role: 'user',
+        content: prompt
+      }]
+    })
+
+    const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      throw new Error('Failed to parse macro analysis from Claude response')
+    }
+
+    return JSON.parse(jsonMatch[0])
+  } catch (error) {
+    console.error('Error analyzing recipe macros with Claude:', error)
+    throw error
+  }
+}
+
+export async function getNutritionistFeedbackForRecipe(params: {
+  recipe: {
+    recipeName: string
+    description?: string | null
+    servings: number
+    mealCategory: string[]
+    ingredients: Array<{
+      ingredientName: string
+      quantity: number
+      unit: string
+    }>
+  }
+  userProfile: {
+    profileName: string
+    age?: number | null
+    activityLevel?: string | null
+    allergies: any
+    foodDislikes?: string | null
+    dailyCalorieTarget?: number | null
+    dailyProteinTarget?: number | null
+    dailyCarbsTarget?: number | null
+    dailyFatTarget?: number | null
+    macroTrackingEnabled: boolean
+  }
+  macroAnalysis: {
+    perServing: {
+      calories: number
+      protein: number
+      carbs: number
+      fat: number
+    }
+    overallRating: string
+  }
+}) {
+  const { recipe, userProfile, macroAnalysis } = params
+
+  const allergies = Array.isArray(userProfile.allergies)
+    ? userProfile.allergies
+    : (typeof userProfile.allergies === 'string' ? [userProfile.allergies] : [])
+
+  const prompt = `You are Sarah, a friendly and knowledgeable nutritionist. Provide personalized, encouraging feedback about this recipe for your client.
+
+CLIENT PROFILE:
+Name: ${userProfile.profileName}
+Age: ${userProfile.age || 'Not specified'}
+Activity Level: ${userProfile.activityLevel || 'Moderate'}
+Allergies: ${allergies.length > 0 ? allergies.join(', ') : 'None'}
+Dislikes: ${userProfile.foodDislikes || 'None specified'}
+${userProfile.macroTrackingEnabled ? `
+Daily Targets:
+- Calories: ${userProfile.dailyCalorieTarget} kcal
+- Protein: ${userProfile.dailyProteinTarget}g
+- Carbs: ${userProfile.dailyCarbsTarget}g
+- Fat: ${userProfile.dailyFatTarget}g
+` : ''}
+
+RECIPE:
+Name: ${recipe.recipeName}
+${recipe.description || ''}
+Meal Type: ${recipe.mealCategory.join(', ')}
+Servings: ${recipe.servings}
+
+NUTRITION PER SERVING:
+- Calories: ${macroAnalysis.perServing.calories} kcal
+- Protein: ${macroAnalysis.perServing.protein}g
+- Carbs: ${macroAnalysis.perServing.carbs}g
+- Fat: ${macroAnalysis.perServing.fat}g
+
+Overall Rating: ${macroAnalysis.overallRating}
+
+Provide warm, personalized feedback (2-4 sentences) as Sarah the nutritionist:
+1. Comment on how well this fits ${userProfile.profileName}'s goals
+2. Highlight positives (good nutrients, ingredients)
+3. If there are concerns (allergies, high in something they should limit), mention gently
+4. Offer 1 simple suggestion if relevant (e.g., "swap X for Y", "pair with a salad")
+
+Write in first person as Sarah. Be encouraging and friendly, not clinical. Return ONLY the feedback text, no JSON.
+
+Example tone: "Hi! This looks like a great choice - the protein content will really support an active lifestyle. The fiber from the beans is a nice bonus too. Just watch the sodium if you're sensitive to salt. Maybe pair it with a fresh salad to add more veggies?"`
+
+  try {
+    const message = await client.messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 512,
+      messages: [{
+        role: 'user',
+        content: prompt
+      }]
+    })
+
+    return message.content[0].type === 'text' ? message.content[0].text : ''
+  } catch (error) {
+    console.error('Error getting nutritionist feedback with Claude:', error)
+    throw error
+  }
+}

@@ -45,6 +45,7 @@ model FamilyProfile {
   dailyFatTarget        Float?
   dailyFiberTarget      Float?
   macroTrackingEnabled  Boolean  @default(false)
+  isMainUser            Boolean  @default(false)
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
