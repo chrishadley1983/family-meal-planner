@@ -160,19 +160,29 @@ export default function NewRecipePage() {
 
   // Handle servings change with ingredient scaling
   const handleServingsChange = (newServings: number) => {
+    // Validate input
+    if (!newServings || isNaN(newServings) || newServings < 1) {
+      return
+    }
+
     if (scaleIngredients && baseServings > 0 && baseIngredients.length > 0) {
       const scaleFactor = newServings / baseServings
-      const scaledIngredients = ingredients.map((currentIng, index) => {
-        const baseIng = baseIngredients[index]
-        if (baseIng) {
-          return {
-            ...currentIng,
-            quantity: Math.round(baseIng.quantity * scaleFactor * 100) / 100,
-          }
+      const scaledIngredients = baseIngredients.map((baseIng, index) => {
+        // Get corresponding current ingredient to preserve other fields
+        const currentIng = ingredients[index]
+        return {
+          ingredientName: baseIng.ingredientName,
+          quantity: Math.round(baseIng.quantity * scaleFactor * 100) / 100,
+          unit: baseIng.unit,
+          category: currentIng?.category || baseIng.category,
+          notes: currentIng?.notes || baseIng.notes,
         }
-        return currentIng
       })
-      setIngredients(scaledIngredients)
+
+      // Only update if we have valid ingredients
+      if (scaledIngredients.length > 0) {
+        setIngredients(scaledIngredients)
+      }
     }
     setServings(newServings)
   }
