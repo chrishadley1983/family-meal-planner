@@ -1,2 +1,2 @@
 -- AlterTable
-ALTER TABLE "FamilyProfile" ADD COLUMN "isMainUser" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "family_profiles" ADD COLUMN "isMainUser" BOOLEAN NOT NULL DEFAULT false;
