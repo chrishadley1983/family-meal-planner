@@ -61,7 +61,7 @@ Important: Return ONLY the JSON object, no other text.`
 
   try {
     const message = await client.messages.create({
-      model: 'claude-3-5-sonnet-20240620',
+      model: 'claude-3-5-sonnet-latest',
       max_tokens: 2048,
       messages: [{
         role: 'user',
@@ -114,7 +114,7 @@ Keep it concise and practical.`
 
   try {
     const message = await client.messages.create({
-      model: 'claude-3-5-sonnet-20240620',
+      model: 'claude-3-5-sonnet-latest',
       max_tokens: 1024,
       messages: [{
         role: 'user',
@@ -180,7 +180,7 @@ Important guidelines:
 
   try {
     const message = await client.messages.create({
-      model: 'claude-3-5-sonnet-20240620',
+      model: 'claude-3-5-sonnet-latest',
       max_tokens: 4096,
       messages: [{
         role: 'user',
@@ -233,7 +233,7 @@ Use standard nutrition databases for your calculations. Be as accurate as possib
 
   try {
     const message = await client.messages.create({
-      model: 'claude-3-5-sonnet-20240620',
+      model: 'claude-3-5-sonnet-latest',
       max_tokens: 1024,
       messages: [{
         role: 'user',
@@ -293,7 +293,7 @@ Be specific and practical in your suggestions.`
 
   try {
     const message = await client.messages.create({
-      model: 'claude-3-5-sonnet-20240620',
+      model: 'claude-3-5-sonnet-latest',
       max_tokens: 2048,
       messages: [{
         role: 'user',
