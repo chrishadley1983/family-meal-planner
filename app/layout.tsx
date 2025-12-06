@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { SessionProvider } from "@/components/providers/SessionProvider";
+// import { SessionProvider } from "@/components/providers/SessionProvider";
 
 export const metadata: Metadata = {
   title: "Family Meal Planner",
@@ -15,9 +15,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="font-sans antialiased">
-        <SessionProvider>
+        {/* <SessionProvider> */}
           {children}
-        </SessionProvider>
+        {/* </SessionProvider> */}
       </body>
     </html>
   );
