@@ -4,9 +4,29 @@ import { useEffect, useState } from 'react'
 import { use } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 
 interface RecipePageProps {
   params: Promise<{ id: string }>
+}
+
+type MacroAnalysis = {
+  perServing: {
+    calories: number
+    protein: number
+    carbs: number
+    fat: number
+    fiber: number
+    sugar: number
+    sodium: number
+  }
+  overallRating: 'green' | 'yellow' | 'red'
+  overallExplanation: string
+  ingredientRatings: Array<{
+    ingredientName: string
+    rating: 'green' | 'yellow' | 'red'
+    reason: string
+  }>
 }
 
 export default function ViewRecipePage({ params }: RecipePageProps) {
@@ -32,11 +52,22 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
   const [ingredients, setIngredients] = useState<any[]>([])
   const [instructions, setInstructions] = useState<any[]>([])
 
+  // AI Features state
+  const [macroAnalysis, setMacroAnalysis] = useState<MacroAnalysis | null>(null)
+  const [nutritionistFeedback, setNutritionistFeedback] = useState<string>('')
+  const [loadingAI, setLoadingAI] = useState(false)
+
   const mealCategories = ['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert']
 
   useEffect(() => {
     fetchRecipe()
   }, [id])
+
+  useEffect(() => {
+    if (recipe && !isEditing) {
+      fetchAIAnalysis(recipe)
+    }
+  }, [recipe, isEditing])
 
   const fetchRecipe = async () => {
     try {
@@ -101,6 +132,72 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
       console.error('Failed to duplicate recipe')
     } finally {
       setDuplicating(false)
+    }
+  }
+
+  // AI Helper functions
+  const getTrafficLightClass = (rating: 'green' | 'yellow' | 'red') => {
+    switch (rating) {
+      case 'green': return 'bg-green-500'
+      case 'yellow': return 'bg-yellow-500'
+      case 'red': return 'bg-red-500'
+      default: return 'bg-gray-300'
+    }
+  }
+
+  const getIngredientRating = (ingredientName: string) => {
+    return macroAnalysis?.ingredientRatings?.find(
+      r => r.ingredientName.toLowerCase() === ingredientName.toLowerCase()
+    )
+  }
+
+  // Fetch AI analysis
+  const fetchAIAnalysis = async (recipeData: any) => {
+    if (!recipeData) return
+
+    setLoadingAI(true)
+    try {
+      // Fetch macro analysis
+      const macroResponse = await fetch('/api/recipes/analyze-macros', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipe: {
+            recipeName: recipeData.recipeName,
+            servings: recipeData.servings,
+            ingredients: recipeData.ingredients
+          }
+        })
+      })
+
+      if (macroResponse.ok) {
+        const macroData = await macroResponse.json()
+        setMacroAnalysis(macroData.analysis)
+
+        // Fetch nutritionist feedback
+        const feedbackResponse = await fetch('/api/recipes/nutritionist-feedback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            recipe: {
+              recipeName: recipeData.recipeName,
+              servings: recipeData.servings,
+              mealCategory: recipeData.mealCategory,
+              ingredients: recipeData.ingredients
+            },
+            macroAnalysis: macroData.analysis
+          })
+        })
+
+        if (feedbackResponse.ok) {
+          const feedbackData = await feedbackResponse.json()
+          setNutritionistFeedback(feedbackData.feedback)
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch AI analysis:', err)
+    } finally {
+      setLoadingAI(false)
     }
   }
 
@@ -479,18 +576,105 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                 </div>
               ) : (
                 <ul className="space-y-2">
-                  {recipe.ingredients.map((ing: any, index: number) => (
-                    <li key={index} className="flex items-start">
-                      <span className="text-gray-400 mr-3">•</span>
-                      <span>
-                        <strong>{ing.quantity} {ing.unit}</strong> {ing.ingredientName}
-                        {ing.notes && <span className="text-gray-500 text-sm"> ({ing.notes})</span>}
-                      </span>
-                    </li>
-                  ))}
+                  {recipe.ingredients.map((ing: any, index: number) => {
+                    const rating = getIngredientRating(ing.ingredientName)
+                    return (
+                      <li key={index} className="flex items-start">
+                        {rating && (
+                          <div className="flex items-center mr-2" title={rating.reason}>
+                            <span className={`inline-block w-3 h-3 rounded-full ${getTrafficLightClass(rating.rating)}`}></span>
+                          </div>
+                        )}
+                        <span className="text-gray-400 mr-3">•</span>
+                        <span>
+                          <strong>{ing.quantity} {ing.unit}</strong> {ing.ingredientName}
+                          {ing.notes && <span className="text-gray-500 text-sm"> ({ing.notes})</span>}
+                        </span>
+                      </li>
+                    )
+                  })}
                 </ul>
               )}
             </div>
+
+            {/* AI Nutritional Analysis - Only in View Mode */}
+            {!isEditing && macroAnalysis && (
+              <>
+                {/* Macro Breakdown */}
+                <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-bold text-gray-900">Nutritional Analysis (per serving)</h3>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm font-medium text-gray-600">Overall Rating:</span>
+                      <span className={`inline-block w-4 h-4 rounded-full ${getTrafficLightClass(macroAnalysis.overallRating)}`}></span>
+                    </div>
+                  </div>
+
+                  <p className="text-sm text-gray-700 mb-4 italic">{macroAnalysis.overallExplanation}</p>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="bg-white p-3 rounded-md shadow-sm">
+                      <p className="text-xs text-gray-500 mb-1">Calories</p>
+                      <p className="text-lg font-bold text-gray-900">{macroAnalysis.perServing.calories}</p>
+                    </div>
+                    <div className="bg-white p-3 rounded-md shadow-sm">
+                      <p className="text-xs text-gray-500 mb-1">Protein</p>
+                      <p className="text-lg font-bold text-gray-900">{macroAnalysis.perServing.protein}g</p>
+                    </div>
+                    <div className="bg-white p-3 rounded-md shadow-sm">
+                      <p className="text-xs text-gray-500 mb-1">Carbs</p>
+                      <p className="text-lg font-bold text-gray-900">{macroAnalysis.perServing.carbs}g</p>
+                    </div>
+                    <div className="bg-white p-3 rounded-md shadow-sm">
+                      <p className="text-xs text-gray-500 mb-1">Fat</p>
+                      <p className="text-lg font-bold text-gray-900">{macroAnalysis.perServing.fat}g</p>
+                    </div>
+                    <div className="bg-white p-3 rounded-md shadow-sm">
+                      <p className="text-xs text-gray-500 mb-1">Fiber</p>
+                      <p className="text-lg font-bold text-gray-900">{macroAnalysis.perServing.fiber}g</p>
+                    </div>
+                    <div className="bg-white p-3 rounded-md shadow-sm">
+                      <p className="text-xs text-gray-500 mb-1">Sugar</p>
+                      <p className="text-lg font-bold text-gray-900">{macroAnalysis.perServing.sugar}g</p>
+                    </div>
+                    <div className="bg-white p-3 rounded-md shadow-sm">
+                      <p className="text-xs text-gray-500 mb-1">Sodium</p>
+                      <p className="text-lg font-bold text-gray-900">{macroAnalysis.perServing.sodium}mg</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sarah's Nutritionist Feedback */}
+                {nutritionistFeedback && (
+                  <div className="mb-6 p-5 bg-gradient-to-r from-pink-50 to-purple-50 rounded-lg border border-pink-200">
+                    <div className="flex items-start space-x-4">
+                      <div className="flex-shrink-0">
+                        <Image
+                          src="/sarah-avatar.png"
+                          alt="Sarah the AI Nutritionist"
+                          width={60}
+                          height={60}
+                          className="rounded-full border-2 border-pink-300"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-bold text-gray-900 mb-2">Sarah&apos;s Nutritionist Feedback</h3>
+                        <div className="text-sm text-gray-700 whitespace-pre-line">
+                          {nutritionistFeedback}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Loading AI Analysis */}
+            {!isEditing && loadingAI && (
+              <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200 text-center">
+                <p className="text-sm text-gray-600">Analyzing nutritional content...</p>
+              </div>
+            )}
 
             {/* Instructions */}
             <div className="mb-6">
