@@ -70,7 +70,13 @@ export default function NewRecipePage() {
   // New feature states
   const [scaleIngredients, setScaleIngredients] = useState(true)
   const [baseServings, setBaseServings] = useState(4)
-  const [baseIngredients, setBaseIngredients] = useState<Array<{ ingredientName: string; quantity: number; unit: string }>>([])
+  const [baseIngredients, setBaseIngredients] = useState<Array<{
+    ingredientName: string
+    quantity: number
+    unit: string
+    category?: string
+    notes?: string
+  }>>([])
   const [macroAnalysis, setMacroAnalysis] = useState<MacroAnalysis | null>(null)
   const [nutritionistFeedback, setNutritionistFeedback] = useState<string>('')
   const [loadingMacros, setLoadingMacros] = useState(false)
@@ -154,12 +160,18 @@ export default function NewRecipePage() {
 
   // Handle servings change with ingredient scaling
   const handleServingsChange = (newServings: number) => {
-    if (scaleIngredients && baseServings > 0) {
+    if (scaleIngredients && baseServings > 0 && baseIngredients.length > 0) {
       const scaleFactor = newServings / baseServings
-      const scaledIngredients = baseIngredients.map(ing => ({
-        ...ing,
-        quantity: Math.round(ing.quantity * scaleFactor * 100) / 100,
-      }))
+      const scaledIngredients = ingredients.map((currentIng, index) => {
+        const baseIng = baseIngredients[index]
+        if (baseIng) {
+          return {
+            ...currentIng,
+            quantity: Math.round(baseIng.quantity * scaleFactor * 100) / 100,
+          }
+        }
+        return currentIng
+      })
       setIngredients(scaledIngredients)
     }
     setServings(newServings)
@@ -170,11 +182,7 @@ export default function NewRecipePage() {
     if (!scaleIngredients) {
       // User is turning ON scaling - capture current state as base
       setBaseServings(servings)
-      setBaseIngredients(ingredients.map(i => ({
-        ingredientName: i.ingredientName,
-        quantity: i.quantity,
-        unit: i.unit
-      })))
+      setBaseIngredients(ingredients.map(i => ({ ...i })))
     }
     setScaleIngredients(!scaleIngredients)
   }
