@@ -348,6 +348,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
   }
 
   const addIngredient = () => {
+    saveToHistory()
     setIngredients([...ingredients, { ingredientName: '', quantity: 1, unit: '', notes: '' }])
   }
 
@@ -357,12 +358,14 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
   }
 
   const updateIngredient = (index: number, field: string, value: any) => {
+    saveToHistory()
     const updated = [...ingredients]
     updated[index] = { ...updated[index], [field]: value }
     setIngredients(updated)
   }
 
   const addInstruction = () => {
+    saveToHistory()
     setInstructions([...instructions, { stepNumber: instructions.length + 1, instruction: '' }])
   }
 
@@ -374,6 +377,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
   }
 
   const updateInstruction = (index: number, value: string) => {
+    saveToHistory()
     const updated = [...instructions]
     updated[index] = { ...updated[index], instruction: value }
     setInstructions(updated)
