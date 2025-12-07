@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       description: analyzedRecipe.description,
       cuisineType: analyzedRecipe.cuisineType,
       difficultyLevel: analyzedRecipe.difficultyLevel,
-      mealCategory: analyzedRecipe.mealCategory,
+      mealType: analyzedRecipe.mealType,
       servings: 4, // Default servings
       ingredients: analyzedRecipe.suggestedIngredients || [],
       instructions: analyzedRecipe.suggestedInstructions || []

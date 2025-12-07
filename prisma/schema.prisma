@@ -45,6 +45,7 @@ model FamilyProfile {
   dailyFatTarget        Float?
   dailyFiberTarget      Float?
   macroTrackingEnabled  Boolean  @default(false)
+  isMainUser            Boolean  @default(false)
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
@@ -68,7 +69,7 @@ model Recipe {
   cookTimeMinutes         Int?
   totalTimeMinutes        Int?
   cuisineType             String?
-  mealCategory            String[]
+  mealType                String[]
   difficultyLevel         String?
   recipeSource            String?
   sourceUrl               String?
@@ -79,6 +80,14 @@ model Recipe {
   ratingDate              DateTime?
   notes                   String?
   tags                    String[]
+  isVegetarian            Boolean  @default(false)
+  isVegan                 Boolean  @default(false)
+  containsMeat            Boolean  @default(false)
+  containsSeafood         Boolean  @default(false)
+  isDairyFree             Boolean  @default(false)
+  isGlutenFree            Boolean  @default(false)
+  containsNuts            Boolean  @default(false)
+  isQuickMeal             Boolean  @default(false)
   yieldsMultipleMeals     Boolean  @default(false)
   mealsYielded            Int?
   leftoverInstructions    String?
@@ -92,6 +101,7 @@ model Recipe {
   sugarPerServing         Float?
   sodiumPerServing        Int?
   nutritionAutoCalculated Boolean  @default(false)
+  isFavorite              Boolean  @default(false)
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
   isArchived              Boolean  @default(false)

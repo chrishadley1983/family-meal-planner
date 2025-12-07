@@ -11,7 +11,7 @@ interface CSVRow {
   cookTimeMinutes?: string
   cuisineType?: string
   difficultyLevel?: string
-  mealCategory?: string
+  mealType?: string
   ingredientName?: string
   quantity?: string
   unit?: string
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     for (let i = 1; i < lines.length; i++) {
       const values = parseCSVLine(lines[i])
       const row: any = {}
-      headers.forEach((header, index) => {
+      headers.forEach((header: string, index: number) => {
         row[header] = values[index] || ''
       })
       rows.push(row)
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
           cookTimeMinutes: row.cookTimeMinutes ? parseInt(row.cookTimeMinutes) : null,
           cuisineType: row.cuisineType || null,
           difficultyLevel: row.difficultyLevel || null,
-          mealCategory: row.mealCategory ? row.mealCategory.split('|') : [],
+          mealType: row.mealType ? row.mealType.split('|') : [],
           ingredients: [],
           instructions: []
         })

@@ -16,6 +16,7 @@ interface ProfileFormData {
   dailyFatTarget?: number
   dailyFiberTarget?: number
   macroTrackingEnabled: boolean
+  isMainUser: boolean
 }
 
 interface ProfileFormProps {
@@ -41,6 +42,7 @@ export default function ProfileForm({ initialData, profileId, mode }: ProfileFor
     dailyFatTarget: initialData?.dailyFatTarget || undefined,
     dailyFiberTarget: initialData?.dailyFiberTarget || undefined,
     macroTrackingEnabled: initialData?.macroTrackingEnabled || false,
+    isMainUser: (initialData as any)?.isMainUser || false,
   })
 
   const [newFoodLike, setNewFoodLike] = useState('')
@@ -168,6 +170,29 @@ export default function ProfileForm({ initialData, profileId, mode }: ProfileFor
             <option value="Moderately Active">Moderately Active</option>
             <option value="Very Active">Very Active</option>
           </select>
+        </div>
+
+        <div className="border-t pt-4">
+          <div className="flex items-start">
+            <div className="flex items-center h-5">
+              <input
+                type="checkbox"
+                id="isMainUser"
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                checked={formData.isMainUser}
+                onChange={(e) => setFormData({ ...formData, isMainUser: e.target.checked })}
+              />
+            </div>
+            <div className="ml-3">
+              <label htmlFor="isMainUser" className="font-medium text-gray-700">
+                Set as Main User
+              </label>
+              <p className="text-sm text-gray-500">
+                The main user's nutritional goals will be used for AI recipe analysis and nutritionist feedback.
+                Only one profile should be marked as the main user.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
