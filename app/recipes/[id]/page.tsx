@@ -274,6 +274,9 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
   }
 
   const handleSaveEdit = async () => {
+    console.log('🔵 handleSaveEdit function called!')
+    console.log('🔵 Current state:', { saving, isEditing, recipeName })
+
     setSaving(true)
 
     const macroData = {
@@ -537,7 +540,10 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                       ↶ Undo
                     </button>
                     <button
-                      onClick={handleSaveEdit}
+                      onClick={() => {
+                        console.log('🟢 Save button clicked!')
+                        handleSaveEdit()
+                      }}
                       disabled={saving}
                       className="px-3 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 disabled:opacity-50"
                     >
