@@ -685,7 +685,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                       <div key={index} className="flex items-center gap-2">
                         {rating && (
                           <div className="flex items-center" title={rating.reason}>
-                            <span className={`inline-block w-3 h-3 rounded-full ${getTrafficLightClass(rating.rating)}`}></span>
+                            <div className={`w-3 h-3 rounded-full ${getTrafficLightClass(rating.rating)}`}></div>
                           </div>
                         )}
                         <div className="flex-1 grid grid-cols-12 gap-2 items-center">
@@ -737,7 +737,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                       <li key={index} className="flex items-start">
                         {rating && (
                           <div className="flex items-center mr-2" title={rating.reason}>
-                            <span className={`inline-block w-3 h-3 rounded-full ${getTrafficLightClass(rating.rating)}`}></span>
+                            <div className={`w-3 h-3 rounded-full ${getTrafficLightClass(rating.rating)}`}></div>
                           </div>
                         )}
                         <span className="text-gray-400 mr-3">•</span>
