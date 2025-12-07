@@ -144,6 +144,18 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
     }
   }, [recipe, isEditing, macroAnalysis])
 
+  // Auto-refresh AI analysis when editing ingredients
+  useEffect(() => {
+    if (isEditing && recipeName && ingredients.some(i => i.ingredientName && i.unit)) {
+      // Debounce the analysis fetch
+      const timer = setTimeout(() => {
+        console.log('🔄 Auto-refreshing AI analysis while editing')
+        fetchAIAnalysis({ recipeName, servings, ingredients, mealCategory })
+      }, 1500)
+      return () => clearTimeout(timer)
+    }
+  }, [isEditing, recipeName, ingredients, servings, mealCategory])
+
   const fetchRecipe = async () => {
     console.log('📥 fetchRecipe called for id:', id)
     try {
@@ -553,9 +565,9 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-gray-900">Ingredients</h2>
                 <div className="flex gap-2">
-                  {!isEditing && !macroAnalysis && !loadingAI && (
+                  {!macroAnalysis && !loadingAI && (
                     <button
-                      onClick={() => fetchAIAnalysis(recipe)}
+                      onClick={() => fetchAIAnalysis(isEditing ? { recipeName, servings, ingredients, mealCategory } : recipe)}
                       className="px-3 py-1 bg-green-600 text-white rounded-md text-sm hover:bg-green-700"
                     >
                       Analyze Nutrition
@@ -573,45 +585,55 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
               </div>
               {isEditing ? (
                 <div className="space-y-2">
-                  {ingredients.map((ing, index) => (
-                    <div key={index} className="grid grid-cols-12 gap-2 items-center">
-                      <input
-                        type="text"
-                        placeholder="Ingredient"
-                        value={ing.ingredientName}
-                        onChange={(e) => updateIngredient(index, 'ingredientName', e.target.value)}
-                        className="col-span-5 border rounded px-2 py-1 text-sm"
-                      />
-                      <input
-                        type="number"
-                        placeholder="Qty"
-                        value={ing.quantity}
-                        onChange={(e) => updateIngredient(index, 'quantity', parseFloat(e.target.value))}
-                        step="0.1"
-                        className="col-span-2 border rounded px-2 py-1 text-sm"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Unit"
-                        value={ing.unit}
-                        onChange={(e) => updateIngredient(index, 'unit', e.target.value)}
-                        className="col-span-2 border rounded px-2 py-1 text-sm"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Notes"
-                        value={ing.notes || ''}
-                        onChange={(e) => updateIngredient(index, 'notes', e.target.value)}
-                        className="col-span-2 border rounded px-2 py-1 text-sm"
-                      />
-                      <button
-                        onClick={() => removeIngredient(index)}
-                        className="col-span-1 text-red-600 hover:text-red-800"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
+                  {ingredients.map((ing, index) => {
+                    const rating = getIngredientRating(ing.ingredientName)
+                    return (
+                      <div key={index} className="flex items-center gap-2">
+                        {rating && (
+                          <div className="flex items-center" title={rating.reason}>
+                            <span className={`inline-block w-3 h-3 rounded-full ${getTrafficLightClass(rating.rating)}`}></span>
+                          </div>
+                        )}
+                        <div className="flex-1 grid grid-cols-12 gap-2 items-center">
+                          <input
+                            type="text"
+                            placeholder="Ingredient"
+                            value={ing.ingredientName}
+                            onChange={(e) => updateIngredient(index, 'ingredientName', e.target.value)}
+                            className="col-span-5 border rounded px-2 py-1 text-sm"
+                          />
+                          <input
+                            type="number"
+                            placeholder="Qty"
+                            value={ing.quantity}
+                            onChange={(e) => updateIngredient(index, 'quantity', parseFloat(e.target.value))}
+                            step="0.1"
+                            className="col-span-2 border rounded px-2 py-1 text-sm"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Unit"
+                            value={ing.unit}
+                            onChange={(e) => updateIngredient(index, 'unit', e.target.value)}
+                            className="col-span-2 border rounded px-2 py-1 text-sm"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Notes"
+                            value={ing.notes || ''}
+                            onChange={(e) => updateIngredient(index, 'notes', e.target.value)}
+                            className="col-span-2 border rounded px-2 py-1 text-sm"
+                          />
+                          <button
+                            onClick={() => removeIngredient(index)}
+                            className="col-span-1 text-red-600 hover:text-red-800"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               ) : (
                 <ul className="space-y-2">
@@ -636,8 +658,8 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
               )}
             </div>
 
-            {/* AI Nutritional Analysis - Only in View Mode */}
-            {!isEditing && macroAnalysis && (
+            {/* AI Nutritional Analysis */}
+            {macroAnalysis && (
               <>
                 {/* Macro Breakdown */}
                 <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
@@ -709,7 +731,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
             )}
 
             {/* Loading AI Analysis */}
-            {!isEditing && loadingAI && (
+            {loadingAI && (
               <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200 text-center">
                 <p className="text-sm text-gray-600">Analyzing nutritional content...</p>
               </div>
