@@ -45,15 +45,16 @@ export async function POST(req: NextRequest) {
           .map(ing => `- ${ing.quantity} ${ing.unit} ${ing.ingredientName}`)
           .join('\n')
 
-        const prompt = `Analyze this recipe and determine its dietary properties based on the ingredients:
+        const prompt = `Analyze this recipe and determine its dietary properties and macros based on the ingredients:
 
 Recipe: ${recipe.recipeName}
 ${recipe.description ? `Description: ${recipe.description}` : ''}
+Servings: ${recipe.servings}
 
 Ingredients:
 ${ingredientsList}
 
-Return ONLY a valid JSON object with these boolean fields:
+Return ONLY a valid JSON object with these fields:
 {
   "isVegetarian": boolean (true if no meat/seafood),
   "isVegan": boolean (true if no animal products at all),
@@ -62,10 +63,15 @@ Return ONLY a valid JSON object with these boolean fields:
   "isDairyFree": boolean (true if no milk, cheese, butter, cream, yogurt),
   "isGlutenFree": boolean (true if no wheat, flour, bread, pasta with gluten),
   "containsNuts": boolean (true if contains any nuts or nut products),
-  "cuisineType": "string or null (e.g., 'Pasta', 'Curry', 'Stir-fry', 'Thai', 'BBQ', 'Pizza', 'Salad')"
+  "cuisineType": "string or null (e.g., 'Pasta', 'Curry', 'Stir-fry', 'Thai', 'BBQ', 'Pizza', 'Salad')",
+  "caloriesPerServing": number (estimated calories per serving),
+  "proteinPerServing": number (estimated protein in grams per serving),
+  "carbsPerServing": number (estimated carbs in grams per serving),
+  "fatPerServing": number (estimated fat in grams per serving)
 }
 
 Be thorough - check for hidden animal products (like chicken stock, gelatin, etc.).
+Calculate macros based on standard USDA nutrition data for the ingredients.
 Return ONLY the JSON object, no explanatory text.`
 
         const message = await client.messages.create({
@@ -90,7 +96,7 @@ Return ONLY the JSON object, no explanatory text.`
         // Calculate isQuickMeal based on total time
         const isQuickMeal = recipe.totalTimeMinutes !== null && recipe.totalTimeMinutes < 30
 
-        // Update recipe with dietary tags
+        // Update recipe with dietary tags and macros
         await prisma.recipe.update({
           where: { id: recipe.id },
           data: {
@@ -102,6 +108,10 @@ Return ONLY the JSON object, no explanatory text.`
             isGlutenFree: analysis.isGlutenFree,
             containsNuts: analysis.containsNuts,
             isQuickMeal,
+            caloriesPerServing: analysis.caloriesPerServing ? Math.round(analysis.caloriesPerServing) : null,
+            proteinPerServing: analysis.proteinPerServing ? Math.round(analysis.proteinPerServing * 10) / 10 : null,
+            carbsPerServing: analysis.carbsPerServing ? Math.round(analysis.carbsPerServing * 10) / 10 : null,
+            fatPerServing: analysis.fatPerServing ? Math.round(analysis.fatPerServing * 10) / 10 : null,
             ...(analysis.cuisineType && recipe.cuisineType === null && {
               cuisineType: analysis.cuisineType
             })
