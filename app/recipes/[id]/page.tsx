@@ -552,14 +552,24 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
             <div className="mb-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-gray-900">Ingredients</h2>
-                {isEditing && (
-                  <button
-                    onClick={addIngredient}
-                    className="px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
-                  >
-                    Add Ingredient
-                  </button>
-                )}
+                <div className="flex gap-2">
+                  {!isEditing && !macroAnalysis && !loadingAI && (
+                    <button
+                      onClick={() => fetchAIAnalysis(recipe)}
+                      className="px-3 py-1 bg-green-600 text-white rounded-md text-sm hover:bg-green-700"
+                    >
+                      Analyze Nutrition
+                    </button>
+                  )}
+                  {isEditing && (
+                    <button
+                      onClick={addIngredient}
+                      className="px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
+                    >
+                      Add Ingredient
+                    </button>
+                  )}
+                </div>
               </div>
               {isEditing ? (
                 <div className="space-y-2">
