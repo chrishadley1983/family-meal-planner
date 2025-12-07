@@ -573,6 +573,85 @@ Remove-Item -Recurse -Force node_modules/.cache, apps/mobile/.expo, apps/web/.ne
 
 ---
 
+## ⚠️ Known Issues
+
+### 🔴 CRITICAL: Next.js 16.x Turbopack Caching Bug (December 2024)
+
+**Status:** AVOID Next.js 16.x - Use Next.js 15.x instead
+
+**Symptom:**
+- Code changes don't appear in the running application
+- Console logs you just added don't show up
+- Database updates written in code don't execute
+- TypeScript compiles without errors but runtime behavior is stale
+- **CRITICAL:** Affects BOTH client-side (browser) AND server-side (API routes, Prisma queries)
+
+**What Makes This Different from Normal Caching:**
+- Clearing `.next`, `.turbo`, `node_modules/.cache` doesn't fix it
+- Deleting entire `node_modules` and running fresh `npm install` doesn't fix it
+- Browser cache clearing (Ctrl+Shift+Delete) doesn't fix it
+- Hard refresh (Ctrl+Shift+R) doesn't fix it
+- Production builds don't fix it
+- Restarting the dev server doesn't fix it
+
+**Evidence of the Bug:**
+- Browser console shows old logs that don't exist in current source files
+- Server terminal shows Prisma UPDATE queries missing fields that are clearly in the code
+- File contents are correct when you read them, but runtime executes old versions
+
+**Root Cause:**
+Next.js 16.0.7 introduced Turbopack as the default dev bundler, which has severe caching bugs. Turbopack caches compiled versions of both client and server code in a way that persists even after complete rebuilds.
+
+**THE ONLY FIX:**
+Downgrade to Next.js 15.x:
+
+```powershell
+# 1. Edit package.json
+# Change: "next": "16.0.7" → "next": "^15.1.0"
+# Change: "eslint-config-next": "16.0.7" → "eslint-config-next": "^15.1.0"
+
+# 2. Clean everything
+Remove-Item -Recurse -Force node_modules, .next, .turbo -ErrorAction SilentlyContinue
+
+# 3. Fresh install
+npm install
+
+# 4. Regenerate Prisma
+npx prisma generate
+
+# 5. Restart dev server
+npm run dev
+
+# 6. Verify Next.js 15 is running (should NOT mention "Turbopack"):
+# Look for: "▲ Next.js 15.x.x" in startup output
+```
+
+**How to Recognize This Bug:**
+1. You make a code change
+2. No TypeScript errors
+3. You test the change
+4. Old behavior still happens
+5. You add console.log to debug
+6. Console.log doesn't appear
+7. You check the source file - your code IS there
+8. But runtime acts like old code
+
+**If you see this pattern:** Don't waste hours debugging - downgrade Next.js immediately.
+
+**Prevention:**
+- Pin Next.js to `^15.1.0` in package.json
+- Avoid Next.js 16.x until Turbopack is stable (check GitHub issues first)
+- When upgrading Next.js major versions, test in a separate branch first
+- Add module version stamps to critical files:
+  ```typescript
+  console.log('🚀 RecipePage loaded - 2024-12-07.v2')
+  ```
+
+**Historical Note:**
+This bug caused a 2-hour debugging session on 2024-12-07 where macro persistence code was correctly written but completely inaccessible due to Turbopack caching. The fix (downgrading to 15.5.7) took 8 minutes and immediately resolved all issues.
+
+---
+
 ## Troubleshooting
 
 ### Server Won't Start
