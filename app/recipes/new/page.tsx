@@ -261,7 +261,7 @@ export default function NewRecipePage() {
         setIngredients(importedIngredients)
         // Initialize base values for scaling
         setBaseServings(importedServings)
-        setBaseIngredients(importedIngredients.map(i => ({ ...i })))
+        setBaseIngredients(importedIngredients.map((i: any) => ({ ...i })))
       }
 
       if (recipe.instructions && recipe.instructions.length > 0) {
