@@ -275,6 +275,17 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
 
   const handleSaveEdit = async () => {
     setSaving(true)
+
+    const macroData = {
+      caloriesPerServing: macroAnalysis?.perServing?.calories ? Math.round(macroAnalysis.perServing.calories) : null,
+      proteinPerServing: macroAnalysis?.perServing?.protein ? Math.round(macroAnalysis.perServing.protein * 10) / 10 : null,
+      carbsPerServing: macroAnalysis?.perServing?.carbs ? Math.round(macroAnalysis.perServing.carbs * 10) / 10 : null,
+      fatPerServing: macroAnalysis?.perServing?.fat ? Math.round(macroAnalysis.perServing.fat * 10) / 10 : null,
+    }
+
+    console.log('💾 Saving recipe with macro data:', macroData)
+    console.log('📊 macroAnalysis state:', macroAnalysis)
+
     try {
       const response = await fetch(`/api/recipes/${id}`, {
         method: 'PUT',
@@ -290,8 +301,8 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
           mealType,
           notes: notes || null,
           imageUrl: imageUrl || null,
-          caloriesPerServing: macroAnalysis?.perServing?.calories ? Math.round(macroAnalysis.perServing.calories) : null,
-          proteinPerServing: macroAnalysis?.perServing?.protein ? Math.round(macroAnalysis.perServing.protein * 10) / 10 : null,
+          caloriesPerServing: macroData.caloriesPerServing,
+          proteinPerServing: macroData.proteinPerServing,
           carbsPerServing: macroAnalysis?.perServing?.carbs ? Math.round(macroAnalysis.perServing.carbs * 10) / 10 : null,
           fatPerServing: macroAnalysis?.perServing?.fat ? Math.round(macroAnalysis.perServing.fat * 10) / 10 : null,
           fiberPerServing: macroAnalysis?.perServing?.fiber ? Math.round(macroAnalysis.perServing.fiber * 10) / 10 : null,
