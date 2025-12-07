@@ -130,14 +130,31 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
     fetchRecipe()
   }, [id])
 
+  // Separate useEffect to fetch AI analysis when recipe loads
+  useEffect(() => {
+    console.log('🔄 Recipe state changed, checking if should fetch AI...', {
+      hasRecipe: !!recipe,
+      isEditing,
+      hasMacroAnalysis: !!macroAnalysis
+    })
+
+    if (recipe && !isEditing && !macroAnalysis) {
+      console.log('✨ Triggering AI analysis for:', recipe.recipeName)
+      fetchAIAnalysis(recipe)
+    }
+  }, [recipe, isEditing, macroAnalysis])
+
   const fetchRecipe = async () => {
+    console.log('📥 fetchRecipe called for id:', id)
     try {
       const response = await fetch(`/api/recipes/${id}`)
+      console.log('📥 Recipe API response status:', response.status)
       if (!response.ok) {
         router.push('/recipes')
         return
       }
       const data = await response.json()
+      console.log('📥 Recipe data loaded:', data.recipe?.recipeName)
       setRecipe(data.recipe)
       setRating(data.recipe.familyRating)
 
@@ -153,11 +170,8 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
       setNotes(data.recipe.notes || '')
       setIngredients(data.recipe.ingredients || [])
       setInstructions(data.recipe.instructions || [])
-
-      // Fetch AI analysis after recipe loads (in view mode)
-      console.log('🍳 Recipe loaded, calling fetchAIAnalysis...')
-      await fetchAIAnalysis(data.recipe)
     } catch (err) {
+      console.error('❌ Error in fetchRecipe:', err)
       router.push('/recipes')
     } finally {
       setLoading(false)
