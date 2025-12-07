@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { generateRecipeSVG } from '@/lib/generate-recipe-image'
 
 interface Recipe {
   id: string
@@ -16,7 +17,6 @@ interface Recipe {
   cuisineType?: string
   timesUsed: number
   ingredients: any[]
-  isFavorite?: boolean
 }
 
 export default function RecipesPage() {
@@ -24,9 +24,6 @@ export default function RecipesPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterCategory, setFilterCategory] = useState('')
-  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
-  const [importingCSV, setImportingCSV] = useState(false)
-  const [csvImportResult, setCsvImportResult] = useState<string>('')
 
   useEffect(() => {
     fetchRecipes()
@@ -60,85 +57,11 @@ export default function RecipesPage() {
     }
   }
 
-  const handleDuplicate = async (id: string) => {
-    try {
-      const response = await fetch(`/api/recipes/${id}/duplicate`, {
-        method: 'POST'
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setRecipes([data.recipe, ...recipes])
-        alert('Recipe duplicated successfully!')
-      }
-    } catch (error) {
-      console.error('Error duplicating recipe:', error)
-      alert('Failed to duplicate recipe')
-    }
-  }
-
-  const handleCSVImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    setImportingCSV(true)
-    setCsvImportResult('')
-
-    try {
-      const csvData = await file.text()
-
-      const response = await fetch('/api/recipes/import-csv', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ csvData })
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        setCsvImportResult(
-          `Successfully imported ${data.imported} recipes.` +
-          (data.failed > 0 ? ` Failed: ${data.failed}` : '')
-        )
-        fetchRecipes() // Refresh the list
-        setTimeout(() => setCsvImportResult(''), 5000)
-      } else {
-        setCsvImportResult(`Error: ${data.error}`)
-      }
-    } catch (error) {
-      console.error('Error importing CSV:', error)
-      setCsvImportResult('Failed to import CSV file')
-    } finally {
-      setImportingCSV(false)
-      // Reset the input
-      event.target.value = ''
-    }
-  }
-
-  const toggleFavorite = async (id: string, currentStatus: boolean) => {
-    try {
-      const response = await fetch(`/api/recipes/${id}/favorite`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isFavorite: !currentStatus })
-      })
-
-      if (response.ok) {
-        setRecipes(recipes.map(r =>
-          r.id === id ? { ...r, isFavorite: !currentStatus } : r
-        ))
-      }
-    } catch (error) {
-      console.error('Error toggling favorite:', error)
-    }
-  }
-
   const filteredRecipes = recipes.filter(recipe => {
     const matchesSearch = recipe.recipeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          recipe.description?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesCategory = !filterCategory || recipe.mealCategory.includes(filterCategory)
-    const matchesFavorite = !showFavoritesOnly || recipe.isFavorite
-    return matchesSearch && matchesCategory && matchesFavorite
+    return matchesSearch && matchesCategory
   })
 
   const categories = Array.from(new Set(recipes.flatMap(r => r.mealCategory)))
@@ -162,47 +85,16 @@ export default function RecipesPage() {
             <h1 className="text-3xl font-bold text-gray-900">Recipes</h1>
             <p className="text-gray-600 mt-1">Manage your family recipes</p>
           </div>
-          <div className="flex items-center space-x-3">
-            <Link
-              href="/recipes/new"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-            >
-              Add Recipe
-            </Link>
-            <label htmlFor="csv-import" className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 cursor-pointer">
-              {importingCSV ? 'Importing...' : 'Import CSV'}
-              <input
-                id="csv-import"
-                name="csv-import"
-                type="file"
-                accept=".csv"
-                onChange={handleCSVImport}
-                disabled={importingCSV}
-                className="hidden"
-              />
-            </label>
-            <a
-              href="/recipe-template.csv"
-              download
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm"
-            >
-              Download Template
-            </a>
-          </div>
+          <Link
+            href="/recipes/new"
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            Add Recipe
+          </Link>
         </div>
 
-        {csvImportResult && (
-          <div className={`mb-4 p-4 rounded-md ${
-            csvImportResult.includes('Error') || csvImportResult.includes('Failed')
-              ? 'bg-red-50 text-red-800'
-              : 'bg-green-50 text-green-800'
-          }`}>
-            <p className="text-sm">{csvImportResult}</p>
-          </div>
-        )}
-
         <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <input
                 type="text"
@@ -223,18 +115,6 @@ export default function RecipesPage() {
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
               </select>
-            </div>
-            <div>
-              <button
-                onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-                className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  showFavoritesOnly
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                {showFavoritesOnly ? '★ Favorites Only' : '☆ Show All'}
-              </button>
             </div>
           </div>
         </div>
@@ -263,39 +143,34 @@ export default function RecipesPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredRecipes.map((recipe) => (
-              <div key={recipe.id} className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-                {/* Recipe Image */}
-                {recipe.imageUrl && (
+            {filteredRecipes.map((recipe) => {
+              // Generate SVG if no image provided
+              const imageUrl = recipe.imageUrl || generateRecipeSVG(recipe.recipeName, recipe.mealCategory)
+
+              return (
+                <div key={recipe.id} className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+                  {/* Recipe Image */}
                   <div className="relative h-48 w-full bg-gray-100">
                     <Image
-                      src={recipe.imageUrl}
+                      src={imageUrl}
                       alt={recipe.recipeName}
                       fill
                       className="object-cover"
-                      unoptimized={recipe.imageUrl.startsWith('data:')}
+                      unoptimized={imageUrl.startsWith('data:')}
                     />
                   </div>
-                )}
-                <div className="p-6">
-                  <div className="flex items-start justify-between mb-3">
+
+                  <div className="p-6">
+                    <div className="flex items-start justify-between mb-3">
                     <h3 className="text-lg font-semibold text-gray-900 flex-1">{recipe.recipeName}</h3>
-                    <div className="flex items-center ml-2 space-x-2">
-                      <button
-                        onClick={() => toggleFavorite(recipe.id, recipe.isFavorite || false)}
-                        className="text-2xl focus:outline-none hover:scale-110 transition-transform"
-                      >
-                        {recipe.isFavorite ? '★' : '☆'}
-                      </button>
-                      {recipe.familyRating && (
-                        <div className="flex items-center">
-                          <svg className="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                          </svg>
-                          <span className="ml-1 text-sm text-gray-600">{recipe.familyRating.toFixed(1)}</span>
-                        </div>
-                      )}
-                    </div>
+                    {recipe.familyRating && (
+                      <div className="flex items-center ml-2">
+                        <svg className="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                        </svg>
+                        <span className="ml-1 text-sm text-gray-600">{recipe.familyRating.toFixed(1)}</span>
+                      </div>
+                    )}
                   </div>
 
                   {recipe.description && (
@@ -329,13 +204,6 @@ export default function RecipesPage() {
                       View/Edit
                     </Link>
                     <button
-                      onClick={() => handleDuplicate(recipe.id)}
-                      className="px-3 py-2 border border-blue-300 rounded-md text-sm font-medium text-blue-700 bg-white hover:bg-blue-50"
-                      title="Duplicate recipe"
-                    >
-                      Copy
-                    </button>
-                    <button
                       onClick={() => handleDelete(recipe.id)}
                       className="px-3 py-2 border border-red-300 rounded-md text-sm font-medium text-red-700 bg-white hover:bg-red-50"
                     >
@@ -344,7 +212,8 @@ export default function RecipesPage() {
                   </div>
                 </div>
               </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
