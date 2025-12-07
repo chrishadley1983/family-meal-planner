@@ -66,6 +66,11 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
     instructions: any[]
   }>>([])
 
+  // Ingredient scaling state
+  const [scaleIngredients, setScaleIngredients] = useState(false)
+  const [baseServings, setBaseServings] = useState(4)
+  const [baseIngredients, setBaseIngredients] = useState<any[]>([])
+
   const mealCategories = ['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert']
 
   // Fetch AI analysis
@@ -164,6 +169,21 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
       return () => clearTimeout(timer)
     }
   }, [isEditing, recipeName, ingredients, servings, mealCategory])
+
+  // Scale ingredients when servings change (if scaling is enabled)
+  useEffect(() => {
+    if (scaleIngredients && baseServings > 0 && baseIngredients.length > 0) {
+      const ratio = servings / baseServings
+      console.log('📏 Scaling ingredients by ratio:', ratio, 'from', baseServings, 'to', servings)
+
+      const scaledIngredients = baseIngredients.map(ing => ({
+        ...ing,
+        quantity: parseFloat((ing.quantity * ratio).toFixed(2))
+      }))
+
+      setIngredients(scaledIngredients)
+    }
+  }, [servings, scaleIngredients, baseServings, baseIngredients])
 
   const fetchRecipe = async () => {
     console.log('📥 fetchRecipe called for id:', id)
@@ -538,13 +558,32 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
               <div>
                 <p className="text-sm text-gray-500">Servings</p>
                 {isEditing ? (
-                  <input
-                    type="number"
-                    value={servings}
-                    onChange={(e) => setServings(parseInt(e.target.value) || 1)}
-                    min="1"
-                    className="text-lg font-semibold w-full border rounded px-2 py-1"
-                  />
+                  <>
+                    <input
+                      type="number"
+                      value={servings}
+                      onChange={(e) => setServings(parseInt(e.target.value) || 1)}
+                      min="1"
+                      className="text-lg font-semibold w-full border rounded px-2 py-1"
+                    />
+                    <label className="flex items-center mt-2 text-xs text-gray-600 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={scaleIngredients}
+                        onChange={(e) => {
+                          const checked = e.target.checked
+                          setScaleIngredients(checked)
+                          if (checked) {
+                            // Save current state as baseline
+                            setBaseServings(servings)
+                            setBaseIngredients(JSON.parse(JSON.stringify(ingredients)))
+                          }
+                        }}
+                        className="mr-1"
+                      />
+                      Scale ingredients
+                    </label>
+                  </>
                 ) : (
                   <p className="text-lg font-semibold">{recipe.servings}</p>
                 )}
