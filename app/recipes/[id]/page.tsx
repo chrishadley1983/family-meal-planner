@@ -1,7 +1,5 @@
 'use client'
 
-console.log('🚀🚀🚀 RECIPE PAGE MODULE LOADED - VERSION 2.0 🚀🚀🚀')
-
 import { useEffect, useState, useCallback } from 'react'
 import { use } from 'react'
 import { useRouter } from 'next/navigation'
@@ -276,9 +274,6 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
   }
 
   const handleSaveEdit = async () => {
-    console.log('🔵 handleSaveEdit function called!')
-    console.log('🔵 Current state:', { saving, isEditing, recipeName })
-
     setSaving(true)
 
     const macroData = {
@@ -287,9 +282,6 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
       carbsPerServing: macroAnalysis?.perServing?.carbs ? Math.round(macroAnalysis.perServing.carbs * 10) / 10 : null,
       fatPerServing: macroAnalysis?.perServing?.fat ? Math.round(macroAnalysis.perServing.fat * 10) / 10 : null,
     }
-
-    console.log('💾 Saving recipe with macro data:', macroData)
-    console.log('📊 macroAnalysis state:', macroAnalysis)
 
     try {
       const response = await fetch(`/api/recipes/${id}`, {
@@ -542,15 +534,11 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                       ↶ Undo
                     </button>
                     <button
-                      onClick={() => {
-                        alert('Save button clicked!')
-                        console.log('🟢 Save button clicked!')
-                        handleSaveEdit()
-                      }}
+                      onClick={handleSaveEdit}
                       disabled={saving}
                       className="px-3 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 disabled:opacity-50"
                     >
-                      {saving ? 'Saving...' : '💾 SAVE (UPDATED)'}
+                      {saving ? 'Saving...' : 'Save'}
                     </button>
                     <button
                       onClick={handleCancelEdit}
