@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     for (let i = 1; i < lines.length; i++) {
       const values = parseCSVLine(lines[i])
       const row: any = {}
-      headers.forEach((header, index) => {
+      headers.forEach((header: string, index: number) => {
         row[header] = values[index] || ''
       })
       rows.push(row)

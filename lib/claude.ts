@@ -491,7 +491,7 @@ export async function getNutritionistFeedbackForRecipe(params: {
     age?: number | null
     activityLevel?: string | null
     allergies: any
-    foodDislikes?: string | null
+    foodDislikes: string[]
     dailyCalorieTarget?: number | null
     dailyProteinTarget?: number | null
     dailyCarbsTarget?: number | null
@@ -521,7 +521,7 @@ Name: ${userProfile.profileName}
 Age: ${userProfile.age || 'Not specified'}
 Activity Level: ${userProfile.activityLevel || 'Moderate'}
 Allergies: ${allergies.length > 0 ? allergies.join(', ') : 'None'}
-Dislikes: ${userProfile.foodDislikes || 'None specified'}
+Dislikes: ${userProfile.foodDislikes.length > 0 ? userProfile.foodDislikes.join(', ') : 'None specified'}
 ${userProfile.macroTrackingEnabled ? `
 Daily Targets:
 - Calories: ${userProfile.dailyCalorieTarget} kcal

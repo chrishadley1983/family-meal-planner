@@ -55,6 +55,14 @@ export default function RecipesPage() {
     try {
       const response = await fetch('/api/recipes')
       const data = await response.json()
+      console.log('📊 Total recipes loaded:', data.recipes?.length)
+      console.log('📊 Sample recipe macro data:', {
+        name: data.recipes?.[0]?.recipeName,
+        calories: data.recipes?.[0]?.caloriesPerServing,
+        protein: data.recipes?.[0]?.proteinPerServing,
+        hasCalories: data.recipes?.filter((r: Recipe) => r.caloriesPerServing).length,
+        hasProtein: data.recipes?.filter((r: Recipe) => r.proteinPerServing).length,
+      })
       setRecipes(data.recipes || [])
     } catch (error) {
       console.error('Error fetching recipes:', error)
@@ -111,8 +119,8 @@ export default function RecipesPage() {
 
     // Calorie filter
     let matchesCalories = true
-    if (filterCalories) {
-      const calories = recipe.caloriesPerServing || 0
+    if (filterCalories && recipe.caloriesPerServing) {
+      const calories = recipe.caloriesPerServing
       switch (filterCalories) {
         case '<300': matchesCalories = calories < 300; break
         case '300-500': matchesCalories = calories >= 300 && calories <= 500; break
@@ -123,8 +131,8 @@ export default function RecipesPage() {
 
     // Protein filter
     let matchesProtein = true
-    if (filterProtein) {
-      const protein = recipe.proteinPerServing || 0
+    if (filterProtein && recipe.proteinPerServing) {
+      const protein = recipe.proteinPerServing
       switch (filterProtein) {
         case '<10': matchesProtein = protein < 10; break
         case '10-20': matchesProtein = protein >= 10 && protein <= 20; break
