@@ -340,10 +340,6 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
           ← Back to Recipes
         </Link>
 
-        <div className="bg-red-500 text-white text-center text-2xl font-bold p-4 mb-4 rounded-lg">
-          🚨 CODE UPDATE TEST - IF YOU SEE THIS, THE CODE IS LOADING! 🚨
-        </div>
-
         <div className="bg-white shadow-sm rounded-lg overflow-hidden">
           <div className="p-6">
             {/* Header with title, edit button, duplicate, and rating */}
