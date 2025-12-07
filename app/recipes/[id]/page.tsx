@@ -541,6 +541,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                     </button>
                     <button
                       onClick={() => {
+                        alert('Save button clicked!')
                         console.log('🟢 Save button clicked!')
                         handleSaveEdit()
                       }}
