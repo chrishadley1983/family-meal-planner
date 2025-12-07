@@ -48,7 +48,7 @@ export default function NewRecipePage() {
   const [cookTimeMinutes, setCookTimeMinutes] = useState<number | ''>('')
   const [cuisineType, setCuisineType] = useState('')
   const [difficultyLevel, setDifficultyLevel] = useState('')
-  const [mealCategory, setMealCategory] = useState<string[]>([])
+  const [mealType, setMealCategory] = useState<string[]>([])
   const [tags, setTags] = useState<string[]>([])
   const [sourceUrl, setSourceUrl] = useState('')
   const [imageUrl, setImageUrl] = useState('')
@@ -140,7 +140,7 @@ export default function NewRecipePage() {
             recipeName,
             description,
             servings,
-            mealCategory,
+            mealType,
             ingredients: ingredients.filter(i => i.ingredientName && i.unit),
           },
           macroAnalysis: analysis,
@@ -248,7 +248,7 @@ export default function NewRecipePage() {
       setCookTimeMinutes(recipe.cookTimeMinutes || '')
       setCuisineType(recipe.cuisineType || '')
       setDifficultyLevel(recipe.difficultyLevel || '')
-      setMealCategory(recipe.mealCategory || [])
+      setMealCategory(recipe.mealType || [])
       setSourceUrl(recipe.sourceUrl || importUrl)
 
       if (recipe.ingredients && recipe.ingredients.length > 0) {
@@ -311,7 +311,7 @@ export default function NewRecipePage() {
         setServings(recipe.servings || 4)
         setCuisineType(recipe.cuisineType || '')
         setDifficultyLevel(recipe.difficultyLevel || '')
-        setMealCategory(recipe.mealCategory || [])
+        setMealCategory(recipe.mealType || [])
 
         if (recipe.ingredients && recipe.ingredients.length > 0) {
           setIngredients(recipe.ingredients.map((ing: any) => ({
@@ -392,7 +392,7 @@ export default function NewRecipePage() {
           cookTimeMinutes: cookTimeMinutes || null,
           cuisineType: cuisineType || null,
           difficultyLevel: difficultyLevel || null,
-          mealCategory,
+          mealType,
           tags,
           sourceUrl: sourceUrl || null,
           imageUrl: imageUrl || null,
@@ -722,7 +722,7 @@ export default function NewRecipePage() {
                       type="button"
                       onClick={() => toggleCategory(cat)}
                       className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        mealCategory.includes(cat)
+                        mealType.includes(cat)
                           ? 'bg-blue-600 text-white'
                           : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                       }`}

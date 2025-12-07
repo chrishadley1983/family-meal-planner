@@ -29,7 +29,7 @@ ${recipes.map((r, i) => `
 ${i + 1}. ${r.recipeName} (ID: ${r.id})
    - Servings: ${r.servings}
    - Time: ${r.totalTimeMinutes || 'N/A'} min
-   - Categories: ${r.mealCategory.join(', ')}
+   - Categories: ${r.mealType.join(', ')}
    - Rating: ${r.familyRating || 'Not rated'}
    - Ingredients: ${r.ingredients.map((ing: any) => ing.ingredientName).slice(0, 5).join(', ')}...
 `).join('\n')}
@@ -163,9 +163,16 @@ Extract and return ONLY a valid JSON object in this EXACT format:
   "servings": number,
   "prepTimeMinutes": number or null,
   "cookTimeMinutes": number or null,
-  "cuisineType": "string or null",
+  "cuisineType": "string or null (e.g., 'Pasta', 'Curry', 'Stir-fry', 'Thai', 'BBQ', 'Pizza', 'Salad')",
   "difficultyLevel": "Easy" | "Medium" | "Hard" | null,
-  "mealCategory": ["Breakfast" | "Lunch" | "Dinner" | "Snack" | "Dessert"],
+  "mealType": ["Breakfast" | "Lunch" | "Dinner" | "Snack" | "Dessert"],
+  "isVegetarian": boolean (true if no meat/seafood),
+  "isVegan": boolean (true if no animal products at all),
+  "containsMeat": boolean (true if contains beef, pork, chicken, lamb, etc.),
+  "containsSeafood": boolean (true if contains fish, shrimp, etc.),
+  "isDairyFree": boolean (true if no milk, cheese, butter, cream, yogurt),
+  "isGlutenFree": boolean (true if no wheat, flour, bread, pasta with gluten),
+  "containsNuts": boolean (true if contains any nuts or nut products),
   "ingredients": [
     {
       "ingredientName": "string",
@@ -298,9 +305,16 @@ Return ONLY a valid JSON object in this exact format:
 {
   "recipeName": "string",
   "description": "string",
-  "cuisineType": "string or null",
+  "cuisineType": "string or null (e.g., 'Pasta', 'Curry', 'Stir-fry', 'Thai', 'BBQ', 'Pizza', 'Salad')",
   "difficultyLevel": "Easy" | "Medium" | "Hard",
-  "mealCategory": ["Breakfast" | "Lunch" | "Dinner" | "Snack" | "Dessert"],
+  "mealType": ["Breakfast" | "Lunch" | "Dinner" | "Snack" | "Dessert"],
+  "isVegetarian": boolean,
+  "isVegan": boolean,
+  "containsMeat": boolean,
+  "containsSeafood": boolean,
+  "isDairyFree": boolean,
+  "isGlutenFree": boolean,
+  "containsNuts": boolean,
   "suggestedIngredients": [
     {
       "ingredientName": "string",
@@ -465,7 +479,7 @@ export async function getNutritionistFeedbackForRecipe(params: {
     recipeName: string
     description?: string | null
     servings: number
-    mealCategory: string[]
+    mealType: string[]
     ingredients: Array<{
       ingredientName: string
       quantity: number
@@ -519,7 +533,7 @@ Daily Targets:
 RECIPE:
 Name: ${recipe.recipeName}
 ${recipe.description || ''}
-Meal Type: ${recipe.mealCategory.join(', ')}
+Meal Type: ${recipe.mealType.join(', ')}
 Servings: ${recipe.servings}
 
 NUTRITION PER SERVING:
