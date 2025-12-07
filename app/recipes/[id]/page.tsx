@@ -1,5 +1,7 @@
 'use client'
 
+console.log('🚀🚀🚀 RECIPE PAGE MODULE LOADED - VERSION 2.0 🚀🚀🚀')
+
 import { useEffect, useState, useCallback } from 'react'
 import { use } from 'react'
 import { useRouter } from 'next/navigation'
