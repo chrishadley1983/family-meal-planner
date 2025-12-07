@@ -761,7 +761,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                     <h3 className="font-bold text-gray-900">Nutritional Analysis (per serving)</h3>
                     <div className="flex items-center space-x-2">
                       <span className="text-sm font-medium text-gray-600">Overall Rating:</span>
-                      <span className={`inline-block w-4 h-4 rounded-full ${getTrafficLightClass(macroAnalysis.overallRating)}`}></span>
+                      <div className={`w-4 h-4 rounded-full ${getTrafficLightClass(macroAnalysis.overallRating)}`}></div>
                     </div>
                   </div>
 
