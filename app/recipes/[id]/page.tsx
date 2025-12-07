@@ -548,7 +548,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                       disabled={saving}
                       className="px-3 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 disabled:opacity-50"
                     >
-                      {saving ? 'Saving...' : 'Save'}
+                      {saving ? 'Saving...' : '💾 SAVE (UPDATED)'}
                     </button>
                     <button
                       onClick={handleCancelEdit}
