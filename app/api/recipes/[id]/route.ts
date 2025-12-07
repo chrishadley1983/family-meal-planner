@@ -117,6 +117,16 @@ export async function PUT(
 
     const { id } = await params
     const body = await req.json()
+
+    // Log what we're receiving
+    console.log('📥 API received update for recipe:', id)
+    console.log('📥 Macro data received:', {
+      calories: body.caloriesPerServing,
+      protein: body.proteinPerServing,
+      carbs: body.carbsPerServing,
+      fat: body.fatPerServing
+    })
+
     const data = recipeUpdateSchema.parse(body)
 
     // Check if recipe exists and belongs to user
