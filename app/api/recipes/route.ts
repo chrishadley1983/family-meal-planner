@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { generateRecipeSVG } from '@/lib/generate-recipe-image'
 
 const ingredientSchema = z.object({
   ingredientName: z.string().min(1),
@@ -23,7 +24,7 @@ const instructionSchema = z.object({
 const recipeSchema = z.object({
   recipeName: z.string().min(1, 'Recipe name is required'),
   description: z.string().optional().nullable(),
-  imageUrl: z.string().url().optional().nullable(),
+  imageUrl: z.string().optional().nullable(),
   servings: z.number().int().positive().default(4),
   prepTimeMinutes: z.number().int().positive().optional().nullable(),
   cookTimeMinutes: z.number().int().positive().optional().nullable(),
@@ -101,6 +102,13 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json()
     const data = recipeSchema.parse(body)
+
+    // Generate SVG image if no image provided
+    if (!data.imageUrl) {
+      console.log('🎨 No image provided, generating SVG for:', data.recipeName)
+      data.imageUrl = generateRecipeSVG(data.recipeName, data.mealCategory)
+      console.log('✅ SVG generated successfully')
+    }
 
     // Calculate total time if prep and cook times are provided
     const totalTimeMinutes =

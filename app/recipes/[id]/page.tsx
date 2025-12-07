@@ -51,6 +51,8 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
   const [notes, setNotes] = useState('')
   const [ingredients, setIngredients] = useState<any[]>([])
   const [instructions, setInstructions] = useState<any[]>([])
+  const [imageUrl, setImageUrl] = useState('')
+  const [imagePreview, setImagePreview] = useState('')
 
   // AI Features state
   const [macroAnalysis, setMacroAnalysis] = useState<MacroAnalysis | null>(null)
@@ -188,6 +190,8 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
       setNotes(data.recipe.notes || '')
       setIngredients(data.recipe.ingredients || [])
       setInstructions(data.recipe.instructions || [])
+      setImageUrl(data.recipe.imageUrl || '')
+      setImagePreview(data.recipe.imageUrl || '')
     } catch (err) {
       console.error('❌ Error in fetchRecipe:', err)
       router.push('/recipes')
@@ -264,6 +268,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
           difficultyLevel: difficultyLevel || null,
           mealCategory,
           notes: notes || null,
+          imageUrl: imageUrl || null,
           ingredients: ingredients.filter(i => i.ingredientName && i.unit),
           instructions: instructions.filter(i => i.instruction)
         })
@@ -298,6 +303,8 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
       setNotes(recipe.notes || '')
       setIngredients(recipe.ingredients || [])
       setInstructions(recipe.instructions || [])
+      setImageUrl(recipe.imageUrl || '')
+      setImagePreview(recipe.imageUrl || '')
     }
   }
 
@@ -359,6 +366,24 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
     )
   }
 
+  const handleRecipeImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Image too large. Please use an image under 5MB.')
+        return
+      }
+
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        const base64String = reader.result as string
+        setImageUrl(base64String)
+        setImagePreview(base64String)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -403,6 +428,42 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                   />
                 ) : (
                   recipe.description && <p className="text-gray-600">{recipe.description}</p>
+                )}
+
+                {/* Recipe Image */}
+                {isEditing ? (
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Recipe Image</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleRecipeImageChange}
+                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+                    {imagePreview && (
+                      <div className="mt-2 relative h-48 w-full bg-gray-100 rounded-md overflow-hidden">
+                        <Image
+                          src={imagePreview}
+                          alt="Recipe preview"
+                          fill
+                          className="object-cover"
+                          unoptimized={imagePreview.startsWith('data:')}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  recipe.imageUrl && (
+                    <div className="mt-4 relative h-64 w-full bg-gray-100 rounded-md overflow-hidden">
+                      <Image
+                        src={recipe.imageUrl}
+                        alt={recipe.recipeName}
+                        fill
+                        className="object-cover"
+                        unoptimized={recipe.imageUrl.startsWith('data:')}
+                      />
+                    </div>
+                  )
                 )}
               </div>
               <div className="flex items-center space-x-3 ml-4">

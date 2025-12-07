@@ -1,14 +1,20 @@
 # Development Checklist for Claude
 
-## CRITICAL: User is running on LOCAL MACHINE
-- All changes must be committed and pushed to git
-- User must pull changes to see them
-- Always verify user has latest code before testing
+## 🔴 CRITICAL: Read CLAUDE.md First!
+**Before EVERY change, read `/CLAUDE.md` for complete requirements and workflow.**
+
+Key requirements from CLAUDE.md:
+- User is on LOCAL WINDOWS MACHINE with PowerShell (NOT bash/Linux)
+- ALWAYS present a PLAN and wait for approval before coding
+- Follow error handling workflow (CLARIFY → REPRODUCE → ANALYZE → PLAN → FIX)
+- Use PowerShell syntax in all commands
+- Clear caches when changes don't appear
 
 ---
 
 ## 1. BEFORE Making Changes
 
+- [ ] **Read CLAUDE.md** if you haven't recently
 - [ ] Understand the requirement clearly
 - [ ] Read existing code in affected files
 - [ ] Create TodoWrite checklist for the task
@@ -16,11 +22,37 @@
 
 ---
 
-## 2. WHILE Making Changes
+## 2. PLAN THE CHANGE (MANDATORY - See CLAUDE.md lines 254-283)
+
+**STOP! Before writing ANY code, present this plan to the user:**
+
+```
+📋 PROPOSED CHANGE:
+
+Goal: [One sentence - what are we trying to achieve?]
+
+Solution: [How will we do it?]
+
+Files to modify:
+- path/to/file1.ts - [what changes]
+- path/to/file2.ts - [what changes]
+
+Risks: [Any potential side effects or things to watch for]
+
+Alternatives considered: [Other approaches and why you didn't choose them]
+
+Shall I proceed?
+```
+
+- [ ] **Wait for user approval before proceeding to step 3**
+
+---
+
+## 3. WHILE Making Changes (After Approval)
 
 - [ ] Read files before editing (use Read tool)
 - [ ] Make changes using Edit/Write tools
-- [ ] Add debug logging if needed for testing
+- [ ] Add debug logging with emoji prefixes (see CLAUDE.md Console Logging Standards)
 - [ ] Verify syntax after changes
 
 ---

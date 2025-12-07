@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 
 interface Recipe {
   id: string
   recipeName: string
   description?: string
+  imageUrl?: string
   servings: number
   totalTimeMinutes?: number
   familyRating?: number
@@ -263,6 +265,18 @@ export default function RecipesPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredRecipes.map((recipe) => (
               <div key={recipe.id} className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+                {/* Recipe Image */}
+                {recipe.imageUrl && (
+                  <div className="relative h-48 w-full bg-gray-100">
+                    <Image
+                      src={recipe.imageUrl}
+                      alt={recipe.recipeName}
+                      fill
+                      className="object-cover"
+                      unoptimized={recipe.imageUrl.startsWith('data:')}
+                    />
+                  </div>
+                )}
                 <div className="p-6">
                   <div className="flex items-start justify-between mb-3">
                     <h3 className="text-lg font-semibold text-gray-900 flex-1">{recipe.recipeName}</h3>
