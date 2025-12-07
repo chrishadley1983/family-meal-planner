@@ -43,8 +43,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ recipe: recipeData })
   } catch (error: any) {
     console.error('❌ Error analyzing recipe photo(s):', error)
+
+    // Check for Claude API specific errors
+    let errorMessage = error.message || 'Failed to analyze recipe photo(s)'
+
+    // Handle image size errors from Claude API
+    if (error.message?.includes('image exceeds') || error.message?.includes('5 MB maximum')) {
+      errorMessage = 'One or more images are too large. Please use images under 3.75MB each (they get larger when encoded).'
+    }
+
     return NextResponse.json(
-      { error: error.message || 'Failed to analyze recipe photo(s)' },
+      { error: errorMessage },
       { status: 500 }
     )
   }

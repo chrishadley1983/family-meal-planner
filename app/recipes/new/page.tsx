@@ -359,11 +359,12 @@ export default function NewRecipePage() {
     const files = Array.from(e.target.files || [])
     if (files.length === 0) return
 
-    // Validate file sizes (max 5MB each)
-    const maxSize = 5 * 1024 * 1024
+    // Validate file sizes (max 3.75MB each to account for base64 encoding overhead)
+    // Base64 encoding increases size by ~33%, so 3.75MB * 1.33 = ~5MB (Claude's limit)
+    const maxSize = 3.75 * 1024 * 1024
     const invalidFiles = files.filter(f => f.size > maxSize)
     if (invalidFiles.length > 0) {
-      setError(`${invalidFiles.length} image(s) too large. Please use images under 5MB each.`)
+      setError(`${invalidFiles.length} image(s) too large. Please use images under 3.75MB each (Claude API limit).`)
       return
     }
 
@@ -404,9 +405,17 @@ export default function NewRecipePage() {
     const newPreviews: string[] = []
     let processed = 0
 
+    const maxSize = 3.75 * 1024 * 1024
+
     imageItems.forEach(item => {
       const file = item.getAsFile()
       if (file) {
+        // Validate file size
+        if (file.size > maxSize) {
+          setError('Pasted image too large. Please use images under 3.75MB (Claude API limit).')
+          return
+        }
+
         newFiles.push(file)
 
         const reader = new FileReader()
@@ -428,6 +437,13 @@ export default function NewRecipePage() {
   const handleCameraCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+
+    // Validate file size
+    const maxSize = 3.75 * 1024 * 1024
+    if (file.size > maxSize) {
+      setError('Camera photo too large. Please use a lower resolution or compress the image.')
+      return
+    }
 
     console.log('📷 Camera photo captured')
 
@@ -648,6 +664,7 @@ export default function NewRecipePage() {
                   <li>Upload multiple files (great for double-sided recipe cards)</li>
                   <li>Paste screenshots (Ctrl+V or Cmd+V)</li>
                   <li>Take a live photo with your camera</li>
+                  <li className="text-amber-600">⚠️ Max 3.75MB per image (Claude API limit)</li>
                 </ul>
 
                 {/* File Upload */}
