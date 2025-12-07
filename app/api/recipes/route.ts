@@ -29,12 +29,19 @@ const recipeSchema = z.object({
   prepTimeMinutes: z.number().int().positive().optional().nullable(),
   cookTimeMinutes: z.number().int().positive().optional().nullable(),
   cuisineType: z.string().optional().nullable(),
-  mealCategory: z.array(z.string()).default([]),
+  mealType: z.array(z.string()).default([]),
   difficultyLevel: z.string().optional().nullable(),
   recipeSource: z.string().optional().nullable(),
   sourceUrl: z.string().url().optional().nullable(),
   notes: z.string().optional().nullable(),
   tags: z.array(z.string()).default([]),
+  isVegetarian: z.boolean().default(false),
+  isVegan: z.boolean().default(false),
+  containsMeat: z.boolean().default(false),
+  containsSeafood: z.boolean().default(false),
+  isDairyFree: z.boolean().default(false),
+  isGlutenFree: z.boolean().default(false),
+  containsNuts: z.boolean().default(false),
   yieldsMultipleMeals: z.boolean().default(false),
   mealsYielded: z.number().int().positive().optional().nullable(),
   leftoverInstructions: z.string().optional().nullable(),
@@ -106,9 +113,13 @@ export async function POST(req: NextRequest) {
     // Generate SVG image if no image provided
     if (!data.imageUrl) {
       console.log('🎨 No image provided, generating SVG for:', data.recipeName)
-      data.imageUrl = generateRecipeSVG(data.recipeName, data.mealCategory)
+      data.imageUrl = generateRecipeSVG(data.recipeName, data.mealType)
       console.log('✅ SVG generated successfully')
     }
+
+    // Calculate isQuickMeal based on totalTimeMinutes
+    const totalTime = (data.prepTimeMinutes || 0) + (data.cookTimeMinutes || 0)
+    const isQuickMeal = totalTime > 0 && totalTime < 30
 
     // Calculate total time if prep and cook times are provided
     const totalTimeMinutes =
@@ -120,6 +131,7 @@ export async function POST(req: NextRequest) {
       data: {
         ...recipeData,
         totalTimeMinutes,
+        isQuickMeal,
         userId: session.user.id,
         ingredients: {
           create: ingredients.map((ing, index) => ({

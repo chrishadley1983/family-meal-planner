@@ -46,15 +46,15 @@ const COLOR_SCHEMES = {
 /**
  * Generate raw SVG recipe illustration (browser-compatible)
  * @param recipeName - Name of the recipe
- * @param mealCategory - Array of meal categories (uses first one for color)
+ * @param mealType - Array of meal categories (uses first one for color)
  * @returns Raw SVG string
  */
 export function generateRecipeSVGString(
   recipeName: string,
-  mealCategory?: string[]
+  mealType?: string[]
 ): string {
   // Pick color scheme based on first meal category
-  const category = mealCategory?.[0] || 'default'
+  const category = mealType?.[0] || 'default'
   const colors = COLOR_SCHEMES[category as keyof typeof COLOR_SCHEMES] || COLOR_SCHEMES.default
 
   // Truncate recipe name if too long
@@ -113,14 +113,14 @@ export function generateRecipeSVGString(
 /**
  * Generate SVG recipe illustration as data URL (server-side only)
  * @param recipeName - Name of the recipe
- * @param mealCategory - Array of meal categories (uses first one for color)
+ * @param mealType - Array of meal categories (uses first one for color)
  * @returns Base64 data URL of SVG image
  */
 export function generateRecipeSVG(
   recipeName: string,
-  mealCategory?: string[]
+  mealType?: string[]
 ): string {
-  const svg = generateRecipeSVGString(recipeName, mealCategory)
+  const svg = generateRecipeSVGString(recipeName, mealType)
 
   // Convert SVG to base64 data URL (Node.js only)
   if (typeof Buffer !== 'undefined') {

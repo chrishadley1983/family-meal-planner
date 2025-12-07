@@ -48,7 +48,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
   const [cookTimeMinutes, setCookTimeMinutes] = useState<number | ''>('')
   const [cuisineType, setCuisineType] = useState('')
   const [difficultyLevel, setDifficultyLevel] = useState('')
-  const [mealCategory, setMealCategory] = useState<string[]>([])
+  const [mealType, setMealCategory] = useState<string[]>([])
   const [notes, setNotes] = useState('')
   const [ingredients, setIngredients] = useState<any[]>([])
   const [instructions, setInstructions] = useState<any[]>([])
@@ -113,7 +113,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
             recipe: {
               recipeName: recipeData.recipeName,
               servings: recipeData.servings,
-              mealCategory: recipeData.mealCategory,
+              mealType: recipeData.mealType,
               ingredients: recipeData.ingredients
             },
             macroAnalysis: macroData.analysis
@@ -164,11 +164,11 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
       // Debounce the analysis fetch
       const timer = setTimeout(() => {
         console.log('🔄 Auto-refreshing AI analysis while editing')
-        fetchAIAnalysis({ recipeName, servings, ingredients, mealCategory })
+        fetchAIAnalysis({ recipeName, servings, ingredients, mealType })
       }, 1500)
       return () => clearTimeout(timer)
     }
-  }, [isEditing, recipeName, ingredients, servings, mealCategory])
+  }, [isEditing, recipeName, ingredients, servings, mealType])
 
   // Scale ingredients when servings change (if scaling is enabled)
   useEffect(() => {
@@ -207,7 +207,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
       setCookTimeMinutes(data.recipe.cookTimeMinutes || '')
       setCuisineType(data.recipe.cuisineType || '')
       setDifficultyLevel(data.recipe.difficultyLevel || '')
-      setMealCategory(data.recipe.mealCategory || [])
+      setMealCategory(data.recipe.mealType || [])
       setNotes(data.recipe.notes || '')
       setIngredients(data.recipe.ingredients || [])
       setInstructions(data.recipe.instructions || [])
@@ -287,7 +287,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
           cookTimeMinutes: cookTimeMinutes || null,
           cuisineType: cuisineType || null,
           difficultyLevel: difficultyLevel || null,
-          mealCategory,
+          mealType,
           notes: notes || null,
           imageUrl: imageUrl || null,
           ingredients: ingredients.filter(i => i.ingredientName && i.unit),
@@ -320,7 +320,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
       setCookTimeMinutes(recipe.cookTimeMinutes || '')
       setCuisineType(recipe.cuisineType || '')
       setDifficultyLevel(recipe.difficultyLevel || '')
-      setMealCategory(recipe.mealCategory || [])
+      setMealCategory(recipe.mealType || [])
       setNotes(recipe.notes || '')
       setIngredients(recipe.ingredients || [])
       setInstructions(recipe.instructions || [])
@@ -480,7 +480,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                 ) : (
                   <div className="mt-4 relative h-64 w-full bg-gray-100 rounded-md overflow-hidden">
                     <Image
-                      src={recipe.imageUrl || generateRecipeSVG(recipe.recipeName, recipe.mealCategory)}
+                      src={recipe.imageUrl || generateRecipeSVG(recipe.recipeName, recipe.mealType)}
                       alt={recipe.recipeName}
                       fill
                       className="object-cover"
@@ -674,7 +674,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                         type="button"
                         onClick={() => toggleCategory(cat)}
                         className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          mealCategory.includes(cat)
+                          mealType.includes(cat)
                             ? 'bg-blue-600 text-white'
                             : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                         }`}
@@ -684,9 +684,9 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                     ))}
                   </div>
                 ) : (
-                  recipe.mealCategory.length > 0 && (
+                  recipe.mealType.length > 0 && (
                     <div className="flex flex-wrap gap-2">
-                      {recipe.mealCategory.map((cat: string) => (
+                      {recipe.mealType.map((cat: string) => (
                         <span key={cat} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                           {cat}
                         </span>
@@ -704,7 +704,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                 <div className="flex gap-2">
                   {!macroAnalysis && !loadingAI && (
                     <button
-                      onClick={() => fetchAIAnalysis(isEditing ? { recipeName, servings, ingredients, mealCategory } : recipe)}
+                      onClick={() => fetchAIAnalysis(isEditing ? { recipeName, servings, ingredients, mealType } : recipe)}
                       className="px-3 py-1 bg-green-600 text-white rounded-md text-sm hover:bg-green-700"
                     >
                       Analyze Nutrition

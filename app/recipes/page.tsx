@@ -13,7 +13,7 @@ interface Recipe {
   servings: number
   totalTimeMinutes?: number
   familyRating?: number
-  mealCategory: string[]
+  mealType: string[]
   cuisineType?: string
   timesUsed: number
   ingredients: any[]
@@ -60,11 +60,11 @@ export default function RecipesPage() {
   const filteredRecipes = recipes.filter(recipe => {
     const matchesSearch = recipe.recipeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          recipe.description?.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesCategory = !filterCategory || recipe.mealCategory.includes(filterCategory)
+    const matchesCategory = !filterCategory || recipe.mealType.includes(filterCategory)
     return matchesSearch && matchesCategory
   })
 
-  const categories = Array.from(new Set(recipes.flatMap(r => r.mealCategory)))
+  const categories = Array.from(new Set(recipes.flatMap(r => r.mealType)))
 
   if (loading) {
     return (
@@ -145,7 +145,7 @@ export default function RecipesPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredRecipes.map((recipe) => {
               // Generate SVG if no image provided
-              const imageUrl = recipe.imageUrl || generateRecipeSVG(recipe.recipeName, recipe.mealCategory)
+              const imageUrl = recipe.imageUrl || generateRecipeSVG(recipe.recipeName, recipe.mealType)
 
               return (
                 <div key={recipe.id} className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow">
@@ -178,7 +178,7 @@ export default function RecipesPage() {
                   )}
 
                   <div className="flex flex-wrap gap-2 mb-3">
-                    {recipe.mealCategory.map(cat => (
+                    {recipe.mealType.map(cat => (
                       <span key={cat} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                         {cat}
                       </span>
