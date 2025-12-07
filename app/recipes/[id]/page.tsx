@@ -57,6 +57,12 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
   const [nutritionistFeedback, setNutritionistFeedback] = useState<string>('')
   const [loadingAI, setLoadingAI] = useState(false)
 
+  // Undo history state
+  const [history, setHistory] = useState<Array<{
+    ingredients: any[]
+    instructions: any[]
+  }>>([])
+
   const mealCategories = ['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert']
 
   // Fetch AI analysis
@@ -295,11 +301,30 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
     }
   }
 
+  // Save current state to history before making changes
+  const saveToHistory = () => {
+    setHistory(prev => [...prev, {
+      ingredients: JSON.parse(JSON.stringify(ingredients)),
+      instructions: JSON.parse(JSON.stringify(instructions))
+    }].slice(-10)) // Keep last 10 changes
+  }
+
+  // Undo last change
+  const undo = () => {
+    if (history.length === 0) return
+
+    const lastState = history[history.length - 1]
+    setIngredients(lastState.ingredients)
+    setInstructions(lastState.instructions)
+    setHistory(prev => prev.slice(0, -1))
+  }
+
   const addIngredient = () => {
     setIngredients([...ingredients, { ingredientName: '', quantity: 1, unit: '', notes: '' }])
   }
 
   const removeIngredient = (index: number) => {
+    saveToHistory()
     setIngredients(ingredients.filter((_, i) => i !== index))
   }
 
@@ -314,6 +339,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
   }
 
   const removeInstruction = (index: number) => {
+    saveToHistory()
     const updated = instructions.filter((_, i) => i !== index)
     updated.forEach((inst, i) => inst.stepNumber = i + 1)
     setInstructions(updated)
@@ -400,6 +426,14 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                 )}
                 {isEditing ? (
                   <div className="flex space-x-2">
+                    <button
+                      onClick={undo}
+                      disabled={history.length === 0 || saving}
+                      className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Undo last change"
+                    >
+                      ↶ Undo
+                    </button>
                     <button
                       onClick={handleSaveEdit}
                       disabled={saving}
