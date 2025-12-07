@@ -1,0 +1,13 @@
+recipeName,description,servings,prepTimeMinutes,cookTimeMinutes,cuisineType,difficultyLevel,mealCategory,ingredientName,quantity,unit,notes,stepNumber,instruction
+"Spaghetti Carbonara","Classic Italian pasta dish",4,10,15,"Italian","Easy","Dinner","spaghetti",400,"g","",1,"Cook spaghetti according to package directions"
+"Spaghetti Carbonara","Classic Italian pasta dish",4,10,15,"Italian","Easy","Dinner","bacon",200,"g","diced",2,"Fry bacon until crispy"
+"Spaghetti Carbonara","Classic Italian pasta dish",4,10,15,"Italian","Easy","Dinner","eggs",3,"whole","",3,"Beat eggs with parmesan cheese"
+"Spaghetti Carbonara","Classic Italian pasta dish",4,10,15,"Italian","Easy","Dinner","parmesan cheese",100,"g","grated",4,"Toss hot pasta with bacon and egg mixture"
+"Spaghetti Carbonara","Classic Italian pasta dish",4,10,15,"Italian","Easy","Dinner","black pepper",1,"tsp","freshly ground",5,"Season with black pepper and serve immediately"
+"Greek Salad","Fresh and healthy salad",2,15,0,"Greek","Easy","Lunch|Dinner","cucumber",1,"whole","diced",1,"Dice cucumber, tomatoes, and onion"
+"Greek Salad","Fresh and healthy salad",2,15,0,"Greek","Easy","Lunch|Dinner","tomatoes",3,"whole","diced",2,"Add olives and feta cheese"
+"Greek Salad","Fresh and healthy salad",2,15,0,"Greek","Easy","Lunch|Dinner","red onion",0.5,"whole","sliced",3,"Dress with olive oil and lemon juice"
+"Greek Salad","Fresh and healthy salad",2,15,0,"Greek","Easy","Lunch|Dinner","kalamata olives",100,"g","",4,"Toss everything together and serve"
+"Greek Salad","Fresh and healthy salad",2,15,0,"Greek","Easy","Lunch|Dinner","feta cheese",150,"g","crumbled",
+"Greek Salad","Fresh and healthy salad",2,15,0,"Greek","Easy","Lunch|Dinner","olive oil",3,"tbsp","",
+"Greek Salad","Fresh and healthy salad",2,15,0,"Greek","Easy","Lunch|Dinner","lemon juice",2,"tbsp","fresh",
