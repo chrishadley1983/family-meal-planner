@@ -403,7 +403,11 @@ ${userProfile.macroTrackingEnabled ? `
 - Fat: ${userProfile.dailyFatTarget || 70}g
 ` : 'User has not set macro targets - use general healthy eating guidelines (2000 kcal, 50g protein, 250g carbs, 70g fat)'}
 
-Calculate nutrition per serving and rate suitability for this user. Return ONLY a valid JSON object:
+Calculate nutrition per serving and rate suitability for this user.
+
+CRITICAL: You MUST provide a rating for EVERY SINGLE ingredient listed above. The ingredientRatings array must contain exactly ${recipe.ingredients.length} items.
+
+Return ONLY a valid JSON object:
 {
   "perServing": {
     "calories": number,
@@ -418,10 +422,11 @@ Calculate nutrition per serving and rate suitability for this user. Return ONLY 
   "overallExplanation": "1 sentence why this rating (mention specific macro concern if yellow/red)",
   "ingredientRatings": [
     {
-      "ingredientName": "string",
+      "ingredientName": "exact name from ingredients list",
       "rating": "green" | "yellow" | "red",
       "reason": "1 sentence (e.g., 'High in saturated fat' or 'Good protein source')"
     }
+    // MUST have one entry for EACH ingredient above
   ]
 }
 

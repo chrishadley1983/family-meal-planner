@@ -70,7 +70,13 @@ export default function NewRecipePage() {
   // New feature states
   const [scaleIngredients, setScaleIngredients] = useState(true)
   const [baseServings, setBaseServings] = useState(4)
-  const [baseIngredients, setBaseIngredients] = useState<Array<{ ingredientName: string; quantity: number; unit: string }>>([])
+  const [baseIngredients, setBaseIngredients] = useState<Array<{
+    ingredientName: string
+    quantity: number
+    unit: string
+    category?: string
+    notes?: string
+  }>>([])
   const [macroAnalysis, setMacroAnalysis] = useState<MacroAnalysis | null>(null)
   const [nutritionistFeedback, setNutritionistFeedback] = useState<string>('')
   const [loadingMacros, setLoadingMacros] = useState(false)
@@ -154,13 +160,29 @@ export default function NewRecipePage() {
 
   // Handle servings change with ingredient scaling
   const handleServingsChange = (newServings: number) => {
-    if (scaleIngredients && baseServings > 0) {
+    // Validate input
+    if (!newServings || isNaN(newServings) || newServings < 1) {
+      return
+    }
+
+    if (scaleIngredients && baseServings > 0 && baseIngredients.length > 0) {
       const scaleFactor = newServings / baseServings
-      const scaledIngredients = baseIngredients.map(ing => ({
-        ...ing,
-        quantity: Math.round(ing.quantity * scaleFactor * 100) / 100,
-      }))
-      setIngredients(scaledIngredients)
+      const scaledIngredients = baseIngredients.map((baseIng, index) => {
+        // Get corresponding current ingredient to preserve other fields
+        const currentIng = ingredients[index]
+        return {
+          ingredientName: baseIng.ingredientName,
+          quantity: Math.round(baseIng.quantity * scaleFactor * 100) / 100,
+          unit: baseIng.unit,
+          category: currentIng?.category || baseIng.category,
+          notes: currentIng?.notes || baseIng.notes,
+        }
+      })
+
+      // Only update if we have valid ingredients
+      if (scaledIngredients.length > 0) {
+        setIngredients(scaledIngredients)
+      }
     }
     setServings(newServings)
   }
@@ -170,11 +192,7 @@ export default function NewRecipePage() {
     if (!scaleIngredients) {
       // User is turning ON scaling - capture current state as base
       setBaseServings(servings)
-      setBaseIngredients(ingredients.map(i => ({
-        ingredientName: i.ingredientName,
-        quantity: i.quantity,
-        unit: i.unit
-      })))
+      setBaseIngredients(ingredients.map(i => ({ ...i })))
     }
     setScaleIngredients(!scaleIngredients)
   }
@@ -224,7 +242,8 @@ export default function NewRecipePage() {
       const recipe = data.recipe
       setRecipeName(recipe.recipeName || '')
       setDescription(recipe.description || '')
-      setServings(recipe.servings || 4)
+      const importedServings = recipe.servings || 4
+      setServings(importedServings)
       setPrepTimeMinutes(recipe.prepTimeMinutes || '')
       setCookTimeMinutes(recipe.cookTimeMinutes || '')
       setCuisineType(recipe.cuisineType || '')
@@ -233,12 +252,16 @@ export default function NewRecipePage() {
       setSourceUrl(recipe.sourceUrl || importUrl)
 
       if (recipe.ingredients && recipe.ingredients.length > 0) {
-        setIngredients(recipe.ingredients.map((ing: any) => ({
+        const importedIngredients = recipe.ingredients.map((ing: any) => ({
           ingredientName: ing.ingredientName || '',
           quantity: ing.quantity || 1,
           unit: ing.unit || '',
           notes: ing.notes || ''
-        })))
+        }))
+        setIngredients(importedIngredients)
+        // Initialize base values for scaling
+        setBaseServings(importedServings)
+        setBaseIngredients(importedIngredients.map(i => ({ ...i })))
       }
 
       if (recipe.instructions && recipe.instructions.length > 0) {
