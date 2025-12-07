@@ -55,6 +55,14 @@ export default function RecipesPage() {
     try {
       const response = await fetch('/api/recipes')
       const data = await response.json()
+      console.log('📊 Total recipes loaded:', data.recipes?.length)
+      console.log('📊 Sample recipe macro data:', {
+        name: data.recipes?.[0]?.recipeName,
+        calories: data.recipes?.[0]?.caloriesPerServing,
+        protein: data.recipes?.[0]?.proteinPerServing,
+        hasCalories: data.recipes?.filter((r: Recipe) => r.caloriesPerServing).length,
+        hasProtein: data.recipes?.filter((r: Recipe) => r.proteinPerServing).length,
+      })
       setRecipes(data.recipes || [])
     } catch (error) {
       console.error('Error fetching recipes:', error)
