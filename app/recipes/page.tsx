@@ -111,8 +111,8 @@ export default function RecipesPage() {
 
     // Calorie filter
     let matchesCalories = true
-    if (filterCalories) {
-      const calories = recipe.caloriesPerServing || 0
+    if (filterCalories && recipe.caloriesPerServing) {
+      const calories = recipe.caloriesPerServing
       switch (filterCalories) {
         case '<300': matchesCalories = calories < 300; break
         case '300-500': matchesCalories = calories >= 300 && calories <= 500; break
@@ -123,8 +123,8 @@ export default function RecipesPage() {
 
     // Protein filter
     let matchesProtein = true
-    if (filterProtein) {
-      const protein = recipe.proteinPerServing || 0
+    if (filterProtein && recipe.proteinPerServing) {
+      const protein = recipe.proteinPerServing
       switch (filterProtein) {
         case '<10': matchesProtein = protein < 10; break
         case '10-20': matchesProtein = protein >= 10 && protein <= 20; break
