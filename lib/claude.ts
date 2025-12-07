@@ -291,10 +291,13 @@ Use standard nutrition databases for your calculations. Be as accurate as possib
   }
 }
 
-export async function analyzeRecipePhoto(imageData: string) {
-  const prompt = `You are a recipe recognition assistant. Analyze this food photo and identify the dish.
+export async function analyzeRecipePhoto(images: string[]) {
+  const imageCount = images.length
+  const prompt = `You are a recipe recognition assistant. Analyze ${imageCount === 1 ? 'this food photo' : `these ${imageCount} food photos`} and identify the dish.
 
-Based on the image, provide:
+${imageCount > 1 ? 'Note: Multiple images are provided (e.g., front and back of a recipe card, or different angles of the dish). Use all images together to get complete information.' : ''}
+
+Based on the image${imageCount > 1 ? 's' : ''}, provide:
 1. The name of the dish
 2. A list of likely ingredients
 3. Suggested cuisine type
@@ -333,26 +336,35 @@ Return ONLY a valid JSON object in this exact format:
 Be specific and practical in your suggestions.`
 
   try {
+    // Build content array with all images followed by the prompt
+    const content: any[] = []
+
+    // Add all images to content
+    for (const imageData of images) {
+      content.push({
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: imageData.startsWith('data:image/png') ? 'image/png' :
+                     imageData.startsWith('data:image/jpeg') ? 'image/jpeg' :
+                     imageData.startsWith('data:image/jpg') ? 'image/jpeg' : 'image/jpeg',
+          data: imageData.replace(/^data:image\/\w+;base64,/, '')
+        }
+      })
+    }
+
+    // Add text prompt after images
+    content.push({
+      type: 'text',
+      text: prompt
+    })
+
     const message = await client.messages.create({
       model: 'claude-haiku-4-5',
       max_tokens: 2048,
       messages: [{
         role: 'user',
-        content: [
-          {
-            type: 'image',
-            source: {
-              type: 'base64',
-              media_type: imageData.startsWith('data:image/png') ? 'image/png' :
-                         imageData.startsWith('data:image/jpeg') ? 'image/jpeg' : 'image/jpeg',
-              data: imageData.replace(/^data:image\/\w+;base64,/, '')
-            }
-          },
-          {
-            type: 'text',
-            text: prompt
-          }
-        ]
+        content
       }]
     })
 
