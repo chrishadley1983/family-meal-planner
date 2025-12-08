@@ -544,6 +544,94 @@ Be accurate when extracting text, and be specific and practical when suggesting 
   }
 }
 
+export async function analyzeRecipeText(text: string) {
+  const prompt = `You are a recipe parsing assistant. Parse the following recipe text and extract structured recipe information.
+
+The text may be formatted in various ways:
+- Traditional recipe format with clear "Ingredients:" and "Instructions:" sections
+- Casual recipe shared in an email or message
+- Recipe from a cookbook or magazine
+- Incomplete or partial recipe information
+
+Extract as much information as possible from the text:
+
+Recipe Text:
+---
+${text}
+---
+
+Return ONLY a valid JSON object in this exact format:
+{
+  "recipeName": "string",
+  "description": "string (brief description of the dish)",
+  "servings": number (extract if mentioned, otherwise estimate based on quantities, default to 4),
+  "prepTimeMinutes": number or null (extract if mentioned),
+  "cookTimeMinutes": number or null (extract if mentioned),
+  "cuisineType": "string or null (e.g., 'Italian', 'Mexican', 'Asian', 'American', 'Mediterranean')",
+  "difficultyLevel": "Easy" | "Medium" | "Hard" (based on complexity of instructions)",
+  "mealType": ["Breakfast" | "Lunch" | "Dinner" | "Snack" | "Dessert"],
+  "isVegetarian": boolean,
+  "isVegan": boolean,
+  "containsMeat": boolean,
+  "containsSeafood": boolean,
+  "isDairyFree": boolean,
+  "isGlutenFree": boolean,
+  "containsNuts": boolean,
+  "ingredients": [
+    {
+      "ingredientName": "string",
+      "quantity": number,
+      "unit": "string (e.g., 'cup', 'tbsp', 'tsp', 'g', 'ml', 'oz', 'lb', 'piece', '')"
+    }
+  ],
+  "instructions": [
+    {
+      "stepNumber": number,
+      "instruction": "string"
+    }
+  ]
+}
+
+**Important:**
+- Extract exact quantities and measurements from the text
+- Preserve the cooking instructions as written
+- If ingredient quantities are missing, estimate reasonable amounts
+- If instructions are missing, provide basic cooking steps
+- Parse various formats: "2 cups", "2c", "2 C", "two cups" should all become quantity: 2, unit: "cup"
+- Normalize units: "tablespoon"/"Tbsp"/"T" → "tbsp", "teaspoon"/"tsp"/"t" → "tsp"
+- Infer dietary properties from ingredients`
+
+  try {
+    console.log('🔷 Calling Claude API to parse recipe text...')
+
+    const message = await client.messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 2048,
+      messages: [{
+        role: 'user',
+        content: prompt
+      }]
+    })
+
+    const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
+    console.log('🟢 Claude response received, length:', responseText.length)
+
+    // Extract JSON from response
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      throw new Error('No valid JSON found in Claude response')
+    }
+
+    const recipe = JSON.parse(jsonMatch[0])
+    console.log('🟢 Recipe parsed successfully:', recipe.recipeName)
+
+    return recipe
+  } catch (error) {
+    console.error('❌ Error parsing recipe text with Claude:', error)
+    throw error
+  }
+}
+
 export async function analyzeRecipeMacros(params: {
   recipe: {
     recipeName: string
