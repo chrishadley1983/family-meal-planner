@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 
-type InputMethod = 'manual' | 'url' | 'photo'
+type InputMethod = 'manual' | 'url' | 'photo' | 'text'
 
 type MacroAnalysis = {
   perServing: {
@@ -43,6 +43,9 @@ export default function NewRecipePage() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
+
+  // Text import state
+  const [importText, setImportText] = useState('')
 
   // Recipe form state
   const [recipeName, setRecipeName] = useState('')
@@ -280,6 +283,75 @@ export default function NewRecipePage() {
       setImporting(false)
     } catch (err) {
       setError('An error occurred while importing the recipe')
+      setImporting(false)
+    }
+  }
+
+  const handleTextImport = async () => {
+    if (!importText.trim()) {
+      setError('Please enter some recipe text')
+      return
+    }
+
+    setImporting(true)
+    setError('')
+
+    try {
+      console.log('🔷 Parsing recipe text with AI...')
+      const response = await fetch('/api/recipes/import-text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: importText })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        setError(data.error || 'Failed to parse recipe text')
+        setImporting(false)
+        return
+      }
+
+      console.log('🟢 Recipe text parsed successfully')
+
+      // Populate form with parsed recipe data
+      const recipe = data.recipe
+      setRecipeName(recipe.recipeName || '')
+      setDescription(recipe.description || '')
+      const importedServings = recipe.servings || 4
+      setServings(importedServings)
+      setPrepTimeMinutes(recipe.prepTimeMinutes || '')
+      setCookTimeMinutes(recipe.cookTimeMinutes || '')
+      setCuisineType(recipe.cuisineType || '')
+      setDifficultyLevel(recipe.difficultyLevel || '')
+      setMealCategory(recipe.mealType || [])
+
+      if (recipe.ingredients && recipe.ingredients.length > 0) {
+        const importedIngredients = recipe.ingredients.map((ing: any) => ({
+          ingredientName: ing.ingredientName || '',
+          quantity: ing.quantity || 1,
+          unit: ing.unit || '',
+          notes: ing.notes || ''
+        }))
+        setIngredients(importedIngredients)
+        // Initialize base values for scaling
+        setBaseServings(importedServings)
+        setBaseIngredients(importedIngredients.map((i: any) => ({ ...i })))
+      }
+
+      if (recipe.instructions && recipe.instructions.length > 0) {
+        setInstructions(recipe.instructions.map((inst: any, index: number) => ({
+          stepNumber: inst.stepNumber || index + 1,
+          instruction: inst.instruction || ''
+        })))
+      }
+
+      // Switch to manual mode for review/editing
+      setInputMethod('manual')
+      setImporting(false)
+    } catch (err) {
+      console.error('❌ Error parsing recipe text:', err)
+      setError('An error occurred while parsing the recipe text')
       setImporting(false)
     }
   }
@@ -704,6 +776,16 @@ export default function NewRecipePage() {
             >
               Import from Photo
             </button>
+            <button
+              onClick={() => setInputMethod('text')}
+              className={`pb-2 px-1 font-medium text-sm ${
+                inputMethod === 'text'
+                  ? 'border-b-2 border-blue-600 text-blue-600'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Add from Text
+            </button>
           </div>
 
           {/* URL Import Section */}
@@ -743,12 +825,15 @@ export default function NewRecipePage() {
                   Recipe Photos ({photoFiles.length} added)
                 </label>
                 <p className="text-sm text-gray-500 mb-3">
-                  Upload photos of your recipe (e.g., front/back of recipe card, dish photos). You can:
+                  Upload images of your recipe. Supports both food photos AND text-based images:
                 </p>
                 <ul className="text-sm text-gray-500 mb-3 list-disc list-inside space-y-1">
-                  <li>Upload multiple files (great for double-sided recipe cards)</li>
-                  <li>Paste screenshots (Ctrl+V or Cmd+V)</li>
-                  <li>Take a live photo with your camera</li>
+                  <li>📝 Recipe cards, printed recipes, or handwritten notes</li>
+                  <li>📱 Screenshots from websites, apps, or cookbooks</li>
+                  <li>🍽️ Photos of prepared dishes (AI will suggest ingredients)</li>
+                  <li>📄 Multiple images (e.g., front/back of recipe card)</li>
+                  <li>📋 Paste screenshots (Ctrl+V or Cmd+V)</li>
+                  <li>📸 Take a live photo with your camera</li>
                   <li className="text-amber-600">⚠️ Max 3.75MB per image (Claude API limit)</li>
                 </ul>
 
@@ -836,6 +921,61 @@ export default function NewRecipePage() {
                   {importing ? 'Analyzing...' : `Analyze ${photoFiles.length} Photo${photoFiles.length > 1 ? 's' : ''}`}
                 </button>
               )}
+            </div>
+          )}
+
+          {/* Text Import Section */}
+          {inputMethod === 'text' && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Recipe Text
+                </label>
+                <p className="text-sm text-gray-500 mb-3">
+                  Paste your recipe text here. Can be from any source:
+                </p>
+                <ul className="text-sm text-gray-500 mb-3 list-disc list-inside space-y-1">
+                  <li>📋 Copied from a website, email, or document</li>
+                  <li>📝 Recipe card text you've typed out</li>
+                  <li>📖 Text from a cookbook or magazine</li>
+                  <li>💬 Shared recipe from a friend</li>
+                  <li>✨ Any format - AI will parse and structure it</li>
+                </ul>
+                <textarea
+                  placeholder="Paste your recipe text here...
+
+Example:
+Chocolate Chip Cookies
+
+Ingredients:
+- 2 cups flour
+- 1 cup butter
+- 3/4 cup sugar
+- 2 eggs
+- 1 tsp vanilla
+- 1 cup chocolate chips
+
+Instructions:
+1. Preheat oven to 350°F
+2. Mix butter and sugar
+3. Add eggs and vanilla
+4. Stir in flour
+5. Fold in chocolate chips
+6. Bake for 10-12 minutes"
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border min-h-[300px] font-mono text-sm"
+                  value={importText}
+                  onChange={(e) => setImportText(e.target.value)}
+                  rows={15}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleTextImport}
+                disabled={importing || !importText.trim()}
+                className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+              >
+                {importing ? 'Parsing...' : 'Parse Recipe Text'}
+              </button>
             </div>
           )}
         </div>

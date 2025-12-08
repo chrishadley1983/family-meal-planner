@@ -442,16 +442,27 @@ Use standard nutrition databases for your calculations. Be as accurate as possib
 
 export async function analyzeRecipePhoto(images: string[]) {
   const imageCount = images.length
-  const prompt = `You are a recipe recognition assistant. Analyze ${imageCount === 1 ? 'this food photo' : `these ${imageCount} food photos`} and identify the dish.
+  const prompt = `You are a recipe recognition assistant. Analyze ${imageCount === 1 ? 'this image' : `these ${imageCount} images`} and extract or identify recipe information.
 
 ${imageCount > 1 ? 'Note: Multiple images are provided (e.g., front and back of a recipe card, or different angles of the dish). Use all images together to get complete information.' : ''}
 
+The image${imageCount > 1 ? 's' : ''} may contain:
+- A photo of prepared food (identify the dish and suggest recipe details)
+- A printed/handwritten recipe card (extract the text and recipe information)
+- A screenshot or photo of a recipe from a website, book, or app (extract the details)
+- Ingredient lists or cooking instructions (read and structure the information)
+
 Based on the image${imageCount > 1 ? 's' : ''}, provide:
-1. The name of the dish
-2. A list of likely ingredients
-3. Suggested cuisine type
-4. Estimated difficulty level
-5. Suggested meal categories
+1. The name of the dish or recipe
+2. Ingredients (extracted directly if visible as text, or suggested if it's a food photo)
+3. Instructions (extracted directly if visible as text, or suggested if it's a food photo)
+4. Cuisine type, difficulty level, and meal categories
+
+**Important:**
+- If the image contains TEXT with recipe details, extract that information directly and accurately
+- If the image is a FOOD PHOTO without text, identify the dish and suggest likely ingredients/instructions
+- Extract exact quantities and measurements when visible in text
+- Preserve cooking instructions as written when visible
 
 Return ONLY a valid JSON object in this exact format:
 {
@@ -482,7 +493,7 @@ Return ONLY a valid JSON object in this exact format:
   ]
 }
 
-Be specific and practical in your suggestions.`
+Be accurate when extracting text, and be specific and practical when suggesting details from food photos.`
 
   try {
     // Build content array with all images followed by the prompt
@@ -529,6 +540,94 @@ Be specific and practical in your suggestions.`
     return recipe
   } catch (error) {
     console.error('Error analyzing recipe photo with Claude:', error)
+    throw error
+  }
+}
+
+export async function analyzeRecipeText(text: string) {
+  const prompt = `You are a recipe parsing assistant. Parse the following recipe text and extract structured recipe information.
+
+The text may be formatted in various ways:
+- Traditional recipe format with clear "Ingredients:" and "Instructions:" sections
+- Casual recipe shared in an email or message
+- Recipe from a cookbook or magazine
+- Incomplete or partial recipe information
+
+Extract as much information as possible from the text:
+
+Recipe Text:
+---
+${text}
+---
+
+Return ONLY a valid JSON object in this exact format:
+{
+  "recipeName": "string",
+  "description": "string (brief description of the dish)",
+  "servings": number (extract if mentioned, otherwise estimate based on quantities, default to 4),
+  "prepTimeMinutes": number or null (extract if mentioned),
+  "cookTimeMinutes": number or null (extract if mentioned),
+  "cuisineType": "string or null (e.g., 'Italian', 'Mexican', 'Asian', 'American', 'Mediterranean')",
+  "difficultyLevel": "Easy" | "Medium" | "Hard" (based on complexity of instructions)",
+  "mealType": ["Breakfast" | "Lunch" | "Dinner" | "Snack" | "Dessert"],
+  "isVegetarian": boolean,
+  "isVegan": boolean,
+  "containsMeat": boolean,
+  "containsSeafood": boolean,
+  "isDairyFree": boolean,
+  "isGlutenFree": boolean,
+  "containsNuts": boolean,
+  "ingredients": [
+    {
+      "ingredientName": "string",
+      "quantity": number,
+      "unit": "string (e.g., 'cup', 'tbsp', 'tsp', 'g', 'ml', 'oz', 'lb', 'piece', '')"
+    }
+  ],
+  "instructions": [
+    {
+      "stepNumber": number,
+      "instruction": "string"
+    }
+  ]
+}
+
+**Important:**
+- Extract exact quantities and measurements from the text
+- Preserve the cooking instructions as written
+- If ingredient quantities are missing, estimate reasonable amounts
+- If instructions are missing, provide basic cooking steps
+- Parse various formats: "2 cups", "2c", "2 C", "two cups" should all become quantity: 2, unit: "cup"
+- Normalize units: "tablespoon"/"Tbsp"/"T" → "tbsp", "teaspoon"/"tsp"/"t" → "tsp"
+- Infer dietary properties from ingredients`
+
+  try {
+    console.log('🔷 Calling Claude API to parse recipe text...')
+
+    const message = await client.messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 2048,
+      messages: [{
+        role: 'user',
+        content: prompt
+      }]
+    })
+
+    const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
+    console.log('🟢 Claude response received, length:', responseText.length)
+
+    // Extract JSON from response
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      throw new Error('No valid JSON found in Claude response')
+    }
+
+    const recipe = JSON.parse(jsonMatch[0])
+    console.log('🟢 Recipe parsed successfully:', recipe.recipeName)
+
+    return recipe
+  } catch (error) {
+    console.error('❌ Error parsing recipe text with Claude:', error)
     throw error
   }
 }
