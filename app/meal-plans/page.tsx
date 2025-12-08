@@ -195,33 +195,65 @@ export default function MealPlansPage() {
     setGeneratedSummary('')
 
     try {
-      const response = await fetch('/api/meal-plans/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          weekStartDate: selectedWeek,
-          weekProfileSchedules: weekProfileSchedules // Send per-person schedules
-        }),
-      })
+      // If copying from previous week, use copy endpoint
+      if (copyFromPlanId) {
+        console.log('🔷 Copying from previous meal plan:', copyFromPlanId)
+        const response = await fetch('/api/meal-plans/copy', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            sourcePlanId: copyFromPlanId,
+            weekStartDate: selectedWeek,
+            weekProfileSchedules: weekProfileSchedules
+          }),
+        })
 
-      const data = await response.json()
+        const data = await response.json()
 
-      if (!response.ok) {
-        alert(data.error || 'Failed to generate meal plan')
-        setGenerating(false)
-        return
+        if (!response.ok) {
+          alert(data.error || 'Failed to copy meal plan')
+          setGenerating(false)
+          return
+        }
+
+        console.log('🟢 Meal plan copied successfully')
+        setGeneratedSummary('Meal plan copied from previous week')
+        setMealPlans([data.mealPlan, ...mealPlans])
+        setCopyFromPlanId('') // Reset selection
+      } else {
+        // Generate new plan with AI
+        console.log('🔷 Generating new meal plan with AI...')
+        const response = await fetch('/api/meal-plans/generate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            weekStartDate: selectedWeek,
+            weekProfileSchedules: weekProfileSchedules // Send per-person schedules
+          }),
+        })
+
+        const data = await response.json()
+
+        if (!response.ok) {
+          alert(data.error || 'Failed to generate meal plan')
+          setGenerating(false)
+          return
+        }
+
+        console.log('🟢 Meal plan generated successfully')
+        setGeneratedSummary(data.summary || '')
+        setMealPlans([data.mealPlan, ...mealPlans])
       }
-
-      setGeneratedSummary(data.summary || '')
-      setMealPlans([data.mealPlan, ...mealPlans])
 
       // Reset schedule override after generating
       setShowScheduleOverride(false)
       resetToDefaultSchedules()
     } catch (error) {
-      console.error('Error generating meal plan:', error)
+      console.error('❌ Error generating meal plan:', error)
       alert('Failed to generate meal plan. Please try again.')
     } finally {
       setGenerating(false)
