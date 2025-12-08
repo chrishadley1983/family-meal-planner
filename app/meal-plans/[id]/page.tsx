@@ -662,12 +662,12 @@ export default function MealPlanDetailPage() {
               }).filter(meal => meal !== null) as Meal[]
 
               return (
-                <div key={day} className="bg-white rounded-lg shadow-sm p-4">
+                <div key={day} className="bg-white rounded-lg shadow-sm p-4 flex flex-col">
                   <h3 className="font-medium text-gray-900 mb-2">{day}</h3>
 
                   {/* Daily Macro Summary */}
                   {selectedProfile && (
-                    <div className="mb-4 p-3 bg-gray-50 rounded text-xs space-y-2">
+                    <div className="mb-4 p-3 bg-gray-50 rounded text-xs space-y-2 flex-shrink-0">
                       <div className="font-medium text-gray-700">Daily Macros:</div>
 
                       {/* Calories */}
@@ -736,35 +736,36 @@ export default function MealPlanDetailPage() {
                     </div>
                   )}
 
-                  {/* Meals for the Day - Now in consistent order */}
+                  {/* Meals for the Day - Now in consistent order with fixed heights */}
                   <SortableContext items={orderedMeals.map(m => m.id)} strategy={verticalListSortingStrategy}>
-                    <div className="space-y-3">
+                    <div className="grid grid-rows-5 gap-3 flex-1">
                       {orderedMeals.length === 0 ? (
                         <p className="text-sm text-gray-400">No meals planned</p>
                       ) : (
-                        // Render all meal types in consistent positions
+                        // Render all meal types in consistent positions with consistent heights
                         MEAL_TYPE_ORDER.map((mealTypeKey) => {
                           const meal = mealsByType.get(mealTypeKey)
                           if (!meal) {
-                            // Empty slot for missing meal type - smaller, subtle placeholder
+                            // Empty slot for missing meal type - same height as meal cards
                             return (
-                              <div key={`${day}-${mealTypeKey}`} className="min-h-[3rem] py-2 px-3 border border-dashed border-gray-200 rounded bg-gray-50/50 flex items-center">
-                                <span className="text-xs text-gray-400 italic">
-                                  {MEAL_TYPES.find(mt => mt.key === mealTypeKey)?.label || ''} - not scheduled
+                              <div key={`${day}-${mealTypeKey}`} className="min-h-[120px] py-2 px-3 border border-dashed border-gray-200 rounded bg-gray-50/50 flex items-center justify-center">
+                                <span className="text-xs text-gray-400 italic text-center">
+                                  {MEAL_TYPES.find(mt => mt.key === mealTypeKey)?.label || ''}<br/>not scheduled
                                 </span>
                               </div>
                             )
                           }
                           return (
-                            <SortableMealCard
-                              key={meal.id}
-                              meal={meal}
-                              recipes={recipes}
-                              onUpdate={handleMealUpdate}
-                              onDelete={handleMealDelete}
-                              onToggleLock={handleToggleLock}
-                              disabled={!isEditable}
-                            />
+                            <div key={meal.id} className="min-h-[120px]">
+                              <SortableMealCard
+                                meal={meal}
+                                recipes={recipes}
+                                onUpdate={handleMealUpdate}
+                                onDelete={handleMealDelete}
+                                onToggleLock={handleToggleLock}
+                                disabled={!isEditable}
+                              />
+                            </div>
                           )
                         })
                       )}
