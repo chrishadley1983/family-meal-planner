@@ -9,9 +9,9 @@ export async function generateMealPlan(params: {
   recipes: any[]
   weekStartDate: string
   preferences?: any
-  customSchedule?: any
+  weekProfileSchedules?: any[]
 }) {
-  const { profiles, recipes, weekStartDate, preferences, customSchedule } = params
+  const { profiles, recipes, weekStartDate, preferences, weekProfileSchedules } = params
 
   // Calculate which meals need to be planned based on all family profiles
   type MealSchedule = {
@@ -26,14 +26,15 @@ export async function generateMealPlan(params: {
 
   const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 
-  // Use customSchedule if provided, otherwise build union from profiles
+  // Use weekProfileSchedules if provided, otherwise build from profiles
+  let activeProfiles: any[]
   let mealScheduleUnion: MealSchedule
+  let servingsMap: Record<string, Record<string, number>> = {} // day -> mealType -> count
 
-  if (customSchedule) {
-    // Use the provided custom schedule for this week
-    mealScheduleUnion = customSchedule
-  } else {
-    // Build union of all meal schedules (which meals need planning for each day)
+  if (weekProfileSchedules && weekProfileSchedules.length > 0) {
+    // Use the provided per-person schedules for this week
+    activeProfiles = weekProfileSchedules.filter((ps: any) => ps.included)
+
     mealScheduleUnion = {
       monday: [],
       tuesday: [],
@@ -44,45 +45,95 @@ export async function generateMealPlan(params: {
       sunday: []
     }
 
-    // Collect schedules from all profiles
-    profiles.forEach(profile => {
-      const schedule = profile.mealAvailability as MealSchedule | null
-      if (schedule) {
-        daysOfWeek.forEach(day => {
+    // Build union and count servings
+    daysOfWeek.forEach(day => {
+      servingsMap[day] = {}
+
+      activeProfiles.forEach(profileSchedule => {
+        const meals = profileSchedule.schedule[day] || []
+        meals.forEach((meal: string) => {
+          // Add to union if not already there
+          if (!mealScheduleUnion[day as keyof MealSchedule].includes(meal)) {
+            mealScheduleUnion[day as keyof MealSchedule].push(meal)
+          }
+          // Count servings
+          servingsMap[day][meal] = (servingsMap[day][meal] || 0) + 1
+        })
+      })
+    })
+  } else {
+    // Build union of all meal schedules from profile defaults
+    activeProfiles = profiles
+    mealScheduleUnion = {
+      monday: [],
+      tuesday: [],
+      wednesday: [],
+      thursday: [],
+      friday: [],
+      saturday: [],
+      sunday: []
+    }
+
+    // Collect schedules from all profiles and count servings
+    daysOfWeek.forEach(day => {
+      servingsMap[day] = {}
+
+      profiles.forEach(profile => {
+        const schedule = profile.mealAvailability as MealSchedule | null
+        if (schedule) {
           const meals = schedule[day as keyof MealSchedule] || []
           meals.forEach(meal => {
-            const dayMeals = mealScheduleUnion[day as keyof MealSchedule]
-            if (!dayMeals.includes(meal)) {
-              dayMeals.push(meal)
+            if (!mealScheduleUnion[day as keyof MealSchedule].includes(meal)) {
+              mealScheduleUnion[day as keyof MealSchedule].push(meal)
             }
+            servingsMap[day][meal] = (servingsMap[day][meal] || 0) + 1
           })
-        })
-      }
+        }
+      })
     })
   }
 
-  // Build schedule summary for the prompt
+  // Build schedule summary with servings for the prompt
   const scheduleSummary = daysOfWeek.map(day => {
     const dayCapitalized = day.charAt(0).toUpperCase() + day.slice(1)
     const meals = mealScheduleUnion[day as keyof MealSchedule]
     if (meals.length === 0) {
       return `${dayCapitalized}: No meals needed`
     }
-    return `${dayCapitalized}: ${meals.map(m => m.charAt(0).toUpperCase() + m.slice(1).replace('-', ' ')).join(', ')}`
+    const mealsWithServings = meals.map(m => {
+      const mealName = m.charAt(0).toUpperCase() + m.slice(1).replace('-', ' ')
+      const servings = servingsMap[day][m] || 1
+      return `${mealName} (${servings} ${servings === 1 ? 'person' : 'people'})`
+    })
+    return `${dayCapitalized}: ${mealsWithServings.join(', ')}`
   }).join('\n')
 
   // Build per-person schedule for context
-  const perPersonSchedules = profiles.map((p, i) => {
-    const schedule = p.mealAvailability as MealSchedule | null
-    if (!schedule) {
-      return `Profile ${i + 1} (${p.profileName}): No specific schedule`
-    }
-    const summary = daysOfWeek.map(day => {
-      const meals = schedule[day as keyof MealSchedule] || []
-      return meals.length > 0 ? meals.join(', ') : 'none'
-    }).join(' | ')
-    return `Profile ${i + 1} (${p.profileName}): ${summary}`
-  }).join('\n')
+  let perPersonSchedules: string
+  if (weekProfileSchedules && weekProfileSchedules.length > 0) {
+    perPersonSchedules = weekProfileSchedules.map((ps: any, i: number) => {
+      if (!ps.included) {
+        return `Profile ${i + 1} (${ps.profileName}): EXCLUDED from this week`
+      }
+      const summary = daysOfWeek.map(day => {
+        const meals = ps.schedule[day] || []
+        return meals.length > 0 ? meals.join(', ') : 'none'
+      }).join(' | ')
+      return `Profile ${i + 1} (${ps.profileName}): ${summary}`
+    }).join('\n')
+  } else {
+    perPersonSchedules = profiles.map((p, i) => {
+      const schedule = p.mealAvailability as MealSchedule | null
+      if (!schedule) {
+        return `Profile ${i + 1} (${p.profileName}): No specific schedule`
+      }
+      const summary = daysOfWeek.map(day => {
+        const meals = schedule[day as keyof MealSchedule] || []
+        return meals.length > 0 ? meals.join(', ') : 'none'
+      }).join(' | ')
+      return `Profile ${i + 1} (${p.profileName}): ${summary}`
+    }).join('\n')
+  }
 
   const prompt = `You are a family meal planning assistant. Generate a weekly meal plan based on the following information:
 
@@ -119,7 +170,7 @@ Generate a meal plan ONLY for the meals specified in the MEAL SCHEDULE above. Fo
 2. Consider family preferences and dietary needs
 3. Provide variety throughout the week
 4. Balance nutrition across the week
-5. Adjust servings based on how many family members need that meal (check INDIVIDUAL SCHEDULES)
+5. **IMPORTANT**: Use the EXACT servings count shown in parentheses in the MEAL SCHEDULE (e.g., "Dinner (3 people)" means servings: 3)
 
 Return ONLY a valid JSON object in this exact format:
 {
