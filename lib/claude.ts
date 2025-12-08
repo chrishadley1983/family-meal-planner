@@ -793,7 +793,7 @@ Daily Targets:
 RECIPE:
 Name: ${recipe.recipeName}
 ${recipe.description || ''}
-Meal Type: ${recipe.mealType.join(', ')}
+Meal Type: ${Array.isArray(recipe.mealType) ? recipe.mealType.join(', ') : 'Not specified'}
 Servings: ${recipe.servings}
 
 NUTRITION PER SERVING:

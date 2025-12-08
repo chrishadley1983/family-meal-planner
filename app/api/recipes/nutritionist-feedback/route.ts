@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
         recipeName: recipe.recipeName,
         description: recipe.description,
         servings: recipe.servings || 4,
-        mealCategory: recipe.mealCategory || [],
+        mealType: recipe.mealType || recipe.mealCategory || [],
         ingredients: recipe.ingredients,
       },
       userProfile: {
