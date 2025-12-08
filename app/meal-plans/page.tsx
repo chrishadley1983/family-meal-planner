@@ -20,15 +20,35 @@ interface MealPlan {
   }>
 }
 
+interface MealSchedule {
+  monday: string[]
+  tuesday: string[]
+  wednesday: string[]
+  thursday: string[]
+  friday: string[]
+  saturday: string[]
+  sunday: string[]
+}
+
+interface Profile {
+  id: string
+  profileName: string
+  mealAvailability?: MealSchedule
+}
+
 export default function MealPlansPage() {
   const [mealPlans, setMealPlans] = useState<MealPlan[]>([])
+  const [profiles, setProfiles] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [selectedWeek, setSelectedWeek] = useState('')
   const [generatedSummary, setGeneratedSummary] = useState('')
+  const [showScheduleOverride, setShowScheduleOverride] = useState(false)
+  const [weekSchedule, setWeekSchedule] = useState<MealSchedule | null>(null)
 
   useEffect(() => {
     fetchMealPlans()
+    fetchProfiles()
     setSelectedWeek(format(startOfWeek(new Date()), 'yyyy-MM-dd'))
   }, [])
 
@@ -42,6 +62,64 @@ export default function MealPlansPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const fetchProfiles = async () => {
+    try {
+      const response = await fetch('/api/profiles')
+      const data = await response.json()
+      setProfiles(data.profiles || [])
+    } catch (error) {
+      console.error('Error fetching profiles:', error)
+    }
+  }
+
+  // Calculate default meal schedule union from all profiles
+  const getDefaultSchedule = (): MealSchedule => {
+    const schedule: MealSchedule = {
+      monday: [],
+      tuesday: [],
+      wednesday: [],
+      thursday: [],
+      friday: [],
+      saturday: [],
+      sunday: []
+    }
+
+    profiles.forEach(profile => {
+      if (profile.mealAvailability) {
+        Object.keys(schedule).forEach(day => {
+          const dayKey = day as keyof MealSchedule
+          const meals = profile.mealAvailability?.[dayKey] || []
+          meals.forEach(meal => {
+            if (!schedule[dayKey].includes(meal)) {
+              schedule[dayKey].push(meal)
+            }
+          })
+        })
+      }
+    })
+
+    return schedule
+  }
+
+  // Toggle meal for a specific day in week schedule
+  const toggleWeekMeal = (day: keyof MealSchedule, mealType: string) => {
+    const currentSchedule = weekSchedule || getDefaultSchedule()
+    const currentMeals = currentSchedule[day] || []
+    const newMeals = currentMeals.includes(mealType)
+      ? currentMeals.filter(m => m !== mealType)
+      : [...currentMeals, mealType]
+
+    setWeekSchedule({
+      ...currentSchedule,
+      [day]: newMeals
+    })
+  }
+
+  // Reset to default schedule
+  const resetToDefaultSchedule = () => {
+    setWeekSchedule(null)
   }
 
   const handleGeneratePlan = async () => {
@@ -60,7 +138,8 @@ export default function MealPlansPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          weekStartDate: selectedWeek
+          weekStartDate: selectedWeek,
+          customSchedule: weekSchedule // Include week-specific schedule override
         }),
       })
 
@@ -74,6 +153,10 @@ export default function MealPlansPage() {
 
       setGeneratedSummary(data.summary || '')
       setMealPlans([data.mealPlan, ...mealPlans])
+
+      // Reset schedule override after generating
+      setShowScheduleOverride(false)
+      setWeekSchedule(null)
     } catch (error) {
       console.error('Error generating meal plan:', error)
       alert('Failed to generate meal plan. Please try again.')
@@ -145,7 +228,97 @@ export default function MealPlansPage() {
           <p className="mt-4 text-sm text-gray-500">
             Claude AI will analyze your family profiles, recipes, and preferences to generate a personalized weekly meal plan.
           </p>
+
+          {/* Schedule Override Toggle */}
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={() => setShowScheduleOverride(!showScheduleOverride)}
+              className="text-sm text-blue-600 hover:text-blue-800 underline"
+            >
+              {showScheduleOverride ? '▼ Hide' : '▶'} Customize meals for this week
+            </button>
+          </div>
         </div>
+
+        {/* Schedule Override Section */}
+        {showScheduleOverride && (
+          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div className="mb-4">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Week Schedule Override</h3>
+              <p className="text-sm text-gray-500 mb-2">
+                {weekSchedule
+                  ? '✏️ Customized schedule for this week (does not affect profile defaults)'
+                  : '📋 Using default schedule from family profiles'}
+              </p>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="flex gap-2 mb-4">
+              <button
+                type="button"
+                onClick={resetToDefaultSchedule}
+                disabled={!weekSchedule}
+                className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Reset to Default
+              </button>
+            </div>
+
+            {/* Schedule Grid */}
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 text-sm">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase w-32">
+                      Meal
+                    </th>
+                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                      <th key={day} className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase">
+                        {day}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {[
+                    { key: 'breakfast', label: 'Breakfast' },
+                    { key: 'morning-snack', label: 'Morning Snack' },
+                    { key: 'lunch', label: 'Lunch' },
+                    { key: 'afternoon-snack', label: 'Afternoon Snack' },
+                    { key: 'dinner', label: 'Dinner' },
+                    { key: 'dessert', label: 'Dessert' },
+                    { key: 'evening-snack', label: 'Evening Snack' },
+                  ].map(meal => (
+                    <tr key={meal.key} className="hover:bg-gray-50">
+                      <td className="px-3 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
+                        {meal.label}
+                      </td>
+                      {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => {
+                        const currentSchedule = weekSchedule || getDefaultSchedule()
+                        const isChecked = currentSchedule[day as keyof MealSchedule]?.includes(meal.key) || false
+                        return (
+                          <td key={day} className="px-2 py-2 whitespace-nowrap text-center">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => toggleWeekMeal(day as keyof MealSchedule, meal.key)}
+                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
+                            />
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <p className="mt-3 text-xs text-gray-400 italic">
+              💡 Tip: These changes only apply to this week's meal plan. Your profile defaults remain unchanged.
+            </p>
+          </div>
+        )}
 
         {mealPlans.length === 0 ? (
           <div className="bg-white rounded-lg shadow-sm p-12 text-center">

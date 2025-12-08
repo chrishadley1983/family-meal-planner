@@ -167,6 +167,7 @@ model MealPlan {
   weekStartDate            DateTime
   weekEndDate              DateTime
   status                   String   @default("Draft")
+  customSchedule           Json?
   createdAt                DateTime @default(now())
   finalizedAt              DateTime?
   weeklyNutritionalSummary Json     @default("{}")

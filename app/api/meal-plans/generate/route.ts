@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { weekStartDate } = await req.json()
+    const { weekStartDate, customSchedule } = await req.json()
 
     if (!weekStartDate) {
       return NextResponse.json(
@@ -50,6 +50,7 @@ export async function POST(req: NextRequest) {
       profiles,
       recipes,
       weekStartDate,
+      customSchedule, // Pass custom schedule override if provided
     })
 
     // Create the meal plan in database
@@ -62,6 +63,7 @@ export async function POST(req: NextRequest) {
         weekStartDate: weekStart,
         weekEndDate: weekEnd,
         status: 'Draft',
+        customSchedule: customSchedule || null, // Store custom schedule in database
         meals: {
           create: generatedPlan.meals.map((meal: any) => ({
             dayOfWeek: meal.dayOfWeek,
