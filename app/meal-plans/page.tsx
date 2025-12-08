@@ -36,6 +36,13 @@ interface Profile {
   mealAvailability?: MealSchedule
 }
 
+interface WeekProfileSchedule {
+  profileId: string
+  profileName: string
+  included: boolean
+  schedule: MealSchedule
+}
+
 export default function MealPlansPage() {
   const [mealPlans, setMealPlans] = useState<MealPlan[]>([])
   const [profiles, setProfiles] = useState<Profile[]>([])
@@ -44,7 +51,7 @@ export default function MealPlansPage() {
   const [selectedWeek, setSelectedWeek] = useState('')
   const [generatedSummary, setGeneratedSummary] = useState('')
   const [showScheduleOverride, setShowScheduleOverride] = useState(false)
-  const [weekSchedule, setWeekSchedule] = useState<MealSchedule | null>(null)
+  const [weekProfileSchedules, setWeekProfileSchedules] = useState<WeekProfileSchedule[]>([])
 
   useEffect(() => {
     fetchMealPlans()
@@ -68,58 +75,78 @@ export default function MealPlansPage() {
     try {
       const response = await fetch('/api/profiles')
       const data = await response.json()
-      setProfiles(data.profiles || [])
+      const fetchedProfiles = data.profiles || []
+      setProfiles(fetchedProfiles)
+
+      // Initialize week schedules from profiles (all included by default)
+      const initialSchedules: WeekProfileSchedule[] = fetchedProfiles.map((profile: Profile) => ({
+        profileId: profile.id,
+        profileName: profile.profileName,
+        included: true,
+        schedule: profile.mealAvailability || {
+          monday: [],
+          tuesday: [],
+          wednesday: [],
+          thursday: [],
+          friday: [],
+          saturday: [],
+          sunday: []
+        }
+      }))
+      setWeekProfileSchedules(initialSchedules)
     } catch (error) {
       console.error('Error fetching profiles:', error)
     }
   }
 
-  // Calculate default meal schedule union from all profiles
-  const getDefaultSchedule = (): MealSchedule => {
-    const schedule: MealSchedule = {
-      monday: [],
-      tuesday: [],
-      wednesday: [],
-      thursday: [],
-      friday: [],
-      saturday: [],
-      sunday: []
-    }
+  // Toggle profile inclusion for the week
+  const toggleProfileInclusion = (profileId: string) => {
+    setWeekProfileSchedules(schedules =>
+      schedules.map(s =>
+        s.profileId === profileId ? { ...s, included: !s.included } : s
+      )
+    )
+  }
 
-    profiles.forEach(profile => {
-      if (profile.mealAvailability) {
-        Object.keys(schedule).forEach(day => {
-          const dayKey = day as keyof MealSchedule
-          const meals = profile.mealAvailability?.[dayKey] || []
-          meals.forEach(meal => {
-            if (!schedule[dayKey].includes(meal)) {
-              schedule[dayKey].push(meal)
-            }
-          })
-        })
+  // Toggle meal for a specific person and day
+  const togglePersonMeal = (profileId: string, day: keyof MealSchedule, mealType: string) => {
+    setWeekProfileSchedules(schedules =>
+      schedules.map(s => {
+        if (s.profileId !== profileId) return s
+
+        const currentMeals = s.schedule[day] || []
+        const newMeals = currentMeals.includes(mealType)
+          ? currentMeals.filter(m => m !== mealType)
+          : [...currentMeals, mealType]
+
+        return {
+          ...s,
+          schedule: {
+            ...s.schedule,
+            [day]: newMeals
+          }
+        }
+      })
+    )
+  }
+
+  // Reset all schedules to profile defaults
+  const resetToDefaultSchedules = () => {
+    const defaultSchedules: WeekProfileSchedule[] = profiles.map(profile => ({
+      profileId: profile.id,
+      profileName: profile.profileName,
+      included: true,
+      schedule: profile.mealAvailability || {
+        monday: [],
+        tuesday: [],
+        wednesday: [],
+        thursday: [],
+        friday: [],
+        saturday: [],
+        sunday: []
       }
-    })
-
-    return schedule
-  }
-
-  // Toggle meal for a specific day in week schedule
-  const toggleWeekMeal = (day: keyof MealSchedule, mealType: string) => {
-    const currentSchedule = weekSchedule || getDefaultSchedule()
-    const currentMeals = currentSchedule[day] || []
-    const newMeals = currentMeals.includes(mealType)
-      ? currentMeals.filter(m => m !== mealType)
-      : [...currentMeals, mealType]
-
-    setWeekSchedule({
-      ...currentSchedule,
-      [day]: newMeals
-    })
-  }
-
-  // Reset to default schedule
-  const resetToDefaultSchedule = () => {
-    setWeekSchedule(null)
+    }))
+    setWeekProfileSchedules(defaultSchedules)
   }
 
   const handleGeneratePlan = async () => {
@@ -139,7 +166,7 @@ export default function MealPlansPage() {
         },
         body: JSON.stringify({
           weekStartDate: selectedWeek,
-          customSchedule: weekSchedule // Include week-specific schedule override
+          weekProfileSchedules: weekProfileSchedules // Send per-person schedules
         }),
       })
 
@@ -156,7 +183,7 @@ export default function MealPlansPage() {
 
       // Reset schedule override after generating
       setShowScheduleOverride(false)
-      setWeekSchedule(null)
+      resetToDefaultSchedules()
     } catch (error) {
       console.error('Error generating meal plan:', error)
       alert('Failed to generate meal plan. Please try again.')
@@ -241,81 +268,100 @@ export default function MealPlansPage() {
           </div>
         </div>
 
-        {/* Schedule Override Section */}
+        {/* Per-Person Schedule Override Section */}
         {showScheduleOverride && (
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <div className="mb-4">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Week Schedule Override</h3>
-              <p className="text-sm text-gray-500 mb-2">
-                {weekSchedule
-                  ? '✏️ Customized schedule for this week (does not affect profile defaults)'
-                  : '📋 Using default schedule from family profiles'}
-              </p>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="flex gap-2 mb-4">
+          <div className="bg-white rounded-lg shadow-sm p-6 mb-6 space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-medium text-gray-900">Customize Week Schedules</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Adjust individual schedules for this week. Servings will be calculated based on how many people need each meal.
+                </p>
+              </div>
               <button
                 type="button"
-                onClick={resetToDefaultSchedule}
-                disabled={!weekSchedule}
-                className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={resetToDefaultSchedules}
+                className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
               >
-                Reset to Default
+                Reset All to Defaults
               </button>
             </div>
 
-            {/* Schedule Grid */}
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase w-32">
-                      Meal
-                    </th>
-                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
-                      <th key={day} className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase">
-                        {day}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {[
-                    { key: 'breakfast', label: 'Breakfast' },
-                    { key: 'morning-snack', label: 'Morning Snack' },
-                    { key: 'lunch', label: 'Lunch' },
-                    { key: 'afternoon-snack', label: 'Afternoon Snack' },
-                    { key: 'dinner', label: 'Dinner' },
-                    { key: 'dessert', label: 'Dessert' },
-                    { key: 'evening-snack', label: 'Evening Snack' },
-                  ].map(meal => (
-                    <tr key={meal.key} className="hover:bg-gray-50">
-                      <td className="px-3 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
-                        {meal.label}
-                      </td>
-                      {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => {
-                        const currentSchedule = weekSchedule || getDefaultSchedule()
-                        const isChecked = currentSchedule[day as keyof MealSchedule]?.includes(meal.key) || false
-                        return (
-                          <td key={day} className="px-2 py-2 whitespace-nowrap text-center">
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={() => toggleWeekMeal(day as keyof MealSchedule, meal.key)}
-                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
-                            />
-                          </td>
-                        )
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {/* Per-Person Schedules */}
+            {weekProfileSchedules.map((personSchedule) => (
+              <div key={personSchedule.profileId} className="border rounded-lg p-4">
+                {/* Person Header with Include/Exclude Toggle */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      checked={personSchedule.included}
+                      onChange={() => toggleProfileInclusion(personSchedule.profileId)}
+                      className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <div>
+                      <h4 className="font-medium text-gray-900">{personSchedule.profileName}</h4>
+                      <p className="text-xs text-gray-500">
+                        {personSchedule.included ? '✓ Included in meal plan' : '✗ Excluded from meal plan'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
 
-            <p className="mt-3 text-xs text-gray-400 italic">
-              💡 Tip: These changes only apply to this week's meal plan. Your profile defaults remain unchanged.
+                {/* Person's Meal Grid */}
+                {personSchedule.included && (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase w-28">
+                            Meal
+                          </th>
+                          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                            <th key={day} className="px-1 py-2 text-center text-xs font-medium text-gray-500 uppercase">
+                              {day}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {[
+                          { key: 'breakfast', label: 'Breakfast' },
+                          { key: 'morning-snack', label: 'M. Snack' },
+                          { key: 'lunch', label: 'Lunch' },
+                          { key: 'afternoon-snack', label: 'A. Snack' },
+                          { key: 'dinner', label: 'Dinner' },
+                          { key: 'dessert', label: 'Dessert' },
+                          { key: 'evening-snack', label: 'E. Snack' },
+                        ].map(meal => (
+                          <tr key={meal.key} className="hover:bg-gray-50">
+                            <td className="px-2 py-2 whitespace-nowrap text-xs font-medium text-gray-700">
+                              {meal.label}
+                            </td>
+                            {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => {
+                              const isChecked = personSchedule.schedule[day as keyof MealSchedule]?.includes(meal.key) || false
+                              return (
+                                <td key={day} className="px-1 py-2 whitespace-nowrap text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={() => togglePersonMeal(personSchedule.profileId, day as keyof MealSchedule, meal.key)}
+                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
+                                  />
+                                </td>
+                              )
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            ))}
+
+            <p className="text-xs text-gray-400 italic">
+              💡 Tip: These changes only apply to this week's meal plan. Profile defaults remain unchanged.
             </p>
           </div>
         )}

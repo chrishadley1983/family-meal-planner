@@ -65,10 +65,76 @@ This means:
 
 ---
 
+## 🔴 CRITICAL: GIT BRANCH MANAGEMENT
+
+**ALWAYS VERIFY THE CORRECT BRANCH BEFORE ANY WORK!**
+
+### The Problem We Keep Having:
+Chris frequently has their dev server running on `main` branch while I commit changes to feature branches like `claude/connect-github-repo-*`. This results in:
+- ❌ Changes not appearing in the browser even after "clearing cache"
+- ❌ Wasting time debugging "caching issues" that aren't cache issues
+- ❌ Confusion about why code exists in files but doesn't render
+- ❌ Repeated "it's not showing up" conversations
+
+### MANDATORY: Check Branch FIRST
+
+**Before doing ANYTHING, verify Chris is on the correct branch:**
+
+```powershell
+# 1. Check current branch
+git branch --show-current
+
+# 2. If on wrong branch, switch to correct branch
+git checkout claude/connect-github-repo-0161FevHXGtfyoGwKBjYn32Z
+
+# 3. Pull latest changes
+git pull origin claude/connect-github-repo-0161FevHXGtfyoGwKBjYn32Z
+
+# 4. Restart dev server
+npm run dev
+```
+
+### When Chris Reports "It's Not Showing Up"
+
+**FIRST RESPONSE - Ask about branch, NOT cache:**
+
+```
+⚠️ Quick check: What does `git branch --show-current` show?
+
+If it says "main", that's the issue. You need to:
+1. Switch to the feature branch: `git checkout claude/connect-github-repo-0161FevHXGtfyoGwKBjYn32Z`
+2. Restart dev server: `npm run dev`
+
+If you're already on the correct branch, THEN we'll look at caching.
+```
+
+### Feature Branch Pattern
+
+All development happens on branches matching this pattern:
+- Format: `claude/connect-github-repo-<session-id>`
+- Example: `claude/connect-github-repo-0161FevHXGtfyoGwKBjYn32Z`
+- **Never develop on `main` directly**
+
+### Include in Every "Change Complete" Report
+
+```
+✅ CHANGE COMPLETE: [description]
+
+**Required branch:** claude/connect-github-repo-0161FevHXGtfyoGwKBjYn32Z
+
+⚡ Action required:
+1. Switch to branch: `git checkout claude/connect-github-repo-0161FevHXGtfyoGwKBjYn32Z`
+2. Pull changes: `git pull origin claude/connect-github-repo-0161FevHXGtfyoGwKBjYn32Z`
+3. Restart server: `npm run dev`
+```
+
+---
+
 ## 📋 WORKFLOW: Follow This For EVERY Change
 
 ### Phase 1: BEFORE Making Changes
 
+- [ ] **🔴 VERIFY CORRECT BRANCH FIRST** - Check `git branch --show-current` matches feature branch
 - [ ] **Understand the requirement clearly** - Ask clarifying questions if anything is ambiguous
 - [ ] **Read existing code in affected files** - Don't make assumptions about current implementation
 - [ ] **Create a TodoWrite checklist** for the task with specific steps

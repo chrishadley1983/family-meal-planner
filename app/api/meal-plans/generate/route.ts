@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { weekStartDate, customSchedule } = await req.json()
+    const { weekStartDate, weekProfileSchedules } = await req.json()
 
     if (!weekStartDate) {
       return NextResponse.json(
@@ -45,12 +45,12 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Generate meal plan using Claude
+    // Generate meal plan using Claude with per-person schedules
     const generatedPlan = await generateMealPlan({
       profiles,
       recipes,
       weekStartDate,
-      customSchedule, // Pass custom schedule override if provided
+      weekProfileSchedules, // Pass per-person schedules for week
     })
 
     // Create the meal plan in database
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
         weekStartDate: weekStart,
         weekEndDate: weekEnd,
         status: 'Draft',
-        customSchedule: customSchedule || null, // Store custom schedule in database
+        customSchedule: weekProfileSchedules || null, // Store per-person schedules as JSON
         meals: {
           create: generatedPlan.meals.map((meal: any) => ({
             dayOfWeek: meal.dayOfWeek,
