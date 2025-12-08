@@ -10,23 +10,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { images } = await req.json()
+    const { imageData } = await req.json()
 
-    if (!images || !Array.isArray(images) || images.length === 0) {
-      return NextResponse.json({ error: 'At least one image is required' }, { status: 400 })
+    if (!imageData) {
+      return NextResponse.json({ error: 'Image data is required' }, { status: 400 })
     }
 
-    // Validate all image data formats (should be base64)
-    for (const imageData of images) {
-      if (!imageData.startsWith('data:image/')) {
-        return NextResponse.json({ error: 'Invalid image format' }, { status: 400 })
-      }
+    // Validate image data format (should be base64)
+    if (!imageData.startsWith('data:image/')) {
+      return NextResponse.json({ error: 'Invalid image format' }, { status: 400 })
     }
 
-    console.log(`📸 Analyzing ${images.length} image(s) for recipe import`)
-
-    // Analyze photos using Claude Vision (supports multiple images)
-    const analyzedRecipe = await analyzeRecipePhoto(images)
+    // Analyze photo using Claude Vision
+    const analyzedRecipe = await analyzeRecipePhoto(imageData)
 
     // Transform the suggested ingredients and instructions to match the recipe schema
     const recipeData = {
@@ -34,7 +30,7 @@ export async function POST(req: NextRequest) {
       description: analyzedRecipe.description,
       cuisineType: analyzedRecipe.cuisineType,
       difficultyLevel: analyzedRecipe.difficultyLevel,
-      mealType: analyzedRecipe.mealType,
+      mealCategory: analyzedRecipe.mealCategory,
       servings: 4, // Default servings
       ingredients: analyzedRecipe.suggestedIngredients || [],
       instructions: analyzedRecipe.suggestedInstructions || []
@@ -42,18 +38,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ recipe: recipeData })
   } catch (error: any) {
-    console.error('❌ Error analyzing recipe photo(s):', error)
-
-    // Check for Claude API specific errors
-    let errorMessage = error.message || 'Failed to analyze recipe photo(s)'
-
-    // Handle image size errors from Claude API
-    if (error.message?.includes('image exceeds') || error.message?.includes('5 MB maximum')) {
-      errorMessage = 'One or more images are too large. Please use images under 3.75MB each (they get larger when encoded).'
-    }
-
+    console.error('Error analyzing recipe photo:', error)
     return NextResponse.json(
-      { error: errorMessage },
+      { error: error.message || 'Failed to analyze recipe photo' },
       { status: 500 }
     )
   }

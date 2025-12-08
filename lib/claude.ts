@@ -194,9 +194,10 @@ Important:
 - Use proper capitalization for mealType (Breakfast, Lunch, Dinner, etc.)`
 
   try {
+    console.log('🔷 Calling Claude API for meal plan generation...')
     const message = await client.messages.create({
       model: 'claude-haiku-4-5',
-      max_tokens: 2048,
+      max_tokens: 4096,
       messages: [{
         role: 'user',
         content: prompt
@@ -204,17 +205,31 @@ Important:
     })
 
     const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
+    console.log('🟢 Claude response received, length:', responseText.length)
+    console.log('🟢 Response preview (first 500 chars):', responseText.substring(0, 500))
 
     // Extract JSON from response
     const jsonMatch = responseText.match(/\{[\s\S]*\}/)
     if (!jsonMatch) {
+      console.error('❌ No JSON found in Claude response')
+      console.error('Full response:', responseText)
       throw new Error('Failed to parse meal plan from Claude response')
     }
 
-    const mealPlan = JSON.parse(jsonMatch[0])
-    return mealPlan
+    console.log('🟢 JSON extracted, length:', jsonMatch[0].length)
+
+    try {
+      const mealPlan = JSON.parse(jsonMatch[0])
+      console.log('🟢 Meal plan parsed successfully, meals count:', mealPlan.meals?.length || 0)
+      return mealPlan
+    } catch (parseError: any) {
+      console.error('❌ JSON parse error:', parseError.message)
+      console.error('❌ Malformed JSON (first 1000 chars):', jsonMatch[0].substring(0, 1000))
+      console.error('❌ Malformed JSON (last 500 chars):', jsonMatch[0].substring(Math.max(0, jsonMatch[0].length - 500)))
+      throw new Error(`Invalid JSON from Claude: ${parseError.message}`)
+    }
   } catch (error) {
-    console.error('Error generating meal plan with Claude:', error)
+    console.error('❌ Error generating meal plan with Claude:', error)
     throw error
   }
 }
