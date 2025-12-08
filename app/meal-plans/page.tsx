@@ -262,6 +262,16 @@ export default function MealPlansPage() {
 
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
+  // Meal type order for consistent display and sorting
+  const MEAL_TYPE_ORDER = ['breakfast', 'lunch', 'afternoon-snack', 'dinner', 'dessert']
+  const MEAL_TYPE_LABELS: Record<string, string> = {
+    'breakfast': 'Breakfast',
+    'lunch': 'Lunch',
+    'afternoon-snack': 'Afternoon snack',
+    'dinner': 'Dinner',
+    'dessert': 'Dessert'
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -547,6 +557,14 @@ export default function MealPlansPage() {
                   <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
                     {daysOfWeek.map((day) => {
                       const dayMeals = plan.meals.filter(m => m.dayOfWeek === day)
+
+                      // Create a map of existing meals by meal type for quick lookup
+                      const mealsByType = new Map<string, any>()
+                      dayMeals.forEach(meal => {
+                        const normalizedType = meal.mealType.toLowerCase().replace(/\s+/g, '-')
+                        mealsByType.set(normalizedType, meal)
+                      })
+
                       return (
                         <div key={day} className="border rounded-lg p-3">
                           <h4 className="font-medium text-gray-900 text-sm mb-2">{day}</h4>
@@ -554,15 +572,30 @@ export default function MealPlansPage() {
                             <p className="text-xs text-gray-400">No meals</p>
                           ) : (
                             <div className="space-y-2">
-                              {dayMeals.map((meal) => (
-                                <div key={meal.id} className="text-xs">
-                                  <p className="font-medium text-gray-700">{meal.mealType}</p>
-                                  <p className="text-gray-600">{meal.recipeName || 'No recipe'}</p>
-                                  {meal.servings && (
-                                    <p className="text-gray-500">{meal.servings} servings</p>
-                                  )}
-                                </div>
-                              ))}
+                              {/* Render meals in consistent chronological order */}
+                              {MEAL_TYPE_ORDER.map((mealTypeKey) => {
+                                const meal = mealsByType.get(mealTypeKey)
+                                if (!meal) {
+                                  // Empty slot for missing meal type
+                                  return (
+                                    <div key={`${day}-${mealTypeKey}`} className="text-xs py-2 border-b border-dashed border-gray-200 last:border-0">
+                                      <p className="font-medium text-gray-400">{MEAL_TYPE_LABELS[mealTypeKey]}</p>
+                                      <p className="text-gray-300">-</p>
+                                    </div>
+                                  )
+                                }
+                                return (
+                                  <div key={meal.id} className="text-xs py-2 border-b border-gray-200 last:border-0">
+                                    <p className="font-medium text-gray-700">{MEAL_TYPE_LABELS[mealTypeKey] || meal.mealType}</p>
+                                    <p className="text-gray-600 break-words whitespace-normal">
+                                      {meal.recipeName || 'No recipe'}
+                                    </p>
+                                    {meal.servings && (
+                                      <p className="text-gray-500">{meal.servings} servings</p>
+                                    )}
+                                  </div>
+                                )
+                              })}
                             </div>
                           )}
                         </div>

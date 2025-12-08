@@ -85,6 +85,9 @@ const MEAL_TYPES = [
   { key: 'evening-snack', label: 'Evening Snack' }
 ]
 
+// Meal type order for consistent display and sorting
+const MEAL_TYPE_ORDER = ['breakfast', 'lunch', 'afternoon-snack', 'dinner', 'dessert']
+
 function SortableMealCard({ meal, recipes, onUpdate, onDelete, onToggleLock, disabled }: any) {
   const {
     attributes,
@@ -142,7 +145,8 @@ function SortableMealCard({ meal, recipes, onUpdate, onDelete, onToggleLock, dis
               })
             }}
             disabled={disabled}
-            className="mt-2 block w-full text-xs rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50"
+            className="mt-2 block w-full text-xs rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 break-words"
+            style={{ whiteSpace: 'normal', height: 'auto', minHeight: '2rem' }}
           >
             <option value="">No meal</option>
             {filteredRecipes.map((recipe: Recipe) => (
@@ -638,6 +642,19 @@ export default function MealPlanDetailPage() {
               const dayMeals = mealPlan.meals.filter(m => m.dayOfWeek === day)
               const dailyMacros = calculateDailyMacros(day)
 
+              // Create a map of existing meals by meal type for quick lookup
+              const mealsByType = new Map<string, Meal>()
+              dayMeals.forEach(meal => {
+                const normalizedType = meal.mealType.toLowerCase().replace(/\s+/g, '-')
+                mealsByType.set(normalizedType, meal)
+              })
+
+              // Create ordered array with meals in consistent positions (empty slots for missing meals)
+              const orderedMeals = MEAL_TYPE_ORDER.map(mealTypeKey => {
+                const existingMeal = mealsByType.get(mealTypeKey)
+                return existingMeal || null
+              }).filter(meal => meal !== null) as Meal[]
+
               return (
                 <div key={day} className="bg-white rounded-lg shadow-sm p-4">
                   <h3 className="font-medium text-gray-900 mb-2">{day}</h3>
@@ -713,23 +730,37 @@ export default function MealPlanDetailPage() {
                     </div>
                   )}
 
-                  {/* Meals for the Day */}
-                  <SortableContext items={dayMeals.map(m => m.id)} strategy={verticalListSortingStrategy}>
+                  {/* Meals for the Day - Now in consistent order */}
+                  <SortableContext items={orderedMeals.map(m => m.id)} strategy={verticalListSortingStrategy}>
                     <div className="space-y-3">
-                      {dayMeals.length === 0 ? (
+                      {orderedMeals.length === 0 ? (
                         <p className="text-sm text-gray-400">No meals planned</p>
                       ) : (
-                        dayMeals.map((meal) => (
-                          <SortableMealCard
-                            key={meal.id}
-                            meal={meal}
-                            recipes={recipes}
-                            onUpdate={handleMealUpdate}
-                            onDelete={handleMealDelete}
-                            onToggleLock={handleToggleLock}
-                            disabled={!isEditable}
-                          />
-                        ))
+                        // Render all meal types in consistent positions
+                        MEAL_TYPE_ORDER.map((mealTypeKey) => {
+                          const meal = mealsByType.get(mealTypeKey)
+                          if (!meal) {
+                            // Empty slot for missing meal type
+                            return (
+                              <div key={`${day}-${mealTypeKey}`} className="h-20 border border-dashed border-gray-200 rounded bg-gray-50 flex items-center justify-center">
+                                <span className="text-xs text-gray-400">
+                                  {MEAL_TYPES.find(mt => mt.key === mealTypeKey)?.label || ''}
+                                </span>
+                              </div>
+                            )
+                          }
+                          return (
+                            <SortableMealCard
+                              key={meal.id}
+                              meal={meal}
+                              recipes={recipes}
+                              onUpdate={handleMealUpdate}
+                              onDelete={handleMealDelete}
+                              onToggleLock={handleToggleLock}
+                              disabled={!isEditable}
+                            />
+                          )
+                        })
                       )}
                     </div>
                   </SortableContext>
