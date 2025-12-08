@@ -123,7 +123,7 @@ function SortableMealCard({ meal, recipes, onUpdate, onDelete, onToggleLock, dis
               {...attributes}
               {...listeners}
               disabled={disabled}
-              className="cursor-move text-gray-400 hover:text-gray-600 disabled:cursor-not-allowed"
+              className="cursor-move text-gray-400 hover:text-gray-600 disabled:cursor-not-allowed flex-shrink-0"
               title="Drag to reorder"
             >
               ⋮⋮
@@ -132,6 +132,13 @@ function SortableMealCard({ meal, recipes, onUpdate, onDelete, onToggleLock, dis
               {MEAL_TYPES.find(mt => mt.key === meal.mealType.toLowerCase())?.label || meal.mealType}
             </span>
           </div>
+
+          {/* Recipe Name Display */}
+          {meal.recipeName && (
+            <div className="mt-2 text-xs text-gray-900 font-medium break-words whitespace-normal leading-relaxed">
+              {meal.recipeName}
+            </div>
+          )}
 
           {/* Recipe Selector */}
           <select
@@ -145,8 +152,7 @@ function SortableMealCard({ meal, recipes, onUpdate, onDelete, onToggleLock, dis
               })
             }}
             disabled={disabled}
-            className="mt-2 block w-full text-xs rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 break-words"
-            style={{ whiteSpace: 'normal', height: 'auto', minHeight: '2rem' }}
+            className="mt-1 block w-full text-xs rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50"
           >
             <option value="">No meal</option>
             {filteredRecipes.map((recipe: Recipe) => (
@@ -740,11 +746,11 @@ export default function MealPlanDetailPage() {
                         MEAL_TYPE_ORDER.map((mealTypeKey) => {
                           const meal = mealsByType.get(mealTypeKey)
                           if (!meal) {
-                            // Empty slot for missing meal type
+                            // Empty slot for missing meal type - smaller, subtle placeholder
                             return (
-                              <div key={`${day}-${mealTypeKey}`} className="h-20 border border-dashed border-gray-200 rounded bg-gray-50 flex items-center justify-center">
-                                <span className="text-xs text-gray-400">
-                                  {MEAL_TYPES.find(mt => mt.key === mealTypeKey)?.label || ''}
+                              <div key={`${day}-${mealTypeKey}`} className="min-h-[3rem] py-2 px-3 border border-dashed border-gray-200 rounded bg-gray-50/50 flex items-center">
+                                <span className="text-xs text-gray-400 italic">
+                                  {MEAL_TYPES.find(mt => mt.key === mealTypeKey)?.label || ''} - not scheduled
                                 </span>
                               </div>
                             )
