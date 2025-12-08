@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -40,6 +40,9 @@ export default function NewRecipePage() {
   const [photoFiles, setPhotoFiles] = useState<File[]>([])
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([])
   const [showCamera, setShowCamera] = useState(false)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const streamRef = useRef<MediaStream | null>(null)
 
   // Recipe form state
   const [recipeName, setRecipeName] = useState('')
@@ -433,8 +436,90 @@ export default function NewRecipePage() {
     })
   }
 
-  // Handle camera capture
-  const handleCameraCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Open webcam modal
+  const handleOpenCamera = async () => {
+    try {
+      setError('')
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }
+      })
+
+      streamRef.current = stream
+      setShowCamera(true)
+
+      // Wait for video element to be ready
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+        }
+      }, 100)
+
+      console.log('📷 Webcam opened')
+    } catch (err) {
+      console.error('❌ Error accessing camera:', err)
+      setError('Could not access camera. Please check permissions.')
+    }
+  }
+
+  // Close webcam and stop stream
+  const handleCloseCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop())
+      streamRef.current = null
+    }
+    setShowCamera(false)
+  }
+
+  // Capture photo from webcam
+  const handleCapturePhoto = () => {
+    if (!videoRef.current || !canvasRef.current) return
+
+    const video = videoRef.current
+    const canvas = canvasRef.current
+
+    // Set canvas dimensions to match video
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+
+    // Draw video frame to canvas
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    ctx.drawImage(video, 0, 0)
+
+    // Convert canvas to blob
+    canvas.toBlob(async (blob) => {
+      if (!blob) return
+
+      // Validate file size
+      const maxSize = 3.75 * 1024 * 1024
+      if (blob.size > maxSize) {
+        setError('Photo too large. Please try again with better lighting (reduces file size).')
+        return
+      }
+
+      // Convert blob to File
+      const file = new File([blob], `camera-${Date.now()}.jpg`, { type: 'image/jpeg' })
+
+      console.log('📷 Photo captured from webcam')
+
+      // Add to photos
+      setPhotoFiles([...photoFiles, file])
+
+      // Create preview
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setPhotoPreviews([...photoPreviews, reader.result as string])
+      }
+      reader.readAsDataURL(file)
+
+      // Close camera
+      handleCloseCamera()
+    }, 'image/jpeg', 0.85) // 85% quality to keep file size down
+  }
+
+  // Handle mobile camera file input (fallback)
+  const handleMobileCameraCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
@@ -445,7 +530,7 @@ export default function NewRecipePage() {
       return
     }
 
-    console.log('📷 Camera photo captured')
+    console.log('📷 Camera photo captured (mobile)')
 
     // Add to existing photos
     setPhotoFiles([...photoFiles, file])
@@ -679,16 +764,26 @@ export default function NewRecipePage() {
 
                   {/* Camera Capture */}
                   <div className="flex gap-2">
-                    <label className="flex-1 cursor-pointer">
+                    {/* Desktop: Opens webcam modal */}
+                    <button
+                      type="button"
+                      onClick={handleOpenCamera}
+                      className="flex-1 px-4 py-2 bg-green-50 text-green-700 rounded-md hover:bg-green-100 text-center text-sm font-medium border border-green-200"
+                    >
+                      📷 Take Photo (Webcam)
+                    </button>
+
+                    {/* Mobile: Opens native camera */}
+                    <label className="flex-1 cursor-pointer md:hidden">
                       <input
                         type="file"
                         accept="image/*"
                         capture="environment"
-                        onChange={handleCameraCapture}
+                        onChange={handleMobileCameraCapture}
                         className="hidden"
                       />
                       <div className="px-4 py-2 bg-green-50 text-green-700 rounded-md hover:bg-green-100 text-center text-sm font-medium border border-green-200">
-                        📷 Take Photo
+                        📷 Take Photo (Camera)
                       </div>
                     </label>
                   </div>
@@ -1118,6 +1213,54 @@ export default function NewRecipePage() {
           </form>
         )}
       </div>
+
+      {/* Webcam Modal */}
+      {showCamera && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full">
+            <div className="p-4 border-b flex justify-between items-center">
+              <h3 className="text-lg font-semibold">Take Photo with Webcam</h3>
+              <button
+                onClick={handleCloseCamera}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-4">
+              {/* Video Preview */}
+              <div className="relative bg-black rounded-lg overflow-hidden mb-4">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  className="w-full h-auto"
+                />
+              </div>
+
+              {/* Hidden canvas for capturing */}
+              <canvas ref={canvasRef} className="hidden" />
+
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={handleCapturePhoto}
+                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
+                >
+                  📸 Capture Photo
+                </button>
+                <button
+                  onClick={handleCloseCamera}
+                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 font-medium"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
