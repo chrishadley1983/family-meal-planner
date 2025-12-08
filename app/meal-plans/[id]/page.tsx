@@ -13,7 +13,6 @@ interface Recipe {
   id: string
   recipeName: string
   mealType: string[]
-  isArchived: boolean
   caloriesPerServing?: number | null
   proteinPerServing?: number | null
   carbsPerServing?: number | null
@@ -102,20 +101,11 @@ function SortableMealCard({ meal, recipes, onUpdate, onDelete, onToggleLock, dis
     opacity: isDragging ? 0.5 : 1
   }
 
-  // Filter recipes by meal type - include assigned recipe even if archived
-  const filteredRecipes = recipes.filter((r: Recipe) => {
-    const matchesMealType = r.mealType.some((mt: string) =>
+  const filteredRecipes = recipes.filter((r: Recipe) =>
+    r.mealType.some((mt: string) =>
       mt.toLowerCase().replace(/\s+/g, '-') === meal.mealType.toLowerCase()
     )
-    // Include if it matches meal type OR if it's the currently assigned recipe
-    return matchesMealType || r.id === meal.recipeId
-  })
-
-  // Sort to show non-archived first, then archived
-  const sortedRecipes = [...filteredRecipes].sort((a, b) => {
-    if (a.isArchived === b.isArchived) return 0
-    return a.isArchived ? 1 : -1
-  })
+  )
 
   return (
     <div
@@ -155,9 +145,9 @@ function SortableMealCard({ meal, recipes, onUpdate, onDelete, onToggleLock, dis
             className="mt-2 block w-full text-xs rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50"
           >
             <option value="">No meal</option>
-            {sortedRecipes.map((recipe: Recipe) => (
-              <option key={recipe.id} value={recipe.id} className={recipe.isArchived ? 'text-gray-400' : ''}>
-                {recipe.recipeName}{recipe.isArchived ? ' (Archived)' : ''}
+            {filteredRecipes.map((recipe: Recipe) => (
+              <option key={recipe.id} value={recipe.id}>
+                {recipe.recipeName}
               </option>
             ))}
           </select>
@@ -257,15 +247,11 @@ export default function MealPlanDetailPage() {
 
   const fetchRecipes = async () => {
     try {
-      console.log('🔷 Fetching all recipes (including archived) for meal plan editing...')
-      // Fetch ALL recipes (including archived) so we can see assigned recipes
-      // Note: In the dropdown, we can filter to show only non-archived for NEW selections
-      const response = await fetch('/api/recipes')
+      const response = await fetch('/api/recipes?archived=false')
       const data = await response.json()
-      console.log('🟢 Recipes loaded:', data.recipes?.length || 0)
       setRecipes(data.recipes || [])
     } catch (error) {
-      console.error('❌ Error fetching recipes:', error)
+      console.error('Error fetching recipes:', error)
     }
   }
 

@@ -189,6 +189,7 @@ model Meal {
   recipeId            String?
   recipeName          String?
   servings            Int?
+  servingsManuallySet Boolean  @default(false)
   scalingFactor       Float?
   isLeftover          Boolean  @default(false)
   leftoverFromMealId  String?
