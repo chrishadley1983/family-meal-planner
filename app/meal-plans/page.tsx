@@ -54,6 +54,8 @@ export default function MealPlansPage() {
   const [generatedSummary, setGeneratedSummary] = useState('')
   const [showScheduleOverride, setShowScheduleOverride] = useState(false)
   const [weekProfileSchedules, setWeekProfileSchedules] = useState<WeekProfileSchedule[]>([])
+  const [filterStatus, setFilterStatus] = useState<string>('all')
+  const [copyFromPlanId, setCopyFromPlanId] = useState<string>('')
 
   useEffect(() => {
     fetchMealPlans()
@@ -65,7 +67,39 @@ export default function MealPlansPage() {
     try {
       const response = await fetch('/api/meal-plans')
       const data = await response.json()
-      setMealPlans(data.mealPlans || [])
+      let plans = data.mealPlans || []
+
+      // Auto-archive plans where weekEndDate has passed
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+
+      const updatedPlans = await Promise.all(
+        plans.map(async (plan: MealPlan) => {
+          const weekEnd = new Date(plan.weekEndDate)
+          weekEnd.setHours(0, 0, 0, 0)
+
+          // Auto-archive if week has ended and not already archived
+          if (weekEnd < today && plan.status !== 'Archived') {
+            try {
+              const updateResponse = await fetch(`/api/meal-plans/${plan.id}/status`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'Archived' })
+              })
+              if (updateResponse.ok) {
+                const updatedData = await updateResponse.json()
+                console.log(`✅ Auto-archived meal plan ${plan.id}`)
+                return updatedData.mealPlan
+              }
+            } catch (error) {
+              console.error(`Failed to auto-archive plan ${plan.id}:`, error)
+            }
+          }
+          return plan
+        })
+      )
+
+      setMealPlans(updatedPlans)
     } catch (error) {
       console.error('Error fetching meal plans:', error)
     } finally {
@@ -217,8 +251,8 @@ export default function MealPlansPage() {
 
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Generate New Meal Plan</h3>
-          <div className="flex gap-4 items-end">
-            <div className="flex-1">
+          <div className="flex gap-4 items-end flex-wrap">
+            <div className="flex-1 min-w-[200px]">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Week Starting
               </label>
@@ -228,6 +262,23 @@ export default function MealPlansPage() {
                 value={selectedWeek}
                 onChange={(e) => setSelectedWeek(e.target.value)}
               />
+            </div>
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Copy From Previous Week (Optional)
+              </label>
+              <select
+                value={copyFromPlanId}
+                onChange={(e) => setCopyFromPlanId(e.target.value)}
+                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
+              >
+                <option value="">Generate new plan with AI</option>
+                {mealPlans.filter(p => p.status === 'Archived').map(plan => (
+                  <option key={plan.id} value={plan.id}>
+                    Week of {new Date(plan.weekStartDate).toLocaleDateString('en-GB')}
+                  </option>
+                ))}
+              </select>
             </div>
             <button
               onClick={handleGeneratePlan}
@@ -240,10 +291,10 @@ export default function MealPlansPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Generating with AI...
+                  {copyFromPlanId ? 'Copying...' : 'Generating with AI...'}
                 </span>
               ) : (
-                'Generate with AI'
+                copyFromPlanId ? 'Copy Plan' : 'Generate with AI'
               )}
             </button>
           </div>
@@ -368,17 +419,76 @@ export default function MealPlansPage() {
           </div>
         )}
 
-        {mealPlans.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <h3 className="mt-2 text-lg font-medium text-gray-900">No meal plans yet</h3>
-            <p className="mt-1 text-gray-500">Generate your first AI-powered meal plan</p>
+        {/* Filters */}
+        <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
+          <div className="flex items-center gap-4">
+            <label className="text-sm font-medium text-gray-700">Filter:</label>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setFilterStatus('all')}
+                className={`px-3 py-1 rounded text-sm ${
+                  filterStatus === 'all'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => setFilterStatus('Draft')}
+                className={`px-3 py-1 rounded text-sm ${
+                  filterStatus === 'Draft'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Draft
+              </button>
+              <button
+                onClick={() => setFilterStatus('Finalized')}
+                className={`px-3 py-1 rounded text-sm ${
+                  filterStatus === 'Finalized'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Finalized
+              </button>
+              <button
+                onClick={() => setFilterStatus('Archived')}
+                className={`px-3 py-1 rounded text-sm ${
+                  filterStatus === 'Archived'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Archived
+              </button>
+            </div>
           </div>
-        ) : (
-          <div className="space-y-6">
-            {mealPlans.map((plan) => (
+        </div>
+
+        {/* Filtered meal plans list */}
+        {(() => {
+          const filteredPlans = filterStatus === 'all'
+            ? mealPlans
+            : mealPlans.filter(p => p.status === filterStatus)
+
+          return filteredPlans.length === 0 ? (
+            <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <h3 className="mt-2 text-lg font-medium text-gray-900">
+                {filterStatus === 'all' ? 'No meal plans yet' : `No ${filterStatus.toLowerCase()} meal plans`}
+              </h3>
+              <p className="mt-1 text-gray-500">
+                {filterStatus === 'all' ? 'Generate your first AI-powered meal plan' : `No meal plans with status: ${filterStatus}`}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {filteredPlans.map((plan) => (
               <div
                 key={plan.id}
                 onClick={() => router.push(`/meal-plans/${plan.id}`)}
@@ -429,9 +539,10 @@ export default function MealPlansPage() {
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )
+        })()}
       </div>
     </div>
   )
