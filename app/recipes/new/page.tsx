@@ -743,12 +743,15 @@ export default function NewRecipePage() {
                   Recipe Photos ({photoFiles.length} added)
                 </label>
                 <p className="text-sm text-gray-500 mb-3">
-                  Upload photos of your recipe (e.g., front/back of recipe card, dish photos). You can:
+                  Upload images of your recipe. Supports both food photos AND text-based images:
                 </p>
                 <ul className="text-sm text-gray-500 mb-3 list-disc list-inside space-y-1">
-                  <li>Upload multiple files (great for double-sided recipe cards)</li>
-                  <li>Paste screenshots (Ctrl+V or Cmd+V)</li>
-                  <li>Take a live photo with your camera</li>
+                  <li>📝 Recipe cards, printed recipes, or handwritten notes</li>
+                  <li>📱 Screenshots from websites, apps, or cookbooks</li>
+                  <li>🍽️ Photos of prepared dishes (AI will suggest ingredients)</li>
+                  <li>📄 Multiple images (e.g., front/back of recipe card)</li>
+                  <li>📋 Paste screenshots (Ctrl+V or Cmd+V)</li>
+                  <li>📸 Take a live photo with your camera</li>
                   <li className="text-amber-600">⚠️ Max 3.75MB per image (Claude API limit)</li>
                 </ul>
 

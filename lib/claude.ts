@@ -442,16 +442,27 @@ Use standard nutrition databases for your calculations. Be as accurate as possib
 
 export async function analyzeRecipePhoto(images: string[]) {
   const imageCount = images.length
-  const prompt = `You are a recipe recognition assistant. Analyze ${imageCount === 1 ? 'this food photo' : `these ${imageCount} food photos`} and identify the dish.
+  const prompt = `You are a recipe recognition assistant. Analyze ${imageCount === 1 ? 'this image' : `these ${imageCount} images`} and extract or identify recipe information.
 
 ${imageCount > 1 ? 'Note: Multiple images are provided (e.g., front and back of a recipe card, or different angles of the dish). Use all images together to get complete information.' : ''}
 
+The image${imageCount > 1 ? 's' : ''} may contain:
+- A photo of prepared food (identify the dish and suggest recipe details)
+- A printed/handwritten recipe card (extract the text and recipe information)
+- A screenshot or photo of a recipe from a website, book, or app (extract the details)
+- Ingredient lists or cooking instructions (read and structure the information)
+
 Based on the image${imageCount > 1 ? 's' : ''}, provide:
-1. The name of the dish
-2. A list of likely ingredients
-3. Suggested cuisine type
-4. Estimated difficulty level
-5. Suggested meal categories
+1. The name of the dish or recipe
+2. Ingredients (extracted directly if visible as text, or suggested if it's a food photo)
+3. Instructions (extracted directly if visible as text, or suggested if it's a food photo)
+4. Cuisine type, difficulty level, and meal categories
+
+**Important:**
+- If the image contains TEXT with recipe details, extract that information directly and accurately
+- If the image is a FOOD PHOTO without text, identify the dish and suggest likely ingredients/instructions
+- Extract exact quantities and measurements when visible in text
+- Preserve cooking instructions as written when visible
 
 Return ONLY a valid JSON object in this exact format:
 {
@@ -482,7 +493,7 @@ Return ONLY a valid JSON object in this exact format:
   ]
 }
 
-Be specific and practical in your suggestions.`
+Be accurate when extracting text, and be specific and practical when suggesting details from food photos.`
 
   try {
     // Build content array with all images followed by the prompt
