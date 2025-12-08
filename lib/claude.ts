@@ -9,8 +9,80 @@ export async function generateMealPlan(params: {
   recipes: any[]
   weekStartDate: string
   preferences?: any
+  customSchedule?: any
 }) {
-  const { profiles, recipes, weekStartDate, preferences } = params
+  const { profiles, recipes, weekStartDate, preferences, customSchedule } = params
+
+  // Calculate which meals need to be planned based on all family profiles
+  type MealSchedule = {
+    monday: string[]
+    tuesday: string[]
+    wednesday: string[]
+    thursday: string[]
+    friday: string[]
+    saturday: string[]
+    sunday: string[]
+  }
+
+  const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+
+  // Use customSchedule if provided, otherwise build union from profiles
+  let mealScheduleUnion: MealSchedule
+
+  if (customSchedule) {
+    // Use the provided custom schedule for this week
+    mealScheduleUnion = customSchedule
+  } else {
+    // Build union of all meal schedules (which meals need planning for each day)
+    mealScheduleUnion = {
+      monday: [],
+      tuesday: [],
+      wednesday: [],
+      thursday: [],
+      friday: [],
+      saturday: [],
+      sunday: []
+    }
+
+    // Collect schedules from all profiles
+    profiles.forEach(profile => {
+      const schedule = profile.mealAvailability as MealSchedule | null
+      if (schedule) {
+        daysOfWeek.forEach(day => {
+          const meals = schedule[day as keyof MealSchedule] || []
+          meals.forEach(meal => {
+            const dayMeals = mealScheduleUnion[day as keyof MealSchedule]
+            if (!dayMeals.includes(meal)) {
+              dayMeals.push(meal)
+            }
+          })
+        })
+      }
+    })
+  }
+
+  // Build schedule summary for the prompt
+  const scheduleSummary = daysOfWeek.map(day => {
+    const dayCapitalized = day.charAt(0).toUpperCase() + day.slice(1)
+    const meals = mealScheduleUnion[day as keyof MealSchedule]
+    if (meals.length === 0) {
+      return `${dayCapitalized}: No meals needed`
+    }
+    return `${dayCapitalized}: ${meals.map(m => m.charAt(0).toUpperCase() + m.slice(1).replace('-', ' ')).join(', ')}`
+  }).join('\n')
+
+  // Build per-person schedule for context
+  const perPersonSchedules = profiles.map((p, i) => {
+    const schedule = p.mealAvailability as MealSchedule | null
+    if (!schedule) {
+      return `Profile ${i + 1} (${p.profileName}): No specific schedule`
+    }
+    const summary = daysOfWeek.map(day => {
+      const meals = schedule[day as keyof MealSchedule] || []
+      return meals.length > 0 ? meals.join(', ') : 'none'
+    }).join(' | ')
+    return `Profile ${i + 1} (${p.profileName}): ${summary}`
+  }).join('\n')
 
   const prompt = `You are a family meal planning assistant. Generate a weekly meal plan based on the following information:
 
@@ -24,6 +96,12 @@ Profile ${i + 1}: ${p.profileName}
 ${p.macroTrackingEnabled ? `- Daily Targets: ${p.dailyCalorieTarget || 0} cal, ${p.dailyProteinTarget || 0}g protein` : ''}
 `).join('\n')}
 
+MEAL SCHEDULE (combined from all family members):
+${scheduleSummary}
+
+INDIVIDUAL SCHEDULES:
+${perPersonSchedules}
+
 AVAILABLE RECIPES:
 ${recipes.map((r, i) => `
 ${i + 1}. ${r.recipeName} (ID: ${r.id})
@@ -36,18 +114,19 @@ ${i + 1}. ${r.recipeName} (ID: ${r.id})
 
 WEEK START DATE: ${weekStartDate}
 
-Generate a meal plan for the week with Dinner for each day (Monday through Sunday). For each meal:
-1. Select an appropriate recipe from the available recipes
+Generate a meal plan ONLY for the meals specified in the MEAL SCHEDULE above. For each meal listed:
+1. Select an appropriate recipe from the available recipes that matches the meal type
 2. Consider family preferences and dietary needs
 3. Provide variety throughout the week
 4. Balance nutrition across the week
+5. Adjust servings based on how many family members need that meal (check INDIVIDUAL SCHEDULES)
 
 Return ONLY a valid JSON object in this exact format:
 {
   "meals": [
     {
       "dayOfWeek": "Monday",
-      "mealType": "Dinner",
+      "mealType": "Breakfast",
       "recipeId": "recipe-id-from-list",
       "recipeName": "Recipe Name",
       "servings": 4,
@@ -57,7 +136,11 @@ Return ONLY a valid JSON object in this exact format:
   "summary": "Brief summary of the meal plan strategy and nutritional balance"
 }
 
-Important: Return ONLY the JSON object, no other text.`
+Important:
+- Return ONLY the JSON object, no other text
+- ONLY generate meals that appear in the MEAL SCHEDULE
+- Use proper capitalization for dayOfWeek (Monday, Tuesday, etc.)
+- Use proper capitalization for mealType (Breakfast, Lunch, Dinner, etc.)`
 
   try {
     const message = await client.messages.create({
