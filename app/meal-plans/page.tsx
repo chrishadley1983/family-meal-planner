@@ -566,26 +566,26 @@ export default function MealPlansPage() {
                       })
 
                       return (
-                        <div key={day} className="border rounded-lg p-3">
+                        <div key={day} className="border rounded-lg p-3 flex flex-col">
                           <h4 className="font-medium text-gray-900 text-sm mb-2">{day}</h4>
                           {dayMeals.length === 0 ? (
                             <p className="text-xs text-gray-400">No meals</p>
                           ) : (
-                            <div className="space-y-2">
-                              {/* Render meals in consistent chronological order */}
+                            <div className="grid grid-rows-5 gap-2 flex-1">
+                              {/* Render meals in consistent chronological order with fixed heights */}
                               {MEAL_TYPE_ORDER.map((mealTypeKey) => {
                                 const meal = mealsByType.get(mealTypeKey)
                                 if (!meal) {
-                                  // Empty slot for missing meal type
+                                  // Empty slot for missing meal type - same height as meal rows
                                   return (
-                                    <div key={`${day}-${mealTypeKey}`} className="text-xs py-2 border-b border-dashed border-gray-200 last:border-0">
+                                    <div key={`${day}-${mealTypeKey}`} className="text-xs py-2 border-b border-dashed border-gray-200 last:border-0 min-h-[60px] flex flex-col justify-center">
                                       <p className="font-medium text-gray-400">{MEAL_TYPE_LABELS[mealTypeKey]}</p>
                                       <p className="text-gray-300">-</p>
                                     </div>
                                   )
                                 }
                                 return (
-                                  <div key={meal.id} className="text-xs py-2 border-b border-gray-200 last:border-0">
+                                  <div key={meal.id} className="text-xs py-2 border-b border-gray-200 last:border-0 min-h-[60px] flex flex-col justify-center">
                                     <p className="font-medium text-gray-700">{MEAL_TYPE_LABELS[mealTypeKey] || meal.mealType}</p>
                                     <p className="text-gray-600 break-words whitespace-normal">
                                       {meal.recipeName || 'No recipe'}
