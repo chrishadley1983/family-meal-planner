@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { startOfWeek, format, addWeeks } from 'date-fns'
 
 interface MealPlan {
@@ -44,6 +45,7 @@ interface WeekProfileSchedule {
 }
 
 export default function MealPlansPage() {
+  const router = useRouter()
   const [mealPlans, setMealPlans] = useState<MealPlan[]>([])
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
@@ -377,15 +379,21 @@ export default function MealPlansPage() {
         ) : (
           <div className="space-y-6">
             {mealPlans.map((plan) => (
-              <div key={plan.id} className="bg-white rounded-lg shadow-sm overflow-hidden">
+              <div
+                key={plan.id}
+                onClick={() => router.push(`/meal-plans/${plan.id}`)}
+                className="bg-white rounded-lg shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+              >
                 <div className="bg-gray-50 px-6 py-4 border-b">
                   <div className="flex justify-between items-center">
                     <h3 className="text-lg font-medium text-gray-900">
-                      Week of {new Date(plan.weekStartDate).toLocaleDateString()}
+                      Week of {new Date(plan.weekStartDate).toLocaleDateString('en-GB')}
                     </h3>
                     <span className={`px-3 py-1 rounded-full text-sm font-medium ${
                       plan.status === 'Finalized'
                         ? 'bg-green-100 text-green-800'
+                        : plan.status === 'Archived'
+                        ? 'bg-gray-100 text-gray-800'
                         : 'bg-yellow-100 text-yellow-800'
                     }`}>
                       {plan.status}
