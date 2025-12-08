@@ -44,17 +44,17 @@ const COLOR_SCHEMES = {
 }
 
 /**
- * Generate raw SVG recipe illustration (browser-compatible)
+ * Generate SVG recipe illustration
  * @param recipeName - Name of the recipe
- * @param mealType - Array of meal categories (uses first one for color)
- * @returns Raw SVG string
+ * @param mealCategory - Array of meal categories (uses first one for color)
+ * @returns Base64 data URL of SVG image
  */
-export function generateRecipeSVGString(
+export function generateRecipeSVG(
   recipeName: string,
-  mealType?: string[]
+  mealCategory?: string[]
 ): string {
   // Pick color scheme based on first meal category
-  const category = mealType?.[0] || 'default'
+  const category = mealCategory?.[0] || 'default'
   const colors = COLOR_SCHEMES[category as keyof typeof COLOR_SCHEMES] || COLOR_SCHEMES.default
 
   // Truncate recipe name if too long
@@ -63,21 +63,21 @@ export function generateRecipeSVGString(
     : recipeName
 
   // Generate SVG
-  return `
+  const svg = `
     <svg width="400" height="400" xmlns="http://www.w3.org/2000/svg">
       <!-- Gradient background -->
       <defs>
-        <linearGradient id="grad-${category}" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" style="stop-color:${colors.bg1};stop-opacity:1" />
           <stop offset="100%" style="stop-color:${colors.bg2};stop-opacity:1" />
         </linearGradient>
-        <filter id="shadow-${category}">
+        <filter id="shadow">
           <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.3"/>
         </filter>
       </defs>
 
       <!-- Background -->
-      <rect width="400" height="400" fill="url(#grad-${category})"/>
+      <rect width="400" height="400" fill="url(#grad)"/>
 
       <!-- Decorative circles -->
       <circle cx="50" cy="50" r="30" fill="${colors.accent}" opacity="0.1"/>
@@ -86,7 +86,7 @@ export function generateRecipeSVGString(
       <circle cx="320" cy="320" r="45" fill="${colors.accent}" opacity="0.1"/>
 
       <!-- Main plate circle -->
-      <circle cx="200" cy="200" r="120" fill="white" filter="url(#shadow-${category})"/>
+      <circle cx="200" cy="200" r="120" fill="white" filter="url(#shadow)"/>
       <circle cx="200" cy="200" r="120" fill="${colors.accent}" opacity="0.05"/>
 
       <!-- Food emoji -->
@@ -108,27 +108,8 @@ export function generateRecipeSVGString(
       </text>
     </svg>
   `.trim()
-}
 
-/**
- * Generate SVG recipe illustration as data URL (server-side only)
- * @param recipeName - Name of the recipe
- * @param mealType - Array of meal categories (uses first one for color)
- * @returns Base64 data URL of SVG image
- */
-export function generateRecipeSVG(
-  recipeName: string,
-  mealType?: string[]
-): string {
-  const svg = generateRecipeSVGString(recipeName, mealType)
-
-  // Convert SVG to base64 data URL (Node.js only)
-  if (typeof Buffer !== 'undefined') {
-    const base64 = Buffer.from(svg).toString('base64')
-    return `data:image/svg+xml;base64,${base64}`
-  }
-
-  // Browser fallback: use btoa
-  const base64 = btoa(svg)
+  // Convert SVG to base64 data URL
+  const base64 = Buffer.from(svg).toString('base64')
   return `data:image/svg+xml;base64,${base64}`
 }
