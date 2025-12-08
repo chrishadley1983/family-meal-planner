@@ -53,6 +53,29 @@ export async function POST(req: NextRequest) {
       weekProfileSchedules, // Pass per-person schedules for week
     })
 
+    // Create a set of valid recipe IDs for validation
+    const validRecipeIds = new Set(recipes.map(r => r.id))
+
+    // Validate and clean up meals - only include valid recipe IDs
+    const validatedMeals = generatedPlan.meals.map((meal: any) => {
+      const recipeId = meal.recipeId && validRecipeIds.has(meal.recipeId) ? meal.recipeId : null
+
+      if (meal.recipeId && !recipeId) {
+        console.warn(`⚠️ Claude suggested invalid recipe ID: ${meal.recipeId} for ${meal.recipeName}`)
+      }
+
+      return {
+        dayOfWeek: meal.dayOfWeek,
+        mealType: meal.mealType,
+        recipeId,
+        recipeName: meal.recipeName || null,
+        servings: meal.servings || null,
+        notes: meal.notes || null,
+      }
+    })
+
+    console.log(`✅ Validated ${validatedMeals.length} meals (${validatedMeals.filter(m => m.recipeId).length} with valid recipes)`)
+
     // Create the meal plan in database
     const weekStart = new Date(weekStartDate)
     const weekEnd = endOfWeek(weekStart)
@@ -65,14 +88,7 @@ export async function POST(req: NextRequest) {
         status: 'Draft',
         customSchedule: weekProfileSchedules || null, // Store per-person schedules as JSON
         meals: {
-          create: generatedPlan.meals.map((meal: any) => ({
-            dayOfWeek: meal.dayOfWeek,
-            mealType: meal.mealType,
-            recipeId: meal.recipeId || null,
-            recipeName: meal.recipeName || null,
-            servings: meal.servings || null,
-            notes: meal.notes || null,
-          }))
+          create: validatedMeals
         }
       },
       include: {
