@@ -421,11 +421,24 @@ export default function MealPlanDetailPage() {
 
     setRegenerating(true)
     try {
-      // TODO: Implement regenerate endpoint
-      alert('Regenerate feature coming soon!')
-    } catch (error) {
-      console.error('Error regenerating:', error)
-      alert('Failed to regenerate meal plan')
+      console.log('🔷 Regenerating meal plan with AI...')
+      const response = await fetch(`/api/meal-plans/${mealPlanId}/regenerate`, {
+        method: 'POST'
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to regenerate')
+      }
+
+      const data = await response.json()
+      console.log('🟢 Meal plan regenerated successfully')
+
+      setMealPlan(data.mealPlan)
+      alert(`Meal plan regenerated successfully!\n\n${data.summary || 'New meals generated.'}`)
+    } catch (error: any) {
+      console.error('❌ Error regenerating:', error)
+      alert(error.message || 'Failed to regenerate meal plan')
     } finally {
       setRegenerating(false)
     }
