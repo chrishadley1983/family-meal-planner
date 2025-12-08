@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { generateMealPlan } from '@/lib/claude'
+import { calculateServingsForMeals, filterZeroServingMeals } from '@/lib/meal-utils'
 import { startOfWeek, endOfWeek } from 'date-fns'
 
 export async function POST(req: NextRequest) {
@@ -69,12 +70,18 @@ export async function POST(req: NextRequest) {
         mealType: meal.mealType,
         recipeId,
         recipeName: meal.recipeName || null,
-        servings: meal.servings || null,
         notes: meal.notes || null,
       }
     })
 
-    console.log(`✅ Validated ${validatedMeals.length} meals (${validatedMeals.filter(m => m.recipeId).length} with valid recipes)`)
+    // Calculate servings based on who's eating each meal
+    console.log('🧮 Calculating servings for all meals...')
+    const mealsWithServings = calculateServingsForMeals(validatedMeals, weekProfileSchedules || [])
+
+    // Filter out meals with 0 servings (no one eating)
+    const finalMeals = filterZeroServingMeals(mealsWithServings)
+
+    console.log(`✅ Created ${finalMeals.length} meals (filtered ${mealsWithServings.length - finalMeals.length} with 0 servings)`)
 
     // Create the meal plan in database
     const weekStart = new Date(weekStartDate)
@@ -88,7 +95,7 @@ export async function POST(req: NextRequest) {
         status: 'Draft',
         customSchedule: weekProfileSchedules || null, // Store per-person schedules as JSON
         meals: {
-          create: validatedMeals
+          create: finalMeals
         }
       },
       include: {
