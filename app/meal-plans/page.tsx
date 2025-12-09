@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { startOfWeek, format, addWeeks } from 'date-fns'
+import { RecipeDetailsModal } from '@/components/RecipeDetailsModal'
 
 interface MealPlan {
   id: string
@@ -21,11 +23,13 @@ interface MealPlan {
 }
 
 export default function MealPlansPage() {
+  const router = useRouter()
   const [mealPlans, setMealPlans] = useState<MealPlan[]>([])
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [selectedWeek, setSelectedWeek] = useState('')
   const [generatedSummary, setGeneratedSummary] = useState('')
+  const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchMealPlans()
@@ -186,9 +190,18 @@ export default function MealPlansPage() {
                           ) : (
                             <div className="space-y-2">
                               {dayMeals.map((meal) => (
-                                <div key={meal.id} className="text-xs">
+                                <div
+                                  key={meal.id}
+                                  className="text-xs cursor-pointer hover:bg-gray-100 p-2 rounded transition-colors"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    if (meal.recipe?.id) {
+                                      setSelectedRecipeId(meal.recipe.id)
+                                    }
+                                  }}
+                                >
                                   <p className="font-medium text-gray-700">{meal.mealType}</p>
-                                  <p className="text-gray-600">{meal.recipeName || 'No recipe'}</p>
+                                  <p className="text-gray-600 hover:text-gray-900">{meal.recipeName || 'No recipe'}</p>
                                   {meal.servings && (
                                     <p className="text-gray-500">{meal.servings} servings</p>
                                   )}
@@ -206,6 +219,13 @@ export default function MealPlansPage() {
           </div>
         )}
       </div>
+
+      {/* Recipe Details Modal */}
+      <RecipeDetailsModal
+        isOpen={selectedRecipeId !== null}
+        onClose={() => setSelectedRecipeId(null)}
+        recipeId={selectedRecipeId}
+      />
     </div>
   )
 }
