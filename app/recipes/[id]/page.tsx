@@ -446,7 +446,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
 
   return (
     <AppLayout userEmail={session?.user?.email}>
-      <PageContainer maxWidth="2xl">
+      <PageContainer maxWidth="7xl">
         <Link href="/recipes" className="text-purple-400 hover:text-purple-300 mb-6 inline-block">
           ← Back to Recipes
         </Link>
@@ -878,13 +878,9 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                   <div className="mb-6 p-5 bg-gradient-to-r from-pink-900/20 to-purple-900/20 rounded-lg border border-pink-800/30">
                     <div className="flex items-start space-x-4">
                       <div className="flex-shrink-0">
-                        <Image
-                          src="/sarah-avatar.png"
-                          alt="Sarah the AI Nutritionist"
-                          width={60}
-                          height={60}
-                          className="rounded-full border-2 border-pink-500"
-                        />
+                        <div className="w-[60px] h-[60px] rounded-full border-2 border-pink-500 bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center text-3xl">
+                          👩‍⚕️
+                        </div>
                       </div>
                       <div className="flex-1">
                         <h3 className="font-bold text-white mb-2">Sarah&apos;s Nutritionist Feedback</h3>
