@@ -47,6 +47,7 @@ model FamilyProfile {
   dailyFatTarget        Float?
   dailyFiberTarget      Float?
   macroTrackingEnabled  Boolean  @default(false)
+  isMainUser            Boolean  @default(false)
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
@@ -97,6 +98,8 @@ model Recipe {
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
   isArchived              Boolean  @default(false)
+  isFavorite              Boolean  @default(false)
+  isQuickMeal             Boolean  @default(false)
 
   user                    User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
   ingredients             RecipeIngredient[]
@@ -188,6 +191,7 @@ model Meal {
   leftoverFromMealId  String?
   notes               String?
   isLocked            Boolean  @default(false)
+  servingsManuallySet Boolean  @default(false)
   nutritionalSummary  Json     @default("{}")
   createdAt           DateTime @default(now())
 

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-// TODO: Implement function
-// import { analyzeRecipeText } from '@/lib/claude'
+import { analyzeRecipeText } from '@/lib/claude'
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,35 +19,33 @@ export async function POST(req: NextRequest) {
     console.log('🔷 Parsing recipe text with Claude AI...')
     console.log('📝 Text length:', text.length, 'characters')
 
-    // TODO: Implement analyzeRecipeText function
     // Parse recipe text using Claude
-    // const analyzedRecipe = await analyzeRecipeText(text)
-    // console.log('🟢 Recipe parsed successfully:', analyzedRecipe.recipeName)
-    //
+    const analyzedRecipe = await analyzeRecipeText(text)
+    console.log('🟢 Recipe parsed successfully:', analyzedRecipe.recipeName)
+
     // Transform the response to match the recipe schema
-    // const recipeData = {
-    //   recipeName: analyzedRecipe.recipeName,
-    //   description: analyzedRecipe.description,
-    //   cuisineType: analyzedRecipe.cuisineType,
-    //   difficultyLevel: analyzedRecipe.difficultyLevel,
-    //   mealType: analyzedRecipe.mealType || [],
-    //   servings: analyzedRecipe.servings || 4,
-    //   prepTimeMinutes: analyzedRecipe.prepTimeMinutes,
-    //   cookTimeMinutes: analyzedRecipe.cookTimeMinutes,
-    //   isVegetarian: analyzedRecipe.isVegetarian || false,
-    //   isVegan: analyzedRecipe.isVegan || false,
-    //   containsMeat: analyzedRecipe.containsMeat || false,
-    //   containsSeafood: analyzedRecipe.containsSeafood || false,
-    //   isDairyFree: analyzedRecipe.isDairyFree || false,
-    //   isGlutenFree: analyzedRecipe.isGlutenFree || false,
-    //   containsNuts: analyzedRecipe.containsNuts || false,
-    //   ingredients: analyzedRecipe.ingredients || [],
-    //   instructions: analyzedRecipe.instructions || []
-    // }
+    const recipeData = {
+      recipeName: analyzedRecipe.recipeName,
+      description: analyzedRecipe.description,
+      cuisineType: analyzedRecipe.cuisineType,
+      difficultyLevel: analyzedRecipe.difficultyLevel,
+      mealType: analyzedRecipe.mealType || [],
+      servings: analyzedRecipe.servings || 4,
+      prepTimeMinutes: analyzedRecipe.prepTimeMinutes,
+      cookTimeMinutes: analyzedRecipe.cookTimeMinutes,
+      isVegetarian: analyzedRecipe.isVegetarian || false,
+      isVegan: analyzedRecipe.isVegan || false,
+      containsMeat: analyzedRecipe.containsMeat || false,
+      containsSeafood: analyzedRecipe.containsSeafood || false,
+      isDairyFree: analyzedRecipe.isDairyFree || false,
+      isGlutenFree: analyzedRecipe.isGlutenFree || false,
+      containsNuts: analyzedRecipe.containsNuts || false,
+      ingredients: analyzedRecipe.ingredients || [],
+      instructions: analyzedRecipe.instructions || []
+    }
 
     return NextResponse.json({
-      recipe: null,
-      message: 'Text import feature not yet implemented'
+      recipe: recipeData
     })
   } catch (error: any) {
     console.error('❌ Error parsing recipe text:', error)

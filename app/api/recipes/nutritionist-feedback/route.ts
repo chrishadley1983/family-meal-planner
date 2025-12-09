@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-// TODO: Implement getNutritionistFeedbackForRecipe in @/lib/claude
-// import { getNutritionistFeedbackForRecipe } from '@/lib/claude'
+import { getNutritionistFeedbackForRecipe } from '@/lib/claude'
 
 export async function POST(request: NextRequest) {
   try {
@@ -48,34 +47,32 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // TODO: Implement getNutritionistFeedbackForRecipe function
     // Call Claude API to get nutritionist feedback
-    // const feedback = await getNutritionistFeedbackForRecipe({
-    //   recipe: {
-    //     recipeName: recipe.recipeName,
-    //     description: recipe.description,
-    //     servings: recipe.servings || 4,
-    //     mealCategory: recipe.mealCategory || [],
-    //     ingredients: recipe.ingredients,
-    //   },
-    //   userProfile: {
-    //     profileName: mainProfile.profileName,
-    //     age: mainProfile.age,
-    //     activityLevel: mainProfile.activityLevel,
-    //     allergies: mainProfile.allergies,
-    //     foodDislikes: mainProfile.foodDislikes,
-    //     dailyCalorieTarget: mainProfile.dailyCalorieTarget,
-    //     dailyProteinTarget: mainProfile.dailyProteinTarget,
-    //     dailyCarbsTarget: mainProfile.dailyCarbsTarget,
-    //     dailyFatTarget: mainProfile.dailyFatTarget,
-    //     macroTrackingEnabled: mainProfile.macroTrackingEnabled,
-    //   },
-    //   macroAnalysis,
-    // })
+    const feedback = await getNutritionistFeedbackForRecipe({
+      recipe: {
+        recipeName: recipe.recipeName,
+        description: recipe.description,
+        servings: recipe.servings || 4,
+        mealType: recipe.mealType || recipe.mealCategory || [],
+        ingredients: recipe.ingredients,
+      },
+      userProfile: {
+        profileName: mainProfile.profileName,
+        age: mainProfile.age,
+        activityLevel: mainProfile.activityLevel,
+        allergies: mainProfile.allergies,
+        foodDislikes: mainProfile.foodDislikes,
+        dailyCalorieTarget: mainProfile.dailyCalorieTarget,
+        dailyProteinTarget: mainProfile.dailyProteinTarget,
+        dailyCarbsTarget: mainProfile.dailyCarbsTarget,
+        dailyFatTarget: mainProfile.dailyFatTarget,
+        macroTrackingEnabled: mainProfile.macroTrackingEnabled,
+      },
+      macroAnalysis,
+    })
 
     return NextResponse.json({
-      feedback: 'Nutritionist feedback feature not yet implemented.',
-      message: 'Feature coming soon'
+      feedback
     })
   } catch (error) {
     console.error('Nutritionist feedback error:', error)

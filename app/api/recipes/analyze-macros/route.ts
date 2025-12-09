@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-// TODO: Implement analyzeRecipeMacros in @/lib/claude
-// import { analyzeRecipeMacros } from '@/lib/claude'
+import { analyzeRecipeMacros } from '@/lib/claude'
 
 export async function POST(request: NextRequest) {
   try {
@@ -43,24 +42,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // TODO: Implement analyzeRecipeMacros function
     // Call Claude API to analyze macros
-    // const analysis = await analyzeRecipeMacros({
-    //   recipe: {
-    //     recipeName: recipe.recipeName,
-    //     servings: recipe.servings || 4,
-    //     ingredients: recipe.ingredients,
-    //     caloriesPerServing: recipe.caloriesPerServing,
-    //     proteinPerServing: recipe.proteinPerServing,
-    //     carbsPerServing: recipe.carbsPerServing,
-    //     fatPerServing: recipe.fatPerServing,
-    //   },
-    //   userProfile: mainProfile,
-    // })
+    const analysis = await analyzeRecipeMacros({
+      recipe: {
+        recipeName: recipe.recipeName,
+        servings: recipe.servings || 4,
+        ingredients: recipe.ingredients,
+        caloriesPerServing: recipe.caloriesPerServing,
+        proteinPerServing: recipe.proteinPerServing,
+        carbsPerServing: recipe.carbsPerServing,
+        fatPerServing: recipe.fatPerServing,
+      },
+      userProfile: mainProfile,
+    })
 
     return NextResponse.json({
-      analysis: 'Feature not yet implemented. Please add macro values manually.',
-      message: 'Macro analysis feature coming soon'
+      analysis
     })
   } catch (error) {
     console.error('Macro analysis error:', error)

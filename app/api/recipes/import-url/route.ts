@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-// TODO: Implement function
-// import { parseRecipeFromUrl } from '@/lib/claude'
+import { parseRecipeFromUrl } from '@/lib/claude'
 
 export async function POST(req: NextRequest) {
   try {
@@ -40,20 +39,18 @@ export async function POST(req: NextRequest) {
 
     const htmlContent = await response.text()
 
-    // TODO: Implement parseRecipeFromUrl function
     // Parse recipe using Claude
-    // const parsedRecipe = await parseRecipeFromUrl(url, htmlContent)
-    //
+    const parsedRecipe = await parseRecipeFromUrl(url, htmlContent)
+
     // Add the source URL to the parsed recipe
-    // const recipeData = {
-    //   ...parsedRecipe,
-    //   sourceUrl: url,
-    //   recipeSource: new URL(url).hostname
-    // }
+    const recipeData = {
+      ...parsedRecipe,
+      sourceUrl: url,
+      recipeSource: new URL(url).hostname
+    }
 
     return NextResponse.json({
-      recipe: null,
-      message: 'URL import feature not yet implemented'
+      recipe: recipeData
     })
   } catch (error: any) {
     console.error('Error importing recipe from URL:', error)
