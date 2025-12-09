@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { Inter } from 'next/font/google'
 import "./globals.css";
-// import { SessionProvider } from "@/components/providers/SessionProvider";
+
+const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: "Family Meal Planner",
-  description: "Plan meals, manage recipes, and generate smart shopping lists for your family",
+  title: "familyFuel",
+  description: "AI-powered family meal planning with smart recipes, macro tracking, and intelligent shopping lists",
 };
 
 export default function RootLayout({
@@ -13,11 +15,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className="font-sans antialiased">
-        {/* <SessionProvider> */}
-          {children}
-        {/* </SessionProvider> */}
+    <html lang="en" className="dark">
+      <body className={`${inter.className} antialiased`}>
+        {children}
       </body>
     </html>
   );

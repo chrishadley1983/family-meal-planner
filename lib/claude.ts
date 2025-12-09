@@ -1,4 +1,12 @@
 import Anthropic from '@anthropic-ai/sdk'
+import {
+  MealPlanSettings,
+  RecipeUsageHistory,
+  InventoryItem,
+  QuickOptions,
+  DEFAULT_SETTINGS
+} from './types/meal-plan-settings'
+import { buildMealPlanPrompt } from './meal-plan-prompt-builder'
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY
@@ -9,60 +17,165 @@ export async function generateMealPlan(params: {
   recipes: any[]
   weekStartDate: string
   preferences?: any
+  weekProfileSchedules?: any[]
+  settings?: MealPlanSettings
+  recipeHistory?: RecipeUsageHistory[]
+  inventory?: InventoryItem[]
+  quickOptions?: QuickOptions
 }) {
-  const { profiles, recipes, weekStartDate, preferences } = params
+  const {
+    profiles,
+    recipes,
+    weekStartDate,
+    preferences,
+    weekProfileSchedules,
+    settings = DEFAULT_SETTINGS,
+    recipeHistory = [],
+    inventory = [],
+    quickOptions
+  } = params
 
-  const prompt = `You are a family meal planning assistant. Generate a weekly meal plan based on the following information:
+  // Calculate which meals need to be planned based on all family profiles
+  type MealSchedule = {
+    monday: string[]
+    tuesday: string[]
+    wednesday: string[]
+    thursday: string[]
+    friday: string[]
+    saturday: string[]
+    sunday: string[]
+  }
 
-FAMILY PROFILES:
-${profiles.map((p, i) => `
-Profile ${i + 1}: ${p.profileName}
-- Age: ${p.age || 'Not specified'}
-- Food Likes: ${p.foodLikes.join(', ') || 'None specified'}
-- Food Dislikes: ${p.foodDislikes.join(', ') || 'None specified'}
-- Activity Level: ${p.activityLevel || 'Not specified'}
-${p.macroTrackingEnabled ? `- Daily Targets: ${p.dailyCalorieTarget || 0} cal, ${p.dailyProteinTarget || 0}g protein` : ''}
-`).join('\n')}
+  const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 
-AVAILABLE RECIPES:
-${recipes.map((r, i) => `
-${i + 1}. ${r.recipeName} (ID: ${r.id})
-   - Servings: ${r.servings}
-   - Time: ${r.totalTimeMinutes || 'N/A'} min
-   - Categories: ${r.mealCategory.join(', ')}
-   - Rating: ${r.familyRating || 'Not rated'}
-   - Ingredients: ${r.ingredients.map((ing: any) => ing.ingredientName).slice(0, 5).join(', ')}...
-`).join('\n')}
+  // Use weekProfileSchedules if provided, otherwise build from profiles
+  let activeProfiles: any[]
+  let mealScheduleUnion: MealSchedule
+  let servingsMap: Record<string, Record<string, number>> = {} // day -> mealType -> count
 
-WEEK START DATE: ${weekStartDate}
+  if (weekProfileSchedules && weekProfileSchedules.length > 0) {
+    // Use the provided per-person schedules for this week
+    activeProfiles = weekProfileSchedules.filter((ps: any) => ps.included)
 
-Generate a meal plan for the week with Dinner for each day (Monday through Sunday). For each meal:
-1. Select an appropriate recipe from the available recipes
-2. Consider family preferences and dietary needs
-3. Provide variety throughout the week
-4. Balance nutrition across the week
-
-Return ONLY a valid JSON object in this exact format:
-{
-  "meals": [
-    {
-      "dayOfWeek": "Monday",
-      "mealType": "Dinner",
-      "recipeId": "recipe-id-from-list",
-      "recipeName": "Recipe Name",
-      "servings": 4,
-      "notes": "Brief note about why this meal was chosen"
+    mealScheduleUnion = {
+      monday: [],
+      tuesday: [],
+      wednesday: [],
+      thursday: [],
+      friday: [],
+      saturday: [],
+      sunday: []
     }
-  ],
-  "summary": "Brief summary of the meal plan strategy and nutritional balance"
-}
 
-Important: Return ONLY the JSON object, no other text.`
+    // Build union and count servings
+    daysOfWeek.forEach(day => {
+      servingsMap[day] = {}
+
+      activeProfiles.forEach(profileSchedule => {
+        const meals = profileSchedule.schedule[day] || []
+        meals.forEach((meal: string) => {
+          // Add to union if not already there
+          if (!mealScheduleUnion[day as keyof MealSchedule].includes(meal)) {
+            mealScheduleUnion[day as keyof MealSchedule].push(meal)
+          }
+          // Count servings
+          servingsMap[day][meal] = (servingsMap[day][meal] || 0) + 1
+        })
+      })
+    })
+  } else {
+    // Build union of all meal schedules from profile defaults
+    activeProfiles = profiles
+    mealScheduleUnion = {
+      monday: [],
+      tuesday: [],
+      wednesday: [],
+      thursday: [],
+      friday: [],
+      saturday: [],
+      sunday: []
+    }
+
+    // Collect schedules from all profiles and count servings
+    daysOfWeek.forEach(day => {
+      servingsMap[day] = {}
+
+      profiles.forEach(profile => {
+        const schedule = profile.mealAvailability as MealSchedule | null
+        if (schedule) {
+          const meals = schedule[day as keyof MealSchedule] || []
+          meals.forEach(meal => {
+            if (!mealScheduleUnion[day as keyof MealSchedule].includes(meal)) {
+              mealScheduleUnion[day as keyof MealSchedule].push(meal)
+            }
+            servingsMap[day][meal] = (servingsMap[day][meal] || 0) + 1
+          })
+        }
+      })
+    })
+  }
+
+  // Build schedule summary with servings for the prompt
+  const scheduleSummary = daysOfWeek.map(day => {
+    const dayCapitalized = day.charAt(0).toUpperCase() + day.slice(1)
+    const meals = mealScheduleUnion[day as keyof MealSchedule]
+    if (meals.length === 0) {
+      return `${dayCapitalized}: No meals needed`
+    }
+    const mealsWithServings = meals.map(m => {
+      const mealName = m.charAt(0).toUpperCase() + m.slice(1).replace('-', ' ')
+      const servings = servingsMap[day][m] || 1
+      return `${mealName} (${servings} ${servings === 1 ? 'person' : 'people'})`
+    })
+    return `${dayCapitalized}: ${mealsWithServings.join(', ')}`
+  }).join('\n')
+
+  // Build per-person schedule for context
+  let perPersonSchedules: string
+  if (weekProfileSchedules && weekProfileSchedules.length > 0) {
+    perPersonSchedules = weekProfileSchedules.map((ps: any, i: number) => {
+      if (!ps.included) {
+        return `Profile ${i + 1} (${ps.profileName}): EXCLUDED from this week`
+      }
+      const summary = daysOfWeek.map(day => {
+        const meals = ps.schedule[day] || []
+        return meals.length > 0 ? meals.join(', ') : 'none'
+      }).join(' | ')
+      return `Profile ${i + 1} (${ps.profileName}): ${summary}`
+    }).join('\n')
+  } else {
+    perPersonSchedules = profiles.map((p, i) => {
+      const schedule = p.mealAvailability as MealSchedule | null
+      if (!schedule) {
+        return `Profile ${i + 1} (${p.profileName}): No specific schedule`
+      }
+      const summary = daysOfWeek.map(day => {
+        const meals = schedule[day as keyof MealSchedule] || []
+        return meals.length > 0 ? meals.join(', ') : 'none'
+      }).join(' | ')
+      return `Profile ${i + 1} (${p.profileName}): ${summary}`
+    }).join('\n')
+  }
+
+  // Build the AI prompt using the new prompt builder with all advanced features
+  const prompt = buildMealPlanPrompt(
+    {
+      profiles,
+      recipes,
+      weekStartDate,
+      weekProfileSchedules: weekProfileSchedules || [],
+      settings,
+      recipeHistory,
+      inventory
+    },
+    quickOptions
+  )
 
   try {
+    console.log('🔷 Calling Claude API for meal plan generation...')
     const message = await client.messages.create({
       model: 'claude-haiku-4-5',
-      max_tokens: 2048,
+      max_tokens: 4096,
       messages: [{
         role: 'user',
         content: prompt
@@ -70,17 +183,31 @@ Important: Return ONLY the JSON object, no other text.`
     })
 
     const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
+    console.log('🟢 Claude response received, length:', responseText.length)
+    console.log('🟢 Response preview (first 500 chars):', responseText.substring(0, 500))
 
     // Extract JSON from response
     const jsonMatch = responseText.match(/\{[\s\S]*\}/)
     if (!jsonMatch) {
+      console.error('❌ No JSON found in Claude response')
+      console.error('Full response:', responseText)
       throw new Error('Failed to parse meal plan from Claude response')
     }
 
-    const mealPlan = JSON.parse(jsonMatch[0])
-    return mealPlan
+    console.log('🟢 JSON extracted, length:', jsonMatch[0].length)
+
+    try {
+      const mealPlan = JSON.parse(jsonMatch[0])
+      console.log('🟢 Meal plan parsed successfully, meals count:', mealPlan.meals?.length || 0)
+      return mealPlan
+    } catch (parseError: any) {
+      console.error('❌ JSON parse error:', parseError.message)
+      console.error('❌ Malformed JSON (first 1000 chars):', jsonMatch[0].substring(0, 1000))
+      console.error('❌ Malformed JSON (last 500 chars):', jsonMatch[0].substring(Math.max(0, jsonMatch[0].length - 500)))
+      throw new Error(`Invalid JSON from Claude: ${parseError.message}`)
+    }
   } catch (error) {
-    console.error('Error generating meal plan with Claude:', error)
+    console.error('❌ Error generating meal plan with Claude:', error)
     throw error
   }
 }
@@ -163,9 +290,16 @@ Extract and return ONLY a valid JSON object in this EXACT format:
   "servings": number,
   "prepTimeMinutes": number or null,
   "cookTimeMinutes": number or null,
-  "cuisineType": "string or null",
+  "cuisineType": "string or null (e.g., 'Pasta', 'Curry', 'Stir-fry', 'Thai', 'BBQ', 'Pizza', 'Salad')",
   "difficultyLevel": "Easy" | "Medium" | "Hard" | null,
-  "mealCategory": ["Breakfast" | "Lunch" | "Dinner" | "Snack" | "Dessert"],
+  "mealType": ["Breakfast" | "Lunch" | "Dinner" | "Snack" | "Dessert"],
+  "isVegetarian": boolean (true if no meat/seafood),
+  "isVegan": boolean (true if no animal products at all),
+  "containsMeat": boolean (true if contains beef, pork, chicken, lamb, etc.),
+  "containsSeafood": boolean (true if contains fish, shrimp, etc.),
+  "isDairyFree": boolean (true if no milk, cheese, butter, cream, yogurt),
+  "isGlutenFree": boolean (true if no wheat, flour, bread, pasta with gluten),
+  "containsNuts": boolean (true if contains any nuts or nut products),
   "ingredients": [
     {
       "ingredientName": "string",
@@ -284,23 +418,44 @@ Use standard nutrition databases for your calculations. Be as accurate as possib
   }
 }
 
-export async function analyzeRecipePhoto(imageData: string) {
-  const prompt = `You are a recipe recognition assistant. Analyze this food photo and identify the dish.
+export async function analyzeRecipePhoto(images: string[]) {
+  const imageCount = images.length
+  const prompt = `You are a recipe recognition assistant. Analyze ${imageCount === 1 ? 'this image' : `these ${imageCount} images`} and extract or identify recipe information.
 
-Based on the image, provide:
-1. The name of the dish
-2. A list of likely ingredients
-3. Suggested cuisine type
-4. Estimated difficulty level
-5. Suggested meal categories
+${imageCount > 1 ? 'Note: Multiple images are provided (e.g., front and back of a recipe card, or different angles of the dish). Use all images together to get complete information.' : ''}
+
+The image${imageCount > 1 ? 's' : ''} may contain:
+- A photo of prepared food (identify the dish and suggest recipe details)
+- A printed/handwritten recipe card (extract the text and recipe information)
+- A screenshot or photo of a recipe from a website, book, or app (extract the details)
+- Ingredient lists or cooking instructions (read and structure the information)
+
+Based on the image${imageCount > 1 ? 's' : ''}, provide:
+1. The name of the dish or recipe
+2. Ingredients (extracted directly if visible as text, or suggested if it's a food photo)
+3. Instructions (extracted directly if visible as text, or suggested if it's a food photo)
+4. Cuisine type, difficulty level, and meal categories
+
+**Important:**
+- If the image contains TEXT with recipe details, extract that information directly and accurately
+- If the image is a FOOD PHOTO without text, identify the dish and suggest likely ingredients/instructions
+- Extract exact quantities and measurements when visible in text
+- Preserve cooking instructions as written when visible
 
 Return ONLY a valid JSON object in this exact format:
 {
   "recipeName": "string",
   "description": "string",
-  "cuisineType": "string or null",
+  "cuisineType": "string or null (e.g., 'Pasta', 'Curry', 'Stir-fry', 'Thai', 'BBQ', 'Pizza', 'Salad')",
   "difficultyLevel": "Easy" | "Medium" | "Hard",
-  "mealCategory": ["Breakfast" | "Lunch" | "Dinner" | "Snack" | "Dessert"],
+  "mealType": ["Breakfast" | "Lunch" | "Dinner" | "Snack" | "Dessert"],
+  "isVegetarian": boolean,
+  "isVegan": boolean,
+  "containsMeat": boolean,
+  "containsSeafood": boolean,
+  "isDairyFree": boolean,
+  "isGlutenFree": boolean,
+  "containsNuts": boolean,
   "suggestedIngredients": [
     {
       "ingredientName": "string",
@@ -316,29 +471,38 @@ Return ONLY a valid JSON object in this exact format:
   ]
 }
 
-Be specific and practical in your suggestions.`
+Be accurate when extracting text, and be specific and practical when suggesting details from food photos.`
 
   try {
+    // Build content array with all images followed by the prompt
+    const content: any[] = []
+
+    // Add all images to content
+    for (const imageData of images) {
+      content.push({
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: imageData.startsWith('data:image/png') ? 'image/png' :
+                     imageData.startsWith('data:image/jpeg') ? 'image/jpeg' :
+                     imageData.startsWith('data:image/jpg') ? 'image/jpeg' : 'image/jpeg',
+          data: imageData.replace(/^data:image\/\w+;base64,/, '')
+        }
+      })
+    }
+
+    // Add text prompt after images
+    content.push({
+      type: 'text',
+      text: prompt
+    })
+
     const message = await client.messages.create({
       model: 'claude-haiku-4-5',
       max_tokens: 2048,
       messages: [{
         role: 'user',
-        content: [
-          {
-            type: 'image',
-            source: {
-              type: 'base64',
-              media_type: imageData.startsWith('data:image/png') ? 'image/png' :
-                         imageData.startsWith('data:image/jpeg') ? 'image/jpeg' : 'image/jpeg',
-              data: imageData.replace(/^data:image\/\w+;base64,/, '')
-            }
-          },
-          {
-            type: 'text',
-            text: prompt
-          }
-        ]
+        content
       }]
     })
 
@@ -354,6 +518,94 @@ Be specific and practical in your suggestions.`
     return recipe
   } catch (error) {
     console.error('Error analyzing recipe photo with Claude:', error)
+    throw error
+  }
+}
+
+export async function analyzeRecipeText(text: string) {
+  const prompt = `You are a recipe parsing assistant. Parse the following recipe text and extract structured recipe information.
+
+The text may be formatted in various ways:
+- Traditional recipe format with clear "Ingredients:" and "Instructions:" sections
+- Casual recipe shared in an email or message
+- Recipe from a cookbook or magazine
+- Incomplete or partial recipe information
+
+Extract as much information as possible from the text:
+
+Recipe Text:
+---
+${text}
+---
+
+Return ONLY a valid JSON object in this exact format:
+{
+  "recipeName": "string",
+  "description": "string (brief description of the dish)",
+  "servings": number (extract if mentioned, otherwise estimate based on quantities, default to 4),
+  "prepTimeMinutes": number or null (extract if mentioned),
+  "cookTimeMinutes": number or null (extract if mentioned),
+  "cuisineType": "string or null (e.g., 'Italian', 'Mexican', 'Asian', 'American', 'Mediterranean')",
+  "difficultyLevel": "Easy" | "Medium" | "Hard" (based on complexity of instructions)",
+  "mealType": ["Breakfast" | "Lunch" | "Dinner" | "Snack" | "Dessert"],
+  "isVegetarian": boolean,
+  "isVegan": boolean,
+  "containsMeat": boolean,
+  "containsSeafood": boolean,
+  "isDairyFree": boolean,
+  "isGlutenFree": boolean,
+  "containsNuts": boolean,
+  "ingredients": [
+    {
+      "ingredientName": "string",
+      "quantity": number,
+      "unit": "string (e.g., 'cup', 'tbsp', 'tsp', 'g', 'ml', 'oz', 'lb', 'piece', '')"
+    }
+  ],
+  "instructions": [
+    {
+      "stepNumber": number,
+      "instruction": "string"
+    }
+  ]
+}
+
+**Important:**
+- Extract exact quantities and measurements from the text
+- Preserve the cooking instructions as written
+- If ingredient quantities are missing, estimate reasonable amounts
+- If instructions are missing, provide basic cooking steps
+- Parse various formats: "2 cups", "2c", "2 C", "two cups" should all become quantity: 2, unit: "cup"
+- Normalize units: "tablespoon"/"Tbsp"/"T" → "tbsp", "teaspoon"/"tsp"/"t" → "tsp"
+- Infer dietary properties from ingredients`
+
+  try {
+    console.log('🔷 Calling Claude API to parse recipe text...')
+
+    const message = await client.messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 2048,
+      messages: [{
+        role: 'user',
+        content: prompt
+      }]
+    })
+
+    const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
+    console.log('🟢 Claude response received, length:', responseText.length)
+
+    // Extract JSON from response
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      throw new Error('No valid JSON found in Claude response')
+    }
+
+    const recipe = JSON.parse(jsonMatch[0])
+    console.log('🟢 Recipe parsed successfully:', recipe.recipeName)
+
+    return recipe
+  } catch (error) {
+    console.error('❌ Error parsing recipe text with Claude:', error)
     throw error
   }
 }
@@ -465,7 +717,7 @@ export async function getNutritionistFeedbackForRecipe(params: {
     recipeName: string
     description?: string | null
     servings: number
-    mealCategory: string[]
+    mealType: string[]
     ingredients: Array<{
       ingredientName: string
       quantity: number
@@ -477,7 +729,7 @@ export async function getNutritionistFeedbackForRecipe(params: {
     age?: number | null
     activityLevel?: string | null
     allergies: any
-    foodDislikes?: string | null
+    foodDislikes: string[]
     dailyCalorieTarget?: number | null
     dailyProteinTarget?: number | null
     dailyCarbsTarget?: number | null
@@ -507,7 +759,7 @@ Name: ${userProfile.profileName}
 Age: ${userProfile.age || 'Not specified'}
 Activity Level: ${userProfile.activityLevel || 'Moderate'}
 Allergies: ${allergies.length > 0 ? allergies.join(', ') : 'None'}
-Dislikes: ${userProfile.foodDislikes || 'None specified'}
+Dislikes: ${userProfile.foodDislikes.length > 0 ? userProfile.foodDislikes.join(', ') : 'None specified'}
 ${userProfile.macroTrackingEnabled ? `
 Daily Targets:
 - Calories: ${userProfile.dailyCalorieTarget} kcal
@@ -519,7 +771,7 @@ Daily Targets:
 RECIPE:
 Name: ${recipe.recipeName}
 ${recipe.description || ''}
-Meal Type: ${recipe.mealCategory.join(', ')}
+Meal Type: ${Array.isArray(recipe.mealType) ? recipe.mealType.join(', ') : 'Not specified'}
 Servings: ${recipe.servings}
 
 NUTRITION PER SERVING:

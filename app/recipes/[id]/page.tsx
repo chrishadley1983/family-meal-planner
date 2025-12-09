@@ -5,6 +5,7 @@ import { use } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
+import { generateRecipeSVG } from '@/lib/generate-recipe-image'
 
 interface RecipePageProps {
   params: Promise<{ id: string }>
@@ -47,10 +48,12 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
   const [cookTimeMinutes, setCookTimeMinutes] = useState<number | ''>('')
   const [cuisineType, setCuisineType] = useState('')
   const [difficultyLevel, setDifficultyLevel] = useState('')
-  const [mealCategory, setMealCategory] = useState<string[]>([])
+  const [mealType, setMealCategory] = useState<string[]>([])
   const [notes, setNotes] = useState('')
   const [ingredients, setIngredients] = useState<any[]>([])
   const [instructions, setInstructions] = useState<any[]>([])
+  const [imageUrl, setImageUrl] = useState('')
+  const [imagePreview, setImagePreview] = useState('')
 
   // AI Features state
   const [macroAnalysis, setMacroAnalysis] = useState<MacroAnalysis | null>(null)
@@ -62,6 +65,11 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
     ingredients: any[]
     instructions: any[]
   }>>([])
+
+  // Ingredient scaling state
+  const [scaleIngredients, setScaleIngredients] = useState(false)
+  const [baseServings, setBaseServings] = useState(4)
+  const [baseIngredients, setBaseIngredients] = useState<any[]>([])
 
   const mealCategories = ['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert']
 
@@ -105,7 +113,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
             recipe: {
               recipeName: recipeData.recipeName,
               servings: recipeData.servings,
-              mealCategory: recipeData.mealCategory,
+              mealType: recipeData.mealType,
               ingredients: recipeData.ingredients
             },
             macroAnalysis: macroData.analysis
@@ -156,11 +164,26 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
       // Debounce the analysis fetch
       const timer = setTimeout(() => {
         console.log('🔄 Auto-refreshing AI analysis while editing')
-        fetchAIAnalysis({ recipeName, servings, ingredients, mealCategory })
+        fetchAIAnalysis({ recipeName, servings, ingredients, mealType })
       }, 1500)
       return () => clearTimeout(timer)
     }
-  }, [isEditing, recipeName, ingredients, servings, mealCategory])
+  }, [isEditing, recipeName, ingredients, servings, mealType])
+
+  // Scale ingredients when servings change (if scaling is enabled)
+  useEffect(() => {
+    if (scaleIngredients && baseServings > 0 && baseIngredients.length > 0) {
+      const ratio = servings / baseServings
+      console.log('📏 Scaling ingredients by ratio:', ratio, 'from', baseServings, 'to', servings)
+
+      const scaledIngredients = baseIngredients.map(ing => ({
+        ...ing,
+        quantity: parseFloat((ing.quantity * ratio).toFixed(2))
+      }))
+
+      setIngredients(scaledIngredients)
+    }
+  }, [servings, scaleIngredients, baseServings, baseIngredients])
 
   const fetchRecipe = async () => {
     console.log('📥 fetchRecipe called for id:', id)
@@ -184,10 +207,12 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
       setCookTimeMinutes(data.recipe.cookTimeMinutes || '')
       setCuisineType(data.recipe.cuisineType || '')
       setDifficultyLevel(data.recipe.difficultyLevel || '')
-      setMealCategory(data.recipe.mealCategory || [])
+      setMealCategory(data.recipe.mealType || [])
       setNotes(data.recipe.notes || '')
       setIngredients(data.recipe.ingredients || [])
       setInstructions(data.recipe.instructions || [])
+      setImageUrl(data.recipe.imageUrl || '')
+      setImagePreview(data.recipe.imageUrl || '')
     } catch (err) {
       console.error('❌ Error in fetchRecipe:', err)
       router.push('/recipes')
@@ -250,6 +275,14 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
 
   const handleSaveEdit = async () => {
     setSaving(true)
+
+    const macroData = {
+      caloriesPerServing: macroAnalysis?.perServing?.calories ? Math.round(macroAnalysis.perServing.calories) : null,
+      proteinPerServing: macroAnalysis?.perServing?.protein ? Math.round(macroAnalysis.perServing.protein * 10) / 10 : null,
+      carbsPerServing: macroAnalysis?.perServing?.carbs ? Math.round(macroAnalysis.perServing.carbs * 10) / 10 : null,
+      fatPerServing: macroAnalysis?.perServing?.fat ? Math.round(macroAnalysis.perServing.fat * 10) / 10 : null,
+    }
+
     try {
       const response = await fetch(`/api/recipes/${id}`, {
         method: 'PUT',
@@ -262,8 +295,16 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
           cookTimeMinutes: cookTimeMinutes || null,
           cuisineType: cuisineType || null,
           difficultyLevel: difficultyLevel || null,
-          mealCategory,
+          mealType,
           notes: notes || null,
+          imageUrl: imageUrl || null,
+          caloriesPerServing: macroData.caloriesPerServing,
+          proteinPerServing: macroData.proteinPerServing,
+          carbsPerServing: macroAnalysis?.perServing?.carbs ? Math.round(macroAnalysis.perServing.carbs * 10) / 10 : null,
+          fatPerServing: macroAnalysis?.perServing?.fat ? Math.round(macroAnalysis.perServing.fat * 10) / 10 : null,
+          fiberPerServing: macroAnalysis?.perServing?.fiber ? Math.round(macroAnalysis.perServing.fiber * 10) / 10 : null,
+          sugarPerServing: macroAnalysis?.perServing?.sugar ? Math.round(macroAnalysis.perServing.sugar * 10) / 10 : null,
+          sodiumPerServing: macroAnalysis?.perServing?.sodium ? Math.round(macroAnalysis.perServing.sodium) : null,
           ingredients: ingredients.filter(i => i.ingredientName && i.unit),
           instructions: instructions.filter(i => i.instruction)
         })
@@ -294,10 +335,12 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
       setCookTimeMinutes(recipe.cookTimeMinutes || '')
       setCuisineType(recipe.cuisineType || '')
       setDifficultyLevel(recipe.difficultyLevel || '')
-      setMealCategory(recipe.mealCategory || [])
+      setMealCategory(recipe.mealType || [])
       setNotes(recipe.notes || '')
       setIngredients(recipe.ingredients || [])
       setInstructions(recipe.instructions || [])
+      setImageUrl(recipe.imageUrl || '')
+      setImagePreview(recipe.imageUrl || '')
     }
   }
 
@@ -320,6 +363,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
   }
 
   const addIngredient = () => {
+    saveToHistory()
     setIngredients([...ingredients, { ingredientName: '', quantity: 1, unit: '', notes: '' }])
   }
 
@@ -329,12 +373,14 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
   }
 
   const updateIngredient = (index: number, field: string, value: any) => {
+    saveToHistory()
     const updated = [...ingredients]
     updated[index] = { ...updated[index], [field]: value }
     setIngredients(updated)
   }
 
   const addInstruction = () => {
+    saveToHistory()
     setInstructions([...instructions, { stepNumber: instructions.length + 1, instruction: '' }])
   }
 
@@ -346,6 +392,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
   }
 
   const updateInstruction = (index: number, value: string) => {
+    saveToHistory()
     const updated = [...instructions]
     updated[index] = { ...updated[index], instruction: value }
     setInstructions(updated)
@@ -357,6 +404,24 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
         ? prev.filter(c => c !== category)
         : [...prev, category]
     )
+  }
+
+  const handleRecipeImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Image too large. Please use an image under 5MB.')
+        return
+      }
+
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        const base64String = reader.result as string
+        setImageUrl(base64String)
+        setImagePreview(base64String)
+      }
+      reader.readAsDataURL(file)
+    }
   }
 
   if (loading) {
@@ -403,6 +468,40 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                   />
                 ) : (
                   recipe.description && <p className="text-gray-600">{recipe.description}</p>
+                )}
+
+                {/* Recipe Image */}
+                {isEditing ? (
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Recipe Image</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleRecipeImageChange}
+                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+                    {imagePreview && (
+                      <div className="mt-2 relative h-48 w-full bg-gray-100 rounded-md overflow-hidden">
+                        <Image
+                          src={imagePreview}
+                          alt="Recipe preview"
+                          fill
+                          className="object-cover"
+                          unoptimized={imagePreview.startsWith('data:')}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="mt-4 relative h-64 w-full bg-gray-100 rounded-md overflow-hidden">
+                    <Image
+                      src={recipe.imageUrl || generateRecipeSVG(recipe.recipeName, recipe.mealType)}
+                      alt={recipe.recipeName}
+                      fill
+                      className="object-cover"
+                      unoptimized={(recipe.imageUrl || '').startsWith('data:')}
+                    />
+                  </div>
                 )}
               </div>
               <div className="flex items-center space-x-3 ml-4">
@@ -478,13 +577,32 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
               <div>
                 <p className="text-sm text-gray-500">Servings</p>
                 {isEditing ? (
-                  <input
-                    type="number"
-                    value={servings}
-                    onChange={(e) => setServings(parseInt(e.target.value) || 1)}
-                    min="1"
-                    className="text-lg font-semibold w-full border rounded px-2 py-1"
-                  />
+                  <>
+                    <input
+                      type="number"
+                      value={servings}
+                      onChange={(e) => setServings(parseInt(e.target.value) || 1)}
+                      min="1"
+                      className="text-lg font-semibold w-full border rounded px-2 py-1"
+                    />
+                    <label className="flex items-center mt-2 text-xs text-gray-600 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={scaleIngredients}
+                        onChange={(e) => {
+                          const checked = e.target.checked
+                          setScaleIngredients(checked)
+                          if (checked) {
+                            // Save current state as baseline
+                            setBaseServings(servings)
+                            setBaseIngredients(JSON.parse(JSON.stringify(ingredients)))
+                          }
+                        }}
+                        className="mr-1"
+                      />
+                      Scale ingredients
+                    </label>
+                  </>
                 ) : (
                   <p className="text-lg font-semibold">{recipe.servings}</p>
                 )}
@@ -571,7 +689,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                         type="button"
                         onClick={() => toggleCategory(cat)}
                         className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          mealCategory.includes(cat)
+                          mealType.includes(cat)
                             ? 'bg-blue-600 text-white'
                             : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                         }`}
@@ -581,9 +699,9 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                     ))}
                   </div>
                 ) : (
-                  recipe.mealCategory.length > 0 && (
+                  recipe.mealType.length > 0 && (
                     <div className="flex flex-wrap gap-2">
-                      {recipe.mealCategory.map((cat: string) => (
+                      {recipe.mealType.map((cat: string) => (
                         <span key={cat} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                           {cat}
                         </span>
@@ -601,7 +719,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                 <div className="flex gap-2">
                   {!macroAnalysis && !loadingAI && (
                     <button
-                      onClick={() => fetchAIAnalysis(isEditing ? { recipeName, servings, ingredients, mealCategory } : recipe)}
+                      onClick={() => fetchAIAnalysis(isEditing ? { recipeName, servings, ingredients, mealType } : recipe)}
                       className="px-3 py-1 bg-green-600 text-white rounded-md text-sm hover:bg-green-700"
                     >
                       Analyze Nutrition
@@ -625,7 +743,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                       <div key={index} className="flex items-center gap-2">
                         {rating && (
                           <div className="flex items-center" title={rating.reason}>
-                            <span className={`inline-block w-3 h-3 rounded-full ${getTrafficLightClass(rating.rating)}`}></span>
+                            <div className={`w-3 h-3 rounded-full ${getTrafficLightClass(rating.rating)}`}></div>
                           </div>
                         )}
                         <div className="flex-1 grid grid-cols-12 gap-2 items-center">
@@ -677,7 +795,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                       <li key={index} className="flex items-start">
                         {rating && (
                           <div className="flex items-center mr-2" title={rating.reason}>
-                            <span className={`inline-block w-3 h-3 rounded-full ${getTrafficLightClass(rating.rating)}`}></span>
+                            <div className={`w-3 h-3 rounded-full ${getTrafficLightClass(rating.rating)}`}></div>
                           </div>
                         )}
                         <span className="text-gray-400 mr-3">•</span>
@@ -701,7 +819,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                     <h3 className="font-bold text-gray-900">Nutritional Analysis (per serving)</h3>
                     <div className="flex items-center space-x-2">
                       <span className="text-sm font-medium text-gray-600">Overall Rating:</span>
-                      <span className={`inline-block w-4 h-4 rounded-full ${getTrafficLightClass(macroAnalysis.overallRating)}`}></span>
+                      <div className={`w-4 h-4 rounded-full ${getTrafficLightClass(macroAnalysis.overallRating)}`}></div>
                     </div>
                   </div>
 

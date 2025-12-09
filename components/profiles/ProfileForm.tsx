@@ -3,6 +3,16 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
+type MealSchedule = {
+  monday: string[]
+  tuesday: string[]
+  wednesday: string[]
+  thursday: string[]
+  friday: string[]
+  saturday: string[]
+  sunday: string[]
+}
+
 interface ProfileFormData {
   profileName: string
   age?: number
@@ -10,6 +20,7 @@ interface ProfileFormData {
   foodLikes: string[]
   foodDislikes: string[]
   allergies: any[]
+  mealAvailability?: MealSchedule
   dailyCalorieTarget?: number
   dailyProteinTarget?: number
   dailyCarbsTarget?: number
@@ -29,6 +40,17 @@ export default function ProfileForm({ initialData, profileId, mode }: ProfileFor
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  // Default meal schedule: Breakfast, Lunch, Dinner for all days
+  const defaultMealSchedule: MealSchedule = {
+    monday: ['breakfast', 'lunch', 'dinner'],
+    tuesday: ['breakfast', 'lunch', 'dinner'],
+    wednesday: ['breakfast', 'lunch', 'dinner'],
+    thursday: ['breakfast', 'lunch', 'dinner'],
+    friday: ['breakfast', 'lunch', 'dinner'],
+    saturday: ['breakfast', 'lunch', 'dinner'],
+    sunday: ['breakfast', 'lunch', 'dinner'],
+  }
+
   const [formData, setFormData] = useState<ProfileFormData>({
     profileName: initialData?.profileName || '',
     age: initialData?.age || undefined,
@@ -36,6 +58,7 @@ export default function ProfileForm({ initialData, profileId, mode }: ProfileFor
     foodLikes: initialData?.foodLikes || [],
     foodDislikes: initialData?.foodDislikes || [],
     allergies: initialData?.allergies || [],
+    mealAvailability: (initialData as any)?.mealAvailability || defaultMealSchedule,
     dailyCalorieTarget: initialData?.dailyCalorieTarget || undefined,
     dailyProteinTarget: initialData?.dailyProteinTarget || undefined,
     dailyCarbsTarget: initialData?.dailyCarbsTarget || undefined,
@@ -113,6 +136,48 @@ export default function ProfileForm({ initialData, profileId, mode }: ProfileFor
       ...formData,
       foodDislikes: formData.foodDislikes.filter((_, i) => i !== index)
     })
+  }
+
+  // Meal schedule helpers
+  const toggleMeal = (day: keyof MealSchedule, mealType: string) => {
+    const currentMeals = formData.mealAvailability?.[day] || []
+    const newMeals = currentMeals.includes(mealType)
+      ? currentMeals.filter(m => m !== mealType)
+      : [...currentMeals, mealType]
+
+    setFormData({
+      ...formData,
+      mealAvailability: {
+        ...formData.mealAvailability!,
+        [day]: newMeals
+      }
+    })
+  }
+
+  const setAllMeals = (mealTypes: string[]) => {
+    const newSchedule: MealSchedule = {
+      monday: [...mealTypes],
+      tuesday: [...mealTypes],
+      wednesday: [...mealTypes],
+      thursday: [...mealTypes],
+      friday: [...mealTypes],
+      saturday: [...mealTypes],
+      sunday: [...mealTypes],
+    }
+    setFormData({ ...formData, mealAvailability: newSchedule })
+  }
+
+  const clearAllMeals = () => {
+    const emptySchedule: MealSchedule = {
+      monday: [],
+      tuesday: [],
+      wednesday: [],
+      thursday: [],
+      friday: [],
+      saturday: [],
+      sunday: [],
+    }
+    setFormData({ ...formData, mealAvailability: emptySchedule })
   }
 
   return (
@@ -373,6 +438,91 @@ export default function ProfileForm({ initialData, profileId, mode }: ProfileFor
             </div>
           </div>
         )}
+      </div>
+
+      {/* Meal Schedule Section */}
+      <div className="bg-white shadow-sm rounded-lg p-6 space-y-6">
+        <div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Meal Schedule</h3>
+          <p className="text-sm text-gray-500 mb-4">
+            Select which meals {formData.profileName || 'this person'} needs planned for each day of the week.
+            This schedule will be used when generating weekly meal plans.
+          </p>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setAllMeals(['breakfast', 'lunch', 'dinner'])}
+            className="px-3 py-1 text-sm bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100"
+          >
+            All Main Meals
+          </button>
+          <button
+            type="button"
+            onClick={() => setAllMeals(['breakfast', 'morning-snack', 'lunch', 'afternoon-snack', 'dinner', 'dessert', 'evening-snack'])}
+            className="px-3 py-1 text-sm bg-green-50 text-green-700 rounded-md hover:bg-green-100"
+          >
+            All Meals + Snacks
+          </button>
+          <button
+            type="button"
+            onClick={clearAllMeals}
+            className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
+          >
+            Clear All
+          </button>
+        </div>
+
+        {/* Meal Schedule Grid */}
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40">
+                  Meal Type
+                </th>
+                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                  <th key={day} className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {day}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {[
+                { key: 'breakfast', label: 'Breakfast' },
+                { key: 'morning-snack', label: 'Morning Snack' },
+                { key: 'lunch', label: 'Lunch' },
+                { key: 'afternoon-snack', label: 'Afternoon Snack' },
+                { key: 'dinner', label: 'Dinner' },
+                { key: 'dessert', label: 'Dessert' },
+                { key: 'evening-snack', label: 'Evening Snack' },
+              ].map(meal => (
+                <tr key={meal.key} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {meal.label}
+                  </td>
+                  {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => (
+                    <td key={day} className="px-2 py-3 whitespace-nowrap text-center">
+                      <input
+                        type="checkbox"
+                        checked={formData.mealAvailability?.[day as keyof MealSchedule]?.includes(meal.key) || false}
+                        onChange={() => toggleMeal(day as keyof MealSchedule, meal.key)}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
+                      />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <p className="text-xs text-gray-400 italic">
+          💡 Tip: This is the default schedule. You can override it for specific weeks in the meal planner.
+        </p>
       </div>
 
       <div className="flex justify-end space-x-4">

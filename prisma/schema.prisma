@@ -17,13 +17,15 @@ model User {
   lastLogin     DateTime?
   preferences   Json      @default("{}")
 
-  profiles      FamilyProfile[]
-  recipes       Recipe[]
-  mealPlans     MealPlan[]
-  shoppingLists ShoppingList[]
-  inventory     InventoryItem[]
-  staples       WeeklyStaple[]
-  settings      AppSettings?
+  profiles          FamilyProfile[]
+  recipes           Recipe[]
+  mealPlans         MealPlan[]
+  shoppingLists     ShoppingList[]
+  inventory         InventoryItem[]
+  staples           WeeklyStaple[]
+  settings          AppSettings?
+  mealPlanSettings  MealPlanSettings?
+  recipeHistory     RecipeUsageHistory[]
 
   @@map("users")
 }
@@ -69,7 +71,7 @@ model Recipe {
   cookTimeMinutes         Int?
   totalTimeMinutes        Int?
   cuisineType             String?
-  mealCategory            String[]
+  mealType                String[]
   difficultyLevel         String?
   recipeSource            String?
   sourceUrl               String?
@@ -80,6 +82,14 @@ model Recipe {
   ratingDate              DateTime?
   notes                   String?
   tags                    String[]
+  isVegetarian            Boolean  @default(false)
+  isVegan                 Boolean  @default(false)
+  containsMeat            Boolean  @default(false)
+  containsSeafood         Boolean  @default(false)
+  isDairyFree             Boolean  @default(false)
+  isGlutenFree            Boolean  @default(false)
+  containsNuts            Boolean  @default(false)
+  isQuickMeal             Boolean  @default(false)
   yieldsMultipleMeals     Boolean  @default(false)
   mealsYielded            Int?
   leftoverInstructions    String?
@@ -103,6 +113,7 @@ model Recipe {
   instructions            RecipeInstruction[]
   profileCompatibility    RecipeProfileCompatibility[]
   meals                   Meal[]
+  usageHistory            RecipeUsageHistory[]
 
   @@index([userId])
   @@index([familyRating])
@@ -159,6 +170,7 @@ model MealPlan {
   weekStartDate            DateTime
   weekEndDate              DateTime
   status                   String   @default("Draft")
+  customSchedule           Json?
   createdAt                DateTime @default(now())
   finalizedAt              DateTime?
   weeklyNutritionalSummary Json     @default("{}")
@@ -166,6 +178,7 @@ model MealPlan {
   user                     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   meals                    Meal[]
   shoppingLists            ShoppingList[]
+  recipeHistory            RecipeUsageHistory[]
 
   @@index([userId])
   @@index([weekStartDate, weekEndDate])
@@ -180,6 +193,7 @@ model Meal {
   recipeId            String?
   recipeName          String?
   servings            Int?
+  servingsManuallySet Boolean  @default(false)
   scalingFactor       Float?
   isLeftover          Boolean  @default(false)
   leftoverFromMealId  String?
@@ -307,4 +321,66 @@ model AppSettings {
   user                      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("app_settings")
+}
+
+model MealPlanSettings {
+  id                String   @id @default(uuid())
+  userId            String   @unique
+
+  // Macro Targeting
+  macroMode         String   @default("balanced")
+
+  // Recipe Variety
+  varietyEnabled    Boolean  @default(true)
+  dinnerCooldown    Int      @default(14)
+  lunchCooldown     Int      @default(7)
+  breakfastCooldown Int      @default(3)
+  snackCooldown     Int      @default(2)
+  minCuisines       Int      @default(3)
+  maxSameCuisine    Int      @default(2)
+
+  // Shopping Efficiency
+  shoppingMode      String   @default("moderate")
+
+  // Inventory & Expiry
+  expiryPriority    String   @default("moderate")
+  expiryWindow      Int      @default(5)
+  useItUpItems      String[] @default([])
+
+  // Batch Cooking
+  batchCookingEnabled Boolean @default(true)
+  maxLeftoverDays   Int      @default(4)
+
+  // Priority Ordering
+  priorityOrder     String[] @default(["macros", "ratings", "variety", "shopping", "prep", "time"])
+
+  // Sarah's Feedback
+  feedbackDetail    String   @default("medium")
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("meal_plan_settings")
+}
+
+model RecipeUsageHistory {
+  id          String   @id @default(uuid())
+  userId      String
+  recipeId    String
+  mealPlanId  String
+  usedDate    DateTime
+  mealType    String
+  wasManual   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe      Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  mealPlan    MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, recipeId, mealPlanId, usedDate])
+  @@index([userId, recipeId, usedDate])
+  @@index([userId, usedDate])
+  @@map("recipe_usage_history")
 }
