@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
 type MealSchedule = {
@@ -70,6 +70,28 @@ export default function ProfileForm({ initialData, profileId, mode }: ProfileFor
 
   const [newFoodLike, setNewFoodLike] = useState('')
   const [newFoodDislike, setNewFoodDislike] = useState('')
+
+  // Update form data when initialData changes (for edit mode)
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        profileName: initialData.profileName || '',
+        age: initialData.age || undefined,
+        activityLevel: initialData.activityLevel || '',
+        foodLikes: initialData.foodLikes || [],
+        foodDislikes: initialData.foodDislikes || [],
+        allergies: initialData.allergies || [],
+        mealAvailability: (initialData as any)?.mealAvailability || defaultMealSchedule,
+        dailyCalorieTarget: initialData.dailyCalorieTarget || undefined,
+        dailyProteinTarget: initialData.dailyProteinTarget || undefined,
+        dailyCarbsTarget: initialData.dailyCarbsTarget || undefined,
+        dailyFatTarget: initialData.dailyFatTarget || undefined,
+        dailyFiberTarget: initialData.dailyFiberTarget || undefined,
+        macroTrackingEnabled: initialData.macroTrackingEnabled || false,
+        isMainUser: (initialData as any)?.isMainUser || false,
+      })
+    }
+  }, [initialData])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
