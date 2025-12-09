@@ -205,49 +205,49 @@ export default function ProfileForm({ initialData, profileId, mode }: ProfileFor
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
-        <div className="rounded-md bg-red-50 p-4">
-          <p className="text-sm text-red-800">{error}</p>
+        <div className="rounded-md bg-red-900/20 border border-red-900/50 p-4">
+          <p className="text-sm text-red-400">{error}</p>
         </div>
       )}
 
-      <div className="bg-white shadow-sm rounded-lg p-6 space-y-6">
-        <h3 className="text-lg font-medium text-gray-900">Basic Information</h3>
+      <div className="card p-6 space-y-6">
+        <h3 className="text-lg font-medium text-white">Basic Information</h3>
 
         <div>
-          <label htmlFor="profileName" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="profileName" className="block text-sm font-medium text-zinc-300">
             Profile Name *
           </label>
           <input
             type="text"
             id="profileName"
             required
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border"
+            className="mt-1 block w-full rounded-lg bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-500 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 sm:text-sm px-3 py-2"
             value={formData.profileName}
             onChange={(e) => setFormData({ ...formData, profileName: e.target.value })}
           />
         </div>
 
         <div>
-          <label htmlFor="age" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="age" className="block text-sm font-medium text-zinc-300">
             Age
           </label>
           <input
             type="number"
             id="age"
             min="0"
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border"
+            className="mt-1 block w-full rounded-lg bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-500 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 sm:text-sm px-3 py-2"
             value={formData.age || ''}
             onChange={(e) => setFormData({ ...formData, age: e.target.value ? parseInt(e.target.value) : undefined })}
           />
         </div>
 
         <div>
-          <label htmlFor="activityLevel" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="activityLevel" className="block text-sm font-medium text-zinc-300">
             Activity Level
           </label>
           <select
             id="activityLevel"
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border"
+            className="mt-1 block w-full rounded-lg bg-zinc-800 border border-zinc-700 text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 sm:text-sm px-3 py-2"
             value={formData.activityLevel}
             onChange={(e) => setFormData({ ...formData, activityLevel: e.target.value })}
           >
@@ -259,22 +259,22 @@ export default function ProfileForm({ initialData, profileId, mode }: ProfileFor
           </select>
         </div>
 
-        <div className="border-t pt-4">
+        <div className="border-t border-zinc-700 pt-4">
           <div className="flex items-start">
             <div className="flex items-center h-5">
               <input
                 type="checkbox"
                 id="isMainUser"
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-zinc-600 rounded bg-zinc-800"
                 checked={formData.isMainUser}
                 onChange={(e) => setFormData({ ...formData, isMainUser: e.target.checked })}
               />
             </div>
             <div className="ml-3">
-              <label htmlFor="isMainUser" className="font-medium text-gray-700">
+              <label htmlFor="isMainUser" className="font-medium text-zinc-200">
                 Set as Main User
               </label>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-zinc-400">
                 The main user's nutritional goals will be used for AI recipe analysis and nutritionist feedback.
                 Only one profile should be marked as the main user.
               </p>
@@ -283,17 +283,17 @@ export default function ProfileForm({ initialData, profileId, mode }: ProfileFor
         </div>
       </div>
 
-      <div className="bg-white shadow-sm rounded-lg p-6 space-y-6">
-        <h3 className="text-lg font-medium text-gray-900">Food Preferences</h3>
+      <div className="card p-6 space-y-6">
+        <h3 className="text-lg font-medium text-white">Food Preferences</h3>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-zinc-300 mb-2">
             Food Likes
           </label>
           <div className="flex gap-2 mb-2">
             <input
               type="text"
-              className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border"
+              className="flex-1 rounded-lg bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-500 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 sm:text-sm px-3 py-2"
               value={newFoodLike}
               onChange={(e) => setNewFoodLike(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addFoodLike())}
@@ -302,7 +302,7 @@ export default function ProfileForm({ initialData, profileId, mode }: ProfileFor
             <button
               type="button"
               onClick={addFoodLike}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
             >
               Add
             </button>
@@ -311,13 +311,13 @@ export default function ProfileForm({ initialData, profileId, mode }: ProfileFor
             {formData.foodLikes.map((item, index) => (
               <span
                 key={index}
-                className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800"
+                className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-900/30 text-green-400 border border-green-800"
               >
                 {item}
                 <button
                   type="button"
                   onClick={() => removeFoodLike(index)}
-                  className="ml-2 text-green-600 hover:text-green-800"
+                  className="ml-2 text-green-400 hover:text-green-300"
                 >
                   ×
                 </button>
@@ -327,13 +327,13 @@ export default function ProfileForm({ initialData, profileId, mode }: ProfileFor
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-zinc-300 mb-2">
             Food Dislikes
           </label>
           <div className="flex gap-2 mb-2">
             <input
               type="text"
-              className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border"
+              className="flex-1 rounded-lg bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-500 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 sm:text-sm px-3 py-2"
               value={newFoodDislike}
               onChange={(e) => setNewFoodDislike(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addFoodDislike())}
@@ -342,7 +342,7 @@ export default function ProfileForm({ initialData, profileId, mode }: ProfileFor
             <button
               type="button"
               onClick={addFoodDislike}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
             >
               Add
             </button>
@@ -351,13 +351,13 @@ export default function ProfileForm({ initialData, profileId, mode }: ProfileFor
             {formData.foodDislikes.map((item, index) => (
               <span
                 key={index}
-                className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800"
+                className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-900/30 text-red-400 border border-red-800"
               >
                 {item}
                 <button
                   type="button"
                   onClick={() => removeFoodDislike(index)}
-                  className="ml-2 text-red-600 hover:text-red-800"
+                  className="ml-2 text-red-400 hover:text-red-300"
                 >
                   ×
                 </button>
@@ -367,18 +367,18 @@ export default function ProfileForm({ initialData, profileId, mode }: ProfileFor
         </div>
       </div>
 
-      <div className="bg-white shadow-sm rounded-lg p-6 space-y-6">
-        <h3 className="text-lg font-medium text-gray-900">Nutritional Goals</h3>
+      <div className="card p-6 space-y-6">
+        <h3 className="text-lg font-medium text-white">Nutritional Goals</h3>
 
         <div className="flex items-center">
           <input
             type="checkbox"
             id="macroTrackingEnabled"
-            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-zinc-600 rounded bg-zinc-800"
             checked={formData.macroTrackingEnabled}
             onChange={(e) => setFormData({ ...formData, macroTrackingEnabled: e.target.checked })}
           />
-          <label htmlFor="macroTrackingEnabled" className="ml-2 block text-sm text-gray-900">
+          <label htmlFor="macroTrackingEnabled" className="ml-2 block text-sm text-zinc-200">
             Enable macro tracking
           </label>
         </div>
@@ -386,21 +386,21 @@ export default function ProfileForm({ initialData, profileId, mode }: ProfileFor
         {formData.macroTrackingEnabled && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
             <div>
-              <label htmlFor="dailyCalorieTarget" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="dailyCalorieTarget" className="block text-sm font-medium text-zinc-300">
                 Daily Calorie Target
               </label>
               <input
                 type="number"
                 id="dailyCalorieTarget"
                 min="0"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border"
+                className="mt-1 block w-full rounded-lg bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-500 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 sm:text-sm px-3 py-2"
                 value={formData.dailyCalorieTarget || ''}
                 onChange={(e) => setFormData({ ...formData, dailyCalorieTarget: e.target.value ? parseInt(e.target.value) : undefined })}
               />
             </div>
 
             <div>
-              <label htmlFor="dailyProteinTarget" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="dailyProteinTarget" className="block text-sm font-medium text-zinc-300">
                 Daily Protein Target (g)
               </label>
               <input
@@ -408,14 +408,14 @@ export default function ProfileForm({ initialData, profileId, mode }: ProfileFor
                 id="dailyProteinTarget"
                 min="0"
                 step="0.1"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border"
+                className="mt-1 block w-full rounded-lg bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-500 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 sm:text-sm px-3 py-2"
                 value={formData.dailyProteinTarget || ''}
                 onChange={(e) => setFormData({ ...formData, dailyProteinTarget: e.target.value ? parseFloat(e.target.value) : undefined })}
               />
             </div>
 
             <div>
-              <label htmlFor="dailyCarbsTarget" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="dailyCarbsTarget" className="block text-sm font-medium text-zinc-300">
                 Daily Carbs Target (g)
               </label>
               <input
@@ -423,14 +423,14 @@ export default function ProfileForm({ initialData, profileId, mode }: ProfileFor
                 id="dailyCarbsTarget"
                 min="0"
                 step="0.1"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border"
+                className="mt-1 block w-full rounded-lg bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-500 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 sm:text-sm px-3 py-2"
                 value={formData.dailyCarbsTarget || ''}
                 onChange={(e) => setFormData({ ...formData, dailyCarbsTarget: e.target.value ? parseFloat(e.target.value) : undefined })}
               />
             </div>
 
             <div>
-              <label htmlFor="dailyFatTarget" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="dailyFatTarget" className="block text-sm font-medium text-zinc-300">
                 Daily Fat Target (g)
               </label>
               <input
@@ -438,14 +438,14 @@ export default function ProfileForm({ initialData, profileId, mode }: ProfileFor
                 id="dailyFatTarget"
                 min="0"
                 step="0.1"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border"
+                className="mt-1 block w-full rounded-lg bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-500 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 sm:text-sm px-3 py-2"
                 value={formData.dailyFatTarget || ''}
                 onChange={(e) => setFormData({ ...formData, dailyFatTarget: e.target.value ? parseFloat(e.target.value) : undefined })}
               />
             </div>
 
             <div>
-              <label htmlFor="dailyFiberTarget" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="dailyFiberTarget" className="block text-sm font-medium text-zinc-300">
                 Daily Fiber Target (g)
               </label>
               <input
@@ -453,7 +453,7 @@ export default function ProfileForm({ initialData, profileId, mode }: ProfileFor
                 id="dailyFiberTarget"
                 min="0"
                 step="0.1"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border"
+                className="mt-1 block w-full rounded-lg bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-500 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 sm:text-sm px-3 py-2"
                 value={formData.dailyFiberTarget || ''}
                 onChange={(e) => setFormData({ ...formData, dailyFiberTarget: e.target.value ? parseFloat(e.target.value) : undefined })}
               />
@@ -463,10 +463,10 @@ export default function ProfileForm({ initialData, profileId, mode }: ProfileFor
       </div>
 
       {/* Meal Schedule Section */}
-      <div className="bg-white shadow-sm rounded-lg p-6 space-y-6">
+      <div className="card p-6 space-y-6">
         <div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Meal Schedule</h3>
-          <p className="text-sm text-gray-500 mb-4">
+          <h3 className="text-lg font-medium text-white mb-2">Meal Schedule</h3>
+          <p className="text-sm text-zinc-400 mb-4">
             Select which meals {formData.profileName || 'this person'} needs planned for each day of the week.
             This schedule will be used when generating weekly meal plans.
           </p>
@@ -477,21 +477,21 @@ export default function ProfileForm({ initialData, profileId, mode }: ProfileFor
           <button
             type="button"
             onClick={() => setAllMeals(['breakfast', 'lunch', 'dinner'])}
-            className="px-3 py-1 text-sm bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100"
+            className="px-3 py-1 text-sm bg-purple-900/30 text-purple-400 border border-purple-800 rounded-lg hover:bg-purple-900/50 transition-colors"
           >
             All Main Meals
           </button>
           <button
             type="button"
             onClick={() => setAllMeals(['breakfast', 'morning-snack', 'lunch', 'afternoon-snack', 'dinner', 'dessert', 'evening-snack'])}
-            className="px-3 py-1 text-sm bg-green-50 text-green-700 rounded-md hover:bg-green-100"
+            className="px-3 py-1 text-sm bg-green-900/30 text-green-400 border border-green-800 rounded-lg hover:bg-green-900/50 transition-colors"
           >
             All Meals + Snacks
           </button>
           <button
             type="button"
             onClick={clearAllMeals}
-            className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
+            className="px-3 py-1 text-sm bg-zinc-800 text-zinc-300 border border-zinc-700 rounded-lg hover:bg-zinc-700 transition-colors"
           >
             Clear All
           </button>
@@ -499,20 +499,20 @@ export default function ProfileForm({ initialData, profileId, mode }: ProfileFor
 
         {/* Meal Schedule Grid */}
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-zinc-700">
+            <thead className="bg-zinc-800/50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40">
+                <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider w-40">
                   Meal Type
                 </th>
                 {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
-                  <th key={day} className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th key={day} className="px-2 py-3 text-center text-xs font-medium text-zinc-400 uppercase tracking-wider">
                     {day}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="divide-y divide-zinc-700">
               {[
                 { key: 'breakfast', label: 'Breakfast' },
                 { key: 'morning-snack', label: 'Morning Snack' },
@@ -522,8 +522,8 @@ export default function ProfileForm({ initialData, profileId, mode }: ProfileFor
                 { key: 'dessert', label: 'Dessert' },
                 { key: 'evening-snack', label: 'Evening Snack' },
               ].map(meal => (
-                <tr key={meal.key} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                <tr key={meal.key} className="hover:bg-zinc-800/30 transition-colors">
+                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-zinc-200">
                     {meal.label}
                   </td>
                   {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => (
@@ -532,7 +532,7 @@ export default function ProfileForm({ initialData, profileId, mode }: ProfileFor
                         type="checkbox"
                         checked={formData.mealAvailability?.[day as keyof MealSchedule]?.includes(meal.key) || false}
                         onChange={() => toggleMeal(day as keyof MealSchedule, meal.key)}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
+                        className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-zinc-600 rounded bg-zinc-800 cursor-pointer"
                       />
                     </td>
                   ))}
@@ -542,7 +542,7 @@ export default function ProfileForm({ initialData, profileId, mode }: ProfileFor
           </table>
         </div>
 
-        <p className="text-xs text-gray-400 italic">
+        <p className="text-xs text-zinc-500 italic">
           💡 Tip: This is the default schedule. You can override it for specific weeks in the meal planner.
         </p>
       </div>
@@ -551,14 +551,14 @@ export default function ProfileForm({ initialData, profileId, mode }: ProfileFor
         <button
           type="button"
           onClick={() => router.back()}
-          className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+          className="px-4 py-2 border border-zinc-700 rounded-lg text-sm font-medium text-zinc-300 bg-zinc-800 hover:bg-zinc-700 transition-colors"
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={loading}
-          className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+          className="px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50 transition-colors"
         >
           {loading ? 'Saving...' : mode === 'create' ? 'Create Profile' : 'Save Changes'}
         </button>
