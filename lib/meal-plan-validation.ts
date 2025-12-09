@@ -102,9 +102,11 @@ export function validateCooldowns(
       // Check if this violates the cooldown
       if (daysBetween < cooldownDays) {
         const meal = meals.find(m => m.recipeId === recipeId)
+        const mealTypeLabel = firstUsage.mealType.charAt(0).toUpperCase() + firstUsage.mealType.slice(1).replace('-', ' ')
         errors.push(
           `Cooldown violation: "${meal?.recipeName || recipeId}" used on ${firstUsage.day} and ${secondUsage.day} ` +
-          `(${daysBetween} days apart, requires ${cooldownDays} day cooldown for ${firstUsage.mealType})`
+          `(${daysBetween} days apart, requires ${cooldownDays} day cooldown for ${mealTypeLabel}s - ` +
+          `set in Meal Plan Settings)`
         )
       }
     }
@@ -135,9 +137,10 @@ export function validateCooldowns(
 
     if (daysSinceLastUse < cooldownDays) {
       const meal = meals.find(m => m.recipeId === recipeId)
+      const mealTypeLabel = mostRecentHistory.mealType.charAt(0).toUpperCase() + mostRecentHistory.mealType.slice(1).replace('-', ' ')
       warnings.push(
         `Recent usage: "${meal?.recipeName || recipeId}" was used ${daysSinceLastUse} days ago ` +
-        `(requires ${cooldownDays} day cooldown for ${mostRecentHistory.mealType})`
+        `(requires ${cooldownDays} day cooldown for ${mealTypeLabel}s - set in Meal Plan Settings)`
       )
     }
   })

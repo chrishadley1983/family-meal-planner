@@ -230,6 +230,137 @@ $env:SUPABASE_ANON_KEY = "your-supabase-anon-key-here"
 
 ---
 
+## 🎯 MEAL PLAN COOLDOWN SETTINGS
+
+**Cooldown periods prevent recipe repetition and ensure variety in meal plans.**
+
+### What Are Cooldown Periods?
+
+Cooldown periods specify how many days must pass before the same recipe can be used again in a meal plan. They are **configurable per meal type** because different meal types have different variety expectations.
+
+### Default Cooldown Periods
+
+Located in `lib/types/meal-plan-settings.ts`:
+
+```typescript
+dinnerCooldown: 14 days      // Most variety needed
+lunchCooldown: 7 days        // Moderate variety
+breakfastCooldown: 3 days    // Less variety expected
+snackCooldown: 2 days        // Minimal variety
+```
+
+### How Cooldowns Work
+
+1. **Within Week Validation**
+   - Same recipe cannot appear within its cooldown period in the same week
+   - Example: Dinner cooldown = 14 days, same dinner recipe on Tuesday + Thursday (2 days) = VIOLATION
+
+2. **Historical Validation**
+   - Checks past 4 weeks of recipe usage history
+   - Recipe used 5 days ago with 7-day cooldown = VIOLATION (warning, not error)
+
+3. **Batch Cooking Exception**
+   - The ONLY exception to cooldown rules is batch cooking
+   - Same recipe can appear multiple times if properly flagged as batch cooking:
+     - First occurrence: `isLeftover=false` (cooking)
+     - Subsequent occurrences: `isLeftover=true` (reheating)
+
+### Validation Enforces Cooldowns
+
+The meal plan generation now includes automatic validation (see `lib/meal-plan-validation.ts`):
+- AI generates a plan
+- Validation checks cooldown periods
+- If violations found, AI retries (up to 3 attempts)
+- If all retries fail, returns error with specific violations
+
+**Error Message Format:**
+```
+Cooldown violation: "Chicken Stir Fry" used on Tuesday and Thursday
+(2 days apart, requires 14 day cooldown for Dinners - set in Meal Plan Settings)
+```
+
+### Where Settings Are Stored
+
+Cooldown settings are stored in the `mealPlanSettings` table in Supabase:
+- Each user has their own settings record
+- If no settings exist, defaults are used
+- Settings are fetched during meal plan generation/regeneration
+
+### How to View Current Settings (Database)
+
+```sql
+-- View your cooldown settings
+SELECT
+  dinnerCooldown,
+  lunchCooldown,
+  breakfastCooldown,
+  snackCooldown
+FROM "mealPlanSettings"
+WHERE "userId" = '[your-user-id]';
+```
+
+### How to Adjust Cooldown Periods (Database)
+
+**Option 1: Via Supabase Table Editor**
+1. Open Supabase Dashboard → Table Editor
+2. Find `mealPlanSettings` table
+3. Locate your user's row
+4. Edit cooldown values directly (e.g., change `dinnerCooldown` from 14 to 7)
+
+**Option 2: Via API (for programmatic updates)**
+```typescript
+// Update settings via API
+await prisma.mealPlanSettings.update({
+  where: { userId: session.user.id },
+  data: {
+    dinnerCooldown: 7,    // Reduced from 14
+    lunchCooldown: 5,     // Reduced from 7
+    // ... other settings
+  }
+})
+```
+
+### Why Adjust Cooldowns?
+
+**Reduce cooldowns if:**
+- You have a small recipe library (< 20 recipes)
+- AI keeps failing to generate valid plans
+- You prefer more repetition (e.g., meal prep enthusiasts)
+
+**Increase cooldowns if:**
+- You have a large recipe library (> 50 recipes)
+- You want maximum variety
+- You get bored easily with repeated meals
+
+### Common Cooldown Scenarios
+
+**Scenario 1: Small Recipe Library**
+- Problem: Only 15 dinner recipes, AI can't generate valid plan with 14-day cooldown
+- Solution: Reduce `dinnerCooldown` to 7 or even 3 days
+- Result: More repetition, but functional meal plans
+
+**Scenario 2: Batch Cooking Focus**
+- Problem: Want to use same recipe on Monday (cook) and Thursday (reheat)
+- Solution: Keep cooldown at 14 days, use batch cooking with proper `isLeftover` flags
+- Result: No violation because it's marked as batch cooking
+
+**Scenario 3: Maximum Variety**
+- Problem: Have 50+ recipes, want minimal repetition
+- Solution: Keep default 14-day cooldown or increase to 21 days
+- Result: High variety, different meals every 2-3 weeks
+
+### Future Enhancement: Settings UI
+
+**TODO:** Create a meal plan settings page where users can:
+- View current cooldown periods
+- Adjust cooldowns with sliders (1-30 days)
+- See preview of how many recipes needed for each cooldown
+- Reset to defaults
+
+**Suggested UI Location:** `/settings/meal-planning` (already exists for schedule editing)
+
+---
+
 ## 📋 WORKFLOW: Follow This For EVERY Change
 
 ### Phase 1: BEFORE Making Changes
