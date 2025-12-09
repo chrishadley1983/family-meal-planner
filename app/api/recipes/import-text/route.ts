@@ -21,8 +21,6 @@ export async function POST(req: NextRequest) {
 
     // Parse recipe text using Claude
     const analyzedRecipe = await analyzeRecipeText(text)
-<<<<<<< HEAD
-=======
 
 >>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
     console.log('🟢 Recipe parsed successfully:', analyzedRecipe.recipeName)
@@ -48,11 +46,6 @@ export async function POST(req: NextRequest) {
       instructions: analyzedRecipe.instructions || []
     }
 
-<<<<<<< HEAD
-    return NextResponse.json({
-      recipe: recipeData
-    })
-=======
     return NextResponse.json({ recipe: recipeData })
 >>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
   } catch (error: any) {

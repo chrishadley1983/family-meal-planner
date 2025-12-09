@@ -22,9 +22,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Analyze photo using Claude Vision
-<<<<<<< HEAD
     const analyzedRecipe = await analyzeRecipePhoto([imageData])
-=======
     const analyzedRecipe = await analyzeRecipePhoto(imageData)
 >>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
 
@@ -40,11 +38,6 @@ export async function POST(req: NextRequest) {
       instructions: analyzedRecipe.suggestedInstructions || []
     }
 
-<<<<<<< HEAD
-    return NextResponse.json({
-      recipe: recipeData
-    })
-=======
     return NextResponse.json({ recipe: recipeData })
 >>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
   } catch (error: any) {

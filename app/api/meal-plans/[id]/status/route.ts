@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-<<<<<<< HEAD
 import { calculateMealServings } from '@/lib/meal-utils'
-=======
 >>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
 
 export async function PATCH(
@@ -17,11 +15,6 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-<<<<<<< HEAD
-    const { status, customSchedule } = await req.json()
-
-    if (status && !['Draft', 'Finalized', 'Archived'].includes(status)) {
-=======
     const { status } = await req.json()
 
     if (!['Draft', 'Finalized', 'Archived'].includes(status)) {
@@ -37,11 +30,6 @@ export async function PATCH(
       where: {
         id: params.id,
         userId: session.user.id
-<<<<<<< HEAD
-      },
-      include: {
-        meals: true
-=======
 >>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
       }
     })
@@ -53,49 +41,6 @@ export async function PATCH(
       )
     }
 
-<<<<<<< HEAD
-    // Build update data
-    const updateData: any = {}
-
-    // Update status if provided
-    if (status) {
-      updateData.status = status
-      if (status === 'Finalized' && existingPlan.status !== 'Finalized') {
-        updateData.finalizedAt = new Date()
-      } else if (status === 'Draft') {
-        updateData.finalizedAt = null
-      }
-    }
-
-    // Update customSchedule if provided
-    if (customSchedule) {
-      updateData.customSchedule = customSchedule
-
-      // Recalculate servings for all meals based on new schedule
-      console.log('🧮 Recalculating servings after schedule change...')
-
-      const servingsUpdates = existingPlan.meals
-        .map((meal) => {
-          const newServings = calculateMealServings(
-            meal.dayOfWeek,
-            meal.mealType,
-            customSchedule
-          )
-
-          return prisma.meal.update({
-            where: { id: meal.id },
-            data: { servings: newServings }
-          })
-        })
-
-      // Execute all servings updates
-      await Promise.all(servingsUpdates)
-
-      console.log(`✅ Recalculated servings for ${servingsUpdates.length} meals`)
-    }
-
-    // Update meal plan
-=======
     // Update status and finalizedAt if finalizing
     const updateData: any = { status }
 
@@ -118,14 +63,6 @@ export async function PATCH(
       }
     })
 
-<<<<<<< HEAD
-    if (status) {
-      console.log(`✅ Meal plan ${params.id} status changed to ${status}`)
-    }
-    if (customSchedule) {
-      console.log(`✅ Meal plan ${params.id} schedule updated`)
-    }
-=======
     console.log(`✅ Meal plan ${params.id} status changed to ${status}`)
 >>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
 

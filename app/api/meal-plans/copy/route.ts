@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-<<<<<<< HEAD
 import { calculateServingsForMeals, filterZeroServingMeals } from '@/lib/meal-utils'
-=======
 >>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
 import { addDays, parseISO, differenceInDays } from 'date-fns'
 
@@ -73,9 +71,6 @@ export async function POST(req: NextRequest) {
 
     // Copy meals from source plan
     if (sourcePlan.meals.length > 0) {
-<<<<<<< HEAD
-      const copiedMeals = sourcePlan.meals.map((sourceMeal) => ({
-=======
       const newMeals = sourcePlan.meals.map((sourceMeal) => ({
 >>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
         mealPlanId: newMealPlan.id,
@@ -83,34 +78,17 @@ export async function POST(req: NextRequest) {
         mealType: sourceMeal.mealType,
         recipeId: sourceMeal.recipeId,
         recipeName: sourceMeal.recipeName,
-<<<<<<< HEAD
-=======
         servings: sourceMeal.servings,
 >>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
         notes: sourceMeal.notes,
         isLocked: false // Don't copy the locked status
       }))
 
-<<<<<<< HEAD
-      // Recalculate servings based on new week's schedule
-      console.log('🧮 Recalculating servings for copied meals...')
-      const mealsWithServings = calculateServingsForMeals(
-        copiedMeals,
-        (weekProfileSchedules || sourcePlan.customSchedule) as any
-      )
-
-      // Filter out meals with 0 servings
-      const newMeals = filterZeroServingMeals(mealsWithServings)
-
-=======
 >>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
       await prisma.meal.createMany({
         data: newMeals
       })
 
-<<<<<<< HEAD
-      console.log(`✅ Copied ${newMeals.length} meals to new plan (filtered ${sourcePlan.meals.length - newMeals.length} with 0 servings)`)
-=======
       console.log(`✅ Copied ${newMeals.length} meals to new plan`)
 >>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
     }

@@ -49,11 +49,9 @@ export async function POST(req: NextRequest) {
       recipeSource: new URL(url).hostname
     }
 
-<<<<<<< HEAD
     return NextResponse.json({
       recipe: recipeData
     })
-=======
     return NextResponse.json({ recipe: recipeData })
 >>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
   } catch (error: any) {

@@ -46,8 +46,6 @@ export async function POST(
         timesUsed: 0,
         timesManuallySelected: 0,
         lastUsedDate: null,
-<<<<<<< HEAD
-=======
         isFavorite: false, // Duplicate is not favorited by default
 >>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
         ingredients: {

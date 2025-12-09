@@ -32,7 +32,6 @@ export async function PATCH(
       )
     }
 
-<<<<<<< HEAD
     // If servings is being manually updated, mark it as manually set
     // This prevents auto-recalculation from overwriting user's custom value
     if ('servings' in updates && updates.servings !== existingMeal.servings) {
@@ -40,7 +39,6 @@ export async function PATCH(
       console.log(`🔧 Servings manually updated for meal ${params.id}, setting flag`)
     }
 
-=======
 >>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
     // Update the meal
     const meal = await prisma.meal.update({
