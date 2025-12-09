@@ -1311,15 +1311,15 @@ Instructions:
               </div>
             )}
 
-            {/* Sarah Nutritionist Feedback */}
+            {/* Emilia Nutritionist Feedback */}
             {nutritionistFeedback && (
               <div className="bg-gradient-to-r from-green-900/20 to-blue-900/20 border border-green-800/50 rounded-lg p-6">
                 <div className="flex items-start gap-4">
-                  {/* Sarah Avatar */}
+                  {/* Emilia Avatar */}
                   <div className="flex-shrink-0">
                     <Image
                       src="/sarah-nutritionist.png"
-                      alt="Sarah - Your AI Nutritionist"
+                      alt="Emilia - Your AI Nutritionist"
                       width={80}
                       height={80}
                       className="rounded-full border-4 border-zinc-700 shadow-md"
@@ -1329,7 +1329,7 @@ Instructions:
                   {/* Feedback Content */}
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <h3 className="text-lg font-semibold text-white">Sarah's Nutritionist Tips</h3>
+                      <h3 className="text-lg font-semibold text-white">Emilia's Nutritionist Tips</h3>
                       {loadingFeedback && <span className="text-xs text-zinc-400">Analyzing...</span>}
                     </div>
                     <p className="text-zinc-300 leading-relaxed">{nutritionistFeedback}</p>

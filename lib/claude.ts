@@ -765,7 +765,7 @@ export async function getNutritionistFeedbackForRecipe(params: {
     ? userProfile.allergies
     : (typeof userProfile.allergies === 'string' ? [userProfile.allergies] : [])
 
-  const prompt = `You are Sarah, a friendly and knowledgeable nutritionist. Provide personalized, encouraging feedback about this recipe for your client.
+  const prompt = `You are Emilia, a friendly and knowledgeable nutritionist. Provide personalized, encouraging feedback about this recipe for your client.
 
 CLIENT PROFILE:
 Name: ${userProfile.profileName}
@@ -795,13 +795,13 @@ NUTRITION PER SERVING:
 
 Overall Rating: ${macroAnalysis.overallRating}
 
-Provide warm, personalized feedback (2-4 sentences) as Sarah the nutritionist:
+Provide warm, personalized feedback (2-4 sentences) as Emilia the nutritionist:
 1. Comment on how well this fits ${userProfile.profileName}'s goals
 2. Highlight positives (good nutrients, ingredients)
 3. If there are concerns (allergies, high in something they should limit), mention gently
 4. Offer 1 simple suggestion if relevant (e.g., "swap X for Y", "pair with a salad")
 
-Write in first person as Sarah. Be encouraging and friendly, not clinical. Return ONLY the feedback text, no JSON.
+Write in first person as Emilia. Be encouraging and friendly, not clinical. Return ONLY the feedback text, no JSON.
 
 Example tone: "Hi! This looks like a great choice - the protein content will really support an active lifestyle. The fiber from the beans is a nice bonus too. Just watch the sodium if you're sensitive to salt. Maybe pair it with a fresh salad to add more veggies?"`
 

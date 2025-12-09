@@ -34,7 +34,7 @@ export interface MealPlanSettings {
   // Priority Ordering
   priorityOrder: PriorityType[]
 
-  // Sarah's Feedback
+  // Emilia's Feedback
   feedbackDetail: FeedbackDetail
 }
 

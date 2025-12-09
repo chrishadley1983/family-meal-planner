@@ -915,7 +915,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                   </div>
                 </div>
 
-                {/* Sarah's Nutritionist Feedback */}
+                {/* Emilia's Nutritionist Feedback */}
                 {nutritionistFeedback && (
                   <div className="mb-6 p-5 bg-gradient-to-r from-pink-900/20 to-purple-900/20 rounded-lg border border-pink-800/30">
                     <div className="flex items-start space-x-4">
@@ -925,7 +925,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                         </div>
                       </div>
                       <div className="flex-1">
-                        <h3 className="font-bold text-white mb-2">Sarah&apos;s Nutritionist Feedback</h3>
+                        <h3 className="font-bold text-white mb-2">Emilia&apos;s Nutritionist Feedback</h3>
                         <div className="text-sm text-zinc-300 whitespace-pre-line">
                           {nutritionistFeedback}
                         </div>

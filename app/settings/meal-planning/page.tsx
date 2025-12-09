@@ -484,7 +484,7 @@ export default function MealPlanningSettingsPage() {
             )}
           </div>
 
-          {/* Section 7: Sarah's Feedback */}
+          {/* Section 7: Emilia's Feedback */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200">
             <button
               onClick={() => toggleSection('feedback')}
@@ -493,7 +493,7 @@ export default function MealPlanningSettingsPage() {
               <div className="flex items-center gap-3">
                 <span className="text-2xl">💬</span>
                 <div className="text-left">
-                  <h2 className="text-lg font-semibold text-gray-900">Sarah's Nutritional Feedback</h2>
+                  <h2 className="text-lg font-semibold text-gray-900">Emilia's Nutritional Feedback</h2>
                   <p className="text-sm text-gray-500">How much detail in weekly summaries</p>
                 </div>
               </div>

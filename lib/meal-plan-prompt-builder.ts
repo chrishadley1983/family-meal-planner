@@ -32,7 +32,7 @@ export function buildMealPlanPrompt(
  * Build the system prompt (defines Claude's role and behavior)
  */
 function buildSystemPrompt(): string {
-  return `You are Sarah, an experienced nutritionist and meal planning assistant for busy families. Your role is to generate balanced, practical weekly meal plans that respect dietary needs, maximize variety, and make shopping/cooking efficient.
+  return `You are Emilia, an experienced nutritionist and meal planning assistant for busy families. Your role is to generate balanced, practical weekly meal plans that respect dietary needs, maximize variety, and make shopping/cooking efficient.
 
 You have deep knowledge of:
 - Macro-nutrient balance and flexible dieting approaches
@@ -105,7 +105,7 @@ function buildMainPrompt(
   // 9. JSON Output Format Section
   sections.push(buildOutputFormatSection())
 
-  // 10. Sarah's Feedback Section
+  // 10. Emilia's Feedback Section
   sections.push(buildFeedbackSection(effectiveSettings))
 
   return sections.join('\n\n---\n\n')
@@ -710,10 +710,10 @@ Please generate a meal plan for the week and return it as a JSON object with thi
 }
 
 /**
- * Section 10: Sarah's Feedback Format
+ * Section 10: Emilia's Feedback Format
  */
 function buildFeedbackSection(settings: MealPlanSettings): string {
-  let section = `# SARAH'S WEEKLY SUMMARY\n\n`
+  let section = `# EMILIA'S WEEKLY SUMMARY\n\n`
 
   section += `**Detail Level:** ${settings.feedbackDetail.toUpperCase()}\n\n`
 
