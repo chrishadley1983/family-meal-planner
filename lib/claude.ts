@@ -1,4 +1,12 @@
 import Anthropic from '@anthropic-ai/sdk'
+import {
+  MealPlanSettings,
+  RecipeUsageHistory,
+  InventoryItem,
+  QuickOptions,
+  DEFAULT_SETTINGS
+} from './types/meal-plan-settings'
+import { buildMealPlanPrompt } from './meal-plan-prompt-builder'
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY
@@ -10,8 +18,22 @@ export async function generateMealPlan(params: {
   weekStartDate: string
   preferences?: any
   weekProfileSchedules?: any[]
+  settings?: MealPlanSettings
+  recipeHistory?: RecipeUsageHistory[]
+  inventory?: InventoryItem[]
+  quickOptions?: QuickOptions
 }) {
-  const { profiles, recipes, weekStartDate, preferences, weekProfileSchedules } = params
+  const {
+    profiles,
+    recipes,
+    weekStartDate,
+    preferences,
+    weekProfileSchedules,
+    settings = DEFAULT_SETTINGS,
+    recipeHistory = [],
+    inventory = [],
+    quickOptions
+  } = params
 
   // Calculate which meals need to be planned based on all family profiles
   type MealSchedule = {
@@ -135,63 +157,19 @@ export async function generateMealPlan(params: {
     }).join('\n')
   }
 
-  const prompt = `You are a family meal planning assistant. Generate a weekly meal plan based on the following information:
-
-FAMILY PROFILES:
-${profiles.map((p, i) => `
-Profile ${i + 1}: ${p.profileName}
-- Age: ${p.age || 'Not specified'}
-- Food Likes: ${p.foodLikes.join(', ') || 'None specified'}
-- Food Dislikes: ${p.foodDislikes.join(', ') || 'None specified'}
-- Activity Level: ${p.activityLevel || 'Not specified'}
-${p.macroTrackingEnabled ? `- Daily Targets: ${p.dailyCalorieTarget || 0} cal, ${p.dailyProteinTarget || 0}g protein` : ''}
-`).join('\n')}
-
-MEAL SCHEDULE (combined from all family members):
-${scheduleSummary}
-
-INDIVIDUAL SCHEDULES:
-${perPersonSchedules}
-
-AVAILABLE RECIPES:
-${recipes.map((r, i) => `
-${i + 1}. ${r.recipeName} (ID: ${r.id})
-   - Servings: ${r.servings}
-   - Time: ${r.totalTimeMinutes || 'N/A'} min
-   - Categories: ${r.mealType.join(', ')}
-   - Rating: ${r.familyRating || 'Not rated'}
-   - Ingredients: ${r.ingredients.map((ing: any) => ing.ingredientName).slice(0, 5).join(', ')}...
-`).join('\n')}
-
-WEEK START DATE: ${weekStartDate}
-
-Generate a meal plan ONLY for the meals specified in the MEAL SCHEDULE above. For each meal listed:
-1. Select an appropriate recipe from the available recipes that matches the meal type
-2. Consider family preferences and dietary needs
-3. Provide variety throughout the week
-4. Balance nutrition across the week
-5. **IMPORTANT**: Use the EXACT servings count shown in parentheses in the MEAL SCHEDULE (e.g., "Dinner (3 people)" means servings: 3)
-
-Return ONLY a valid JSON object in this exact format:
-{
-  "meals": [
+  // Build the AI prompt using the new prompt builder with all advanced features
+  const prompt = buildMealPlanPrompt(
     {
-      "dayOfWeek": "Monday",
-      "mealType": "Breakfast",
-      "recipeId": "recipe-id-from-list",
-      "recipeName": "Recipe Name",
-      "servings": 4,
-      "notes": "Brief note about why this meal was chosen"
-    }
-  ],
-  "summary": "Brief summary of the meal plan strategy and nutritional balance"
-}
-
-Important:
-- Return ONLY the JSON object, no other text
-- ONLY generate meals that appear in the MEAL SCHEDULE
-- Use proper capitalization for dayOfWeek (Monday, Tuesday, etc.)
-- Use proper capitalization for mealType (Breakfast, Lunch, Dinner, etc.)`
+      profiles,
+      recipes,
+      weekStartDate,
+      weekProfileSchedules: weekProfileSchedules || [],
+      settings,
+      recipeHistory,
+      inventory
+    },
+    quickOptions
+  )
 
   try {
     console.log('🔷 Calling Claude API for meal plan generation...')

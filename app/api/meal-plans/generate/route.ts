@@ -4,7 +4,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { generateMealPlan } from '@/lib/claude'
 import { calculateServingsForMeals, filterZeroServingMeals } from '@/lib/meal-utils'
-import { startOfWeek, endOfWeek } from 'date-fns'
+import { startOfWeek, endOfWeek, subWeeks, addDays } from 'date-fns'
+import { DEFAULT_SETTINGS } from '@/lib/types/meal-plan-settings'
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,7 +14,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { weekStartDate, weekProfileSchedules } = await req.json()
+    const { weekStartDate, weekProfileSchedules, quickOptions } = await req.json()
 
     if (!weekStartDate) {
       return NextResponse.json(
@@ -22,8 +23,10 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Fetch user's profiles and recipes
-    const [profiles, recipes] = await Promise.all([
+    console.log('🔷 Fetching data for meal plan generation...')
+
+    // Fetch user's profiles, recipes, settings, recipe history, and inventory
+    const [profiles, recipes, settingsRecord, recipeHistory, inventory] = await Promise.all([
       prisma.familyProfile.findMany({
         where: { userId: session.user.id }
       }),
@@ -36,6 +39,22 @@ export async function POST(req: NextRequest) {
           ingredients: true
         },
         take: 50 // Limit to prevent token overflow
+      }),
+      prisma.mealPlanSettings.findUnique({
+        where: { userId: session.user.id }
+      }),
+      prisma.recipeUsageHistory.findMany({
+        where: {
+          userId: session.user.id,
+          usedDate: { gte: subWeeks(new Date(weekStartDate), 4) } // Last 4 weeks
+        },
+        include: {
+          recipe: true
+        },
+        orderBy: { usedDate: 'desc' }
+      }),
+      prisma.inventoryItem.findMany({
+        where: { userId: session.user.id }
       })
     ])
 
@@ -46,12 +65,55 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Generate meal plan using Claude with per-person schedules
+    // Convert database settings to MealPlanSettings interface, or use defaults
+    const settings = settingsRecord
+      ? {
+          macroMode: settingsRecord.macroMode as any,
+          varietyEnabled: settingsRecord.varietyEnabled,
+          dinnerCooldown: settingsRecord.dinnerCooldown,
+          lunchCooldown: settingsRecord.lunchCooldown,
+          breakfastCooldown: settingsRecord.breakfastCooldown,
+          snackCooldown: settingsRecord.snackCooldown,
+          minCuisines: settingsRecord.minCuisines,
+          maxSameCuisine: settingsRecord.maxSameCuisine,
+          shoppingMode: settingsRecord.shoppingMode as any,
+          expiryPriority: settingsRecord.expiryPriority as any,
+          expiryWindow: settingsRecord.expiryWindow,
+          useItUpItems: settingsRecord.useItUpItems,
+          batchCookingEnabled: settingsRecord.batchCookingEnabled,
+          maxLeftoverDays: settingsRecord.maxLeftoverDays,
+          priorityOrder: settingsRecord.priorityOrder as any,
+          feedbackDetail: settingsRecord.feedbackDetail as any
+        }
+      : DEFAULT_SETTINGS
+
+    console.log('🟢 Data fetched:', {
+      profiles: profiles.length,
+      recipes: recipes.length,
+      historyRecords: recipeHistory.length,
+      inventoryItems: inventory.length,
+      hasSettings: !!settingsRecord
+    })
+
+    // Generate meal plan using Claude with all advanced features
     const generatedPlan = await generateMealPlan({
       profiles,
       recipes,
       weekStartDate,
       weekProfileSchedules, // Pass per-person schedules for week
+      settings,
+      recipeHistory: recipeHistory.map(h => ({
+        id: h.id,
+        userId: h.userId,
+        recipeId: h.recipeId,
+        mealPlanId: h.mealPlanId,
+        usedDate: h.usedDate,
+        mealType: h.mealType,
+        wasManual: h.wasManual,
+        createdAt: h.createdAt
+      })),
+      inventory,
+      quickOptions
     })
 
     // Create a set of valid recipe IDs for validation
@@ -106,6 +168,34 @@ export async function POST(req: NextRequest) {
         }
       }
     })
+
+    // Record recipe usage in history for cooldown tracking
+    console.log('🔷 Recording recipe usage history...')
+    const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    const historyEntries = mealPlan.meals
+      .filter(meal => meal.recipeId) // Only record meals with actual recipes
+      .map(meal => {
+        // Calculate the actual date for this meal
+        const dayIndex = daysOfWeek.indexOf(meal.dayOfWeek)
+        const mealDate = addDays(weekStart, dayIndex)
+
+        return {
+          userId: session.user.id,
+          recipeId: meal.recipeId!,
+          mealPlanId: mealPlan.id,
+          usedDate: mealDate,
+          mealType: meal.mealType,
+          wasManual: false // Set to true if user manually placed this recipe later
+        }
+      })
+
+    if (historyEntries.length > 0) {
+      await prisma.recipeUsageHistory.createMany({
+        data: historyEntries,
+        skipDuplicates: true
+      })
+      console.log(`🟢 Recorded ${historyEntries.length} recipe usage history entries`)
+    }
 
     return NextResponse.json({
       mealPlan,

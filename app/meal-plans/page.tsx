@@ -48,6 +48,11 @@ export default function MealPlansPage() {
   const router = useRouter()
   const [mealPlans, setMealPlans] = useState<MealPlan[]>([])
   const [profiles, setProfiles] = useState<Profile[]>([])
+  const [quickOptions, setQuickOptions] = useState({
+    prioritizeShopping: false,
+    useExpiring: false,
+    maximizeBatch: false
+  })
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [selectedWeek, setSelectedWeek] = useState('')
@@ -225,6 +230,7 @@ export default function MealPlansPage() {
       } else {
         // Generate new plan with AI
         console.log('🔷 Generating new meal plan with AI...')
+        console.log('🔷 Quick options:', quickOptions)
         const response = await fetch('/api/meal-plans/generate', {
           method: 'POST',
           headers: {
@@ -232,7 +238,8 @@ export default function MealPlansPage() {
           },
           body: JSON.stringify({
             weekStartDate: selectedWeek,
-            weekProfileSchedules: weekProfileSchedules // Send per-person schedules
+            weekProfileSchedules: weekProfileSchedules, // Send per-person schedules
+            quickOptions: quickOptions // Send quick options for temporary overrides
           }),
         })
 
@@ -344,6 +351,56 @@ export default function MealPlansPage() {
           {generatedSummary && (
             <div className="mt-4 p-4 bg-blue-50 rounded-md">
               <p className="text-sm text-blue-900"><strong>AI Summary:</strong> {generatedSummary}</p>
+            </div>
+          )}
+
+          {/* Quick Options */}
+          {!copyFromPlanId && (
+            <div className="mt-6 border-t pt-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-medium text-gray-900">Quick Options</h4>
+                <Link
+                  href="/settings/meal-planning"
+                  className="text-sm text-blue-600 hover:text-blue-800 underline"
+                >
+                  Customize Settings →
+                </Link>
+              </div>
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={quickOptions.prioritizeShopping}
+                    onChange={(e) => setQuickOptions({ ...quickOptions, prioritizeShopping: e.target.checked })}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700">
+                    Prioritize shopping efficiency (minimize unique ingredients)
+                  </span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={quickOptions.useExpiring}
+                    onChange={(e) => setQuickOptions({ ...quickOptions, useExpiring: e.target.checked })}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700">
+                    Use expiring inventory items
+                  </span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={quickOptions.maximizeBatch}
+                    onChange={(e) => setQuickOptions({ ...quickOptions, maximizeBatch: e.target.checked })}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700">
+                    Maximize batch cooking opportunities
+                  </span>
+                </label>
+              </div>
             </div>
           )}
 
