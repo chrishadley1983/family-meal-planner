@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { generateRecipeSVG } from '@/lib/generate-recipe-image'
@@ -55,6 +55,7 @@ export default function RecipesPage() {
   const [showImportModal, setShowImportModal] = useState(false)
   const [importing, setImporting] = useState(false)
   const [importResult, setImportResult] = useState<{ success: boolean; message: string } | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     fetchRecipes()
@@ -116,34 +117,46 @@ export default function RecipesPage() {
 
   const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file) return
+    console.log('📂 handleImportCSV called, file selected:', file?.name)
+    if (!file) {
+      console.log('❌ No file selected')
+      return
+    }
 
     setImporting(true)
     setImportResult(null)
 
     try {
+      console.log('📄 Reading file content...')
       const text = await file.text()
+      console.log('📄 File content read, length:', text.length)
+
+      console.log('🔷 Calling import CSV API...')
       const response = await fetch('/api/recipes/import-csv', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ csvData: text })
       })
 
+      console.log('🟢 Import API response:', response.status, response.ok)
       const data = await response.json()
 
       if (response.ok) {
+        console.log('✅ Import successful:', data.imported, 'recipes imported')
         setImportResult({
           success: true,
           message: `Successfully imported ${data.imported} recipes. ${data.failed > 0 ? `Failed: ${data.failed}` : ''}`
         })
         fetchRecipes() // Refresh recipe list
       } else {
+        console.error('❌ Import failed:', data.error)
         setImportResult({
           success: false,
           message: data.error || 'Failed to import recipes'
         })
       }
     } catch (error) {
+      console.error('❌ Error importing CSV:', error)
       setImportResult({
         success: false,
         message: 'Error importing CSV file'
@@ -277,18 +290,25 @@ export default function RecipesPage() {
             <Button onClick={handleDownloadTemplate} variant="secondary" size="sm">
               Download Template
             </Button>
-            <label className="cursor-pointer">
-              <input
-                type="file"
-                accept=".csv"
-                onChange={handleImportCSV}
-                className="hidden"
-                disabled={importing}
-              />
-              <Button variant="secondary" size="sm" disabled={importing}>
-                {importing ? 'Importing...' : 'Import CSV'}
-              </Button>
-            </label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv"
+              onChange={handleImportCSV}
+              className="hidden"
+              disabled={importing}
+            />
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={importing}
+              onClick={() => {
+                console.log('📂 Import CSV button clicked')
+                fileInputRef.current?.click()
+              }}
+            >
+              {importing ? 'Importing...' : 'Import CSV'}
+            </Button>
             <Link href="/recipes/new">
               <Button variant="primary">Add Recipe</Button>
             </Link>

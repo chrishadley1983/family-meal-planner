@@ -21,10 +21,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get the first user's profile
+    // Get the main user's profile
     const mainProfile = await prisma.familyProfile.findFirst({
       where: {
         userId: session.user.id,
+        isMainUser: true,
+      },
+      orderBy: {
+        createdAt: 'asc', // Fallback to oldest profile if no main user set
       },
       select: {
         profileName: true,

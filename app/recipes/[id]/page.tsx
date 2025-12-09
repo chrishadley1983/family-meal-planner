@@ -265,17 +265,28 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
   }
 
   const handleToggleFavorite = async () => {
+    console.log('⭐ Toggling favorite from', isFavorite, 'to', !isFavorite)
     setTogglingFavorite(true)
     try {
+      const newFavoriteStatus = !isFavorite
       const response = await fetch(`/api/recipes/${id}/favorite`, {
-        method: 'POST'
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isFavorite: newFavoriteStatus })
       })
+
+      console.log('⭐ Favorite API response:', response.status, response.ok)
       if (response.ok) {
         const data = await response.json()
-        setIsFavorite(data.isFavorite)
+        console.log('✅ Favorite updated:', data.recipe.isFavorite)
+        setIsFavorite(data.recipe.isFavorite)
+        // Update recipe state as well
+        setRecipe(data.recipe)
+      } else {
+        console.error('❌ Failed to update favorite:', await response.text())
       }
     } catch (err) {
-      console.error('Failed to toggle favorite')
+      console.error('❌ Failed to toggle favorite:', err)
     } finally {
       setTogglingFavorite(false)
     }
