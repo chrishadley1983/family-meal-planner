@@ -2,9 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
-import { signOut } from 'next-auth/react'
-import { Button } from '@/components/ui'
+import { AppLayout, PageContainer } from '@/components/layout'
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions)
@@ -14,39 +12,9 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950">
-      <nav className="bg-zinc-900 border-b border-zinc-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <Link href="/dashboard" className="flex items-center transition-transform hover:scale-105">
-                <Image
-                  src="/logo.png"
-                  alt="familyFuel"
-                  width={200}
-                  height={70}
-                  className="h-12 w-auto"
-                  priority
-                />
-              </Link>
-            </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-zinc-400">{session.user.email}</span>
-              <Link href="/api/auth/signout">
-                <Button variant="danger" size="sm">
-                  Sign out
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          <h2 className="text-2xl font-bold text-white mb-6">Dashboard</h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <AppLayout userEmail={session.user.email}>
+      <PageContainer title="Dashboard">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <Link href="/profiles" className="block">
               <div className="card-interactive">
                 <div className="flex items-center">
@@ -143,8 +111,7 @@ export default async function DashboardPage() {
               </div>
             </Link>
           </div>
-        </div>
-      </main>
-    </div>
+      </PageContainer>
+    </AppLayout>
   )
 }
