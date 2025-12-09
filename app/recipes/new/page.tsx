@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
+import { AppLayout, PageContainer } from '@/components/layout'
+import { useSession } from 'next-auth/react'
 
 type InputMethod = 'manual' | 'url' | 'photo' | 'text'
 
@@ -28,6 +30,7 @@ type MacroAnalysis = {
 
 export default function NewRecipePage() {
   const router = useRouter()
+  const { data: session } = useSession()
   const [inputMethod, setInputMethod] = useState<InputMethod>('manual')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -730,28 +733,28 @@ export default function NewRecipePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link href="/recipes" className="text-blue-600 hover:text-blue-800 mb-4 inline-block">
+    <AppLayout userEmail={session?.user?.email}>
+      <PageContainer maxWidth="4xl">
+        <Link href="/recipes" className="text-purple-400 hover:text-purple-300 mb-4 inline-block">
           ← Back to Recipes
         </Link>
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Create New Recipe</h1>
+        <h1 className="text-3xl font-bold text-white mb-8">Create New Recipe</h1>
 
         {error && (
-          <div className="rounded-md bg-red-50 p-4 mb-6">
-            <p className="text-sm text-red-800">{error}</p>
+          <div className="rounded-md bg-red-900/20 border border-red-900/50 p-4 mb-6">
+            <p className="text-sm text-red-400">{error}</p>
           </div>
         )}
 
         {/* Input Method Tabs */}
-        <div className="bg-white shadow-sm rounded-lg p-6 mb-6">
-          <div className="flex space-x-4 mb-6 border-b">
+        <div className="card p-6 mb-6">
+          <div className="flex space-x-4 mb-6 border-b border-zinc-700">
             <button
               onClick={() => setInputMethod('manual')}
               className={`pb-2 px-1 font-medium text-sm ${
                 inputMethod === 'manual'
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'border-b-2 border-purple-600 text-purple-400'
+                  : 'text-zinc-400 hover:text-zinc-300'
               }`}
             >
               Manual Entry
@@ -760,8 +763,8 @@ export default function NewRecipePage() {
               onClick={() => setInputMethod('url')}
               className={`pb-2 px-1 font-medium text-sm ${
                 inputMethod === 'url'
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'border-b-2 border-purple-600 text-purple-400'
+                  : 'text-zinc-400 hover:text-zinc-300'
               }`}
             >
               Import from URL
@@ -770,8 +773,8 @@ export default function NewRecipePage() {
               onClick={() => setInputMethod('photo')}
               className={`pb-2 px-1 font-medium text-sm ${
                 inputMethod === 'photo'
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'border-b-2 border-purple-600 text-purple-400'
+                  : 'text-zinc-400 hover:text-zinc-300'
               }`}
             >
               Import from Photo
@@ -780,8 +783,8 @@ export default function NewRecipePage() {
               onClick={() => setInputMethod('text')}
               className={`pb-2 px-1 font-medium text-sm ${
                 inputMethod === 'text'
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'border-b-2 border-purple-600 text-purple-400'
+                  : 'text-zinc-400 hover:text-zinc-300'
               }`}
             >
               Add from Text
@@ -1401,6 +1404,7 @@ Instructions:
           </div>
         </div>
       )}
-    </div>
+      </PageContainer>
+    </AppLayout>
   )
 }
