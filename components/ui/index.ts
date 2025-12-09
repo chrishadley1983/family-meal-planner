@@ -27,10 +27,7 @@ export type { BadgeProps } from './Badge'
 // Input
 export { Input, Select, Checkbox, Label, Field } from './Input'
 export type { InputProps, SelectProps, CheckboxProps, LabelProps, FieldProps } from './Input'
-<<<<<<< HEAD
 
 // Modal
 export { Modal } from './Modal'
 export type { ModalProps } from './Modal'
-=======
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
