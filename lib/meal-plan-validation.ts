@@ -93,6 +93,18 @@ export function validateCooldowns(
       const firstUsage = sortedUsages[i]
       const secondUsage = sortedUsages[i + 1]
 
+      // Check if the second usage is marked as leftover (batch cooking)
+      const secondMeal = meals.find(m =>
+        m.recipeId === recipeId &&
+        m.dayOfWeek === secondUsage.day &&
+        m.mealType === secondUsage.mealType
+      )
+
+      if (secondMeal?.isLeftover === true) {
+        // This is batch cooking - skip cooldown check
+        continue
+      }
+
       // Calculate days between usages
       const daysBetween = secondUsage.dayIndex - firstUsage.dayIndex
 
