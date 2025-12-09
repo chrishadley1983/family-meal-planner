@@ -27,6 +27,9 @@ interface Meal {
   recipeName?: string | null
   servings?: number | null
   isLocked: boolean
+  isLeftover?: boolean
+  leftoverFromMealId?: string | null
+  notes?: string | null
   recipe?: Recipe | null
 }
 
@@ -133,10 +136,24 @@ function SortableMealCard({ meal, recipes, onUpdate, onDelete, onToggleLock, dis
             </span>
           </div>
 
-          {/* Recipe Name Display */}
+          {/* Recipe Name Display with Batch Cooking Indicator */}
           {meal.recipeName && (
-            <div className="mt-2 text-xs text-gray-900 font-medium break-words whitespace-normal leading-relaxed">
-              {meal.recipeName}
+            <div className="mt-2">
+              <div className="flex items-start gap-2">
+                {meal.isLeftover && (
+                  <span className="text-base flex-shrink-0" title="Batch cooked / Leftover">
+                    🍲
+                  </span>
+                )}
+                <div className="text-xs text-gray-900 font-medium break-words whitespace-normal leading-relaxed">
+                  {meal.recipeName}
+                </div>
+              </div>
+              {meal.isLeftover && (
+                <div className="mt-1 text-xs text-blue-600 italic">
+                  ↪ Leftover from batch cooking
+                </div>
+              )}
             </div>
           )}
 
@@ -164,6 +181,14 @@ function SortableMealCard({ meal, recipes, onUpdate, onDelete, onToggleLock, dis
 
           {meal.servings && (
             <div className="text-xs text-gray-500 mt-1">{meal.servings} servings</div>
+          )}
+
+          {/* Batch Cooking Notes */}
+          {meal.notes && (
+            <div className="mt-2 p-2 bg-blue-50 rounded text-xs text-gray-700 border border-blue-100">
+              <div className="font-medium text-blue-800 mb-1">📝 Note:</div>
+              {meal.notes}
+            </div>
           )}
         </div>
 

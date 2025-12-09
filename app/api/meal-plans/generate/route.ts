@@ -133,6 +133,8 @@ export async function POST(req: NextRequest) {
         recipeId,
         recipeName: meal.recipeName || null,
         notes: meal.notes || null,
+        isLeftover: meal.isLeftover || false,
+        batchCookSourceDay: meal.batchCookSourceDay || null,
       }
     })
 
@@ -145,7 +147,7 @@ export async function POST(req: NextRequest) {
 
     console.log(`✅ Created ${finalMeals.length} meals (filtered ${mealsWithServings.length - finalMeals.length} with 0 servings)`)
 
-    // Create the meal plan in database
+    // Create the meal plan in database (first pass - without leftover linkage)
     const weekStart = new Date(weekStartDate)
     const weekEnd = endOfWeek(weekStart)
 
@@ -157,7 +159,17 @@ export async function POST(req: NextRequest) {
         status: 'Draft',
         customSchedule: weekProfileSchedules || null, // Store per-person schedules as JSON
         meals: {
-          create: finalMeals
+          create: finalMeals.map((meal: any) => ({
+            dayOfWeek: meal.dayOfWeek,
+            mealType: meal.mealType,
+            recipeId: meal.recipeId,
+            recipeName: meal.recipeName,
+            servings: meal.servings,
+            servingsManuallySet: meal.servingsManuallySet || false,
+            notes: meal.notes,
+            isLeftover: meal.isLeftover || false,
+            isLocked: false
+          }))
         }
       },
       include: {
@@ -168,6 +180,39 @@ export async function POST(req: NextRequest) {
         }
       }
     })
+
+    // Second pass: Link leftover meals to their source meals
+    console.log('🔗 Linking leftover meals to batch cook sources...')
+    const leftoverMeals = finalMeals.filter((m: any) => m.isLeftover && m.batchCookSourceDay)
+
+    for (const leftoverMeal of leftoverMeals) {
+      // Find the source meal (same recipe, same meal type, on the source day)
+      const sourceMeal = mealPlan.meals.find(m =>
+        m.dayOfWeek === leftoverMeal.batchCookSourceDay &&
+        m.mealType === leftoverMeal.mealType &&
+        m.recipeId === leftoverMeal.recipeId &&
+        !m.isLeftover
+      )
+
+      if (sourceMeal) {
+        // Find the leftover meal in the created plan
+        const createdLeftoverMeal = mealPlan.meals.find(m =>
+          m.dayOfWeek === leftoverMeal.dayOfWeek &&
+          m.mealType === leftoverMeal.mealType &&
+          m.recipeId === leftoverMeal.recipeId &&
+          m.isLeftover
+        )
+
+        if (createdLeftoverMeal) {
+          // Update the leftover meal with the source reference
+          await prisma.meal.update({
+            where: { id: createdLeftoverMeal.id },
+            data: { leftoverFromMealId: sourceMeal.id }
+          })
+          console.log(`🔗 Linked ${leftoverMeal.dayOfWeek} ${leftoverMeal.mealType} to ${sourceMeal.dayOfWeek} batch cook`)
+        }
+      }
+    }
 
     // Record recipe usage in history for cooldown tracking
     console.log('🔷 Recording recipe usage history...')

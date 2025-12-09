@@ -590,7 +590,9 @@ Please generate a meal plan for the week and return it as a JSON object with thi
       "recipeId": "uuid-of-selected-recipe" | null,
       "recipeName": "Name of the recipe",
       "servings": 4,
-      "notes": "Any special notes (e.g., 'Batch cook for Wednesday', 'Use expiring chicken')"
+      "isLeftover": false,
+      "batchCookSourceDay": null | "Monday",
+      "notes": "Any special notes (e.g., 'Batch cook 6 servings - will cover Wednesday lunch', 'Use expiring chicken', 'Reheat from Monday')"
     }
   ],
   "summary": "Your weekly summary will go here (see next section for format)"
@@ -601,7 +603,10 @@ Please generate a meal plan for the week and return it as a JSON object with thi
 - Only include recipeId if you're assigning a specific recipe from the list
 - If no recipe is appropriate, set recipeId to null and provide a recipeName suggestion
 - Calculate servings based on who's eating each meal (from attendance schedule)
-- Use notes field for batch cooking instructions, expiry reminders, or substitution suggestions`
+- **For batch cooking:**
+  - On the FIRST meal (when cooking): Set isLeftover=false, include total servings needed in notes (e.g., "Batch cook 6 servings for Monday + Wednesday")
+  - On SUBSEQUENT meals (leftovers): Set isLeftover=true, batchCookSourceDay="Monday", add reheating instructions in notes
+- Use notes field for batch cooking instructions, expiry reminders, storage tips, or substitution suggestions`
 }
 
 /**
