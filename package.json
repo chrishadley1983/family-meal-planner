@@ -18,13 +18,9 @@
     "@prisma/client": "^7.1.0",
     "bcryptjs": "^3.0.3",
     "date-fns": "^4.1.0",
-<<<<<<< HEAD
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.4",
     "next": "16.0.7",
-=======
-    "next": "^15.1.0",
->>>>>>> 9da7dfa74795d9d88f06784d48fe1c56a19de17b
     "next-auth": "^4.24.13",
     "pg": "^8.16.3",
     "prisma": "^7.1.0",
