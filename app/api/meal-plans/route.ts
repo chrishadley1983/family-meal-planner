@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
-import { startOfWeek, endOfWeek } from 'date-fns'
+import { startOfWeek, addDays } from 'date-fns'
 
 const mealSchema = z.object({
   dayOfWeek: z.string(),
@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
     const data = mealPlanSchema.parse(body)
 
     const weekStartDate = new Date(data.weekStartDate)
-    const weekEndDate = endOfWeek(weekStartDate)
+    const weekEndDate = addDays(weekStartDate, 6) // 7-day week: start day + 6 days
 
     const mealPlan = await prisma.mealPlan.create({
       data: {

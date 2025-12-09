@@ -346,6 +346,44 @@ export default function MealPlanDetailPage() {
     return Math.min((actual / target) * 100, 100)
   }
 
+  // Helper to get the day number within the week (1-7) for currentDayIndex
+  const getDayNumberInWeek = (): number => {
+    if (!mealPlan) return 1
+
+    // Get the week start date
+    const weekStartDate = new Date(mealPlan.weekStartDate)
+    const weekStartDayOfWeek = weekStartDate.getDay() // 0=Sunday, 1=Monday, etc.
+    const weekStartOurIndex = weekStartDayOfWeek === 0 ? 6 : weekStartDayOfWeek - 1 // Convert to our array (0=Monday)
+
+    // Calculate how many days from the week start to the current day
+    let dayNumber = currentDayIndex - weekStartOurIndex + 1
+
+    // Handle wrap-around (e.g., week starts Tuesday, viewing Monday means Monday is day 7)
+    if (dayNumber <= 0) {
+      dayNumber += 7
+    }
+
+    return dayNumber
+  }
+
+  // Helper to get the actual date for the current day being viewed
+  const getCurrentDate = (): Date => {
+    if (!mealPlan) return new Date()
+
+    const weekStartDate = new Date(mealPlan.weekStartDate)
+    const dayNumber = getDayNumberInWeek()
+    const currentDate = new Date(weekStartDate)
+    currentDate.setDate(weekStartDate.getDate() + (dayNumber - 1))
+
+    return currentDate
+  }
+
+  // Format date as "9 Dec"
+  const formatShortDate = (date: Date): string => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    return `${date.getDate()} ${months[date.getMonth()]}`
+  }
+
   const handleMealUpdate = async (mealId: string, updates: any) => {
     try {
       const response = await fetch(`/api/meals/${mealId}`, {
@@ -751,8 +789,10 @@ export default function MealPlanDetailPage() {
             </button>
 
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-white">{DAYS_OF_WEEK[currentDayIndex]}</h2>
-              <p className="text-sm text-zinc-400 mt-1">Day {currentDayIndex + 1} of 7</p>
+              <h2 className="text-2xl font-bold text-white">
+                {DAYS_OF_WEEK[currentDayIndex]}, {formatShortDate(getCurrentDate())}
+              </h2>
+              <p className="text-sm text-zinc-400 mt-1">Day {getDayNumberInWeek()} of 7</p>
             </div>
 
             <button
