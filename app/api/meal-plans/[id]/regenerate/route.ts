@@ -4,7 +4,6 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { generateMealPlan } from '@/lib/claude'
 import { calculateServingsForMeals, filterZeroServingMeals } from '@/lib/meal-utils'
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
 
 export async function POST(
   req: NextRequest,
@@ -95,13 +94,11 @@ export async function POST(
         recipeId,
         recipeName: meal.recipeName || null,
         servings: meal.servings || null,
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
         notes: meal.notes || null,
         isLocked: false
       }
     })
 
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
     // Filter out meals that conflict with locked meals
     const lockedMealKeys = new Set(
       lockedMeals.map(m => `${m.dayOfWeek}-${m.mealType}`)
@@ -112,7 +109,6 @@ export async function POST(
     )
 
     console.log(`✅ Regenerated ${newMeals.length} meals, preserving ${lockedMeals.length} locked meals`)
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
 
     // Delete existing unlocked meals
     await prisma.meal.deleteMany({

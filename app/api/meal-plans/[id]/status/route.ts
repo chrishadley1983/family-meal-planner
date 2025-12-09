@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { calculateMealServings } from '@/lib/meal-utils'
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
 
 export async function PATCH(
   req: NextRequest,
@@ -18,7 +17,6 @@ export async function PATCH(
     const { status } = await req.json()
 
     if (!['Draft', 'Finalized', 'Archived'].includes(status)) {
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
       return NextResponse.json(
         { error: 'Invalid status. Must be Draft, Finalized, or Archived' },
         { status: 400 }
@@ -30,7 +28,6 @@ export async function PATCH(
       where: {
         id: params.id,
         userId: session.user.id
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
       }
     })
 
@@ -50,7 +47,6 @@ export async function PATCH(
       updateData.finalizedAt = null
     }
 
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
     const mealPlan = await prisma.mealPlan.update({
       where: { id: params.id },
       data: updateData,
@@ -64,7 +60,6 @@ export async function PATCH(
     })
 
     console.log(`✅ Meal plan ${params.id} status changed to ${status}`)
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
 
     return NextResponse.json({ mealPlan })
   } catch (error: any) {

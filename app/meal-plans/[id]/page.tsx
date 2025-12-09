@@ -7,8 +7,6 @@ import { formatDate, formatDateRange, getWeekDaysWithDates } from '@/lib/date-ut
 import { AppLayout, PageContainer } from '@/components/layout'
 import { Button, Badge, Select } from '@/components/ui'
 import { useSession } from 'next-auth/react'
-import { formatDate, formatDateRange } from '@/lib/date-utils'
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useSortable } from '@dnd-kit/sortable'
@@ -32,7 +30,6 @@ interface Meal {
   recipeName?: string | null
   servings?: number | null
   isLocked: boolean
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
   recipe?: Recipe | null
 }
 
@@ -81,7 +78,6 @@ interface WeekProfileSchedule {
 }
 
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
 const MEAL_TYPES = [
   { key: 'breakfast', label: 'Breakfast' },
   { key: 'morning-snack', label: 'Morning Snack' },
@@ -92,7 +88,6 @@ const MEAL_TYPES = [
   { key: 'evening-snack', label: 'Evening Snack' }
 ]
 
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
 function SortableMealCard({ meal, recipes, onUpdate, onDelete, onToggleLock, disabled }: any) {
   const {
     attributes,
@@ -120,7 +115,6 @@ function SortableMealCard({ meal, recipes, onUpdate, onDelete, onToggleLock, dis
       ref={setNodeRef}
       style={style}
       className="border rounded p-3 bg-white"
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
     >
       <div className="flex items-start justify-between mb-2">
         <div className="flex-1">
@@ -130,20 +124,17 @@ function SortableMealCard({ meal, recipes, onUpdate, onDelete, onToggleLock, dis
               {...listeners}
               disabled={disabled}
               className="cursor-move text-gray-400 hover:text-gray-600 disabled:cursor-not-allowed"
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
               title="Drag to reorder"
             >
               ⋮⋮
             </button>
             <span className="font-medium text-sm text-gray-700">
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
               {MEAL_TYPES.find(mt => mt.key === meal.mealType.toLowerCase())?.label || meal.mealType}
             </span>
           </div>
 
           {/* Recipe Selector */}
           <select
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
             value={meal.recipeId || ''}
             onChange={(e) => {
               const recipeId = e.target.value || null
@@ -155,7 +146,6 @@ function SortableMealCard({ meal, recipes, onUpdate, onDelete, onToggleLock, dis
             }}
             disabled={disabled}
             className="mt-2 block w-full text-xs rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50"
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
           >
             <option value="">No meal</option>
             {filteredRecipes.map((recipe: Recipe) => (
@@ -167,7 +157,6 @@ function SortableMealCard({ meal, recipes, onUpdate, onDelete, onToggleLock, dis
 
           {meal.servings && (
             <div className="text-xs text-gray-500 mt-1">{meal.servings} servings</div>
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
           )}
         </div>
 
@@ -176,7 +165,6 @@ function SortableMealCard({ meal, recipes, onUpdate, onDelete, onToggleLock, dis
             onClick={() => onToggleLock(meal.id, !meal.isLocked)}
             disabled={disabled}
             className="text-xs text-blue-600 hover:text-blue-800 disabled:opacity-50"
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
             title={meal.isLocked ? 'Unlock meal' : 'Lock meal'}
           >
             {meal.isLocked ? '🔒' : '🔓'}
@@ -185,7 +173,6 @@ function SortableMealCard({ meal, recipes, onUpdate, onDelete, onToggleLock, dis
             onClick={() => onDelete(meal.id)}
             disabled={disabled}
             className="text-xs text-red-600 hover:text-red-800 disabled:opacity-50"
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
           >
             ✕
           </button>
@@ -198,7 +185,6 @@ function SortableMealCard({ meal, recipes, onUpdate, onDelete, onToggleLock, dis
 export default function MealPlanDetailPage() {
   const params = useParams()
   const router = useRouter()
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
   const mealPlanId = params.id as string
 
   const [mealPlan, setMealPlan] = useState<MealPlan | null>(null)
@@ -211,7 +197,6 @@ export default function MealPlanDetailPage() {
   const [showEditSchedule, setShowEditSchedule] = useState(false)
   const [weekProfileSchedules, setWeekProfileSchedules] = useState<WeekProfileSchedule[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -521,7 +506,6 @@ export default function MealPlanDetailPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <p className="text-gray-600">Loading meal plan...</p>
       </div>
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
     )
   }
 
@@ -530,7 +514,6 @@ export default function MealPlanDetailPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <p className="text-gray-600">Meal plan not found</p>
       </div>
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
     )
   }
 
@@ -543,7 +526,6 @@ export default function MealPlanDetailPage() {
         {/* Header */}
         <div className="mb-6">
           <Link href="/meal-plans" className="text-blue-600 hover:text-blue-800 mb-2 inline-block">
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
             ← Back to Meal Plans
           </Link>
           <div className="flex justify-between items-start">
@@ -561,7 +543,6 @@ export default function MealPlanDetailPage() {
               }`}>
                 {mealPlan.status}
               </span>
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
             </div>
           </div>
         </div>
@@ -585,7 +566,6 @@ export default function MealPlanDetailPage() {
                 >
                   {regenerating ? 'Regenerating...' : 'Regenerate with AI'}
                 </button>
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
               </>
             )}
             {mealPlan.status === 'Finalized' && (
@@ -628,7 +608,6 @@ export default function MealPlanDetailPage() {
             >
               Delete Plan
             </button>
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
           </div>
         </div>
 
@@ -641,7 +620,6 @@ export default function MealPlanDetailPage() {
             value={selectedProfileId}
             onChange={(e) => setSelectedProfileId(e.target.value)}
             className="block w-full max-w-xs rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
           >
             {profiles.map(profile => (
               <option key={profile.id} value={profile.id}>
@@ -652,7 +630,6 @@ export default function MealPlanDetailPage() {
         </div>
 
         {/* Weekly Meal Grid with Drag and Drop */}
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -672,7 +649,6 @@ export default function MealPlanDetailPage() {
                   {selectedProfile && (
                     <div className="mb-4 p-3 bg-gray-50 rounded text-xs space-y-2">
                       <div className="font-medium text-gray-700">Daily Macros:</div>
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
 
                       {/* Calories */}
                       {selectedProfile.dailyCalorieTarget && (
@@ -684,7 +660,6 @@ export default function MealPlanDetailPage() {
                           <div className="w-full bg-gray-200 rounded-full h-2">
                             <div
                               className={`h-2 rounded-full ${getMacroProgressColor(dailyMacros.calories, selectedProfile.dailyCalorieTarget)}`}
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
                               style={{ width: `${getMacroPercentage(dailyMacros.calories, selectedProfile.dailyCalorieTarget)}%` }}
                             ></div>
                           </div>
@@ -701,7 +676,6 @@ export default function MealPlanDetailPage() {
                           <div className="w-full bg-gray-200 rounded-full h-2">
                             <div
                               className={`h-2 rounded-full ${getMacroProgressColor(dailyMacros.protein, selectedProfile.dailyProteinTarget)}`}
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
                               style={{ width: `${getMacroPercentage(dailyMacros.protein, selectedProfile.dailyProteinTarget)}%` }}
                             ></div>
                           </div>
@@ -718,7 +692,6 @@ export default function MealPlanDetailPage() {
                           <div className="w-full bg-gray-200 rounded-full h-2">
                             <div
                               className={`h-2 rounded-full ${getMacroProgressColor(dailyMacros.carbs, selectedProfile.dailyCarbsTarget)}`}
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
                               style={{ width: `${getMacroPercentage(dailyMacros.carbs, selectedProfile.dailyCarbsTarget)}%` }}
                             ></div>
                           </div>
@@ -735,7 +708,6 @@ export default function MealPlanDetailPage() {
                           <div className="w-full bg-gray-200 rounded-full h-2">
                             <div
                               className={`h-2 rounded-full ${getMacroProgressColor(dailyMacros.fat, selectedProfile.dailyFatTarget)}`}
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
                               style={{ width: `${getMacroPercentage(dailyMacros.fat, selectedProfile.dailyFatTarget)}%` }}
                             ></div>
                           </div>
@@ -761,14 +733,12 @@ export default function MealPlanDetailPage() {
                             disabled={!isEditable}
                           />
                         ))
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
                       )}
                     </div>
                   </SortableContext>
                 </div>
               )
             })}
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
           </div>
         </DndContext>
 
@@ -781,14 +751,12 @@ export default function MealPlanDetailPage() {
                 <button
                   onClick={() => setShowEditSchedule(false)}
                   className="text-gray-400 hover:text-gray-600 text-2xl"
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
                 >
                   ×
                 </button>
               </div>
 
               <p className="text-sm text-gray-600 mb-4">
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
                 Adjust schedules for this specific week. This won't affect profile defaults.
               </p>
 
@@ -796,7 +764,6 @@ export default function MealPlanDetailPage() {
               <div className="space-y-6">
                 {weekProfileSchedules.map((personSchedule) => (
                   <div key={personSchedule.profileId} className="border rounded-lg p-4">
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center space-x-3">
                         <input
@@ -808,7 +775,6 @@ export default function MealPlanDetailPage() {
                         <div>
                           <h4 className="font-medium text-gray-900">{personSchedule.profileName}</h4>
                           <p className="text-xs text-gray-500">
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
                             {personSchedule.included ? '✓ Included in meal plan' : '✗ Excluded from meal plan'}
                           </p>
                         </div>
@@ -825,7 +791,6 @@ export default function MealPlanDetailPage() {
                               </th>
                               {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
                                 <th key={day} className="px-1 py-2 text-center text-xs font-medium text-gray-500 uppercase">
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
                                   {day}
                                 </th>
                               ))}
@@ -835,7 +800,6 @@ export default function MealPlanDetailPage() {
                             {MEAL_TYPES.map(meal => (
                               <tr key={meal.key} className="hover:bg-gray-50">
                                 <td className="px-2 py-2 whitespace-nowrap text-xs font-medium text-gray-700">
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
                                   {meal.label}
                                 </td>
                                 {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => {
@@ -847,7 +811,6 @@ export default function MealPlanDetailPage() {
                                         checked={isChecked}
                                         onChange={() => togglePersonMeal(personSchedule.profileId, day as keyof MealSchedule, meal.key)}
                                         className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
                                       />
                                     </td>
                                   )
@@ -876,13 +839,11 @@ export default function MealPlanDetailPage() {
                 >
                   {saving ? 'Saving...' : 'Save Schedule'}
                 </button>
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
               </div>
             </div>
           </div>
         )}
       </div>
     </div>
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
   )
 }

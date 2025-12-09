@@ -47,7 +47,6 @@ export async function POST(
         timesManuallySelected: 0,
         lastUsedDate: null,
         isFavorite: false, // Duplicate is not favorited by default
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
         ingredients: {
           create: ingredients.map(({ id: _, recipeId: __, ...ing }) => ing)
         },

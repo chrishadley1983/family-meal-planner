@@ -101,18 +101,14 @@ export default function MealPlanningSettingsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <p className="text-zinc-400">Loading settings...</p>
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <p className="text-gray-600">Loading settings...</p>
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
       </div>
     )
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
       <div className="max-w-4xl mx-auto py-8 px-4">
         {/* Header */}
         <div className="mb-8">
@@ -124,7 +120,6 @@ export default function MealPlanningSettingsPage() {
           </button>
           <h1 className="text-3xl font-bold text-gray-900">Meal Plan Settings</h1>
           <p className="text-gray-600 mt-2">
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
             Configure how AI generates your weekly meal plans
           </p>
         </div>
@@ -136,7 +131,6 @@ export default function MealPlanningSettingsPage() {
             <button
               onClick={() => toggleSection('macros')}
               className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50"
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
             >
               <div className="flex items-center gap-3">
                 <span className="text-2xl">🎯</span>
@@ -146,7 +140,6 @@ export default function MealPlanningSettingsPage() {
                 </div>
               </div>
               <span className="text-gray-400">{expandedSections.has('macros') ? '▼' : '▶'}</span>
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
             </button>
 
             {expandedSections.has('macros') && (
@@ -166,7 +159,6 @@ export default function MealPlanningSettingsPage() {
                         {mode.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
                       </div>
                       <div className="text-sm text-gray-600">{MACRO_MODE_DESCRIPTIONS[mode]}</div>
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
                     </div>
                   </label>
                 ))}
@@ -179,7 +171,6 @@ export default function MealPlanningSettingsPage() {
             <button
               onClick={() => toggleSection('variety')}
               className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50"
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
             >
               <div className="flex items-center gap-3">
                 <span className="text-2xl">🔄</span>
@@ -189,7 +180,6 @@ export default function MealPlanningSettingsPage() {
                 </div>
               </div>
               <span className="text-gray-400">{expandedSections.has('variety') ? '▼' : '▶'}</span>
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
             </button>
 
             {expandedSections.has('variety') && (
@@ -201,14 +191,12 @@ export default function MealPlanningSettingsPage() {
                     onChange={(e) => setSettings({ ...settings, varietyEnabled: e.target.checked })}
                   />
                   <span className="font-medium text-gray-900">Enable variety tracking</span>
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
                 </label>
 
                 {settings.varietyEnabled && (
                   <>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
                         Dinner Cooldown: {settings.dinnerCooldown} days
                       </label>
                       <input
@@ -223,7 +211,6 @@ export default function MealPlanningSettingsPage() {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
                         Lunch Cooldown: {settings.lunchCooldown} days
                       </label>
                       <input
@@ -238,7 +225,6 @@ export default function MealPlanningSettingsPage() {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
                         Breakfast Cooldown: {settings.breakfastCooldown} days
                       </label>
                       <input
@@ -253,7 +239,6 @@ export default function MealPlanningSettingsPage() {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
                         Snack Cooldown: {settings.snackCooldown} days
                       </label>
                       <input
@@ -269,7 +254,6 @@ export default function MealPlanningSettingsPage() {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
                           Min Different Cuisines
                         </label>
                         <input
@@ -283,7 +267,6 @@ export default function MealPlanningSettingsPage() {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
                           Max Same Cuisine
                         </label>
                         <input
@@ -293,7 +276,6 @@ export default function MealPlanningSettingsPage() {
                           value={settings.maxSameCuisine}
                           onChange={(e) => setSettings({ ...settings, maxSameCuisine: parseInt(e.target.value) })}
                           className="w-full px-3 py-2 border border-gray-300 rounded"
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
                         />
                       </div>
                     </div>
@@ -308,7 +290,6 @@ export default function MealPlanningSettingsPage() {
             <button
               onClick={() => toggleSection('shopping')}
               className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50"
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
             >
               <div className="flex items-center gap-3">
                 <span className="text-2xl">🛒</span>
@@ -318,7 +299,6 @@ export default function MealPlanningSettingsPage() {
                 </div>
               </div>
               <span className="text-gray-400">{expandedSections.has('shopping') ? '▼' : '▶'}</span>
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
             </button>
 
             {expandedSections.has('shopping') && (
@@ -336,7 +316,6 @@ export default function MealPlanningSettingsPage() {
                     <div>
                       <div className="font-medium text-gray-900 capitalize">{mode}</div>
                       <div className="text-sm text-gray-600">{SHOPPING_MODE_DESCRIPTIONS[mode]}</div>
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
                     </div>
                   </label>
                 ))}
@@ -349,7 +328,6 @@ export default function MealPlanningSettingsPage() {
             <button
               onClick={() => toggleSection('expiry')}
               className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50"
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
             >
               <div className="flex items-center gap-3">
                 <span className="text-2xl">📦</span>
@@ -359,7 +337,6 @@ export default function MealPlanningSettingsPage() {
                 </div>
               </div>
               <span className="text-gray-400">{expandedSections.has('expiry') ? '▼' : '▶'}</span>
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
             </button>
 
             {expandedSections.has('expiry') && (
@@ -378,7 +355,6 @@ export default function MealPlanningSettingsPage() {
                       <div>
                         <div className="font-medium text-gray-900 capitalize">{priority}</div>
                         <div className="text-sm text-gray-600">{EXPIRY_PRIORITY_DESCRIPTIONS[priority]}</div>
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
                       </div>
                     </label>
                   ))}
@@ -386,7 +362,6 @@ export default function MealPlanningSettingsPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
                     Expiry Window: {settings.expiryWindow} days
                   </label>
                   <input
@@ -398,14 +373,12 @@ export default function MealPlanningSettingsPage() {
                     className="w-full"
                   />
                   <p className="text-xs text-gray-500 mt-1">
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
                     Consider items expiring within this many days
                   </p>
                 </div>
 
                 <div className="bg-gray-50 p-4 rounded border border-gray-200">
                   <p className="text-sm text-gray-600">
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
                     <strong>Note:</strong> "Use It Up" item selection will be available once you have inventory items added to the system.
                   </p>
                 </div>
@@ -418,7 +391,6 @@ export default function MealPlanningSettingsPage() {
             <button
               onClick={() => toggleSection('batch')}
               className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50"
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
             >
               <div className="flex items-center gap-3">
                 <span className="text-2xl">🍲</span>
@@ -428,7 +400,6 @@ export default function MealPlanningSettingsPage() {
                 </div>
               </div>
               <span className="text-gray-400">{expandedSections.has('batch') ? '▼' : '▶'}</span>
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
             </button>
 
             {expandedSections.has('batch') && (
@@ -440,13 +411,11 @@ export default function MealPlanningSettingsPage() {
                     onChange={(e) => setSettings({ ...settings, batchCookingEnabled: e.target.checked })}
                   />
                   <span className="font-medium text-gray-900">Enable batch cooking suggestions</span>
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
                 </label>
 
                 {settings.batchCookingEnabled && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
                       Maximum Leftover Days: {settings.maxLeftoverDays}
                     </label>
                     <input
@@ -458,7 +427,6 @@ export default function MealPlanningSettingsPage() {
                       className="w-full"
                     />
                     <p className="text-xs text-gray-500 mt-1">
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
                       Limit how far ahead batch-cooked meals can be used
                     </p>
                   </div>
@@ -472,7 +440,6 @@ export default function MealPlanningSettingsPage() {
             <button
               onClick={() => toggleSection('priority')}
               className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50"
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
             >
               <div className="flex items-center gap-3">
                 <span className="text-2xl">📊</span>
@@ -482,13 +449,11 @@ export default function MealPlanningSettingsPage() {
                 </div>
               </div>
               <span className="text-gray-400">{expandedSections.has('priority') ? '▼' : '▶'}</span>
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
             </button>
 
             {expandedSections.has('priority') && (
               <div className="px-6 pb-6">
                 <p className="text-sm text-gray-600 mb-4">
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
                   When AI can't satisfy all constraints, it will prioritize in this order (top to bottom):
                 </p>
                 <div className="space-y-2">
@@ -496,13 +461,11 @@ export default function MealPlanningSettingsPage() {
                     <div key={priority} className="flex items-center gap-3 bg-gray-50 p-3 rounded">
                       <span className="font-semibold text-gray-500 w-6">{index + 1}.</span>
                       <span className="flex-1 font-medium text-gray-900">{PRIORITY_LABELS[priority]}</span>
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
                       <div className="flex gap-1">
                         <button
                           onClick={() => movePriority(index, 'up')}
                           disabled={index === 0}
                           className="px-2 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
                         >
                           ↑
                         </button>
@@ -510,7 +473,6 @@ export default function MealPlanningSettingsPage() {
                           onClick={() => movePriority(index, 'down')}
                           disabled={index === settings.priorityOrder.length - 1}
                           className="px-2 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
                         >
                           ↓
                         </button>
@@ -527,7 +489,6 @@ export default function MealPlanningSettingsPage() {
             <button
               onClick={() => toggleSection('feedback')}
               className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50"
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
             >
               <div className="flex items-center gap-3">
                 <span className="text-2xl">💬</span>
@@ -537,7 +498,6 @@ export default function MealPlanningSettingsPage() {
                 </div>
               </div>
               <span className="text-gray-400">{expandedSections.has('feedback') ? '▼' : '▶'}</span>
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
             </button>
 
             {expandedSections.has('feedback') && (
@@ -555,7 +515,6 @@ export default function MealPlanningSettingsPage() {
                     <div>
                       <div className="font-medium text-gray-900 capitalize">{detail}</div>
                       <div className="text-sm text-gray-600">{FEEDBACK_DETAIL_DESCRIPTIONS[detail]}</div>
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
                     </div>
                   </label>
                 ))}
@@ -566,7 +525,6 @@ export default function MealPlanningSettingsPage() {
 
         {/* Save Button */}
         <div className="mt-8 flex items-center justify-between bg-white rounded-lg shadow-sm border border-gray-200 p-6">
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
           <div>
             {saveMessage && (
               <p className={`text-sm ${saveMessage.startsWith('✓') ? 'text-green-600' : 'text-red-600'}`}>
@@ -578,7 +536,6 @@ export default function MealPlanningSettingsPage() {
             onClick={handleSave}
             disabled={saving}
             className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
           >
             {saving ? 'Saving...' : 'Save Settings'}
           </button>

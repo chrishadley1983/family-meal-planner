@@ -46,8 +46,6 @@ export async function POST(req: NextRequest) {
       const values = parseCSVLine(lines[i])
       const row: any = {}
       headers.forEach((header: string, index: number) => {
-      headers.forEach((header, index) => {
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
         row[header] = values[index] || ''
       })
       rows.push(row)

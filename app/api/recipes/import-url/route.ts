@@ -53,7 +53,6 @@ export async function POST(req: NextRequest) {
       recipe: recipeData
     })
     return NextResponse.json({ recipe: recipeData })
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
   } catch (error: any) {
     console.error('Error importing recipe from URL:', error)
     return NextResponse.json(

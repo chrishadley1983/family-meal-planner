@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { calculateServingsForMeals, filterZeroServingMeals } from '@/lib/meal-utils'
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
 import { addDays, parseISO, differenceInDays } from 'date-fns'
 
 export async function POST(req: NextRequest) {
@@ -72,25 +71,21 @@ export async function POST(req: NextRequest) {
     // Copy meals from source plan
     if (sourcePlan.meals.length > 0) {
       const newMeals = sourcePlan.meals.map((sourceMeal) => ({
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
         mealPlanId: newMealPlan.id,
         dayOfWeek: sourceMeal.dayOfWeek,
         mealType: sourceMeal.mealType,
         recipeId: sourceMeal.recipeId,
         recipeName: sourceMeal.recipeName,
         servings: sourceMeal.servings,
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
         notes: sourceMeal.notes,
         isLocked: false // Don't copy the locked status
       }))
 
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
       await prisma.meal.createMany({
         data: newMeals
       })
 
       console.log(`✅ Copied ${newMeals.length} meals to new plan`)
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
     }
 
     // Fetch the complete meal plan with meals

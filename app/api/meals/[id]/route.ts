@@ -39,7 +39,6 @@ export async function PATCH(
       console.log(`🔧 Servings manually updated for meal ${params.id}, setting flag`)
     }
 
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
     // Update the meal
     const meal = await prisma.meal.update({
       where: { id: params.id },

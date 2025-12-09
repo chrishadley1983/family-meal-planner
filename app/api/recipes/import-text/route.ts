@@ -22,7 +22,6 @@ export async function POST(req: NextRequest) {
     // Parse recipe text using Claude
     const analyzedRecipe = await analyzeRecipeText(text)
 
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
     console.log('🟢 Recipe parsed successfully:', analyzedRecipe.recipeName)
 
     // Transform the response to match the recipe schema
@@ -47,7 +46,6 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ recipe: recipeData })
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
   } catch (error: any) {
     console.error('❌ Error parsing recipe text:', error)
     return NextResponse.json(
