@@ -376,6 +376,272 @@ Let me know if the error persists or if you see any new issues.
 
 ---
 
+## 🌳 GIT BRANCHING STRATEGY & PREVENTING BRANCH DIVERGENCE
+
+**Critical Lesson Learned:** Branch divergence can cause complete loss of features when branches are merged incorrectly. This section ensures we never lose implemented features due to improper git workflows.
+
+### Understanding Branch Divergence
+
+**What happened:** Two branches diverged from a common ancestor. Branch A added AI features (832 lines, 8 functions), Branch B added batch cooking (271 lines, 2 functions). When Branch B was merged to main, Branch A's features were abandoned and lost.
+
+**Why it's dangerous:**
+- Features get implemented but never make it to production
+- Code that was tested and working disappears silently
+- TypeScript errors appear for "missing" functions that actually existed
+- No clear indication that features were lost until someone notices
+
+### Feature Branch Workflow
+
+**1. Before Creating a New Feature Branch:**
+
+```powershell
+# ALWAYS start from the latest main/master
+git checkout main
+git pull origin main
+
+# Verify you're up to date
+git log --oneline -5
+
+# Create your feature branch
+git checkout -b feature/your-feature-name
+```
+
+**2. While Working on a Feature Branch:**
+
+```powershell
+# Regularly sync with main to avoid divergence
+git fetch origin main
+git merge origin/main
+
+# Or use rebase if you prefer linear history (more advanced)
+git fetch origin main
+git rebase origin/main
+```
+
+**Sync frequency:** At minimum, sync with main before completing your feature and creating a PR.
+
+### Pre-Merge Verification Checklist
+
+**BEFORE merging any feature branch into main, ALWAYS complete this checklist:**
+
+#### Step 1: Inventory Current Features
+
+```powershell
+# List all exported functions in key files
+grep -rn "^export" lib/ app/api/ --include="*.ts" --include="*.tsx" > pre-merge-exports.txt
+
+# Check file sizes of critical files
+Get-ChildItem lib/*.ts, app/api/**/*.ts | Select-Object Name, Length | Out-File pre-merge-sizes.txt
+
+# List all API routes
+Get-ChildItem app/api -Recurse -Filter "route.ts" | Select-Object FullName | Out-File pre-merge-routes.txt
+```
+
+Save these files! You'll compare them after the merge.
+
+#### Step 2: Review Branch Differences
+
+```powershell
+# See what main has that your branch doesn't
+git fetch origin main
+git log HEAD..origin/main --oneline
+
+# See what your branch has that main doesn't
+git log origin/main..HEAD --oneline
+
+# See file-level differences
+git diff origin/main...HEAD --stat
+
+# CRITICAL: Review the actual diff for key files
+git diff origin/main...HEAD lib/claude.ts
+git diff origin/main...HEAD app/api/
+```
+
+**Red Flags:**
+- Main branch has added new functions you don't have
+- Your branch shows deletions of functions that exist in main
+- Large line count differences in core files
+- Different numbers of exported functions
+
+#### Step 3: Identify Conflicts BEFORE Merging
+
+```powershell
+# Dry-run the merge to see conflicts WITHOUT actually merging
+git merge --no-commit --no-ff origin/main
+
+# If conflicts appear, review them carefully
+git diff --name-only --diff-filter=U
+
+# Abort the dry-run merge
+git merge --abort
+```
+
+#### Step 4: Verify All Features Present
+
+Before merging, ensure your branch has ALL features from both branches:
+
+```powershell
+# Check if critical functions exist in your branch
+grep -n "export async function parseRecipeFromUrl" lib/claude.ts
+grep -n "export async function analyzeRecipeText" lib/claude.ts
+grep -n "export async function analyzeRecipePhoto" lib/claude.ts
+grep -n "export async function calculateNutrition" lib/claude.ts
+grep -n "export async function analyzeRecipeMacros" lib/claude.ts
+grep -n "export async function getNutritionistFeedbackForRecipe" lib/claude.ts
+
+# If ANY are missing, STOP and investigate before merging
+```
+
+### Safe Merge Practices
+
+#### Option 1: Merge Main Into Feature (Recommended)
+
+This keeps feature branch history and integrates main's changes:
+
+```powershell
+# On your feature branch
+git checkout feature/your-feature-name
+git fetch origin main
+git merge origin/main
+
+# Resolve any conflicts carefully
+# After resolving, verify all features present (Step 4 above)
+
+git add .
+git commit -m "merge: Integrate main into feature/your-feature-name"
+
+# Run full verification (TypeScript, tests, etc.)
+npx tsc --noEmit
+npm test
+
+# Push updated feature branch
+git push origin feature/your-feature-name
+```
+
+#### Option 2: Cherry-Pick Missing Features
+
+If you discover missing features after a merge:
+
+```powershell
+# Find the commit with the missing feature
+git log --all --grep="feature name" --oneline
+# Or search by file changes
+git log --all --oneline -- lib/claude.ts
+
+# Cherry-pick that specific commit
+git cherry-pick <commit-hash>
+
+# Resolve conflicts if any
+# Test thoroughly
+```
+
+#### Option 3: Extract and Restore (Last Resort)
+
+If features are already lost (like we just did):
+
+```powershell
+# Find the commit with complete features
+git log --all --oneline -- lib/claude.ts
+git show <commit-hash>:lib/claude.ts > /tmp/complete-file.ts
+
+# Extract missing functions and manually restore
+# This is time-consuming - prevention is better!
+```
+
+### Post-Merge Verification
+
+**IMMEDIATELY after merging, verify nothing was lost:**
+
+```powershell
+# Compare exports before and after
+grep -rn "^export" lib/ app/api/ --include="*.ts" --include="*.tsx" > post-merge-exports.txt
+diff pre-merge-exports.txt post-merge-exports.txt
+
+# Check file sizes
+Get-ChildItem lib/*.ts, app/api/**/*.ts | Select-Object Name, Length | Out-File post-merge-sizes.txt
+diff pre-merge-sizes.txt post-merge-sizes.txt
+
+# Verify all routes still exist
+Get-ChildItem app/api -Recurse -Filter "route.ts" | Select-Object FullName | Out-File post-merge-routes.txt
+diff pre-merge-routes.txt post-merge-routes.txt
+```
+
+**Red Flags After Merge:**
+- Fewer exports than before
+- Smaller file sizes in core files
+- Missing route files
+- TypeScript errors for "missing" functions
+
+**If ANY red flags:** Immediately investigate and restore missing features before continuing.
+
+### Continuous Integration Checks
+
+**Every commit should verify:**
+
+```powershell
+# 1. TypeScript compiles
+npx tsc --noEmit
+
+# 2. All tests pass
+npm test
+
+# 3. Lint passes
+npm run lint
+
+# 4. Build succeeds
+npm run build
+```
+
+If ANY of these fail after a merge, it's a strong indicator that features were lost or conflicts were resolved incorrectly.
+
+### When Multiple People Are Working
+
+**Scenario:** You and another developer both create feature branches from main.
+
+**Problem:** When the first branch merges, the second branch is now outdated and may cause divergence.
+
+**Solution:**
+
+```powershell
+# Developer 2: After Developer 1's branch is merged
+git checkout your-feature-branch
+git fetch origin main
+git merge origin/main  # Integrate Developer 1's changes
+
+# Resolve any conflicts
+# Test thoroughly
+# Push updated feature branch
+```
+
+**Rule of thumb:** Before creating a PR, ALWAYS sync with latest main first.
+
+### Emergency Recovery: What to Do If Features Are Lost
+
+If you discover features are missing after a merge:
+
+1. **Don't panic** - Git never truly deletes anything
+2. **Document what's missing** - Make a list
+3. **Find the commit** - Use `git log --all` to find where features existed
+4. **Choose recovery method:**
+   - Cherry-pick the commit with features
+   - Extract files from historical commit
+   - Merge the abandoned branch
+5. **Verify recovery** - Check all functions are restored
+6. **Test thoroughly** - TypeScript, tests, manual testing
+7. **Document the incident** - Update CLAUDE.md if needed
+
+### Key Takeaways
+
+1. ✅ **ALWAYS start feature branches from latest main**
+2. ✅ **ALWAYS sync with main before merging**
+3. ✅ **ALWAYS create pre-merge inventory of features**
+4. ✅ **ALWAYS verify all features present after merge**
+5. ✅ **NEVER ignore TypeScript errors** - they often indicate lost code
+6. ✅ **NEVER delete a feature branch** until you've verified the features are in main
+7. ❌ **NEVER assume a merge is safe** - always verify
+
+---
+
 ## ✅ Change Completion Report Template
 
 **Use this format when reporting ANY change as complete:**
