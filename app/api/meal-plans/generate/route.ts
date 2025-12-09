@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { generateMealPlan } from '@/lib/claude'
 import { calculateServingsForMeals, filterZeroServingMeals } from '@/lib/meal-utils'
-import { startOfWeek, endOfWeek, subWeeks, addDays } from 'date-fns'
+import { startOfWeek, subWeeks, addDays } from 'date-fns'
 import { DEFAULT_SETTINGS } from '@/lib/types/meal-plan-settings'
 import { validateMealPlan } from '@/lib/meal-plan-validation'
 
@@ -251,7 +251,7 @@ export async function POST(req: NextRequest) {
 
     // Create the meal plan in database (first pass - without leftover linkage or scaling)
     const weekStart = new Date(weekStartDate)
-    const weekEnd = endOfWeek(weekStart)
+    const weekEnd = addDays(weekStart, 6) // 7-day week
 
     console.log(`💾 Creating meal plan with ${finalMeals.filter((m: any) => m.isLeftover).length} leftover meals...`)
 
