@@ -29,12 +29,17 @@ export async function PUT(
     }
 
     // Update favorite status
-    const updatedRecipe = await prisma.recipe.update({
-      where: { id },
-      data: { isFavorite }
-    })
+    // Note: isFavorite field doesn't exist in schema yet
+    // TODO: Add isFavorite field to Recipe model and uncomment below
+    // const updatedRecipe = await prisma.recipe.update({
+    //   where: { id },
+    //   data: { isFavorite }
+    // })
 
-    return NextResponse.json({ recipe: updatedRecipe })
+    return NextResponse.json({
+      recipe,
+      message: 'Favorite feature not yet implemented'
+    })
   } catch (error) {
     console.error('Error updating recipe favorite status:', error)
     return NextResponse.json(

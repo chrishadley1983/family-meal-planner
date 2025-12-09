@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { calculateNutrition } from '@/lib/claude'
+// TODO: Implement function
+// import { calculateNutrition } from '@/lib/claude'
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,10 +21,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Valid servings count required' }, { status: 400 })
     }
 
+    // TODO: Implement calculateNutrition function
     // Calculate nutrition using Claude
-    const nutrition = await calculateNutrition(ingredients, servings)
+    // const nutrition = await calculateNutrition(ingredients, servings)
 
-    return NextResponse.json({ nutrition })
+    return NextResponse.json({
+      nutrition: null,
+      message: 'Nutrition calculation feature not yet implemented. Please enter values manually.'
+    })
   } catch (error: any) {
     console.error('Error calculating nutrition:', error)
     return NextResponse.json(

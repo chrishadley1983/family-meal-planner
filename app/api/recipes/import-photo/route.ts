@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { analyzeRecipePhoto } from '@/lib/claude'
+// TODO: Implement function
+// import { analyzeRecipePhoto } from '@/lib/claude'
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,22 +22,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid image format' }, { status: 400 })
     }
 
+    // TODO: Implement analyzeRecipePhoto function
     // Analyze photo using Claude Vision
-    const analyzedRecipe = await analyzeRecipePhoto(imageData)
-
+    // const analyzedRecipe = await analyzeRecipePhoto(imageData)
+    //
     // Transform the suggested ingredients and instructions to match the recipe schema
-    const recipeData = {
-      recipeName: analyzedRecipe.recipeName,
-      description: analyzedRecipe.description,
-      cuisineType: analyzedRecipe.cuisineType,
-      difficultyLevel: analyzedRecipe.difficultyLevel,
-      mealCategory: analyzedRecipe.mealCategory,
-      servings: 4, // Default servings
-      ingredients: analyzedRecipe.suggestedIngredients || [],
-      instructions: analyzedRecipe.suggestedInstructions || []
-    }
+    // const recipeData = {
+    //   recipeName: analyzedRecipe.recipeName,
+    //   description: analyzedRecipe.description,
+    //   cuisineType: analyzedRecipe.cuisineType,
+    //   difficultyLevel: analyzedRecipe.difficultyLevel,
+    //   mealCategory: analyzedRecipe.mealCategory,
+    //   servings: 4, // Default servings
+    //   ingredients: analyzedRecipe.suggestedIngredients || [],
+    //   instructions: analyzedRecipe.suggestedInstructions || []
+    // }
 
-    return NextResponse.json({ recipe: recipeData })
+    return NextResponse.json({
+      recipe: null,
+      message: 'Photo import feature not yet implemented'
+    })
   } catch (error: any) {
     console.error('Error analyzing recipe photo:', error)
     return NextResponse.json(

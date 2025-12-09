@@ -46,7 +46,6 @@ export async function POST(
         timesUsed: 0,
         timesManuallySelected: 0,
         lastUsedDate: null,
-        isFavorite: false, // Duplicate is not favorited by default
         ingredients: {
           create: ingredients.map(({ id: _, recipeId: __, ...ing }) => ing)
         },

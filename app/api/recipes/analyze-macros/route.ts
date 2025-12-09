@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { analyzeRecipeMacros } from '@/lib/claude'
+// TODO: Implement analyzeRecipeMacros in @/lib/claude
+// import { analyzeRecipeMacros } from '@/lib/claude'
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,11 +22,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get the main user's profile
+    // Get the first user's profile
     const mainProfile = await prisma.familyProfile.findFirst({
       where: {
         userId: session.user.id,
-        isMainUser: true,
       },
       select: {
         dailyCalorieTarget: true,
@@ -38,26 +38,30 @@ export async function POST(request: NextRequest) {
 
     if (!mainProfile) {
       return NextResponse.json(
-        { error: 'Main user profile not found. Please set a profile as main user.' },
+        { error: 'User profile not found.' },
         { status: 404 }
       )
     }
 
+    // TODO: Implement analyzeRecipeMacros function
     // Call Claude API to analyze macros
-    const analysis = await analyzeRecipeMacros({
-      recipe: {
-        recipeName: recipe.recipeName,
-        servings: recipe.servings || 4,
-        ingredients: recipe.ingredients,
-        caloriesPerServing: recipe.caloriesPerServing,
-        proteinPerServing: recipe.proteinPerServing,
-        carbsPerServing: recipe.carbsPerServing,
-        fatPerServing: recipe.fatPerServing,
-      },
-      userProfile: mainProfile,
-    })
+    // const analysis = await analyzeRecipeMacros({
+    //   recipe: {
+    //     recipeName: recipe.recipeName,
+    //     servings: recipe.servings || 4,
+    //     ingredients: recipe.ingredients,
+    //     caloriesPerServing: recipe.caloriesPerServing,
+    //     proteinPerServing: recipe.proteinPerServing,
+    //     carbsPerServing: recipe.carbsPerServing,
+    //     fatPerServing: recipe.fatPerServing,
+    //   },
+    //   userProfile: mainProfile,
+    // })
 
-    return NextResponse.json({ analysis })
+    return NextResponse.json({
+      analysis: 'Feature not yet implemented. Please add macro values manually.',
+      message: 'Macro analysis feature coming soon'
+    })
   } catch (error) {
     console.error('Macro analysis error:', error)
     return NextResponse.json(

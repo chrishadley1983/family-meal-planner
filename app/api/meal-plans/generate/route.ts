@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
       weekStartDate,
       weekProfileSchedules, // Pass per-person schedules for week
       settings,
-      recipeHistory: recipeHistory.map(h => ({
+      recipeHistory: recipeHistory.map((h) => ({
         id: h.id,
         userId: h.userId,
         recipeId: h.recipeId,
@@ -117,14 +117,25 @@ export async function POST(req: NextRequest) {
     })
 
     // Create a set of valid recipe IDs for validation
-    const validRecipeIds = new Set(recipes.map(r => r.id))
+    const validRecipeIds = new Set(recipes.map((r) => r.id))
 
     // Track invalid recipes for warning generation
     const invalidRecipes: Array<{ recipeName: string; day: string; mealType: string }> = []
 
+    // Define the type for validated meals
+    interface ValidatedMeal {
+      dayOfWeek: string
+      mealType: string
+      recipeId: string | null
+      recipeName: string | null
+      notes: string | null
+      isLeftover: boolean
+      batchCookSourceDay: string | null
+    }
+
     // Validate and clean up meals - only include valid recipe IDs
     console.log('🔍 AI Response - Checking for batch cooking data...')
-    const validatedMeals = generatedPlan.meals.map((meal: any) => {
+    const validatedMeals: ValidatedMeal[] = generatedPlan.meals.map((meal: any) => {
       const recipeId = meal.recipeId && validRecipeIds.has(meal.recipeId) ? meal.recipeId : null
 
       if (meal.recipeId && !recipeId) {
@@ -152,7 +163,7 @@ export async function POST(req: NextRequest) {
       }
     })
 
-    console.log(`📊 Batch cooking summary: ${validatedMeals.filter((m: any) => m.isLeftover).length} leftover meals out of ${validatedMeals.length} total`)
+    console.log(`📊 Batch cooking summary: ${validatedMeals.filter((m) => m.isLeftover).length} leftover meals out of ${validatedMeals.length} total`)
 
     // Calculate servings based on who's eating each meal
     console.log('🧮 Calculating servings for all meals...')
@@ -177,9 +188,9 @@ export async function POST(req: NextRequest) {
         status: 'Draft',
         customSchedule: weekProfileSchedules || null, // Store per-person schedules as JSON
         meals: {
-          create: finalMeals.map((meal: any) => {
+          create: finalMeals.map((meal) => {
             // Find the recipe to calculate scaling factor
-            const recipe = recipes.find(r => r.id === meal.recipeId)
+            const recipe = recipes.find((r) => r.id === meal.recipeId)
             const scalingFactor = recipe && recipe.servings > 0
               ? meal.servings / recipe.servings
               : null
@@ -190,7 +201,6 @@ export async function POST(req: NextRequest) {
               recipeId: meal.recipeId,
               recipeName: meal.recipeName,
               servings: meal.servings,
-              servingsManuallySet: meal.servingsManuallySet || false,
               scalingFactor, // CRITICAL: Store scaling factor for shopping lists
               notes: meal.notes,
               isLeftover: meal.isLeftover || false,
@@ -264,8 +274,8 @@ export async function POST(req: NextRequest) {
     console.log('🔷 Recording recipe usage history...')
     const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
     const historyEntries = mealPlan.meals
-      .filter(meal => meal.recipeId) // Only record meals with actual recipes
-      .map(meal => {
+      .filter((meal) => meal.recipeId) // Only record meals with actual recipes
+      .map((meal) => {
         // Calculate the actual date for this meal
         const dayIndex = daysOfWeek.indexOf(meal.dayOfWeek)
         const mealDate = addDays(weekStart, dayIndex)

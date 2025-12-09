@@ -62,8 +62,7 @@ export async function PATCH(
       console.log('🧮 Recalculating servings after schedule change...')
 
       const servingsUpdates = existingPlan.meals
-        .filter(meal => !meal.servingsManuallySet) // Only recalculate if not manually set
-        .map(meal => {
+        .map((meal) => {
           const newServings = calculateMealServings(
             meal.dayOfWeek,
             meal.mealType,

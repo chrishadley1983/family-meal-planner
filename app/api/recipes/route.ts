@@ -117,10 +117,6 @@ export async function POST(req: NextRequest) {
       console.log('✅ SVG generated successfully')
     }
 
-    // Calculate isQuickMeal based on totalTimeMinutes
-    const totalTime = (data.prepTimeMinutes || 0) + (data.cookTimeMinutes || 0)
-    const isQuickMeal = totalTime > 0 && totalTime < 30
-
     // Calculate total time if prep and cook times are provided
     const totalTimeMinutes =
       (data.prepTimeMinutes || 0) + (data.cookTimeMinutes || 0) || null
@@ -131,7 +127,6 @@ export async function POST(req: NextRequest) {
       data: {
         ...recipeData,
         totalTimeMinutes,
-        isQuickMeal,
         userId: session.user.id,
         ingredients: {
           create: ingredients.map((ing, index) => ({

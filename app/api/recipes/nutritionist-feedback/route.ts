@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { getNutritionistFeedbackForRecipe } from '@/lib/claude'
+// TODO: Implement getNutritionistFeedbackForRecipe in @/lib/claude
+// import { getNutritionistFeedbackForRecipe } from '@/lib/claude'
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,11 +22,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get the main user's profile
+    // Get the first user's profile
     const mainProfile = await prisma.familyProfile.findFirst({
       where: {
         userId: session.user.id,
-        isMainUser: true,
       },
       select: {
         profileName: true,
@@ -43,36 +43,40 @@ export async function POST(request: NextRequest) {
 
     if (!mainProfile) {
       return NextResponse.json(
-        { error: 'Main user profile not found. Please set a profile as main user.' },
+        { error: 'User profile not found.' },
         { status: 404 }
       )
     }
 
+    // TODO: Implement getNutritionistFeedbackForRecipe function
     // Call Claude API to get nutritionist feedback
-    const feedback = await getNutritionistFeedbackForRecipe({
-      recipe: {
-        recipeName: recipe.recipeName,
-        description: recipe.description,
-        servings: recipe.servings || 4,
-        mealCategory: recipe.mealCategory || [],
-        ingredients: recipe.ingredients,
-      },
-      userProfile: {
-        profileName: mainProfile.profileName,
-        age: mainProfile.age,
-        activityLevel: mainProfile.activityLevel,
-        allergies: mainProfile.allergies,
-        foodDislikes: mainProfile.foodDislikes,
-        dailyCalorieTarget: mainProfile.dailyCalorieTarget,
-        dailyProteinTarget: mainProfile.dailyProteinTarget,
-        dailyCarbsTarget: mainProfile.dailyCarbsTarget,
-        dailyFatTarget: mainProfile.dailyFatTarget,
-        macroTrackingEnabled: mainProfile.macroTrackingEnabled,
-      },
-      macroAnalysis,
-    })
+    // const feedback = await getNutritionistFeedbackForRecipe({
+    //   recipe: {
+    //     recipeName: recipe.recipeName,
+    //     description: recipe.description,
+    //     servings: recipe.servings || 4,
+    //     mealCategory: recipe.mealCategory || [],
+    //     ingredients: recipe.ingredients,
+    //   },
+    //   userProfile: {
+    //     profileName: mainProfile.profileName,
+    //     age: mainProfile.age,
+    //     activityLevel: mainProfile.activityLevel,
+    //     allergies: mainProfile.allergies,
+    //     foodDislikes: mainProfile.foodDislikes,
+    //     dailyCalorieTarget: mainProfile.dailyCalorieTarget,
+    //     dailyProteinTarget: mainProfile.dailyProteinTarget,
+    //     dailyCarbsTarget: mainProfile.dailyCarbsTarget,
+    //     dailyFatTarget: mainProfile.dailyFatTarget,
+    //     macroTrackingEnabled: mainProfile.macroTrackingEnabled,
+    //   },
+    //   macroAnalysis,
+    // })
 
-    return NextResponse.json({ feedback })
+    return NextResponse.json({
+      feedback: 'Nutritionist feedback feature not yet implemented.',
+      message: 'Feature coming soon'
+    })
   } catch (error) {
     console.error('Nutritionist feedback error:', error)
     return NextResponse.json(
