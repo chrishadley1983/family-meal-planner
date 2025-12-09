@@ -154,7 +154,7 @@ export function RecipeDetailsModal({ isOpen, onClose, recipeId }: RecipeDetailsM
           )}
 
           {/* Cuisine & Category */}
-          {(recipe.cuisineType || recipe.difficultyLevel || recipe.mealCategory.length > 0) && (
+          {(recipe.cuisineType || recipe.difficultyLevel || (recipe.mealCategory && recipe.mealCategory.length > 0)) && (
             <div className="mb-6 pb-6 border-b border-zinc-800">
               <div className="flex flex-wrap gap-4 mb-2">
                 {recipe.cuisineType && (
@@ -170,7 +170,7 @@ export function RecipeDetailsModal({ isOpen, onClose, recipeId }: RecipeDetailsM
                   </div>
                 )}
               </div>
-              {recipe.mealCategory.length > 0 && (
+              {recipe.mealCategory && recipe.mealCategory.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {recipe.mealCategory.map((cat: string) => (
                     <span key={cat} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-600/20 text-blue-400">
@@ -183,35 +183,39 @@ export function RecipeDetailsModal({ isOpen, onClose, recipeId }: RecipeDetailsM
           )}
 
           {/* Ingredients */}
-          <div className="mb-6">
-            <h2 className="text-xl font-bold text-white mb-4">Ingredients</h2>
-            <ul className="space-y-2">
-              {recipe.ingredients.map((ing, index) => (
-                <li key={index} className="flex items-start">
-                  <span className="text-zinc-600 mr-3">•</span>
-                  <span className="text-zinc-300">
-                    <strong className="text-white">{ing.quantity} {ing.unit}</strong> {ing.ingredientName}
-                    {ing.notes && <span className="text-zinc-500 text-sm"> ({ing.notes})</span>}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
+          {recipe.ingredients && recipe.ingredients.length > 0 && (
+            <div className="mb-6">
+              <h2 className="text-xl font-bold text-white mb-4">Ingredients</h2>
+              <ul className="space-y-2">
+                {recipe.ingredients.map((ing, index) => (
+                  <li key={index} className="flex items-start">
+                    <span className="text-zinc-600 mr-3">•</span>
+                    <span className="text-zinc-300">
+                      <strong className="text-white">{ing.quantity} {ing.unit}</strong> {ing.ingredientName}
+                      {ing.notes && <span className="text-zinc-500 text-sm"> ({ing.notes})</span>}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* Instructions */}
-          <div className="mb-6">
-            <h2 className="text-xl font-bold text-white mb-4">Instructions</h2>
-            <ol className="space-y-4">
-              {recipe.instructions.map((inst, index) => (
-                <li key={index} className="flex">
-                  <span className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-blue-600/20 text-blue-400 font-semibold mr-4">
-                    {inst.stepNumber}
-                  </span>
-                  <p className="flex-1 pt-1 text-zinc-300">{inst.instruction}</p>
-                </li>
-              ))}
-            </ol>
-          </div>
+          {recipe.instructions && recipe.instructions.length > 0 && (
+            <div className="mb-6">
+              <h2 className="text-xl font-bold text-white mb-4">Instructions</h2>
+              <ol className="space-y-4">
+                {recipe.instructions.map((inst, index) => (
+                  <li key={index} className="flex">
+                    <span className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-blue-600/20 text-blue-400 font-semibold mr-4">
+                      {inst.stepNumber}
+                    </span>
+                    <p className="flex-1 pt-1 text-zinc-300">{inst.instruction}</p>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
 
           {/* Notes */}
           {recipe.notes && (
