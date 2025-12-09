@@ -200,7 +200,7 @@ function SortableMealCard({ meal, recipes, onUpdate, onDelete, onToggleLock, dis
             onClick={() => onToggleLock(meal.id, !meal.isLocked)}
             disabled={disabled}
             className="text-xs text-purple-400 hover:text-purple-300 disabled:opacity-50"
-            title={meal.isLocked ? 'Unlock meal' : 'Lock meal'}
+            title={meal.isLocked ? 'Locked - will be preserved when regenerating' : 'Unlocked - will be replaced when regenerating. Click to lock.'}
           >
             {meal.isLocked ? '🔒' : '🔓'}
           </button>
@@ -233,7 +233,7 @@ export default function MealPlanDetailPage() {
   const [showEditSchedule, setShowEditSchedule] = useState(false)
   const [weekProfileSchedules, setWeekProfileSchedules] = useState<WeekProfileSchedule[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
-  const [currentDayIndex, setCurrentDayIndex] = useState(0) // 0 = Monday, 6 = Sunday
+  const [currentDayIndex, setCurrentDayIndex] = useState(0) // Will be set based on weekStartDate
   const [touchStart, setTouchStart] = useState<number | null>(null)
   const [touchEnd, setTouchEnd] = useState<number | null>(null)
 
@@ -254,6 +254,14 @@ export default function MealPlanDetailPage() {
       if (!response.ok) throw new Error('Failed to fetch meal plan')
       const data = await response.json()
       setMealPlan(data.mealPlan)
+
+      // Calculate which day of week the meal plan starts on
+      // DAYS_OF_WEEK array: 0=Monday, 1=Tuesday, ..., 6=Sunday
+      // Date.getDay(): 0=Sunday, 1=Monday, ..., 6=Saturday
+      const weekStartDate = new Date(data.mealPlan.weekStartDate)
+      const jsDay = weekStartDate.getDay() // 0=Sunday, 1=Monday, etc.
+      const ourDayIndex = jsDay === 0 ? 6 : jsDay - 1 // Convert to our array index (0=Monday)
+      setCurrentDayIndex(ourDayIndex)
 
       // Initialize week schedules from customSchedule
       if (data.mealPlan.customSchedule) {
