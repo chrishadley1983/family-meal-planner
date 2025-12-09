@@ -16,6 +16,8 @@ interface MealPlan {
     mealType: string
     recipeName?: string
     servings?: number
+    isLeftover?: boolean
+    leftoverFromMealId?: string | null
     notes?: string
     recipe?: any
   }>
@@ -644,9 +646,14 @@ export default function MealPlansPage() {
                                 return (
                                   <div key={meal.id} className="text-xs py-2 border-b border-gray-200 last:border-0 min-h-[60px] flex flex-col justify-center">
                                     <p className="font-medium text-gray-700">{MEAL_TYPE_LABELS[mealTypeKey] || meal.mealType}</p>
-                                    <p className="text-gray-600 break-words whitespace-normal">
-                                      {meal.recipeName || 'No recipe'}
-                                    </p>
+                                    <div className="flex items-start gap-1">
+                                      {meal.isLeftover && (
+                                        <span className="text-sm flex-shrink-0" title="Batch cooked / Leftover">🍲</span>
+                                      )}
+                                      <p className="text-gray-600 break-words whitespace-normal">
+                                        {meal.recipeName || 'No recipe'}
+                                      </p>
+                                    </div>
                                     {meal.servings && (
                                       <p className="text-gray-500">{meal.servings} servings</p>
                                     )}

@@ -120,11 +120,17 @@ export async function POST(req: NextRequest) {
     const validRecipeIds = new Set(recipes.map(r => r.id))
 
     // Validate and clean up meals - only include valid recipe IDs
+    console.log('🔍 AI Response - Checking for batch cooking data...')
     const validatedMeals = generatedPlan.meals.map((meal: any) => {
       const recipeId = meal.recipeId && validRecipeIds.has(meal.recipeId) ? meal.recipeId : null
 
       if (meal.recipeId && !recipeId) {
         console.warn(`⚠️ Claude suggested invalid recipe ID: ${meal.recipeId} for ${meal.recipeName}`)
+      }
+
+      // Log batch cooking info
+      if (meal.isLeftover) {
+        console.log(`🍲 LEFTOVER DETECTED: ${meal.dayOfWeek} ${meal.mealType} - ${meal.recipeName} (source: ${meal.batchCookSourceDay})`)
       }
 
       return {
@@ -137,6 +143,8 @@ export async function POST(req: NextRequest) {
         batchCookSourceDay: meal.batchCookSourceDay || null,
       }
     })
+
+    console.log(`📊 Batch cooking summary: ${validatedMeals.filter((m: any) => m.isLeftover).length} leftover meals out of ${validatedMeals.length} total`)
 
     // Calculate servings based on who's eating each meal
     console.log('🧮 Calculating servings for all meals...')
@@ -151,6 +159,8 @@ export async function POST(req: NextRequest) {
     const weekStart = new Date(weekStartDate)
     const weekEnd = endOfWeek(weekStart)
 
+    console.log(`💾 Creating meal plan with ${finalMeals.filter((m: any) => m.isLeftover).length} leftover meals...`)
+
     const mealPlan = await prisma.mealPlan.create({
       data: {
         userId: session.user.id,
@@ -159,17 +169,25 @@ export async function POST(req: NextRequest) {
         status: 'Draft',
         customSchedule: weekProfileSchedules || null, // Store per-person schedules as JSON
         meals: {
-          create: finalMeals.map((meal: any) => ({
-            dayOfWeek: meal.dayOfWeek,
-            mealType: meal.mealType,
-            recipeId: meal.recipeId,
-            recipeName: meal.recipeName,
-            servings: meal.servings,
-            servingsManuallySet: meal.servingsManuallySet || false,
-            notes: meal.notes,
-            isLeftover: meal.isLeftover || false,
-            isLocked: false
-          }))
+          create: finalMeals.map((meal: any) => {
+            const mealData = {
+              dayOfWeek: meal.dayOfWeek,
+              mealType: meal.mealType,
+              recipeId: meal.recipeId,
+              recipeName: meal.recipeName,
+              servings: meal.servings,
+              servingsManuallySet: meal.servingsManuallySet || false,
+              notes: meal.notes,
+              isLeftover: meal.isLeftover || false,
+              isLocked: false
+            }
+
+            if (mealData.isLeftover) {
+              console.log(`💾 Saving leftover: ${mealData.dayOfWeek} ${mealData.mealType} - ${mealData.recipeName}`)
+            }
+
+            return mealData
+          })
         }
       },
       include: {
