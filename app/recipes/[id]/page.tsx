@@ -43,6 +43,8 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
   const [rating, setRating] = useState<number | null>(null)
   const [duplicating, setDuplicating] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [isFavorite, setIsFavorite] = useState(false)
+  const [togglingFavorite, setTogglingFavorite] = useState(false)
 
   // Edit form state
   const [recipeName, setRecipeName] = useState('')
@@ -202,6 +204,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
       console.log('📥 Recipe data loaded:', data.recipe?.recipeName)
       setRecipe(data.recipe)
       setRating(data.recipe.familyRating)
+      setIsFavorite(data.recipe.isFavorite || false)
 
       // Set edit form state
       setRecipeName(data.recipe.recipeName || '')
@@ -258,6 +261,23 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
       console.error('Failed to duplicate recipe')
     } finally {
       setDuplicating(false)
+    }
+  }
+
+  const handleToggleFavorite = async () => {
+    setTogglingFavorite(true)
+    try {
+      const response = await fetch(`/api/recipes/${id}/favorite`, {
+        method: 'POST'
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setIsFavorite(data.isFavorite)
+      }
+    } catch (err) {
+      console.error('Failed to toggle favorite')
+    } finally {
+      setTogglingFavorite(false)
     }
   }
 
@@ -515,6 +535,17 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
               <div className="flex items-center space-x-3 ml-4">
                 {!isEditing && (
                   <>
+                    <Button
+                      onClick={handleToggleFavorite}
+                      disabled={togglingFavorite}
+                      variant="ghost"
+                      size="sm"
+                      title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+                    >
+                      <span className={`text-xl ${isFavorite ? 'text-yellow-400' : 'text-zinc-600'}`}>
+                        {isFavorite ? '★' : '☆'}
+                      </span>
+                    </Button>
                     <Button
                       onClick={() => setIsEditing(true)}
                       variant="secondary"

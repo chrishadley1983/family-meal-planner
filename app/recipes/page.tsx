@@ -51,6 +51,11 @@ export default function RecipesPage() {
   const [filterDifficulty, setFilterDifficulty] = useState('')
   const [filterIngredient, setFilterIngredient] = useState('')
 
+  // CSV Import states
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const [importResult, setImportResult] = useState<{ success: boolean; message: string } | null>(null)
+
   useEffect(() => {
     fetchRecipes()
   }, [])
@@ -88,6 +93,64 @@ export default function RecipesPage() {
       }
     } catch (error) {
       console.error('Error deleting recipe:', error)
+    }
+  }
+
+  const handleDownloadTemplate = () => {
+    const template = `recipeName,description,servings,prepTimeMinutes,cookTimeMinutes,cuisineType,difficultyLevel,mealCategory,ingredientName,quantity,unit,notes,stepNumber,instruction
+"Spaghetti Carbonara","Classic Italian pasta dish",4,10,15,"Italian","Easy","Dinner","spaghetti",400,"g","",1,"Cook spaghetti according to package directions"
+"Spaghetti Carbonara","Classic Italian pasta dish",4,10,15,"Italian","Easy","Dinner","bacon",200,"g","diced",2,"Fry bacon until crispy"
+"Spaghetti Carbonara","Classic Italian pasta dish",4,10,15,"Italian","Easy","Dinner","eggs",3,"whole","",3,"Whisk eggs with parmesan"
+"Spaghetti Carbonara","Classic Italian pasta dish",4,10,15,"Italian","Easy","Dinner","parmesan",100,"g","grated",4,"Combine pasta with bacon and egg mixture"`
+
+    const blob = new Blob([template], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'recipe-template.csv'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setImporting(true)
+    setImportResult(null)
+
+    try {
+      const text = await file.text()
+      const response = await fetch('/api/recipes/import-csv', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ csvData: text })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setImportResult({
+          success: true,
+          message: `Successfully imported ${data.imported} recipes. ${data.failed > 0 ? `Failed: ${data.failed}` : ''}`
+        })
+        fetchRecipes() // Refresh recipe list
+      } else {
+        setImportResult({
+          success: false,
+          message: data.error || 'Failed to import recipes'
+        })
+      }
+    } catch (error) {
+      setImportResult({
+        success: false,
+        message: 'Error importing CSV file'
+      })
+    } finally {
+      setImporting(false)
+      e.target.value = '' // Reset file input
     }
   }
 
@@ -210,11 +273,43 @@ export default function RecipesPage() {
         title="Recipes"
         description="Manage your family recipes"
         action={
-          <Link href="/recipes/new">
-            <Button variant="primary">Add Recipe</Button>
-          </Link>
+          <div className="flex gap-2">
+            <Button onClick={handleDownloadTemplate} variant="secondary" size="sm">
+              Download Template
+            </Button>
+            <label className="cursor-pointer">
+              <input
+                type="file"
+                accept=".csv"
+                onChange={handleImportCSV}
+                className="hidden"
+                disabled={importing}
+              />
+              <Button variant="secondary" size="sm" disabled={importing}>
+                {importing ? 'Importing...' : 'Import CSV'}
+              </Button>
+            </label>
+            <Link href="/recipes/new">
+              <Button variant="primary">Add Recipe</Button>
+            </Link>
+          </div>
         }
       >
+        {/* Import Result Notification */}
+        {importResult && (
+          <div className={`mb-4 p-4 rounded-lg ${importResult.success ? 'bg-green-900/20 border border-green-700' : 'bg-red-900/20 border border-red-700'}`}>
+            <p className={importResult.success ? 'text-green-400' : 'text-red-400'}>
+              {importResult.message}
+            </p>
+            <button
+              onClick={() => setImportResult(null)}
+              className="mt-2 text-sm text-zinc-400 hover:text-white"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
         {/* Basic Filters */}
         <div className="card p-4 mb-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
