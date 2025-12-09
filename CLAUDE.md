@@ -8,11 +8,36 @@ A comprehensive family meal planning application with AI-powered features includ
 
 - **Frontend:** React Native with Expo (iOS/Android) + React for web
 - **Backend:** Node.js with Express
-- **Database:** PostgreSQL via Supabase
+- **Database:** PostgreSQL via Supabase (remote cloud database at db.pocptwknyxyrtmnfnrph.supabase.co)
 - **Authentication:** Supabase Auth
 - **Storage:** Supabase Storage for recipe/inventory images
 - **AI Integration:** Anthropic Claude API
 - **Language:** TypeScript throughout
+
+## Database Configuration
+
+**IMPORTANT: This project uses a remote Supabase database, NOT localhost.**
+
+- **Database Host:** `db.pocptwknyxyrtmnfnrph.supabase.co:5432`
+- **Database Name:** `postgres`
+- **Schema:** `public`
+
+**Connection String Format:**
+```
+postgresql://postgres:[PASSWORD]@db.pocptwknyxyrtmnfnrph.supabase.co:5432/postgres?schema=public
+```
+
+**Critical Database Workflow:**
+1. **Never assume localhost** - All database operations use Supabase
+2. **Sync schema from database** before making schema changes:
+   ```powershell
+   npx prisma db pull
+   ```
+3. **Always use `db push` for schema changes** (not `migrate dev`):
+   ```powershell
+   npx prisma db push
+   ```
+4. **Check Supabase Table Editor** to verify schema matches before pushing changes
 
 ## Project Structure
 
@@ -463,6 +488,24 @@ git diff origin/main...HEAD app/api/
 - Large line count differences in core files
 - Different numbers of exported functions
 
+**CRITICAL: Check prisma/schema.prisma specifically:**
+```powershell
+git diff origin/main...HEAD prisma/schema.prisma
+```
+
+If schema.prisma differs, **STOP and sync with database first**:
+```powershell
+# Pull current schema from Supabase database
+npx prisma db pull
+
+# Compare what changed
+git diff prisma/schema.prisma
+
+# If fields were added to database but not in schema, commit the pull
+git add prisma/schema.prisma
+git commit -m "sync: Pull latest schema from Supabase database"
+```
+
 #### Step 3: Identify Conflicts BEFORE Merging
 
 ```powershell
@@ -636,9 +679,46 @@ If you discover features are missing after a merge:
 2. ✅ **ALWAYS sync with main before merging**
 3. ✅ **ALWAYS create pre-merge inventory of features**
 4. ✅ **ALWAYS verify all features present after merge**
-5. ✅ **NEVER ignore TypeScript errors** - they often indicate lost code
-6. ✅ **NEVER delete a feature branch** until you've verified the features are in main
-7. ❌ **NEVER assume a merge is safe** - always verify
+5. ✅ **ALWAYS sync schema.prisma from Supabase** before making schema changes (`npx prisma db pull`)
+6. ✅ **ALWAYS verify schema.prisma** in pre-merge checklist - schema divergence causes data loss
+7. ✅ **NEVER ignore TypeScript errors** - they often indicate lost code
+8. ✅ **NEVER delete a feature branch** until you've verified the features are in main
+9. ✅ **NEVER modify schema.prisma** without checking Supabase Table Editor first
+10. ❌ **NEVER assume a merge is safe** - always verify
+
+### Prisma Schema Divergence Prevention
+
+**The Problem:** Schema.prisma in your code can become out of sync with the actual Supabase database, leading to data loss when you run `db push`.
+
+**Prevention Workflow:**
+
+**Before ANY schema changes:**
+```powershell
+# 1. Pull current schema from Supabase
+npx prisma db pull
+
+# 2. Check what changed
+git diff prisma/schema.prisma
+
+# 3. If fields were added to database, commit the sync
+git add prisma/schema.prisma
+git commit -m "sync: Pull latest schema from Supabase"
+
+# 4. Now make your schema changes
+# Edit prisma/schema.prisma
+
+# 5. Verify in Supabase Table Editor what fields exist
+
+# 6. Push changes
+npx prisma db push
+```
+
+**Warning Signs:**
+- ⚠️ `db push` wants to DROP columns with data
+- ⚠️ Schema.prisma missing fields that exist in database
+- ⚠️ TypeScript errors about missing Prisma fields
+
+**If you see these warnings, STOP and run `npx prisma db pull` first!**
 
 ---
 
