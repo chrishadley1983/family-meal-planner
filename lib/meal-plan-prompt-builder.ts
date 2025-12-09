@@ -627,9 +627,16 @@ Please generate a meal plan for the week and return it as a JSON object with thi
 - If no recipe is appropriate, set recipeId to null and provide a recipeName suggestion
 - Calculate servings based on who's eating each meal (from attendance schedule)
 - **For batch cooking:**
-  - On the FIRST meal (when cooking): Set isLeftover=false, include total servings needed in notes (e.g., "Batch cook 6 servings for Monday + Wednesday")
-  - On SUBSEQUENT meals (leftovers): Set isLeftover=true, batchCookSourceDay="Monday", add reheating instructions in notes
-- Use notes field for batch cooking instructions, expiry reminders, storage tips, or substitution suggestions`
+  - On the FIRST meal (when cooking):
+    * Set isLeftover=false
+    * Set servings to the TOTAL BATCH AMOUNT (e.g., if cooking for Tuesday 4 people + Thursday 3 people, set servings=7)
+    * In notes, explain the breakdown: "Batch cook 7 servings total—covers Tuesday (4) + Thursday (3)"
+  - On SUBSEQUENT meals (leftovers):
+    * Set isLeftover=true
+    * Set batchCookSourceDay="Tuesday" (the day it was cooked)
+    * Set servings to just this meal's count (e.g., 3 for Thursday)
+    * Add reheating instructions in notes
+- CRITICAL: For batch cook source meals, the servings field MUST be the total batch amount, not just that meal's count. This ensures the recipe is scaled correctly for shopping lists.`
 }
 
 /**
