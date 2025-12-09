@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { startOfWeek, format, addWeeks } from 'date-fns'
+import { AppLayout, PageContainer } from '@/components/layout'
+import { Button, Badge, Input, Select } from '@/components/ui'
+import { useSession } from 'next-auth/react'
 
 interface MealPlan {
   id: string
@@ -48,6 +51,7 @@ interface WeekProfileSchedule {
 
 export default function MealPlansPage() {
   const router = useRouter()
+  const { data: session } = useSession()
   const [mealPlans, setMealPlans] = useState<MealPlan[]>([])
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [quickOptions, setQuickOptions] = useState({
@@ -283,45 +287,43 @@ export default function MealPlansPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-600">Loading meal plans...</p>
-      </div>
+      <AppLayout userEmail={session?.user?.email}>
+        <PageContainer>
+          <div className="flex items-center justify-center py-12">
+            <p className="text-zinc-400">Loading meal plans...</p>
+          </div>
+        </PageContainer>
+      </AppLayout>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <Link href="/dashboard" className="text-blue-600 hover:text-blue-800 mb-2 inline-block">
-            ← Back to Dashboard
-          </Link>
-          <h1 className="text-3xl font-bold text-gray-900">Meal Plans</h1>
-          <p className="text-gray-600 mt-1">Generate AI-powered weekly meal plans</p>
-        </div>
+    <AppLayout userEmail={session?.user?.email}>
+      <PageContainer
+        title="Meal Plans"
+        description="Generate AI-powered weekly meal plans"
+      >
 
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Generate New Meal Plan</h3>
+        <div className="card p-6 mb-6">
+          <h3 className="text-lg font-medium text-white mb-4">Generate New Meal Plan</h3>
           <div className="flex gap-4 items-end flex-wrap">
             <div className="flex-1 min-w-[200px]">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-zinc-300 mb-2">
                 Week Starting
               </label>
-              <input
+              <Input
                 type="date"
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
                 value={selectedWeek}
                 onChange={(e) => setSelectedWeek(e.target.value)}
               />
             </div>
             <div className="flex-1 min-w-[200px]">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-zinc-300 mb-2">
                 Copy From Previous Week (Optional)
               </label>
-              <select
+              <Select
                 value={copyFromPlanId}
                 onChange={(e) => setCopyFromPlanId(e.target.value)}
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
               >
                 <option value="">Generate new plan with AI</option>
                 {mealPlans.filter(p => p.status === 'Archived').map(plan => (
@@ -329,41 +331,36 @@ export default function MealPlansPage() {
                     Week of {new Date(plan.weekStartDate).toLocaleDateString('en-GB')}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
-            <button
+            <Button
               onClick={handleGeneratePlan}
               disabled={generating}
-              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              variant="primary"
+              isLoading={generating}
             >
               {generating ? (
-                <span className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  {copyFromPlanId ? 'Copying...' : 'Generating with AI...'}
-                </span>
+                copyFromPlanId ? 'Copying...' : 'Generating with AI...'
               ) : (
                 copyFromPlanId ? 'Copy Plan' : 'Generate with AI'
               )}
-            </button>
+            </Button>
           </div>
 
           {generatedSummary && (
-            <div className="mt-4 p-4 bg-blue-50 rounded-md">
-              <p className="text-sm text-blue-900"><strong>AI Summary:</strong> {generatedSummary}</p>
+            <div className="mt-4 p-4 bg-blue-900/20 rounded-md border border-blue-800/30">
+              <p className="text-sm text-zinc-300"><strong className="text-white">AI Summary:</strong> {generatedSummary}</p>
             </div>
           )}
 
           {/* Quick Options */}
           {!copyFromPlanId && (
-            <div className="mt-6 border-t pt-4">
+            <div className="mt-6 border-t border-zinc-800 pt-4">
               <div className="flex items-center justify-between mb-3">
-                <h4 className="text-sm font-medium text-gray-900">Quick Options</h4>
+                <h4 className="text-sm font-medium text-white">Quick Options</h4>
                 <Link
                   href="/settings/meal-planning"
-                  className="text-sm text-blue-600 hover:text-blue-800 underline"
+                  className="text-sm text-purple-400 hover:text-purple-300 underline"
                 >
                   Customize Settings →
                 </Link>
@@ -374,9 +371,9 @@ export default function MealPlansPage() {
                     type="checkbox"
                     checked={quickOptions.prioritizeShopping}
                     onChange={(e) => setQuickOptions({ ...quickOptions, prioritizeShopping: e.target.checked })}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="rounded border-zinc-600 text-purple-600 focus:ring-purple-500"
                   />
-                  <span className="text-sm text-gray-700">
+                  <span className="text-sm text-zinc-300">
                     Prioritize shopping efficiency (minimize unique ingredients)
                   </span>
                 </label>
@@ -385,9 +382,9 @@ export default function MealPlansPage() {
                     type="checkbox"
                     checked={quickOptions.useExpiring}
                     onChange={(e) => setQuickOptions({ ...quickOptions, useExpiring: e.target.checked })}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="rounded border-zinc-600 text-purple-600 focus:ring-purple-500"
                   />
-                  <span className="text-sm text-gray-700">
+                  <span className="text-sm text-zinc-300">
                     Use expiring inventory items
                   </span>
                 </label>
@@ -396,9 +393,9 @@ export default function MealPlansPage() {
                     type="checkbox"
                     checked={quickOptions.maximizeBatch}
                     onChange={(e) => setQuickOptions({ ...quickOptions, maximizeBatch: e.target.checked })}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="rounded border-zinc-600 text-purple-600 focus:ring-purple-500"
                   />
-                  <span className="text-sm text-gray-700">
+                  <span className="text-sm text-zinc-300">
                     Maximize batch cooking opportunities
                   </span>
                 </label>
@@ -406,7 +403,7 @@ export default function MealPlansPage() {
             </div>
           )}
 
-          <p className="mt-4 text-sm text-gray-500">
+          <p className="mt-4 text-sm text-zinc-400">
             Claude AI will analyze your family profiles, recipes, and preferences to generate a personalized weekly meal plan.
           </p>
 
@@ -415,7 +412,7 @@ export default function MealPlansPage() {
             <button
               type="button"
               onClick={() => setShowScheduleOverride(!showScheduleOverride)}
-              className="text-sm text-blue-600 hover:text-blue-800 underline"
+              className="text-sm text-purple-400 hover:text-purple-300 underline"
             >
               {showScheduleOverride ? '▼ Hide' : '▶'} Customize meals for this week
             </button>
@@ -424,26 +421,27 @@ export default function MealPlansPage() {
 
         {/* Per-Person Schedule Override Section */}
         {showScheduleOverride && (
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-6 space-y-6">
+          <div className="card p-6 mb-6 space-y-6">
             <div className="flex justify-between items-center">
               <div>
-                <h3 className="text-lg font-medium text-gray-900">Customize Week Schedules</h3>
-                <p className="text-sm text-gray-500 mt-1">
+                <h3 className="text-lg font-medium text-white">Customize Week Schedules</h3>
+                <p className="text-sm text-zinc-400 mt-1">
                   Adjust individual schedules for this week. Servings will be calculated based on how many people need each meal.
                 </p>
               </div>
-              <button
+              <Button
                 type="button"
                 onClick={resetToDefaultSchedules}
-                className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
+                variant="secondary"
+                size="sm"
               >
                 Reset All to Defaults
-              </button>
+              </Button>
             </div>
 
             {/* Per-Person Schedules */}
             {weekProfileSchedules.map((personSchedule) => (
-              <div key={personSchedule.profileId} className="border rounded-lg p-4">
+              <div key={personSchedule.profileId} className="border border-zinc-700 rounded-lg p-4 bg-zinc-800/30">
                 {/* Person Header with Include/Exclude Toggle */}
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center space-x-3">
@@ -451,11 +449,11 @@ export default function MealPlansPage() {
                       type="checkbox"
                       checked={personSchedule.included}
                       onChange={() => toggleProfileInclusion(personSchedule.profileId)}
-                      className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      className="h-5 w-5 text-purple-600 focus:ring-purple-500 border-zinc-600 rounded"
                     />
                     <div>
-                      <h4 className="font-medium text-gray-900">{personSchedule.profileName}</h4>
-                      <p className="text-xs text-gray-500">
+                      <h4 className="font-medium text-white">{personSchedule.profileName}</h4>
+                      <p className="text-xs text-zinc-400">
                         {personSchedule.included ? '✓ Included in meal plan' : '✗ Excluded from meal plan'}
                       </p>
                     </div>
@@ -465,20 +463,20 @@ export default function MealPlansPage() {
                 {/* Person's Meal Grid */}
                 {personSchedule.included && (
                   <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200 text-sm">
-                      <thead className="bg-gray-50">
+                    <table className="min-w-full divide-y divide-zinc-700 text-sm">
+                      <thead className="bg-zinc-800">
                         <tr>
-                          <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase w-28">
+                          <th className="px-2 py-2 text-left text-xs font-medium text-zinc-400 uppercase w-28">
                             Meal
                           </th>
                           {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
-                            <th key={day} className="px-1 py-2 text-center text-xs font-medium text-gray-500 uppercase">
+                            <th key={day} className="px-1 py-2 text-center text-xs font-medium text-zinc-400 uppercase">
                               {day}
                             </th>
                           ))}
                         </tr>
                       </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
+                      <tbody className="bg-zinc-900/50 divide-y divide-zinc-700">
                         {[
                           { key: 'breakfast', label: 'Breakfast' },
                           { key: 'morning-snack', label: 'M. Snack' },
@@ -488,8 +486,8 @@ export default function MealPlansPage() {
                           { key: 'dessert', label: 'Dessert' },
                           { key: 'evening-snack', label: 'E. Snack' },
                         ].map(meal => (
-                          <tr key={meal.key} className="hover:bg-gray-50">
-                            <td className="px-2 py-2 whitespace-nowrap text-xs font-medium text-gray-700">
+                          <tr key={meal.key} className="hover:bg-zinc-800/50">
+                            <td className="px-2 py-2 whitespace-nowrap text-xs font-medium text-zinc-300">
                               {meal.label}
                             </td>
                             {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => {
@@ -500,7 +498,7 @@ export default function MealPlansPage() {
                                     type="checkbox"
                                     checked={isChecked}
                                     onChange={() => togglePersonMeal(personSchedule.profileId, day as keyof MealSchedule, meal.key)}
-                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
+                                    className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-zinc-600 rounded cursor-pointer"
                                   />
                                 </td>
                               )
@@ -514,53 +512,53 @@ export default function MealPlansPage() {
               </div>
             ))}
 
-            <p className="text-xs text-gray-400 italic">
+            <p className="text-xs text-zinc-500 italic">
               💡 Tip: These changes only apply to this week's meal plan. Profile defaults remain unchanged.
             </p>
           </div>
         )}
 
         {/* Filters */}
-        <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
+        <div className="card p-4 mb-6">
           <div className="flex items-center gap-4">
-            <label className="text-sm font-medium text-gray-700">Filter:</label>
+            <label className="text-sm font-medium text-zinc-300">Filter:</label>
             <div className="flex gap-2">
               <button
                 onClick={() => setFilterStatus('all')}
-                className={`px-3 py-1 rounded text-sm ${
+                className={`px-3 py-1 rounded text-sm transition-colors ${
                   filterStatus === 'all'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
                 }`}
               >
                 All
               </button>
               <button
                 onClick={() => setFilterStatus('Draft')}
-                className={`px-3 py-1 rounded text-sm ${
+                className={`px-3 py-1 rounded text-sm transition-colors ${
                   filterStatus === 'Draft'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
                 }`}
               >
                 Draft
               </button>
               <button
                 onClick={() => setFilterStatus('Finalized')}
-                className={`px-3 py-1 rounded text-sm ${
+                className={`px-3 py-1 rounded text-sm transition-colors ${
                   filterStatus === 'Finalized'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
                 }`}
               >
                 Finalized
               </button>
               <button
                 onClick={() => setFilterStatus('Archived')}
-                className={`px-3 py-1 rounded text-sm ${
+                className={`px-3 py-1 rounded text-sm transition-colors ${
                   filterStatus === 'Archived'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
                 }`}
               >
                 Archived
@@ -576,14 +574,14 @@ export default function MealPlansPage() {
             : mealPlans.filter(p => p.status === filterStatus)
 
           return filteredPlans.length === 0 ? (
-            <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="card p-12 text-center">
+              <svg className="mx-auto h-12 w-12 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              <h3 className="mt-2 text-lg font-medium text-gray-900">
+              <h3 className="mt-2 text-lg font-medium text-white">
                 {filterStatus === 'all' ? 'No meal plans yet' : `No ${filterStatus.toLowerCase()} meal plans`}
               </h3>
-              <p className="mt-1 text-gray-500">
+              <p className="mt-1 text-zinc-400">
                 {filterStatus === 'all' ? 'Generate your first AI-powered meal plan' : `No meal plans with status: ${filterStatus}`}
               </p>
             </div>
@@ -593,22 +591,19 @@ export default function MealPlansPage() {
               <div
                 key={plan.id}
                 onClick={() => router.push(`/meal-plans/${plan.id}`)}
-                className="bg-white rounded-lg shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+                className="card-interactive overflow-hidden"
               >
-                <div className="bg-gray-50 px-6 py-4 border-b">
+                <div className="bg-zinc-800/50 px-6 py-4 border-b border-zinc-700">
                   <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-medium text-gray-900">
+                    <h3 className="text-lg font-medium text-white">
                       Week of {new Date(plan.weekStartDate).toLocaleDateString('en-GB')}
                     </h3>
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      plan.status === 'Finalized'
-                        ? 'bg-green-100 text-green-800'
-                        : plan.status === 'Archived'
-                        ? 'bg-gray-100 text-gray-800'
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}>
+                    <Badge
+                      variant={plan.status === 'Finalized' ? 'success' : plan.status === 'Archived' ? 'default' : 'warning'}
+                      size="sm"
+                    >
                       {plan.status}
-                    </span>
+                    </Badge>
                   </div>
                 </div>
 
@@ -625,10 +620,10 @@ export default function MealPlansPage() {
                       })
 
                       return (
-                        <div key={day} className="border rounded-lg p-3 flex flex-col">
-                          <h4 className="font-medium text-gray-900 text-sm mb-2">{day}</h4>
+                        <div key={day} className="border border-zinc-700 rounded-lg p-3 flex flex-col bg-zinc-800/30">
+                          <h4 className="font-medium text-white text-sm mb-2">{day}</h4>
                           {dayMeals.length === 0 ? (
-                            <p className="text-xs text-gray-400">No meals</p>
+                            <p className="text-xs text-zinc-500">No meals</p>
                           ) : (
                             <div className="grid grid-rows-5 gap-2 flex-1">
                               {/* Render meals in consistent chronological order with fixed heights */}
@@ -637,25 +632,25 @@ export default function MealPlansPage() {
                                 if (!meal) {
                                   // Empty slot for missing meal type - same height as meal rows
                                   return (
-                                    <div key={`${day}-${mealTypeKey}`} className="text-xs py-2 border-b border-dashed border-gray-200 last:border-0 min-h-[60px] flex flex-col justify-center">
-                                      <p className="font-medium text-gray-400">{MEAL_TYPE_LABELS[mealTypeKey]}</p>
-                                      <p className="text-gray-300">-</p>
+                                    <div key={`${day}-${mealTypeKey}`} className="text-xs py-2 border-b border-dashed border-zinc-700 last:border-0 min-h-[60px] flex flex-col justify-center">
+                                      <p className="font-medium text-zinc-500">{MEAL_TYPE_LABELS[mealTypeKey]}</p>
+                                      <p className="text-zinc-600">-</p>
                                     </div>
                                   )
                                 }
                                 return (
-                                  <div key={meal.id} className="text-xs py-2 border-b border-gray-200 last:border-0 min-h-[60px] flex flex-col justify-center">
-                                    <p className="font-medium text-gray-700">{MEAL_TYPE_LABELS[mealTypeKey] || meal.mealType}</p>
+                                  <div key={meal.id} className="text-xs py-2 border-b border-zinc-700 last:border-0 min-h-[60px] flex flex-col justify-center">
+                                    <p className="font-medium text-zinc-400">{MEAL_TYPE_LABELS[mealTypeKey] || meal.mealType}</p>
                                     <div className="flex items-start gap-1">
                                       {meal.isLeftover && (
                                         <span className="text-sm flex-shrink-0" title="Batch cooked / Leftover">🍲</span>
                                       )}
-                                      <p className="text-gray-600 break-words whitespace-normal">
+                                      <p className="text-zinc-300 break-words whitespace-normal">
                                         {meal.recipeName || 'No recipe'}
                                       </p>
                                     </div>
                                     {meal.servings && (
-                                      <p className="text-gray-500">{meal.servings} servings</p>
+                                      <p className="text-zinc-500">{meal.servings} servings</p>
                                     )}
                                   </div>
                                 )
@@ -672,7 +667,7 @@ export default function MealPlansPage() {
             </div>
           )
         })()}
-      </div>
-    </div>
+      </PageContainer>
+    </AppLayout>
   )
 }
