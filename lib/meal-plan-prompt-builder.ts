@@ -139,9 +139,18 @@ function buildContextSection(
 ): string {
   const weekStart = new Date(weekStartDate)
   const formattedDate = format(weekStart, 'MMMM d, yyyy')
+  const startDayName = format(weekStart, 'EEEE') // e.g., "Tuesday"
+
+  // Calculate the ordered list of days starting from the week start date
+  const dayIndex = weekStart.getDay() // 0=Sunday, 1=Monday, etc.
+  const allDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+  const orderedDays = [...allDays.slice(dayIndex), ...allDays.slice(0, dayIndex)]
 
   let context = `# CONTEXT\n\n`
-  context += `**Week Starting:** ${formattedDate}\n\n`
+  context += `**Week Starting:** ${formattedDate} (${startDayName})\n\n`
+  context += `**CRITICAL - Week Day Order:** This meal plan starts on ${startDayName}, not Monday. The chronological order of days for this week is:\n`
+  context += orderedDays.map((day, idx) => `${idx + 1}. ${day} (Day ${idx + 1})`).join('\n')
+  context += `\n\n**IMPORTANT FOR BATCH COOKING:** When planning batch cooking and leftovers, ONLY reference days that come chronologically BEFORE the leftover meal. For example, if this week starts on ${startDayName}, you CANNOT cook on ${orderedDays[6]} (Day 7) and use leftovers on ${orderedDays[0]} (Day 1) - that would be going backwards in time. Always plan batch cooking from earlier days to later days in the sequence above.\n\n`
   context += `**Family Profiles:**\n`
 
   profiles.forEach(profile => {
@@ -627,15 +636,19 @@ Please generate a meal plan for the week and return it as a JSON object with thi
 - If no recipe is appropriate, set recipeId to null and provide a recipeName suggestion
 - Calculate servings based on who's eating each meal (from attendance schedule)
 - **For batch cooking:**
+  - **CRITICAL RULE:** Batch cooking MUST follow chronological order. You can ONLY cook on an earlier day and use leftovers on a LATER day. NEVER reference a future day as the source of leftovers for a past day.
   - On the FIRST meal (when cooking):
     * Set isLeftover=false
-    * Set servings to the TOTAL BATCH AMOUNT (e.g., if cooking for Tuesday 4 people + Thursday 3 people, set servings=7)
-    * In notes, explain the breakdown: "Batch cook 7 servings total—covers Tuesday (4) + Thursday (3)"
+    * Set servings to the TOTAL BATCH AMOUNT (e.g., if cooking on Day 1 for 4 people + Day 3 for 3 people, set servings=7)
+    * In notes, explain the breakdown using the actual day names: "Batch cook 7 servings total—covers [Day 1 name] (4) + [Day 3 name] (3)"
   - On SUBSEQUENT meals (leftovers):
     * Set isLeftover=true
-    * Set batchCookSourceDay="Tuesday" (the day it was cooked)
-    * Set servings to just this meal's count (e.g., 3 for Thursday)
+    * Set batchCookSourceDay to the actual day name when it was cooked (must be an earlier day in the week sequence)
+    * Set servings to just this meal's count (e.g., 3)
     * Add reheating instructions in notes
+  - **Example for a week starting on Tuesday:**
+    * ✅ CORRECT: Cook on Tuesday (Day 1), use leftovers on Thursday (Day 3) - goes forward in time
+    * ❌ WRONG: Cook on Monday (Day 7), use leftovers on Tuesday (Day 1) - goes backward in time
 - CRITICAL: For batch cook source meals, the servings field MUST be the total batch amount, not just that meal's count. This ensures the recipe is scaled correctly for shopping lists.`
 }
 

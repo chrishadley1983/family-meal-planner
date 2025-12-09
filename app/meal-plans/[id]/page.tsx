@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { formatDate, formatDateRange } from '@/lib/date-utils'
+import { formatDate, formatDateRange, getWeekDaysWithDates } from '@/lib/date-utils'
 import { AppLayout, PageContainer } from '@/components/layout'
 import { Button, Badge, Select } from '@/components/ui'
 import { useSession } from 'next-auth/react'
@@ -80,7 +80,6 @@ interface WeekProfileSchedule {
   schedule: MealSchedule
 }
 
-const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const MEAL_TYPES = [
   { key: 'breakfast', label: 'Breakfast' },
   { key: 'morning-snack', label: 'Morning Snack' },
@@ -233,9 +232,16 @@ export default function MealPlanDetailPage() {
   const [showEditSchedule, setShowEditSchedule] = useState(false)
   const [weekProfileSchedules, setWeekProfileSchedules] = useState<WeekProfileSchedule[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
-  const [currentDayIndex, setCurrentDayIndex] = useState(0) // 0 = Monday, 6 = Sunday
+  const [currentDayIndex, setCurrentDayIndex] = useState(0) // 0 = first day, 6 = last day
   const [touchStart, setTouchStart] = useState<number | null>(null)
   const [touchEnd, setTouchEnd] = useState<number | null>(null)
+
+  // Calculate day order and dates based on actual week start date
+  const weekDaysWithDates = mealPlan
+    ? getWeekDaysWithDates(mealPlan.weekStartDate)
+    : []
+
+  const DAYS_OF_WEEK = weekDaysWithDates.map(d => d.day)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -743,8 +749,12 @@ export default function MealPlanDetailPage() {
             </button>
 
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-white">{DAYS_OF_WEEK[currentDayIndex]}</h2>
-              <p className="text-sm text-zinc-400 mt-1">Day {currentDayIndex + 1} of 7</p>
+              <h2 className="text-2xl font-bold text-white">
+                {weekDaysWithDates[currentDayIndex]?.day || 'Loading...'}
+              </h2>
+              <p className="text-sm text-zinc-400 mt-1">
+                {weekDaysWithDates[currentDayIndex]?.shortDate || ''} • Day {currentDayIndex + 1} of 7
+              </p>
             </div>
 
             <button

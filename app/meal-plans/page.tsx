@@ -7,6 +7,7 @@ import { startOfWeek, format, addWeeks } from 'date-fns'
 import { AppLayout, PageContainer } from '@/components/layout'
 import { Button, Badge, Input, Select } from '@/components/ui'
 import { useSession } from 'next-auth/react'
+import { getWeekDaysWithDates } from '@/lib/date-utils'
 
 interface MealPlan {
   id: string
@@ -609,7 +610,7 @@ export default function MealPlansPage() {
 
                 <div className="p-6">
                   <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
-                    {daysOfWeek.map((day) => {
+                    {getWeekDaysWithDates(plan.weekStartDate).map(({ day, dayLower, shortDate }) => {
                       const dayMeals = plan.meals.filter(m => m.dayOfWeek === day)
 
                       // Create a map of existing meals by meal type for quick lookup
@@ -621,7 +622,10 @@ export default function MealPlansPage() {
 
                       return (
                         <div key={day} className="border border-zinc-700 rounded-lg p-3 flex flex-col bg-zinc-800/30">
-                          <h4 className="font-medium text-white text-sm mb-2">{day}</h4>
+                          <div className="mb-2">
+                            <h4 className="font-medium text-white text-sm">{day}</h4>
+                            <p className="text-xs text-zinc-400">{shortDate}</p>
+                          </div>
                           {dayMeals.length === 0 ? (
                             <p className="text-xs text-zinc-500">No meals</p>
                           ) : (
