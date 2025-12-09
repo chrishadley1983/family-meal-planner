@@ -119,6 +119,9 @@ export async function POST(req: NextRequest) {
     // Create a set of valid recipe IDs for validation
     const validRecipeIds = new Set(recipes.map(r => r.id))
 
+    // Track invalid recipes for warning generation
+    const invalidRecipes: Array<{ recipeName: string; day: string; mealType: string }> = []
+
     // Validate and clean up meals - only include valid recipe IDs
     console.log('🔍 AI Response - Checking for batch cooking data...')
     const validatedMeals = generatedPlan.meals.map((meal: any) => {
@@ -126,6 +129,11 @@ export async function POST(req: NextRequest) {
 
       if (meal.recipeId && !recipeId) {
         console.warn(`⚠️ Claude suggested invalid recipe ID: ${meal.recipeId} for ${meal.recipeName}`)
+        invalidRecipes.push({
+          recipeName: meal.recipeName || 'Unknown recipe',
+          day: meal.dayOfWeek,
+          mealType: meal.mealType
+        })
       }
 
       // Log batch cooking info
@@ -280,9 +288,21 @@ export async function POST(req: NextRequest) {
       console.log(`🟢 Recorded ${historyEntries.length} recipe usage history entries`)
     }
 
+    // Build final summary with warnings if needed
+    let finalSummary = generatedPlan.summary
+
+    if (invalidRecipes.length > 0) {
+      const warningMessage = `\n\n⚠️ **Warning:** The AI suggested ${invalidRecipes.length} recipe${invalidRecipes.length > 1 ? 's' : ''} that ${invalidRecipes.length > 1 ? 'are' : 'is'} not in your database:\n` +
+        invalidRecipes.map(r => `- ${r.recipeName} (${r.day} ${r.mealType})`).join('\n') +
+        `\n\nThese meals could not be added to your plan. Please add more recipes to your database or regenerate the meal plan.`
+
+      finalSummary = (finalSummary || '') + warningMessage
+      console.warn(`⚠️ Added warning to summary for ${invalidRecipes.length} invalid recipes`)
+    }
+
     return NextResponse.json({
       mealPlan,
-      summary: generatedPlan.summary
+      summary: finalSummary
     })
   } catch (error: any) {
     console.error('Error generating meal plan:', error)

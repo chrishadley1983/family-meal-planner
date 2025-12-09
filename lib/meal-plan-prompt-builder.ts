@@ -619,7 +619,7 @@ Please generate a meal plan for the week and return it as a JSON object with thi
     {
       "dayOfWeek": "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday" | "Sunday",
       "mealType": "breakfast" | "lunch" | "dinner" | "afternoon-snack" | "dessert" | etc.,
-      "recipeId": "uuid-of-selected-recipe" | null,
+      "recipeId": "uuid-of-selected-recipe",
       "recipeName": "Name of the recipe",
       "servings": 4,
       "isLeftover": false,
@@ -631,9 +631,15 @@ Please generate a meal plan for the week and return it as a JSON object with thi
 }
 \`\`\`
 
+**CRITICAL RECIPE SELECTION RULES:**
+- **YOU MUST ONLY use recipes from the "AVAILABLE RECIPES" list above**
+- Every meal MUST have a valid recipeId from that list - do NOT suggest recipes that aren't in the database
+- If you cannot create a complete meal plan with the available recipes (e.g., not enough variety, missing meal types, dietary restrictions can't be met), you MUST explain this in your summary
+- When explaining shortcomings in your summary, be specific: mention which meals/days couldn't be filled ideally and why (e.g., "Could not find enough breakfast recipes to meet variety targets" or "Limited gluten-free dinner options meant repeating recipes")
+
 **Important:**
-- Only include recipeId if you're assigning a specific recipe from the list
-- If no recipe is appropriate, set recipeId to null and provide a recipeName suggestion
+- Only include recipeId values that appear in the AVAILABLE RECIPES section above
+- NEVER set recipeId to null or suggest recipes not in your database
 - Calculate servings based on who's eating each meal (from attendance schedule)
 - **For batch cooking:**
   - **CRITICAL RULE:** Batch cooking MUST follow chronological order. You can ONLY cook on an earlier day and use leftovers on a LATER day. NEVER reference a future day as the source of leftovers for a past day.
