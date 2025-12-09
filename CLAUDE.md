@@ -90,6 +90,64 @@ This means:
 
 ---
 
+## 🔴 CRITICAL: ENVIRONMENT FILES ARE LOCAL, NOT IN GIT
+
+**The `.env` file is NOT committed to git** - it only exists on the local machine where development happens.
+
+This means:
+- **NEVER read `/home/user/family-meal-planner/.env` to diagnose user's issues** - this is the Linux environment, NOT the user's Windows machine
+- **ALWAYS ask the user to show their `.env` contents** when debugging connection issues
+- The user's `.env` on Windows (C:\Users\Chris Hadley\family-meal-planner\.env) is DIFFERENT from the Linux environment's `.env`
+- Changes to `.env` in this Linux environment DO NOT affect the user's Windows machine
+
+**When debugging "database not connecting" issues:**
+1. ✅ **FIRST** - Ask user to show their `.env` file contents
+2. ✅ **VERIFY** - Confirm DATABASE_URL points to Supabase, not localhost
+3. ✅ **CHECK** - Ensure user has restarted dev server after any `.env` changes
+4. ❌ **NEVER** - Assume the `.env` in `/home/user/...` matches the user's actual `.env`
+
+---
+
+## 🔴 CRITICAL: NEXT.JS VERSION AND CACHING
+
+**This project uses Next.js 15 (stable) NOT Next.js 16.**
+
+**Why:** Next.js 16 with Turbopack (experimental) causes severe caching issues:
+- Database connection changes not picked up even after restart
+- Code changes not reflected in running app
+- Prisma client changes ignored
+- API routes serving stale/cached responses
+- Endless debugging cycles with no clear resolution
+
+**If user reports persistent issues after changes:**
+
+1. **Verify Next.js version** - Check `package.json` line 23 shows `"next": "^15.1.0"`
+
+2. **If accidentally upgraded to Next.js 16, downgrade immediately:**
+   ```powershell
+   # In package.json, change:
+   "next": "^15.1.0"
+   "react": "^18.3.1"
+   "react-dom": "^18.3.1"
+   "@types/react": "^18.3.0"
+   "@types/react-dom": "^18.3.0"
+   ```
+
+3. **Nuclear clean and reinstall:**
+   ```powershell
+   Remove-Item package-lock.json -Force -ErrorAction SilentlyContinue
+   Remove-Item -Recurse -Force node_modules -ErrorAction SilentlyContinue
+   npm cache clean --force
+   npm install --legacy-peer-deps
+   npx prisma generate
+   Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue
+   npm run dev
+   ```
+
+**NEVER upgrade to Next.js 16 until it's officially stable** - the experimental Turbopack bundler causes more problems than it solves.
+
+---
+
 ## 📋 WORKFLOW: Follow This For EVERY Change
 
 ### Phase 1: BEFORE Making Changes
@@ -940,15 +998,37 @@ cd apps/mobile; npx expo start -c
 
 ### Database Issues
 
+**FIRST: Check user's actual .env file** - Don't read `/home/user/family-meal-planner/.env` (Linux), ask user to show their Windows `.env` file contents.
+
+**Verify DATABASE_URL is correct:**
+```
+DATABASE_URL="postgresql://postgres:Emmie2018!!!A@db.pocptwknyxyrtmnfnrph.supabase.co:5432/postgres?schema=public"
+```
+
+Should be:
+- ✅ `db.pocptwknyxyrtmnfnrph.supabase.co` (Supabase)
+- ❌ NOT `localhost` (local database doesn't exist)
+
+**If connection still fails after .env is correct:**
+```powershell
+# Regenerate Prisma client to pick up new DATABASE_URL
+npx prisma generate
+
+# Stop server, clear caches, restart
+Remove-Item -Recurse -Force .next, node_modules/.cache -ErrorAction SilentlyContinue
+npm run dev
+```
+
+**Other database commands:**
 ```powershell
 # Check Supabase status
 npx supabase status
 
-# Reset local database
-npx supabase db reset
-
 # Check migration status
 npx supabase migration list
+
+# Pull current schema from database (before making schema changes)
+npx prisma db pull
 ```
 
 ### Type Errors After Changes
@@ -978,30 +1058,44 @@ git push origin <branch-name>
 
 ### Stale Code / Changes Not Appearing
 
-Turbopack caching can cause old code to persist even after changes. **If changes aren't appearing, clear caches before debugging further:**
+**FIRST: Check if user is on Next.js 16** - This version has severe Turbopack caching issues that simple cache clears won't fix. See "CRITICAL: NEXT.JS VERSION AND CACHING" section above.
 
+If on Next.js 15, caching can still cause old code to persist. **If changes aren't appearing, try these steps in order:**
+
+**Step 1: Simple cache clear**
 ```powershell
-# Nuclear option - clear ALL caches (single line, paste-friendly)
-Remove-Item -Recurse -Force node_modules/.cache, .next/cache, apps/web/.next, apps/mobile/.expo, $env:TEMP/turbopack-* -ErrorAction SilentlyContinue
-
-# Restart Metro bundler with cache clear
-cd apps/mobile; npx expo start -c
-
-# Restart Next.js/web with cache clear  
-cd apps/web; Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue; npm run dev
+Remove-Item -Recurse -Force .next, node_modules/.cache -ErrorAction SilentlyContinue
+npm run dev
 ```
+
+**Step 2: If Step 1 didn't work - Nuclear reinstall**
+```powershell
+Remove-Item package-lock.json -Force -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force node_modules -ErrorAction SilentlyContinue
+npm cache clean --force
+npm install --legacy-peer-deps
+npx prisma generate
+Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue
+npm run dev
+```
+
+**Step 3: If Step 2 didn't work - Check for Next.js 16**
+The user may have accidentally upgraded to Next.js 16. Downgrade immediately (see section above).
 
 **Signs of cache issues:**
 - Code changes not reflected in running app
 - Old console.log statements still appearing
 - TypeScript shows no errors but runtime behaviour is wrong
 - "I just changed that" but old behaviour persists
+- Database connection errors persist after fixing .env
+- API endpoints returning 500 errors with "Unexpected token '<'"
 
 **When to suspect caching:**
 - After switching git branches
 - After pulling significant changes
 - After changing config files (tsconfig, babel, etc.)
 - When behaviour doesn't match the code you're reading
+- After changing database configuration or Prisma schema
 
 ---
 
