@@ -1,16 +1,22 @@
+'use client'
+
 import Link from 'next/link'
 import ProfileForm from '@/components/profiles/ProfileForm'
+import { AppLayout, PageContainer } from '@/components/layout'
+import { useSession } from 'next-auth/react'
 
 export default function NewProfilePage() {
+  const { data: session } = useSession()
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link href="/profiles" className="text-blue-600 hover:text-blue-800 mb-4 inline-block">
+    <AppLayout userEmail={session?.user?.email}>
+      <PageContainer maxWidth="2xl">
+        <Link href="/profiles" className="text-purple-400 hover:text-purple-300 mb-4 inline-block">
           ← Back to Profiles
         </Link>
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Create Family Profile</h1>
+        <h1 className="text-3xl font-bold text-white mb-8">Create Family Profile</h1>
         <ProfileForm mode="create" />
-      </div>
-    </div>
+      </PageContainer>
+    </AppLayout>
   )
 }

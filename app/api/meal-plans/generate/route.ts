@@ -3,7 +3,9 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { generateMealPlan } from '@/lib/claude'
-import { startOfWeek, endOfWeek } from 'date-fns'
+import { calculateServingsForMeals, filterZeroServingMeals } from '@/lib/meal-utils'
+import { startOfWeek, endOfWeek, subWeeks, addDays } from 'date-fns'
+import { DEFAULT_SETTINGS } from '@/lib/types/meal-plan-settings'
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,7 +14,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { weekStartDate } = await req.json()
+    const { weekStartDate, weekProfileSchedules, quickOptions } = await req.json()
 
     if (!weekStartDate) {
       return NextResponse.json(
@@ -21,8 +23,10 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Fetch user's profiles and recipes
-    const [profiles, recipes] = await Promise.all([
+    console.log('🔷 Fetching data for meal plan generation...')
+
+    // Fetch user's profiles, recipes, settings, recipe history, and inventory
+    const [profiles, recipes, settingsRecord, recipeHistory, inventory] = await Promise.all([
       prisma.familyProfile.findMany({
         where: { userId: session.user.id }
       }),
@@ -35,6 +39,22 @@ export async function POST(req: NextRequest) {
           ingredients: true
         },
         take: 50 // Limit to prevent token overflow
+      }),
+      prisma.mealPlanSettings.findUnique({
+        where: { userId: session.user.id }
+      }),
+      prisma.recipeUsageHistory.findMany({
+        where: {
+          userId: session.user.id,
+          usedDate: { gte: subWeeks(new Date(weekStartDate), 4) } // Last 4 weeks
+        },
+        include: {
+          recipe: true
+        },
+        orderBy: { usedDate: 'desc' }
+      }),
+      prisma.inventoryItem.findMany({
+        where: { userId: session.user.id }
       })
     ])
 
@@ -45,16 +65,101 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Generate meal plan using Claude
+    // Convert database settings to MealPlanSettings interface, or use defaults
+    const settings = settingsRecord
+      ? {
+          macroMode: settingsRecord.macroMode as any,
+          varietyEnabled: settingsRecord.varietyEnabled,
+          dinnerCooldown: settingsRecord.dinnerCooldown,
+          lunchCooldown: settingsRecord.lunchCooldown,
+          breakfastCooldown: settingsRecord.breakfastCooldown,
+          snackCooldown: settingsRecord.snackCooldown,
+          minCuisines: settingsRecord.minCuisines,
+          maxSameCuisine: settingsRecord.maxSameCuisine,
+          shoppingMode: settingsRecord.shoppingMode as any,
+          expiryPriority: settingsRecord.expiryPriority as any,
+          expiryWindow: settingsRecord.expiryWindow,
+          useItUpItems: settingsRecord.useItUpItems,
+          batchCookingEnabled: settingsRecord.batchCookingEnabled,
+          maxLeftoverDays: settingsRecord.maxLeftoverDays,
+          priorityOrder: settingsRecord.priorityOrder as any,
+          feedbackDetail: settingsRecord.feedbackDetail as any
+        }
+      : DEFAULT_SETTINGS
+
+    console.log('🟢 Data fetched:', {
+      profiles: profiles.length,
+      recipes: recipes.length,
+      historyRecords: recipeHistory.length,
+      inventoryItems: inventory.length,
+      hasSettings: !!settingsRecord
+    })
+
+    // Generate meal plan using Claude with all advanced features
     const generatedPlan = await generateMealPlan({
       profiles,
       recipes,
       weekStartDate,
+      weekProfileSchedules, // Pass per-person schedules for week
+      settings,
+      recipeHistory: recipeHistory.map(h => ({
+        id: h.id,
+        userId: h.userId,
+        recipeId: h.recipeId,
+        mealPlanId: h.mealPlanId,
+        usedDate: h.usedDate,
+        mealType: h.mealType,
+        wasManual: h.wasManual,
+        createdAt: h.createdAt
+      })),
+      inventory,
+      quickOptions
     })
 
-    // Create the meal plan in database
+    // Create a set of valid recipe IDs for validation
+    const validRecipeIds = new Set(recipes.map(r => r.id))
+
+    // Validate and clean up meals - only include valid recipe IDs
+    console.log('🔍 AI Response - Checking for batch cooking data...')
+    const validatedMeals = generatedPlan.meals.map((meal: any) => {
+      const recipeId = meal.recipeId && validRecipeIds.has(meal.recipeId) ? meal.recipeId : null
+
+      if (meal.recipeId && !recipeId) {
+        console.warn(`⚠️ Claude suggested invalid recipe ID: ${meal.recipeId} for ${meal.recipeName}`)
+      }
+
+      // Log batch cooking info
+      if (meal.isLeftover) {
+        console.log(`🍲 LEFTOVER DETECTED: ${meal.dayOfWeek} ${meal.mealType} - ${meal.recipeName} (source: ${meal.batchCookSourceDay})`)
+      }
+
+      return {
+        dayOfWeek: meal.dayOfWeek,
+        mealType: meal.mealType,
+        recipeId,
+        recipeName: meal.recipeName || null,
+        notes: meal.notes || null,
+        isLeftover: meal.isLeftover || false,
+        batchCookSourceDay: meal.batchCookSourceDay || null,
+      }
+    })
+
+    console.log(`📊 Batch cooking summary: ${validatedMeals.filter((m: any) => m.isLeftover).length} leftover meals out of ${validatedMeals.length} total`)
+
+    // Calculate servings based on who's eating each meal
+    console.log('🧮 Calculating servings for all meals...')
+    const mealsWithServings = calculateServingsForMeals(validatedMeals, weekProfileSchedules || [])
+
+    // Filter out meals with 0 servings (no one eating)
+    const finalMeals = filterZeroServingMeals(mealsWithServings)
+
+    console.log(`✅ Created ${finalMeals.length} meals (filtered ${mealsWithServings.length - finalMeals.length} with 0 servings)`)
+
+    // Create the meal plan in database (first pass - without leftover linkage or scaling)
     const weekStart = new Date(weekStartDate)
     const weekEnd = endOfWeek(weekStart)
+
+    console.log(`💾 Creating meal plan with ${finalMeals.filter((m: any) => m.isLeftover).length} leftover meals...`)
 
     const mealPlan = await prisma.mealPlan.create({
       data: {
@@ -62,15 +167,47 @@ export async function POST(req: NextRequest) {
         weekStartDate: weekStart,
         weekEndDate: weekEnd,
         status: 'Draft',
+        customSchedule: weekProfileSchedules || null, // Store per-person schedules as JSON
         meals: {
-          create: generatedPlan.meals.map((meal: any) => ({
-            dayOfWeek: meal.dayOfWeek,
-            mealType: meal.mealType,
-            recipeId: meal.recipeId || null,
-            recipeName: meal.recipeName || null,
-            servings: meal.servings || null,
-            notes: meal.notes || null,
-          }))
+          create: finalMeals.map((meal: any) => {
+            // Find the recipe to calculate scaling factor
+            const recipe = recipes.find(r => r.id === meal.recipeId)
+            const scalingFactor = recipe && recipe.servings > 0
+              ? meal.servings / recipe.servings
+              : null
+
+            const mealData = {
+              dayOfWeek: meal.dayOfWeek,
+              mealType: meal.mealType,
+              recipeId: meal.recipeId,
+              recipeName: meal.recipeName,
+              servings: meal.servings,
+              servingsManuallySet: meal.servingsManuallySet || false,
+              scalingFactor, // CRITICAL: Store scaling factor for shopping lists
+              notes: meal.notes,
+              isLeftover: meal.isLeftover || false,
+              isLocked: false
+            }
+
+            // DEBUG: Log batch cooking meals to verify servings calculations
+            if (meal.notes && meal.notes.includes('Batch cook')) {
+              console.log(`🍳 BATCH COOK SOURCE: ${mealData.dayOfWeek} ${mealData.mealType} - ${mealData.recipeName}`)
+              console.log(`   Servings: ${mealData.servings}`)
+              console.log(`   Note: ${mealData.notes}`)
+              console.log(`   Recipe servings: ${recipe?.servings || 'N/A'}`)
+              console.log(`   Scaling factor: ${scalingFactor ? scalingFactor.toFixed(2) : 'N/A'}x`)
+            }
+
+            if (mealData.isLeftover) {
+              console.log(`💾 Saving leftover: ${mealData.dayOfWeek} ${mealData.mealType} - ${mealData.recipeName}`)
+            }
+
+            if (scalingFactor) {
+              console.log(`📏 Scaling factor for ${mealData.recipeName}: ${scalingFactor.toFixed(2)}x (${meal.servings} servings / ${recipe?.servings} recipe servings)`)
+            }
+
+            return mealData
+          })
         }
       },
       include: {
@@ -81,6 +218,67 @@ export async function POST(req: NextRequest) {
         }
       }
     })
+
+    // Second pass: Link leftover meals to their source meals
+    console.log('🔗 Linking leftover meals to batch cook sources...')
+    const leftoverMeals = finalMeals.filter((m: any) => m.isLeftover && m.batchCookSourceDay)
+
+    for (const leftoverMeal of leftoverMeals) {
+      // Find the source meal (same recipe, same meal type, on the source day)
+      const sourceMeal = mealPlan.meals.find(m =>
+        m.dayOfWeek === leftoverMeal.batchCookSourceDay &&
+        m.mealType === leftoverMeal.mealType &&
+        m.recipeId === leftoverMeal.recipeId &&
+        !m.isLeftover
+      )
+
+      if (sourceMeal) {
+        // Find the leftover meal in the created plan
+        const createdLeftoverMeal = mealPlan.meals.find(m =>
+          m.dayOfWeek === leftoverMeal.dayOfWeek &&
+          m.mealType === leftoverMeal.mealType &&
+          m.recipeId === leftoverMeal.recipeId &&
+          m.isLeftover
+        )
+
+        if (createdLeftoverMeal) {
+          // Update the leftover meal with the source reference
+          await prisma.meal.update({
+            where: { id: createdLeftoverMeal.id },
+            data: { leftoverFromMealId: sourceMeal.id }
+          })
+          console.log(`🔗 Linked ${leftoverMeal.dayOfWeek} ${leftoverMeal.mealType} to ${sourceMeal.dayOfWeek} batch cook`)
+        }
+      }
+    }
+
+    // Record recipe usage in history for cooldown tracking
+    console.log('🔷 Recording recipe usage history...')
+    const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    const historyEntries = mealPlan.meals
+      .filter(meal => meal.recipeId) // Only record meals with actual recipes
+      .map(meal => {
+        // Calculate the actual date for this meal
+        const dayIndex = daysOfWeek.indexOf(meal.dayOfWeek)
+        const mealDate = addDays(weekStart, dayIndex)
+
+        return {
+          userId: session.user.id,
+          recipeId: meal.recipeId!,
+          mealPlanId: mealPlan.id,
+          usedDate: mealDate,
+          mealType: meal.mealType,
+          wasManual: false // Set to true if user manually placed this recipe later
+        }
+      })
+
+    if (historyEntries.length > 0) {
+      await prisma.recipeUsageHistory.createMany({
+        data: historyEntries,
+        skipDuplicates: true
+      })
+      console.log(`🟢 Recorded ${historyEntries.length} recipe usage history entries`)
+    }
 
     return NextResponse.json({
       mealPlan,

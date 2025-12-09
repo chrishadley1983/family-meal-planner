@@ -1,4 +1,12 @@
 import Anthropic from '@anthropic-ai/sdk'
+import {
+  MealPlanSettings,
+  RecipeUsageHistory,
+  InventoryItem,
+  QuickOptions,
+  DEFAULT_SETTINGS
+} from './types/meal-plan-settings'
+import { buildMealPlanPrompt } from './meal-plan-prompt-builder'
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY
@@ -9,8 +17,39 @@ export async function generateMealPlan(params: {
   recipes: any[]
   weekStartDate: string
   preferences?: any
+  weekProfileSchedules?: any[]
+  settings?: MealPlanSettings
+  recipeHistory?: RecipeUsageHistory[]
+  inventory?: InventoryItem[]
+  quickOptions?: QuickOptions
 }) {
-  const { profiles, recipes, weekStartDate, preferences } = params
+  const {
+    profiles,
+    recipes,
+    weekStartDate,
+    preferences,
+    weekProfileSchedules,
+    settings,
+    recipeHistory,
+    inventory,
+    quickOptions
+  } = params
+
+  // If advanced features are provided, use the advanced prompt builder
+  if (weekProfileSchedules || settings || recipeHistory?.length || inventory?.length) {
+    return generateAdvancedMealPlan({
+      profiles,
+      recipes,
+      weekStartDate,
+      weekProfileSchedules: weekProfileSchedules || [],
+      settings: settings || DEFAULT_SETTINGS,
+      recipeHistory: recipeHistory || [],
+      inventory: inventory || [],
+      quickOptions
+    })
+  }
+
+  // Otherwise, use the simple prompt (backward compatibility)
 
   const prompt = `You are a family meal planning assistant. Generate a weekly meal plan based on the following information:
 
@@ -125,6 +164,108 @@ Keep it concise and practical.`
     return message.content[0].type === 'text' ? message.content[0].text : ''
   } catch (error) {
     console.error('Error getting nutritionist feedback:', error)
+    throw error
+  }
+}
+
+// Advanced meal plan generation with batch cooking, servings calculation, etc.
+async function generateAdvancedMealPlan(params: {
+  profiles: any[]
+  recipes: any[]
+  weekStartDate: string
+  weekProfileSchedules: any[]
+  settings: MealPlanSettings
+  recipeHistory: RecipeUsageHistory[]
+  inventory: InventoryItem[]
+  quickOptions?: QuickOptions
+}) {
+  const {
+    profiles,
+    recipes,
+    weekStartDate,
+    weekProfileSchedules,
+    settings,
+    recipeHistory,
+    inventory,
+    quickOptions
+  } = params
+
+  // Calculate servings map
+  type MealSchedule = {
+    monday: string[]
+    tuesday: string[]
+    wednesday: string[]
+    thursday: string[]
+    friday: string[]
+    saturday: string[]
+    sunday: string[]
+  }
+
+  const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+  let servingsMap: Record<string, Record<string, number>> = {}
+
+  daysOfWeek.forEach(day => {
+    servingsMap[day] = {}
+
+    weekProfileSchedules.forEach(profileSchedule => {
+      const meals = profileSchedule.schedule?.[day] || []
+      meals.forEach((meal: string) => {
+        servingsMap[day][meal] = (servingsMap[day][meal] || 0) + 1
+      })
+    })
+  })
+
+  // DEBUG: Log the servingsMap to verify calculations
+  console.log('📊 ServingsMap calculated:', JSON.stringify(servingsMap, null, 2))
+
+  // Build the advanced AI prompt
+  const prompt = buildMealPlanPrompt(
+    {
+      profiles,
+      recipes,
+      weekStartDate,
+      weekProfileSchedules,
+      settings,
+      recipeHistory,
+      inventory,
+      servingsMap
+    },
+    quickOptions
+  )
+
+  // DEBUG: Log the REQUIRED SERVINGS section of the prompt
+  const servingsSection = prompt.match(/\*\*REQUIRED SERVINGS[\s\S]*?(?=\n\n\*\*|$)/)?.[0]
+  if (servingsSection) {
+    console.log('📋 REQUIRED SERVINGS section sent to AI:')
+    console.log(servingsSection)
+  }
+
+  try {
+    console.log('🔷 Calling Claude API for advanced meal plan generation...')
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-5',
+      max_tokens: 4096,
+      messages: [{
+        role: 'user',
+        content: prompt
+      }]
+    })
+
+    const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
+    console.log('🟢 Claude response received, length:', responseText.length)
+
+    // Extract JSON from response
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      console.error('❌ No JSON found in Claude response')
+      throw new Error('Failed to parse meal plan from Claude response')
+    }
+
+    const mealPlan = JSON.parse(jsonMatch[0])
+    console.log('🟢 Meal plan parsed successfully, meals count:', mealPlan.meals?.length || 0)
+    return mealPlan
+  } catch (error) {
+    console.error('❌ Error generating advanced meal plan:', error)
     throw error
   }
 }

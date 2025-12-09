@@ -32,6 +32,13 @@ export async function PATCH(
       )
     }
 
+    // If servings is being manually updated, mark it as manually set
+    // This prevents auto-recalculation from overwriting user's custom value
+    if ('servings' in updates && updates.servings !== existingMeal.servings) {
+      updates.servingsManuallySet = true
+      console.log(`🔧 Servings manually updated for meal ${params.id}, setting flag`)
+    }
+
     // Update the meal
     const meal = await prisma.meal.update({
       where: { id: params.id },

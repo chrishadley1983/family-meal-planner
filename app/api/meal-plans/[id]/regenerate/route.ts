@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { generateMealPlan } from '@/lib/claude'
+import { calculateServingsForMeals, filterZeroServingMeals } from '@/lib/meal-utils'
 
 export async function POST(
   req: NextRequest,
@@ -92,22 +93,32 @@ export async function POST(
         mealType: meal.mealType,
         recipeId,
         recipeName: meal.recipeName || null,
-        servings: meal.servings || null,
         notes: meal.notes || null,
         isLocked: false
       }
     })
+
+    // Calculate servings based on who's eating each meal
+    console.log('🧮 Calculating servings for regenerated meals...')
+    const mealsWithServings = calculateServingsForMeals(
+      validatedMeals,
+      existingPlan.customSchedule as any
+    )
+
+    // Filter out meals with 0 servings
+    const mealsWithValidServings = filterZeroServingMeals(mealsWithServings)
 
     // Filter out meals that conflict with locked meals
     const lockedMealKeys = new Set(
       lockedMeals.map(m => `${m.dayOfWeek}-${m.mealType}`)
     )
 
-    const newMeals = validatedMeals.filter((meal: any) =>
+    const newMeals = mealsWithValidServings.filter((meal: any) =>
       !lockedMealKeys.has(`${meal.dayOfWeek}-${meal.mealType}`)
     )
 
-    console.log(`✅ Regenerated ${newMeals.length} meals, preserving ${lockedMeals.length} locked meals`)
+    const filteredCount = mealsWithServings.length - mealsWithValidServings.length
+    console.log(`✅ Regenerated ${newMeals.length} meals (filtered ${filteredCount} with 0 servings), preserving ${lockedMeals.length} locked meals`)
 
     // Delete existing unlocked meals
     await prisma.meal.deleteMany({

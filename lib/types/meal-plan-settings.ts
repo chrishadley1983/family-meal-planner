@@ -258,6 +258,7 @@ export interface PromptBuilderParams {
   settings: MealPlanSettings
   recipeHistory: RecipeUsageHistory[]
   inventory: InventoryItem[]
+  servingsMap?: Record<string, Record<string, number>> // day -> mealType -> servings count
 }
 
 // Quick options for generation page (temporary overrides)

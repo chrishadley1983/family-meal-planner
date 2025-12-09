@@ -19,6 +19,7 @@ const profileSchema = z.object({
   dailyFatTarget: z.number().positive().optional().nullable(),
   dailyFiberTarget: z.number().positive().optional().nullable(),
   macroTrackingEnabled: z.boolean().default(false),
+  isMainUser: z.boolean().default(false),
 })
 
 // GET - List all profiles for the authenticated user
