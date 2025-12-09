@@ -233,6 +233,9 @@ export default function MealPlanDetailPage() {
   const [showEditSchedule, setShowEditSchedule] = useState(false)
   const [weekProfileSchedules, setWeekProfileSchedules] = useState<WeekProfileSchedule[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [currentDayIndex, setCurrentDayIndex] = useState(0) // 0 = Monday, 6 = Sunday
+  const [touchStart, setTouchStart] = useState<number | null>(null)
+  const [touchEnd, setTouchEnd] = useState<number | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -537,6 +540,55 @@ export default function MealPlanDetailPage() {
     )
   }
 
+  // Day navigation handlers
+  const goToPreviousDay = () => {
+    setCurrentDayIndex(prev => (prev === 0 ? 6 : prev - 1))
+  }
+
+  const goToNextDay = () => {
+    setCurrentDayIndex(prev => (prev === 6 ? 0 : prev + 1))
+  }
+
+  // Swipe gesture handlers
+  const minSwipeDistance = 50
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null)
+    setTouchStart(e.targetTouches[0].clientX)
+  }
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX)
+  }
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return
+
+    const distance = touchStart - touchEnd
+    const isLeftSwipe = distance > minSwipeDistance
+    const isRightSwipe = distance < -minSwipeDistance
+
+    if (isLeftSwipe) {
+      goToNextDay()
+    } else if (isRightSwipe) {
+      goToPreviousDay()
+    }
+  }
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') {
+        goToPreviousDay()
+      } else if (e.key === 'ArrowRight') {
+        goToNextDay()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
   if (loading) {
     return (
       <AppLayout userEmail={session?.user?.email}>
@@ -678,15 +730,53 @@ export default function MealPlanDetailPage() {
           </Select>
         </div>
 
-        {/* Weekly Meal Grid with Drag and Drop */}
+        {/* Day Navigation Controls */}
+        <div className="card p-4 mb-4">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={goToPreviousDay}
+              className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg border border-zinc-700 transition-colors"
+              aria-label="Previous day"
+            >
+              <span className="text-xl">←</span>
+              <span className="hidden sm:inline">Previous</span>
+            </button>
+
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-white">{DAYS_OF_WEEK[currentDayIndex]}</h2>
+              <p className="text-sm text-zinc-400 mt-1">Day {currentDayIndex + 1} of 7</p>
+            </div>
+
+            <button
+              onClick={goToNextDay}
+              className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg border border-zinc-700 transition-colors"
+              aria-label="Next day"
+            >
+              <span className="hidden sm:inline">Next</span>
+              <span className="text-xl">→</span>
+            </button>
+          </div>
+
+          <div className="mt-3 text-xs text-center text-zinc-500">
+            Swipe left/right or use arrow keys to navigate
+          </div>
+        </div>
+
+        {/* Single Day View with Swipe Support */}
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
-            {DAYS_OF_WEEK.map((day) => {
+          <div
+            className="touch-pan-y"
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
+          >
+            {(() => {
+              const day = DAYS_OF_WEEK[currentDayIndex]
               const dayMeals = mealPlan.meals.filter(m => m.dayOfWeek === day)
               const dailyMacros = calculateDailyMacros(day)
 
@@ -697,31 +787,29 @@ export default function MealPlanDetailPage() {
                 mealsByType.set(normalizedType, meal)
               })
 
-              // Create ordered array with meals in consistent positions (empty slots for missing meals)
+              // Create ordered array with meals in consistent positions
               const orderedMeals = MEAL_TYPE_ORDER.map(mealTypeKey => {
                 const existingMeal = mealsByType.get(mealTypeKey)
                 return existingMeal || null
               }).filter(meal => meal !== null) as Meal[]
 
               return (
-                <div key={day} className="card p-4 flex flex-col">
-                  <h3 className="font-medium text-white mb-2">{day}</h3>
-
+                <div className="card p-6">
                   {/* Daily Macro Summary */}
                   {selectedProfile && (
-                    <div className="mb-4 p-3 bg-zinc-800/50 rounded text-xs space-y-2 flex-shrink-0">
-                      <div className="font-medium text-zinc-300">Daily Macros:</div>
+                    <div className="mb-6 p-4 bg-zinc-800/50 rounded-lg space-y-3">
+                      <div className="font-medium text-zinc-300 text-lg">Daily Macros</div>
 
                       {/* Calories */}
                       {selectedProfile.dailyCalorieTarget && (
                         <div>
-                          <div className="flex justify-between mb-1 text-zinc-400">
+                          <div className="flex justify-between mb-2 text-zinc-400">
                             <span>Calories</span>
-                            <span>{dailyMacros.calories} / {selectedProfile.dailyCalorieTarget}</span>
+                            <span className="font-medium">{dailyMacros.calories} / {selectedProfile.dailyCalorieTarget}</span>
                           </div>
-                          <div className="w-full bg-zinc-700 rounded-full h-2">
+                          <div className="w-full bg-zinc-700 rounded-full h-3">
                             <div
-                              className={`h-2 rounded-full ${getMacroProgressColor(dailyMacros.calories, selectedProfile.dailyCalorieTarget)}`}
+                              className={`h-3 rounded-full transition-all ${getMacroProgressColor(dailyMacros.calories, selectedProfile.dailyCalorieTarget)}`}
                               style={{ width: `${getMacroPercentage(dailyMacros.calories, selectedProfile.dailyCalorieTarget)}%` }}
                             ></div>
                           </div>
@@ -731,13 +819,13 @@ export default function MealPlanDetailPage() {
                       {/* Protein */}
                       {selectedProfile.dailyProteinTarget && (
                         <div>
-                          <div className="flex justify-between mb-1 text-zinc-400">
+                          <div className="flex justify-between mb-2 text-zinc-400">
                             <span>Protein</span>
-                            <span>{dailyMacros.protein}g / {selectedProfile.dailyProteinTarget}g</span>
+                            <span className="font-medium">{dailyMacros.protein}g / {selectedProfile.dailyProteinTarget}g</span>
                           </div>
-                          <div className="w-full bg-zinc-700 rounded-full h-2">
+                          <div className="w-full bg-zinc-700 rounded-full h-3">
                             <div
-                              className={`h-2 rounded-full ${getMacroProgressColor(dailyMacros.protein, selectedProfile.dailyProteinTarget)}`}
+                              className={`h-3 rounded-full transition-all ${getMacroProgressColor(dailyMacros.protein, selectedProfile.dailyProteinTarget)}`}
                               style={{ width: `${getMacroPercentage(dailyMacros.protein, selectedProfile.dailyProteinTarget)}%` }}
                             ></div>
                           </div>
@@ -747,13 +835,13 @@ export default function MealPlanDetailPage() {
                       {/* Carbs */}
                       {selectedProfile.dailyCarbsTarget && (
                         <div>
-                          <div className="flex justify-between mb-1 text-zinc-400">
+                          <div className="flex justify-between mb-2 text-zinc-400">
                             <span>Carbs</span>
-                            <span>{dailyMacros.carbs}g / {selectedProfile.dailyCarbsTarget}g</span>
+                            <span className="font-medium">{dailyMacros.carbs}g / {selectedProfile.dailyCarbsTarget}g</span>
                           </div>
-                          <div className="w-full bg-zinc-700 rounded-full h-2">
+                          <div className="w-full bg-zinc-700 rounded-full h-3">
                             <div
-                              className={`h-2 rounded-full ${getMacroProgressColor(dailyMacros.carbs, selectedProfile.dailyCarbsTarget)}`}
+                              className={`h-3 rounded-full transition-all ${getMacroProgressColor(dailyMacros.carbs, selectedProfile.dailyCarbsTarget)}`}
                               style={{ width: `${getMacroPercentage(dailyMacros.carbs, selectedProfile.dailyCarbsTarget)}%` }}
                             ></div>
                           </div>
@@ -763,13 +851,13 @@ export default function MealPlanDetailPage() {
                       {/* Fat */}
                       {selectedProfile.dailyFatTarget && (
                         <div>
-                          <div className="flex justify-between mb-1 text-zinc-400">
+                          <div className="flex justify-between mb-2 text-zinc-400">
                             <span>Fat</span>
-                            <span>{dailyMacros.fat}g / {selectedProfile.dailyFatTarget}g</span>
+                            <span className="font-medium">{dailyMacros.fat}g / {selectedProfile.dailyFatTarget}g</span>
                           </div>
-                          <div className="w-full bg-zinc-700 rounded-full h-2">
+                          <div className="w-full bg-zinc-700 rounded-full h-3">
                             <div
-                              className={`h-2 rounded-full ${getMacroProgressColor(dailyMacros.fat, selectedProfile.dailyFatTarget)}`}
+                              className={`h-3 rounded-full transition-all ${getMacroProgressColor(dailyMacros.fat, selectedProfile.dailyFatTarget)}`}
                               style={{ width: `${getMacroPercentage(dailyMacros.fat, selectedProfile.dailyFatTarget)}%` }}
                             ></div>
                           </div>
@@ -778,36 +866,39 @@ export default function MealPlanDetailPage() {
                     </div>
                   )}
 
-                  {/* Meals for the Day - Now in consistent order with fixed heights */}
+                  {/* Meals for the Day */}
+                  <div className="mb-4">
+                    <h3 className="text-lg font-medium text-zinc-300 mb-4">Meals</h3>
+                  </div>
+
                   <SortableContext items={orderedMeals.map(m => m.id)} strategy={verticalListSortingStrategy}>
-                    <div className="grid grid-rows-5 gap-3 flex-1">
+                    <div className="space-y-4">
                       {orderedMeals.length === 0 ? (
-                        <p className="text-sm text-zinc-400">No meals planned</p>
+                        <p className="text-center text-zinc-400 py-8">No meals planned for this day</p>
                       ) : (
-                        // Render all meal types in consistent positions with consistent heights
+                        // Render all meal types in consistent order
                         MEAL_TYPE_ORDER.map((mealTypeKey) => {
                           const meal = mealsByType.get(mealTypeKey)
                           if (!meal) {
-                            // Empty slot for missing meal type - same height as meal cards
+                            // Empty slot for missing meal type
                             return (
-                              <div key={`${day}-${mealTypeKey}`} className="min-h-[120px] py-2 px-3 border border-dashed border-zinc-700 rounded bg-zinc-900/30 flex items-center justify-center">
-                                <span className="text-xs text-zinc-500 italic text-center">
-                                  {MEAL_TYPES.find(mt => mt.key === mealTypeKey)?.label || ''}<br/>not scheduled
+                              <div key={`${day}-${mealTypeKey}`} className="py-4 px-4 border border-dashed border-zinc-700 rounded-lg bg-zinc-900/30 flex items-center justify-center">
+                                <span className="text-sm text-zinc-500 italic">
+                                  {MEAL_TYPES.find(mt => mt.key === mealTypeKey)?.label || ''} not scheduled
                                 </span>
                               </div>
                             )
                           }
                           return (
-                            <div key={meal.id} className="min-h-[120px]">
-                              <SortableMealCard
-                                meal={meal}
-                                recipes={recipes}
-                                onUpdate={handleMealUpdate}
-                                onDelete={handleMealDelete}
-                                onToggleLock={handleToggleLock}
-                                disabled={!isEditable}
-                              />
-                            </div>
+                            <SortableMealCard
+                              key={meal.id}
+                              meal={meal}
+                              recipes={recipes}
+                              onUpdate={handleMealUpdate}
+                              onDelete={handleMealDelete}
+                              onToggleLock={handleToggleLock}
+                              disabled={!isEditable}
+                            />
                           )
                         })
                       )}
@@ -815,7 +906,7 @@ export default function MealPlanDetailPage() {
                   </SortableContext>
                 </div>
               )
-            })}
+            })()}
           </div>
         </DndContext>
 
