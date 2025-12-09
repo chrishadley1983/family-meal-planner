@@ -306,11 +306,26 @@ function buildVarietySection(
 ): string {
   let section = `# RECIPE VARIETY & COOLDOWNS\n\n`
 
-  section += `**Cooldown Periods:**\n`
+  section += `**Cooldown Periods (CRITICAL - MUST BE RESPECTED):**\n`
   section += `- Dinners: ${settings.dinnerCooldown} days\n`
   section += `- Lunches: ${settings.lunchCooldown} days\n`
   section += `- Breakfasts: ${settings.breakfastCooldown} days\n`
   section += `- Snacks/Desserts: ${settings.snackCooldown} days\n\n`
+
+  section += `**⚠️ COOLDOWN ENFORCEMENT - THIS IS MANDATORY:**\n`
+  section += `- DO NOT use the same recipe within its cooldown period\n`
+  section += `- The ONLY exception is batch cooking (cook once, reheat later - see Batch Cooking section)\n`
+  section += `- If batch cooking, meals must be marked correctly with isLeftover=true for reheated portions\n\n`
+
+  section += `**❌ COOLDOWN VIOLATION EXAMPLES (DO NOT DO THIS):**\n`
+  section += `- Using "Chicken Stir Fry" on Tuesday AND Thursday (only 2 days apart, requires ${settings.dinnerCooldown} days)\n`
+  section += `- Using "Spaghetti Bolognese" on Monday AND Wednesday (only 2 days apart, requires ${settings.dinnerCooldown} days)\n`
+  section += `- Scheduling the same breakfast recipe twice in the same week (requires ${settings.breakfastCooldown} days)\n\n`
+
+  section += `**✅ CORRECT APPROACHES:**\n`
+  section += `- Use completely different recipes for each meal type within the cooldown period\n`
+  section += `- OR set up batch cooking: cook once on Monday, reheat on Thursday (mark Thursday as isLeftover=true)\n`
+  section += `- Plan shows you have ${recipes.length} recipes available - plenty to avoid repeating within ${settings.dinnerCooldown} days\n\n`
 
   section += `**Cuisine Variety Requirements:**\n`
   section += `- Minimum different cuisines in the week: ${settings.minCuisines}\n`
@@ -318,7 +333,6 @@ function buildVarietySection(
 
   section += `**Special Rules:**\n`
   section += `- Manually selected recipes (from previous plans) get a +1.5 rating point bonus\n`
-  section += `- Respect cooldown periods strictly - don't use a recipe again until its cooldown has passed\n`
   section += `- Aim for diverse cuisine types across the week to prevent monotony\n`
 
   return section
@@ -441,14 +455,49 @@ function buildBatchCookingSection(settings: MealPlanSettings): string {
   section += `- Grains/Beans: 5 days\n`
   section += `- Salads: 2 days\n\n`
 
+  section += `**🔴 CRITICAL: CHRONOLOGICAL ORDER FOR BATCH COOKING**\n\n`
+  section += `You MUST respect the week's chronological day order when setting up batch cooking:\n`
+  section += `- The week has a STARTING DAY (could be Tuesday, Friday, any day)\n`
+  section += `- Days are ordered chronologically from that starting day\n`
+  section += `- You can ONLY cook on an EARLIER day and reheat on a LATER day\n`
+  section += `- NEVER reference a future day as the source of leftovers for a past day\n\n`
+
+  section += `**CHRONOLOGICAL ORDER EXAMPLE:**\n`
+  section += `If the week starts on TUESDAY, the chronological order is:\n`
+  section += `Day 1: Tuesday → Day 2: Wednesday → Day 3: Thursday → Day 4: Friday → Day 5: Saturday → Day 6: Sunday → Day 7: Monday\n\n`
+
+  section += `**✅ CORRECT BATCH COOKING EXAMPLES:**\n`
+  section += `- Week starts Tuesday: Cook on Friday (Day 4) → Reheat on Monday (Day 7) ✓ Goes forward in time\n`
+  section += `- Week starts Tuesday: Cook on Tuesday (Day 1) → Reheat on Thursday (Day 3) ✓ Goes forward in time\n`
+  section += `- Week starts Monday: Cook on Monday (Day 1) → Reheat on Wednesday (Day 3) ✓ Goes forward in time\n\n`
+
+  section += `**❌ WRONG BATCH COOKING EXAMPLES (DO NOT DO THIS):**\n`
+  section += `- Week starts Tuesday: Cook on Monday (Day 7) → Reheat on Tuesday (Day 1) ✗ Goes backwards!\n`
+  section += `- Week starts Tuesday: Cook on Thursday (Day 3) → Reheat on Wednesday (Day 2) ✗ Goes backwards!\n`
+  section += `- Setting isLeftover=true on the FIRST occurrence of a recipe ✗ Wrong!\n`
+  section += `- Putting the batch cook note on the LATER meal instead of the FIRST meal ✗ Wrong!\n\n`
+
+  section += `**BATCH COOKING SETUP RULES:**\n`
+  section += `When the same recipe appears multiple times across days:\n\n`
+  section += `**On the FIRST occurrence (chronologically earliest day):**\n`
+  section += `- Set isLeftover = false (this is when you COOK it)\n`
+  section += `- Set servings = TOTAL BATCH AMOUNT (e.g., 8 servings for Tuesday + Thursday)\n`
+  section += `- Add note: "Batch cook [X] servings total—covers [Day1] ([Y]) + [Day2] ([Z])"\n`
+  section += `- Example: "Batch cook 8 servings total—covers Tuesday (4) + Thursday (4)"\n\n`
+
+  section += `**On SUBSEQUENT occurrences (chronologically later days):**\n`
+  section += `- Set isLeftover = true (this is REHEATING)\n`
+  section += `- Set batchCookSourceDay = [the actual day name when it was cooked]\n`
+  section += `- Set servings = just this meal's amount (e.g., 4 servings)\n`
+  section += `- Add note: "Reheat from [source day]"\n`
+  section += `- Example: "Reheat from Tuesday"\n\n`
+
   section += `**Batch Cooking Strategy:**\n`
   section += `- Look for recipes marked with yieldsMultipleMeals=true\n`
   section += `- Calculate if the recipe can serve multiple meals within its shelf life\n`
   section += `- Only batch cook for consecutive or close-together days (not spread across the week)\n`
   section += `- Override maximum leftover days to ${settings.maxLeftoverDays} if ingredient shelf life allows\n`
   section += `- Include storage/reheating instructions in the meal notes\n\n`
-
-  section += `**Example:** If making a chicken casserole on Monday (3-day shelf life), it can be used for Monday dinner and Wednesday lunch.\n`
 
   return section
 }
@@ -634,6 +683,8 @@ Please generate a meal plan for the week and return it as a JSON object with thi
 **CRITICAL RECIPE SELECTION RULES:**
 - **YOU MUST ONLY use recipes from the "AVAILABLE RECIPES" list above**
 - Every meal MUST have a valid recipeId from that list - do NOT suggest recipes that aren't in the database
+- **COOLDOWN PERIODS MUST BE RESPECTED** - Do NOT use the same recipe within its cooldown period (see "RECIPE VARIETY & COOLDOWNS" section)
+- The ONLY exception to cooldown is batch cooking - if using the same recipe multiple times, it MUST be set up as batch cooking with proper isLeftover flags
 - If you cannot create a complete meal plan with the available recipes (e.g., not enough variety, missing meal types, dietary restrictions can't be met), you MUST explain this in your summary
 - When explaining shortcomings in your summary, be specific: mention which meals/days couldn't be filled ideally and why (e.g., "Could not find enough breakfast recipes to meet variety targets" or "Limited gluten-free dinner options meant repeating recipes")
 

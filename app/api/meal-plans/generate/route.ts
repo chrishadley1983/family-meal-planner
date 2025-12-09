@@ -6,6 +6,7 @@ import { generateMealPlan } from '@/lib/claude'
 import { calculateServingsForMeals, filterZeroServingMeals } from '@/lib/meal-utils'
 import { startOfWeek, endOfWeek, subWeeks, addDays } from 'date-fns'
 import { DEFAULT_SETTINGS } from '@/lib/types/meal-plan-settings'
+import { validateMealPlan } from '@/lib/meal-plan-validation'
 
 export async function POST(req: NextRequest) {
   try {
@@ -95,26 +96,100 @@ export async function POST(req: NextRequest) {
       hasSettings: !!settingsRecord
     })
 
-    // Generate meal plan using Claude with all advanced features
-    const generatedPlan = await generateMealPlan({
-      profiles,
-      recipes,
-      weekStartDate,
-      weekProfileSchedules, // Pass per-person schedules for week
-      settings,
-      recipeHistory: recipeHistory.map((h) => ({
-        id: h.id,
-        userId: h.userId,
-        recipeId: h.recipeId,
-        mealPlanId: h.mealPlanId,
-        usedDate: h.usedDate,
-        mealType: h.mealType,
-        wasManual: h.wasManual,
-        createdAt: h.createdAt
-      })),
-      inventory,
-      quickOptions
-    })
+    // Generate meal plan using Claude with validation and retry logic
+    const MAX_RETRIES = 3
+    let generatedPlan: any = null
+    let validationResult: any = null
+    let attemptCount = 0
+
+    console.log('🔷 Starting meal plan generation with validation...')
+
+    while (attemptCount < MAX_RETRIES) {
+      attemptCount++
+      console.log(`\n🔄 Generation attempt ${attemptCount}/${MAX_RETRIES}...`)
+
+      try {
+        // Generate meal plan using Claude with all advanced features
+        generatedPlan = await generateMealPlan({
+          profiles,
+          recipes,
+          weekStartDate,
+          weekProfileSchedules, // Pass per-person schedules for week
+          settings,
+          recipeHistory: recipeHistory.map((h) => ({
+            id: h.id,
+            userId: h.userId,
+            recipeId: h.recipeId,
+            mealPlanId: h.mealPlanId,
+            usedDate: h.usedDate,
+            mealType: h.mealType,
+            wasManual: h.wasManual,
+            createdAt: h.createdAt
+          })),
+          inventory,
+          quickOptions
+        })
+
+        console.log(`✅ Meal plan generated with ${generatedPlan.meals.length} meals`)
+
+        // Validate the generated plan
+        console.log('🔍 Validating meal plan...')
+        validationResult = validateMealPlan(
+          generatedPlan.meals,
+          settings,
+          weekStartDate,
+          recipeHistory.map((h) => ({
+            recipeId: h.recipeId,
+            usedDate: h.usedDate,
+            mealType: h.mealType
+          }))
+        )
+
+        // Log validation results
+        if (validationResult.warnings.length > 0) {
+          console.log('⚠️  Validation warnings:')
+          validationResult.warnings.forEach((w: string) => console.log(`   - ${w}`))
+        }
+
+        if (validationResult.errors.length > 0) {
+          console.log('❌ Validation errors:')
+          validationResult.errors.forEach((e: string) => console.log(`   - ${e}`))
+        }
+
+        // Check if validation passed
+        if (validationResult.isValid) {
+          console.log('✅ Validation passed!')
+          break // Exit retry loop
+        } else {
+          console.log(`❌ Validation failed on attempt ${attemptCount}/${MAX_RETRIES}`)
+          if (attemptCount < MAX_RETRIES) {
+            console.log('🔄 Retrying generation with stricter constraints...')
+            // Wait a moment before retrying to avoid rate limiting
+            await new Promise(resolve => setTimeout(resolve, 1000))
+          }
+        }
+      } catch (error) {
+        console.error(`❌ Error during generation attempt ${attemptCount}:`, error)
+        if (attemptCount >= MAX_RETRIES) {
+          throw error // Re-throw if we're out of retries
+        }
+      }
+    }
+
+    // If validation still failed after all retries, return error
+    if (!validationResult || !validationResult.isValid) {
+      console.error('❌ Failed to generate valid meal plan after', MAX_RETRIES, 'attempts')
+      return NextResponse.json(
+        {
+          error: 'Failed to generate a valid meal plan that respects cooldown periods and batch cooking rules',
+          validationErrors: validationResult?.errors || [],
+          suggestion: 'Try adjusting your meal plan settings (reduce cooldown periods) or add more recipes to your library'
+        },
+        { status: 400 }
+      )
+    }
+
+    console.log('🎉 Successfully generated and validated meal plan!')
 
     // Create a set of valid recipe IDs for validation
     const validRecipeIds = new Set(recipes.map((r) => r.id))
