@@ -1,18 +1,18 @@
 {
   "mcpServers": {
     "next-devtools": {
-      "command": "npx",
-      "args": ["-y", "next-devtools-mcp@latest"],
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "next-devtools-mcp@latest"],
       "description": "Next.js development tools - monitors build errors, runtime errors, and TypeScript issues in real-time"
     },
     "playwright": {
-      "command": "npx",
-      "args": ["-y", "@testinglibraryai/playwright-mcp"],
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@testinglibraryai/playwright-mcp"],
       "description": "Browser automation for Chrome UI testing - automates interactions, takes screenshots, verifies UI changes"
     },
     "supabase": {
-      "command": "npx",
-      "args": ["-y", "@supabase/mcp-server"],
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@supabase/mcp-server"],
       "env": {
         "SUPABASE_URL": "https://pocptwknyxyrtmnfnrph.supabase.co",
         "SUPABASE_ANON_KEY": "${SUPABASE_ANON_KEY}"
