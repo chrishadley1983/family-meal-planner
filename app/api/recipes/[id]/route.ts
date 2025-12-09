@@ -30,12 +30,19 @@ const recipeUpdateSchema = z.object({
   prepTimeMinutes: z.number().int().positive().optional().nullable(),
   cookTimeMinutes: z.number().int().positive().optional().nullable(),
   cuisineType: z.string().optional().nullable(),
-  mealCategory: z.array(z.string()).optional(),
+  mealType: z.array(z.string()).optional(),
   difficultyLevel: z.string().optional().nullable(),
   recipeSource: z.string().optional().nullable(),
   sourceUrl: z.string().url().optional().nullable(),
   notes: z.string().optional().nullable(),
   tags: z.array(z.string()).optional(),
+  isVegetarian: z.boolean().optional(),
+  isVegan: z.boolean().optional(),
+  containsMeat: z.boolean().optional(),
+  containsSeafood: z.boolean().optional(),
+  isDairyFree: z.boolean().optional(),
+  isGlutenFree: z.boolean().optional(),
+  containsNuts: z.boolean().optional(),
   yieldsMultipleMeals: z.boolean().optional(),
   mealsYielded: z.number().int().positive().optional().nullable(),
   leftoverInstructions: z.string().optional().nullable(),
@@ -110,6 +117,16 @@ export async function PUT(
 
     const { id } = await params
     const body = await req.json()
+
+    // Log what we're receiving
+    console.log('📥 API received update for recipe:', id)
+    console.log('📥 Macro data received:', {
+      calories: body.caloriesPerServing,
+      protein: body.proteinPerServing,
+      carbs: body.carbsPerServing,
+      fat: body.fatPerServing
+    })
+
     const data = recipeUpdateSchema.parse(body)
 
     // Check if recipe exists and belongs to user
@@ -127,10 +144,13 @@ export async function PUT(
 
     // Calculate total time if prep and cook times are being updated
     let totalTimeMinutes = existingRecipe.totalTimeMinutes
+    let isQuickMeal = existingRecipe.isQuickMeal
     if (data.prepTimeMinutes !== undefined || data.cookTimeMinutes !== undefined) {
       const prepTime = data.prepTimeMinutes ?? existingRecipe.prepTimeMinutes ?? 0
       const cookTime = data.cookTimeMinutes ?? existingRecipe.cookTimeMinutes ?? 0
       totalTimeMinutes = prepTime + cookTime || null
+      // Update isQuickMeal based on new total time
+      isQuickMeal = totalTimeMinutes !== null && totalTimeMinutes < 30
     }
 
     // If rating is being updated, set rating date
@@ -159,6 +179,7 @@ export async function PUT(
       data: {
         ...recipeData,
         totalTimeMinutes,
+        isQuickMeal,
         ratingDate,
         ...(ingredients !== undefined && {
           ingredients: {

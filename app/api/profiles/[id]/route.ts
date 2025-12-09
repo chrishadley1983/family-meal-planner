@@ -19,6 +19,7 @@ const profileUpdateSchema = z.object({
   dailyFatTarget: z.number().positive().optional().nullable(),
   dailyFiberTarget: z.number().positive().optional().nullable(),
   macroTrackingEnabled: z.boolean().optional(),
+  isMainUser: z.boolean().optional(),
 })
 
 // GET - Get a specific profile
