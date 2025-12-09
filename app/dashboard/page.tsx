@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { signOut } from 'next-auth/react'
 
 export default async function DashboardPage() {
@@ -17,7 +18,14 @@ export default async function DashboardPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <h1 className="text-xl font-bold text-gradient-brand">familyFuel</h1>
+              <Image
+                src="/logo.png"
+                alt="familyFuel"
+                width={180}
+                height={60}
+                className="h-10 w-auto"
+                priority
+              />
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-zinc-400">{session.user.email}</span>
