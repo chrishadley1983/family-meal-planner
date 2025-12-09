@@ -148,6 +148,88 @@ This means:
 
 ---
 
+## 🔧 MCP SERVERS FOR AUTOMATED TESTING
+
+**MCP (Model Context Protocol) servers are configured to enable Claude Code to run automated tests before asking Chris for UAT.**
+
+### Configured MCP Servers
+
+The project has three MCP servers configured in `.mcp.json`:
+
+1. **Next.js DevTools MCP** (`next-devtools-mcp`)
+   - Monitors build errors, runtime errors, and TypeScript issues in real-time
+   - Provides application state and component hierarchy inspection
+   - Enables Claude to check for errors before asking for manual testing
+
+2. **Playwright MCP** (`@testinglibraryai/playwright-mcp`)
+   - Automates Chrome browser testing
+   - Takes screenshots and verifies UI changes
+   - Tests forms, navigation, and data display automatically
+   - Uses accessibility trees (not pixel-based) for reliable testing
+
+3. **Supabase MCP** (`@supabase/mcp-server`)
+   - Direct access to Supabase PostgreSQL database
+   - Query database to verify schema and data
+   - Inspect tables and records before UI testing
+   - Validates data integrity after migrations
+
+### Environment Variables Required
+
+**Chris must set these environment variables on Windows for MCP servers to work:**
+
+```powershell
+# In PowerShell (add to your profile or set before running Claude Code)
+$env:SUPABASE_ANON_KEY = "your-supabase-anon-key-here"
+```
+
+**To get your Supabase anon key:**
+1. Go to https://supabase.com/dashboard/project/pocptwknyxyrtmnfnrph
+2. Click Settings → API
+3. Copy the "anon" / "public" key (not the service_role key)
+4. Set it as an environment variable before starting Claude Code
+
+### Testing Workflow with MCP
+
+**Before asking Chris for UAT, Claude should:**
+
+✅ **Step 1: Check Build Health**
+- Use Next.js DevTools MCP to check for build/runtime errors
+- Verify zero TypeScript errors
+- Check dev server status
+
+✅ **Step 2: Verify Database State**
+- Use Supabase MCP to query database
+- Confirm schema changes applied correctly
+- Verify test data exists (e.g., recipes, profiles)
+
+✅ **Step 3: Automate Browser Tests**
+- Use Playwright MCP to test in Chrome
+- Navigate to affected pages
+- Take screenshots to verify UI changes
+- Test form submissions and data display
+
+✅ **Step 4: Report Results**
+- Only ask Chris to test after ALL automated tests pass
+- Provide clear summary of what was verified automatically
+- Specify exactly what manual testing is needed (if any)
+
+### Activating MCP Servers
+
+**After pulling changes with `.mcp.json`:**
+
+1. Set the `SUPABASE_ANON_KEY` environment variable (see above)
+2. Restart Claude Code completely to load MCP servers
+3. Run `/mcp` in Claude Code to verify all three servers are connected
+4. Look for ✅ indicators next to each server name
+
+**If MCP servers aren't loading:**
+- Verify `.mcp.json` exists in project root
+- Check environment variable is set: `echo $env:SUPABASE_ANON_KEY`
+- Restart Claude Code (not just reload)
+- Check Claude Code logs for MCP connection errors
+
+---
+
 ## 📋 WORKFLOW: Follow This For EVERY Change
 
 ### Phase 1: BEFORE Making Changes
