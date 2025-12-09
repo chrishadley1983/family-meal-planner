@@ -12,7 +12,11 @@ function createPrismaClient() {
     throw new Error('DATABASE_URL environment variable is not set')
   }
 
-  const pool = new Pool({ connectionString })
+  // Supabase requires SSL for connections
+  const pool = new Pool({
+    connectionString,
+    ssl: { rejectUnauthorized: false }
+  })
   const adapter = new PrismaPg(pool)
 
   return new PrismaClient({
