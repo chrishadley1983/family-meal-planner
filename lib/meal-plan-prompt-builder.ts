@@ -63,12 +63,8 @@ function buildMainPrompt(
     weekProfileSchedules,
     settings,
     recipeHistory,
-<<<<<<< HEAD
     inventory,
     servingsMap
-=======
-    inventory
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
   } = params
 
   // Apply quick options (temporary overrides)
@@ -77,11 +73,7 @@ function buildMainPrompt(
   const sections: string[] = []
 
   // 1. Context Section
-<<<<<<< HEAD
   sections.push(buildContextSection(profiles, weekStartDate, weekProfileSchedules, servingsMap))
-=======
-  sections.push(buildContextSection(profiles, weekStartDate, weekProfileSchedules))
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
 
   // 2. Macro Targeting Section
   sections.push(buildMacroSection(effectiveSettings, profiles))
@@ -142,7 +134,6 @@ function applyQuickOptions(
 function buildContextSection(
   profiles: any[],
   weekStartDate: string,
-<<<<<<< HEAD
   weekProfileSchedules: any[],
   servingsMap?: Record<string, Record<string, number>>
 ): string {
@@ -160,15 +151,6 @@ function buildContextSection(
   context += `**CRITICAL - Week Day Order:** This meal plan starts on ${startDayName}, not Monday. The chronological order of days for this week is:\n`
   context += orderedDays.map((day, idx) => `${idx + 1}. ${day} (Day ${idx + 1})`).join('\n')
   context += `\n\n**IMPORTANT FOR BATCH COOKING:** When planning batch cooking and leftovers, ONLY reference days that come chronologically BEFORE the leftover meal. For example, if this week starts on ${startDayName}, you CANNOT cook on ${orderedDays[6]} (Day 7) and use leftovers on ${orderedDays[0]} (Day 1) - that would be going backwards in time. Always plan batch cooking from earlier days to later days in the sequence above.\n\n`
-=======
-  weekProfileSchedules: any[]
-): string {
-  const weekStart = new Date(weekStartDate)
-  const formattedDate = format(weekStart, 'MMMM d, yyyy')
-
-  let context = `# CONTEXT\n\n`
-  context += `**Week Starting:** ${formattedDate}\n\n`
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
   context += `**Family Profiles:**\n`
 
   profiles.forEach(profile => {
@@ -196,11 +178,7 @@ function buildContextSection(
   })
 
   if (weekProfileSchedules && weekProfileSchedules.length > 0) {
-<<<<<<< HEAD
     context += `\n**Meal Attendance Schedule (Per Person):**\n`
-=======
-    context += `\n**Meal Attendance Schedule:**\n`
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
     weekProfileSchedules.forEach((schedule: any) => {
       const profile = profiles.find(p => p.id === schedule.profileId)
       if (profile) {
@@ -217,7 +195,6 @@ function buildContextSection(
     })
   }
 
-<<<<<<< HEAD
   // CRITICAL: Add pre-calculated serving counts so AI doesn't have to count manually
   if (servingsMap && Object.keys(servingsMap).length > 0) {
     context += `\n**REQUIRED SERVINGS (Pre-Calculated - Use These Exact Numbers):**\n`
@@ -239,8 +216,6 @@ function buildContextSection(
     context += `\n**For Batch Cooking Notes:** When writing batch cooking notes, use these serving counts. For example, if Monday dinner needs 4 servings and Thursday dinner needs 2 servings, the note should say "Batch cook 6 servings total—covers Monday (4) + Thursday (2)".\n`
   }
 
-=======
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
   return context
 }
 
@@ -644,11 +619,7 @@ Please generate a meal plan for the week and return it as a JSON object with thi
     {
       "dayOfWeek": "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday" | "Sunday",
       "mealType": "breakfast" | "lunch" | "dinner" | "afternoon-snack" | "dessert" | etc.,
-<<<<<<< HEAD
       "recipeId": "uuid-of-selected-recipe",
-=======
-      "recipeId": "uuid-of-selected-recipe" | null,
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
       "recipeName": "Name of the recipe",
       "servings": 4,
       "isLeftover": false,
@@ -660,7 +631,6 @@ Please generate a meal plan for the week and return it as a JSON object with thi
 }
 \`\`\`
 
-<<<<<<< HEAD
 **CRITICAL RECIPE SELECTION RULES:**
 - **YOU MUST ONLY use recipes from the "AVAILABLE RECIPES" list above**
 - Every meal MUST have a valid recipeId from that list - do NOT suggest recipes that aren't in the database
@@ -686,16 +656,6 @@ Please generate a meal plan for the week and return it as a JSON object with thi
     * ✅ CORRECT: Cook on Tuesday (Day 1), use leftovers on Thursday (Day 3) - goes forward in time
     * ❌ WRONG: Cook on Monday (Day 7), use leftovers on Tuesday (Day 1) - goes backward in time
 - CRITICAL: For batch cook source meals, the servings field MUST be the total batch amount, not just that meal's count. This ensures the recipe is scaled correctly for shopping lists.`
-=======
-**Important:**
-- Only include recipeId if you're assigning a specific recipe from the list
-- If no recipe is appropriate, set recipeId to null and provide a recipeName suggestion
-- Calculate servings based on who's eating each meal (from attendance schedule)
-- **For batch cooking:**
-  - On the FIRST meal (when cooking): Set isLeftover=false, include total servings needed in notes (e.g., "Batch cook 6 servings for Monday + Wednesday")
-  - On SUBSEQUENT meals (leftovers): Set isLeftover=true, batchCookSourceDay="Monday", add reheating instructions in notes
-- Use notes field for batch cooking instructions, expiry reminders, storage tips, or substitution suggestions`
->>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
 }
 
 /**
