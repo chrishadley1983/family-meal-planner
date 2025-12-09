@@ -59,6 +59,7 @@ export async function POST(req: NextRequest) {
       if (!recipeName) continue
 
       if (!recipeMap.has(recipeName)) {
+        const mealCategories = row.mealCategory ? row.mealCategory.split('|') : []
         recipeMap.set(recipeName, {
           recipeName,
           description: row.description || null,
@@ -67,7 +68,8 @@ export async function POST(req: NextRequest) {
           cookTimeMinutes: row.cookTimeMinutes ? parseInt(row.cookTimeMinutes) : null,
           cuisineType: row.cuisineType || null,
           difficultyLevel: row.difficultyLevel || null,
-          mealCategory: row.mealCategory ? row.mealCategory.split('|') : [],
+          mealCategory: mealCategories,
+          mealType: mealCategories, // Set mealType to same value as mealCategory
           ingredients: [],
           instructions: []
         })

@@ -31,7 +31,11 @@ export async function PUT(
     // Update favorite status
     const updatedRecipe = await prisma.recipe.update({
       where: { id },
-      data: { isFavorite }
+      data: { isFavorite },
+      include: {
+        ingredients: true,
+        instructions: true
+      }
     })
 
     return NextResponse.json({

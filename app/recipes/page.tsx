@@ -143,11 +143,25 @@ export default function RecipesPage() {
 
       if (response.ok) {
         console.log('✅ Import successful:', data.imported, 'recipes imported')
+
+        // Build detailed message including any errors
+        let message = `Successfully imported ${data.imported} recipe(s).`
+
+        if (data.failed > 0 && data.errors && data.errors.length > 0) {
+          message += `\n\nFailed to import ${data.failed} recipe(s):`
+          data.errors.forEach((err: any) => {
+            message += `\n• ${err.recipeName}: ${err.error}`
+          })
+        }
+
         setImportResult({
-          success: true,
-          message: `Successfully imported ${data.imported} recipes. ${data.failed > 0 ? `Failed: ${data.failed}` : ''}`
+          success: data.failed === 0,
+          message
         })
-        fetchRecipes() // Refresh recipe list
+
+        if (data.imported > 0) {
+          fetchRecipes() // Refresh recipe list only if some recipes were imported
+        }
       } else {
         console.error('❌ Import failed:', data.error)
         setImportResult({
@@ -318,7 +332,7 @@ export default function RecipesPage() {
         {/* Import Result Notification */}
         {importResult && (
           <div className={`mb-4 p-4 rounded-lg ${importResult.success ? 'bg-green-900/20 border border-green-700' : 'bg-red-900/20 border border-red-700'}`}>
-            <p className={importResult.success ? 'text-green-400' : 'text-red-400'}>
+            <p className={`whitespace-pre-line ${importResult.success ? 'text-green-400' : 'text-red-400'}`}>
               {importResult.message}
             </p>
             <button
