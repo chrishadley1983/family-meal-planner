@@ -73,7 +73,9 @@ export default function ProfileForm({ initialData, profileId, mode }: ProfileFor
 
   // Update form data when initialData changes (for edit mode)
   useEffect(() => {
+    console.log('📝 ProfileForm useEffect triggered, initialData:', initialData)
     if (initialData) {
+      console.log('✅ Populating form with profile data:', initialData.profileName)
       setFormData({
         profileName: initialData.profileName || '',
         age: initialData.age || undefined,
@@ -90,6 +92,8 @@ export default function ProfileForm({ initialData, profileId, mode }: ProfileFor
         macroTrackingEnabled: initialData.macroTrackingEnabled || false,
         isMainUser: (initialData as any)?.isMainUser || false,
       })
+    } else {
+      console.log('⚠️ initialData is empty/null')
     }
   }, [initialData])
 
