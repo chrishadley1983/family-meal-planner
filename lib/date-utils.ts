@@ -45,6 +45,7 @@ export function formatDateRange(startDate: Date | string, endDate: Date | string
 export function formatWeekRange(startDate: Date | string): string {
   return `Week of ${formatDate(startDate)}`
 }
+<<<<<<< HEAD
 
 /**
  * Get ordered array of day names starting from a given date
@@ -98,3 +99,5 @@ export function getWeekDaysWithDates(weekStartDate: Date | string): Array<{
     }
   })
 }
+=======
+>>>>>>> 8ad9c4e (chore: Add remaining files from previous session)
