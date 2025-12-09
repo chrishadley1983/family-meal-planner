@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { signOut } from 'next-auth/react'
+import { Button } from '@/components/ui'
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions)
@@ -31,11 +32,10 @@ export default async function DashboardPage() {
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-zinc-400">{session.user.email}</span>
-              <Link
-                href="/api/auth/signout"
-                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 transition-colors"
-              >
-                Sign out
+              <Link href="/api/auth/signout">
+                <Button variant="danger" size="sm">
+                  Sign out
+                </Button>
               </Link>
             </div>
           </div>
