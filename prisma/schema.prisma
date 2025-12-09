@@ -71,7 +71,6 @@ model Recipe {
   cookTimeMinutes         Int?
   totalTimeMinutes        Int?
   cuisineType             String?
-  mealCategory            String[]
   mealType                String[]
   difficultyLevel         String?
   recipeSource            String?
