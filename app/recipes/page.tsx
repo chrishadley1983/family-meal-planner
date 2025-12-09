@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { generateRecipeSVG } from '@/lib/generate-recipe-image'
+import { AppLayout, PageContainer } from '@/components/layout'
+import { Button, Badge, Input, Select } from '@/components/ui'
+import { useSession } from 'next-auth/react'
 
 interface Recipe {
   id: string
@@ -32,6 +35,7 @@ interface Recipe {
 }
 
 export default function RecipesPage() {
+  const { data: session } = useSession()
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -190,43 +194,37 @@ export default function RecipesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-600">Loading recipes...</p>
-      </div>
+      <AppLayout userEmail={session?.user?.email}>
+        <PageContainer>
+          <div className="flex items-center justify-center py-12">
+            <p className="text-zinc-400">Loading recipes...</p>
+          </div>
+        </PageContainer>
+      </AppLayout>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <Link href="/dashboard" className="text-blue-600 hover:text-blue-800 mb-2 inline-block">
-              ← Back to Dashboard
-            </Link>
-            <h1 className="text-3xl font-bold text-gray-900">Recipes</h1>
-            <p className="text-gray-600 mt-1">Manage your family recipes</p>
-          </div>
-          <Link
-            href="/recipes/new"
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
-            Add Recipe
+    <AppLayout userEmail={session?.user?.email}>
+      <PageContainer
+        title="Recipes"
+        description="Manage your family recipes"
+        action={
+          <Link href="/recipes/new">
+            <Button variant="primary">Add Recipe</Button>
           </Link>
-        </div>
-
+        }
+      >
         {/* Basic Filters */}
-        <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+        <div className="card p-4 mb-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <input
+            <Input
               type="text"
               placeholder="Search recipes..."
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <select
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            <Select
               value={filterMealType}
               onChange={(e) => setFilterMealType(e.target.value)}
             >
@@ -234,9 +232,8 @@ export default function RecipesPage() {
               {mealTypes.map(type => (
                 <option key={type} value={type}>{type}</option>
               ))}
-            </select>
-            <select
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            </Select>
+            <Select
               value={filterCuisineType}
               onChange={(e) => setFilterCuisineType(e.target.value)}
             >
@@ -244,7 +241,7 @@ export default function RecipesPage() {
               {cuisineTypes.map(type => (
                 <option key={type} value={type}>{type}</option>
               ))}
-            </select>
+            </Select>
           </div>
 
           {/* Advanced Filters Toggle */}
@@ -483,7 +480,7 @@ export default function RecipesPage() {
             })}
           </div>
         )}
-      </div>
-    </div>
+      </PageContainer>
+    </AppLayout>
   )
 }
