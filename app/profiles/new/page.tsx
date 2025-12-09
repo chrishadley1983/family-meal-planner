@@ -10,7 +10,7 @@ export default function NewProfilePage() {
 
   return (
     <AppLayout userEmail={session?.user?.email}>
-      <PageContainer maxWidth="4xl">
+      <PageContainer maxWidth="2xl">
         <Link href="/profiles" className="text-purple-400 hover:text-purple-300 mb-4 inline-block">
           ← Back to Profiles
         </Link>

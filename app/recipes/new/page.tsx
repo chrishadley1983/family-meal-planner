@@ -734,7 +734,7 @@ export default function NewRecipePage() {
 
   return (
     <AppLayout userEmail={session?.user?.email}>
-      <PageContainer maxWidth="4xl">
+      <PageContainer maxWidth="2xl">
         <Link href="/recipes" className="text-purple-400 hover:text-purple-300 mb-4 inline-block">
           ← Back to Recipes
         </Link>
@@ -795,16 +795,16 @@ export default function NewRecipePage() {
           {inputMethod === 'url' && (
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-zinc-300 mb-2">
                   Recipe URL
                 </label>
-                <p className="text-sm text-gray-500 mb-3">
+                <p className="text-sm text-zinc-400 mb-3">
                   Enter the URL of a recipe from any website. We'll automatically extract the recipe details for you to review and edit.
                 </p>
                 <input
                   type="url"
                   placeholder="https://www.example.com/recipe"
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
+                  className="block w-full rounded-md bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-purple-500 focus:ring-purple-500 px-3 py-2 border"
                   value={importUrl}
                   onChange={(e) => setImportUrl(e.target.value)}
                 />
@@ -813,7 +813,7 @@ export default function NewRecipePage() {
                 type="button"
                 onClick={handleUrlImport}
                 disabled={importing || !importUrl}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {importing ? 'Importing...' : 'Import Recipe'}
               </button>
@@ -824,20 +824,20 @@ export default function NewRecipePage() {
           {inputMethod === 'photo' && (
             <div className="space-y-4" onPaste={handlePaste}>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-zinc-300 mb-2">
                   Recipe Photos ({photoFiles.length} added)
                 </label>
-                <p className="text-sm text-gray-500 mb-3">
+                <p className="text-sm text-zinc-400 mb-3">
                   Upload images of your recipe. Supports both food photos AND text-based images:
                 </p>
-                <ul className="text-sm text-gray-500 mb-3 list-disc list-inside space-y-1">
+                <ul className="text-sm text-zinc-400 mb-3 list-disc list-inside space-y-1">
                   <li>📝 Recipe cards, printed recipes, or handwritten notes</li>
                   <li>📱 Screenshots from websites, apps, or cookbooks</li>
                   <li>🍽️ Photos of prepared dishes (AI will suggest ingredients)</li>
                   <li>📄 Multiple images (e.g., front/back of recipe card)</li>
                   <li>📋 Paste screenshots (Ctrl+V or Cmd+V)</li>
                   <li>📸 Take a live photo with your camera</li>
-                  <li className="text-amber-600">⚠️ Max 3.75MB per image (Claude API limit)</li>
+                  <li className="text-amber-400">⚠️ Max 3.75MB per image (Claude API limit)</li>
                 </ul>
 
                 {/* File Upload */}
@@ -847,7 +847,7 @@ export default function NewRecipePage() {
                     accept="image/*"
                     multiple
                     onChange={handlePhotoChange}
-                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    className="block w-full text-sm text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-purple-900/30 file:text-purple-300 hover:file:bg-purple-900/50"
                   />
 
                   {/* Camera Capture */}
@@ -856,7 +856,7 @@ export default function NewRecipePage() {
                     <button
                       type="button"
                       onClick={handleOpenCamera}
-                      className="flex-1 px-4 py-2 bg-green-50 text-green-700 rounded-md hover:bg-green-100 text-center text-sm font-medium border border-green-200"
+                      className="flex-1 px-4 py-2 bg-green-900/30 text-green-300 rounded-md hover:bg-green-900/50 text-center text-sm font-medium border border-green-800"
                     >
                       📷 Take Photo (Webcam)
                     </button>
@@ -870,13 +870,13 @@ export default function NewRecipePage() {
                         onChange={handleMobileCameraCapture}
                         className="hidden"
                       />
-                      <div className="px-4 py-2 bg-green-50 text-green-700 rounded-md hover:bg-green-100 text-center text-sm font-medium border border-green-200">
+                      <div className="px-4 py-2 bg-green-900/30 text-green-300 rounded-md hover:bg-green-900/50 text-center text-sm font-medium border border-green-800">
                         📷 Take Photo (Camera)
                       </div>
                     </label>
                   </div>
 
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-zinc-500">
                     💡 Tip: Click anywhere in this section and press Ctrl+V (or Cmd+V) to paste a screenshot
                   </p>
                 </div>
@@ -885,7 +885,7 @@ export default function NewRecipePage() {
               {/* Photo Previews Grid */}
               {photoPreviews.length > 0 && (
                 <div className="mt-4">
-                  <h3 className="text-sm font-medium text-gray-700 mb-2">
+                  <h3 className="text-sm font-medium text-zinc-300 mb-2">
                     Photos to Analyze ({photoPreviews.length})
                   </h3>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -919,7 +919,7 @@ export default function NewRecipePage() {
                   type="button"
                   onClick={handlePhotoImport}
                   disabled={importing}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                  className="px-6 py-3 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                 >
                   {importing ? 'Analyzing...' : `Analyze ${photoFiles.length} Photo${photoFiles.length > 1 ? 's' : ''}`}
                 </button>
@@ -931,13 +931,13 @@ export default function NewRecipePage() {
           {inputMethod === 'text' && (
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-zinc-300 mb-2">
                   Recipe Text
                 </label>
-                <p className="text-sm text-gray-500 mb-3">
+                <p className="text-sm text-zinc-400 mb-3">
                   Paste your recipe text here. Can be from any source:
                 </p>
-                <ul className="text-sm text-gray-500 mb-3 list-disc list-inside space-y-1">
+                <ul className="text-sm text-zinc-400 mb-3 list-disc list-inside space-y-1">
                   <li>📋 Copied from a website, email, or document</li>
                   <li>📝 Recipe card text you've typed out</li>
                   <li>📖 Text from a cookbook or magazine</li>
@@ -965,7 +965,7 @@ Instructions:
 4. Stir in flour
 5. Fold in chocolate chips
 6. Bake for 10-12 minutes"
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border min-h-[300px] font-mono text-sm"
+                  className="block w-full rounded-md bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-purple-500 focus:ring-purple-500 px-3 py-2 border min-h-[300px] font-mono text-sm"
                   value={importText}
                   onChange={(e) => setImportText(e.target.value)}
                   rows={15}
@@ -975,7 +975,7 @@ Instructions:
                 type="button"
                 onClick={handleTextImport}
                 disabled={importing || !importText.trim()}
-                className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                className="px-6 py-3 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
               >
                 {importing ? 'Parsing...' : 'Parse Recipe Text'}
               </button>
@@ -986,37 +986,37 @@ Instructions:
         {/* Manual Entry Form - Only show when in manual mode */}
         {inputMethod === 'manual' && (
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="bg-white shadow-sm rounded-lg p-6 space-y-6">
-              <h3 className="text-lg font-medium text-gray-900">Basic Information</h3>
+            <div className="card p-6 space-y-6">
+              <h3 className="text-lg font-medium text-white">Basic Information</h3>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Recipe Name *</label>
+                <label className="block text-sm font-medium text-zinc-300">Recipe Name *</label>
                 <input
                   type="text"
                   required
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
+                  className="mt-1 block w-full rounded-md bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-purple-500 focus:ring-purple-500 px-3 py-2 border"
                   value={recipeName}
                   onChange={(e) => setRecipeName(e.target.value)}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Description</label>
+                <label className="block text-sm font-medium text-zinc-300">Description</label>
                 <textarea
                   rows={3}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
+                  className="mt-1 block w-full rounded-md bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-purple-500 focus:ring-purple-500 px-3 py-2 border"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Recipe Image</label>
+                <label className="block text-sm font-medium text-zinc-300 mb-2">Recipe Image</label>
                 <input
                   type="file"
                   accept="image/*"
                   onChange={handleRecipeImageChange}
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  className="block w-full text-sm text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-purple-900/30 file:text-purple-300 hover:file:bg-purple-900/50"
                 />
                 {imagePreview && (
                   <div className="mt-3">
@@ -1031,10 +1031,10 @@ Instructions:
 
               {sourceUrl && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Source URL</label>
+                  <label className="block text-sm font-medium text-zinc-300">Source URL</label>
                   <input
                     type="url"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
+                    className="mt-1 block w-full rounded-md bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-purple-500 focus:ring-purple-500 px-3 py-2 border"
                     value={sourceUrl}
                     onChange={(e) => setSourceUrl(e.target.value)}
                   />
@@ -1043,13 +1043,13 @@ Instructions:
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Servings *</label>
+                  <label className="block text-sm font-medium text-zinc-300">Servings *</label>
                   <div className="flex items-center gap-3">
                     <input
                       type="number"
                       required
                       min="1"
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
+                      className="mt-1 block w-full rounded-md bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-purple-500 focus:ring-purple-500 px-3 py-2 border"
                       value={servings}
                       onChange={(e) => handleServingsChange(parseInt(e.target.value))}
                     />
@@ -1059,12 +1059,12 @@ Instructions:
                         id="scale-ingredients"
                         checked={scaleIngredients}
                         onChange={handleScaleToggle}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        className="rounded border-zinc-700 bg-zinc-800 text-purple-600 focus:ring-purple-500"
                         title="When checked, ingredient quantities will automatically scale when you change servings"
                       />
                       <label
                         htmlFor="scale-ingredients"
-                        className="text-xs text-gray-600 whitespace-nowrap cursor-help"
+                        className="text-xs text-zinc-400 whitespace-nowrap cursor-help"
                         title="When checked, ingredient quantities will automatically scale when you change servings"
                       >
                         Scale
@@ -1074,22 +1074,22 @@ Instructions:
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Prep Time (min)</label>
+                  <label className="block text-sm font-medium text-zinc-300">Prep Time (min)</label>
                   <input
                     type="number"
                     min="0"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
+                    className="mt-1 block w-full rounded-md bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-purple-500 focus:ring-purple-500 px-3 py-2 border"
                     value={prepTimeMinutes}
                     onChange={(e) => setPrepTimeMinutes(e.target.value ? parseInt(e.target.value) : '')}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Cook Time (min)</label>
+                  <label className="block text-sm font-medium text-zinc-300">Cook Time (min)</label>
                   <input
                     type="number"
                     min="0"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
+                    className="mt-1 block w-full rounded-md bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-purple-500 focus:ring-purple-500 px-3 py-2 border"
                     value={cookTimeMinutes}
                     onChange={(e) => setCookTimeMinutes(e.target.value ? parseInt(e.target.value) : '')}
                   />
@@ -1098,20 +1098,20 @@ Instructions:
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Cuisine Type</label>
+                  <label className="block text-sm font-medium text-zinc-300">Cuisine Type</label>
                   <input
                     type="text"
                     placeholder="e.g., Italian, Mexican, Asian"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
+                    className="mt-1 block w-full rounded-md bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-purple-500 focus:ring-purple-500 px-3 py-2 border"
                     value={cuisineType}
                     onChange={(e) => setCuisineType(e.target.value)}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Difficulty</label>
+                  <label className="block text-sm font-medium text-zinc-300">Difficulty</label>
                   <select
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
+                    className="mt-1 block w-full rounded-md bg-zinc-800 border-zinc-700 text-white focus:border-purple-500 focus:ring-purple-500 px-3 py-2 border"
                     value={difficultyLevel}
                     onChange={(e) => setDifficultyLevel(e.target.value)}
                   >
@@ -1124,7 +1124,7 @@ Instructions:
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Meal Categories</label>
+                <label className="block text-sm font-medium text-zinc-300 mb-2">Meal Categories</label>
                 <div className="flex flex-wrap gap-2">
                   {mealCategories.map(cat => (
                     <button
@@ -1133,8 +1133,8 @@ Instructions:
                       onClick={() => toggleCategory(cat)}
                       className={`px-3 py-1 rounded-full text-sm font-medium ${
                         mealType.includes(cat)
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700 border border-zinc-700'
                       }`}
                     >
                       {cat}
@@ -1144,13 +1144,13 @@ Instructions:
               </div>
             </div>
 
-            <div className="bg-white shadow-sm rounded-lg p-6 space-y-4">
+            <div className="card p-6 space-y-4">
               <div className="flex justify-between items-center">
-                <h3 className="text-lg font-medium text-gray-900">Ingredients</h3>
+                <h3 className="text-lg font-medium text-white">Ingredients</h3>
                 <button
                   type="button"
                   onClick={addIngredient}
-                  className="px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
+                  className="px-3 py-1 bg-purple-600 text-white rounded-md text-sm hover:bg-purple-700"
                 >
                   Add Ingredient
                 </button>
@@ -1168,14 +1168,14 @@ Instructions:
                       />
                     )}
                     {!rating && macroAnalysis && (
-                      <div className="w-3 h-3 rounded-full bg-gray-200 flex-shrink-0" />
+                      <div className="w-3 h-3 rounded-full bg-zinc-700 flex-shrink-0" />
                     )}
 
                     <div className="grid grid-cols-12 gap-2 items-center flex-1">
                       <input
                         type="text"
                         placeholder="Ingredient name"
-                        className="col-span-5 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border text-sm"
+                        className="col-span-5 rounded-md bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-purple-500 focus:ring-purple-500 px-3 py-2 border text-sm"
                         value={ing.ingredientName}
                         onChange={(e) => updateIngredient(index, 'ingredientName', e.target.value)}
                       />
@@ -1184,28 +1184,28 @@ Instructions:
                         placeholder="Qty"
                         min="0"
                         step="0.1"
-                        className="col-span-2 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border text-sm"
+                        className="col-span-2 rounded-md bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-purple-500 focus:ring-purple-500 px-3 py-2 border text-sm"
                         value={ing.quantity}
                         onChange={(e) => updateIngredient(index, 'quantity', parseFloat(e.target.value))}
                       />
                       <input
                         type="text"
                         placeholder="Unit"
-                        className="col-span-2 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border text-sm"
+                        className="col-span-2 rounded-md bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-purple-500 focus:ring-purple-500 px-3 py-2 border text-sm"
                         value={ing.unit}
                         onChange={(e) => updateIngredient(index, 'unit', e.target.value)}
                       />
                       <input
                         type="text"
                         placeholder="Notes"
-                        className="col-span-2 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border text-sm"
+                        className="col-span-2 rounded-md bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-purple-500 focus:ring-purple-500 px-3 py-2 border text-sm"
                         value={ing.notes || ''}
                         onChange={(e) => updateIngredient(index, 'notes', e.target.value)}
                       />
                       <button
                         type="button"
                         onClick={() => removeIngredient(index)}
-                        className="col-span-1 text-red-600 hover:text-red-800"
+                        className="col-span-1 text-red-400 hover:text-red-300"
                       >
                         ×
                       </button>
@@ -1215,13 +1215,13 @@ Instructions:
               })}
             </div>
 
-            <div className="bg-white shadow-sm rounded-lg p-6 space-y-4">
+            <div className="card p-6 space-y-4">
               <div className="flex justify-between items-center">
-                <h3 className="text-lg font-medium text-gray-900">Instructions</h3>
+                <h3 className="text-lg font-medium text-white">Instructions</h3>
                 <button
                   type="button"
                   onClick={addInstruction}
-                  className="px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
+                  className="px-3 py-1 bg-purple-600 text-white rounded-md text-sm hover:bg-purple-700"
                 >
                   Add Step
                 </button>
@@ -1229,20 +1229,20 @@ Instructions:
 
               {instructions.map((inst, index) => (
                 <div key={index} className="flex gap-2 items-start">
-                  <span className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-blue-100 text-blue-800 font-medium text-sm">
+                  <span className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-purple-900/30 text-purple-300 font-medium text-sm">
                     {inst.stepNumber}
                   </span>
                   <textarea
                     rows={2}
                     placeholder="Describe this step..."
-                    className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border text-sm"
+                    className="flex-1 rounded-md bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-purple-500 focus:ring-purple-500 px-3 py-2 border text-sm"
                     value={inst.instruction}
                     onChange={(e) => updateInstruction(index, e.target.value)}
                   />
                   <button
                     type="button"
                     onClick={() => removeInstruction(index)}
-                    className="text-red-600 hover:text-red-800 text-xl"
+                    className="text-red-400 hover:text-red-300 text-xl"
                   >
                     ×
                   </button>
@@ -1252,60 +1252,60 @@ Instructions:
 
             {/* Macro Analysis Section */}
             {macroAnalysis && (
-              <div className="bg-white shadow-sm rounded-lg p-6 space-y-4">
+              <div className="card p-6 space-y-4">
                 <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-medium text-gray-900">Nutritional Analysis</h3>
+                  <h3 className="text-lg font-medium text-white">Nutritional Analysis</h3>
                   <button
                     type="button"
                     onClick={fetchMacroAnalysis}
                     disabled={loadingMacros}
-                    className="px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 disabled:opacity-50"
+                    className="px-3 py-1 bg-purple-600 text-white rounded-md text-sm hover:bg-purple-700 disabled:opacity-50"
                   >
                     {loadingMacros ? 'Analyzing...' : 'Refresh'}
                   </button>
                 </div>
 
                 {/* Overall Rating */}
-                <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-start gap-4 p-4 bg-zinc-800/50 rounded-lg border border-zinc-700">
                   <div className={`w-8 h-8 rounded-full ${getTrafficLightClass(macroAnalysis.overallRating)} flex-shrink-0`} />
                   <div className="flex-1">
-                    <p className="font-medium text-gray-900">Overall Rating</p>
-                    <p className="text-sm text-gray-600 mt-1">{macroAnalysis.overallExplanation}</p>
+                    <p className="font-medium text-white">Overall Rating</p>
+                    <p className="text-sm text-zinc-400 mt-1">{macroAnalysis.overallExplanation}</p>
                   </div>
                 </div>
 
                 {/* Macro Summary */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center p-3 bg-blue-50 rounded-lg">
-                    <p className="text-2xl font-bold text-blue-600">{Math.round(macroAnalysis.perServing.calories)}</p>
-                    <p className="text-xs text-gray-600 mt-1">Calories</p>
+                  <div className="text-center p-3 bg-blue-900/30 rounded-lg border border-blue-800">
+                    <p className="text-2xl font-bold text-blue-400">{Math.round(macroAnalysis.perServing.calories)}</p>
+                    <p className="text-xs text-zinc-400 mt-1">Calories</p>
                   </div>
-                  <div className="text-center p-3 bg-purple-50 rounded-lg">
-                    <p className="text-2xl font-bold text-purple-600">{Math.round(macroAnalysis.perServing.protein)}g</p>
-                    <p className="text-xs text-gray-600 mt-1">Protein</p>
+                  <div className="text-center p-3 bg-purple-900/30 rounded-lg border border-purple-800">
+                    <p className="text-2xl font-bold text-purple-400">{Math.round(macroAnalysis.perServing.protein)}g</p>
+                    <p className="text-xs text-zinc-400 mt-1">Protein</p>
                   </div>
-                  <div className="text-center p-3 bg-green-50 rounded-lg">
-                    <p className="text-2xl font-bold text-green-600">{Math.round(macroAnalysis.perServing.carbs)}g</p>
-                    <p className="text-xs text-gray-600 mt-1">Carbs</p>
+                  <div className="text-center p-3 bg-green-900/30 rounded-lg border border-green-800">
+                    <p className="text-2xl font-bold text-green-400">{Math.round(macroAnalysis.perServing.carbs)}g</p>
+                    <p className="text-xs text-zinc-400 mt-1">Carbs</p>
                   </div>
-                  <div className="text-center p-3 bg-yellow-50 rounded-lg">
-                    <p className="text-2xl font-bold text-yellow-600">{Math.round(macroAnalysis.perServing.fat)}g</p>
-                    <p className="text-xs text-gray-600 mt-1">Fat</p>
+                  <div className="text-center p-3 bg-yellow-900/30 rounded-lg border border-yellow-800">
+                    <p className="text-2xl font-bold text-yellow-400">{Math.round(macroAnalysis.perServing.fat)}g</p>
+                    <p className="text-xs text-zinc-400 mt-1">Fat</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-4 text-sm">
                   <div className="text-center">
-                    <p className="font-medium text-gray-700">{Math.round(macroAnalysis.perServing.fiber)}g</p>
-                    <p className="text-xs text-gray-500">Fiber</p>
+                    <p className="font-medium text-zinc-300">{Math.round(macroAnalysis.perServing.fiber)}g</p>
+                    <p className="text-xs text-zinc-500">Fiber</p>
                   </div>
                   <div className="text-center">
-                    <p className="font-medium text-gray-700">{Math.round(macroAnalysis.perServing.sugar)}g</p>
-                    <p className="text-xs text-gray-500">Sugar</p>
+                    <p className="font-medium text-zinc-300">{Math.round(macroAnalysis.perServing.sugar)}g</p>
+                    <p className="text-xs text-zinc-500">Sugar</p>
                   </div>
                   <div className="text-center">
-                    <p className="font-medium text-gray-700">{Math.round(macroAnalysis.perServing.sodium)}mg</p>
-                    <p className="text-xs text-gray-500">Sodium</p>
+                    <p className="font-medium text-zinc-300">{Math.round(macroAnalysis.perServing.sodium)}mg</p>
+                    <p className="text-xs text-zinc-500">Sodium</p>
                   </div>
                 </div>
               </div>
@@ -1313,7 +1313,7 @@ Instructions:
 
             {/* Sarah Nutritionist Feedback */}
             {nutritionistFeedback && (
-              <div className="bg-gradient-to-r from-green-50 to-blue-50 shadow-sm rounded-lg p-6">
+              <div className="bg-gradient-to-r from-green-900/20 to-blue-900/20 border border-green-800/50 rounded-lg p-6">
                 <div className="flex items-start gap-4">
                   {/* Sarah Avatar */}
                   <div className="flex-shrink-0">
@@ -1322,17 +1322,17 @@ Instructions:
                       alt="Sarah - Your AI Nutritionist"
                       width={80}
                       height={80}
-                      className="rounded-full border-4 border-white shadow-md"
+                      className="rounded-full border-4 border-zinc-700 shadow-md"
                     />
                   </div>
 
                   {/* Feedback Content */}
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <h3 className="text-lg font-semibold text-gray-900">Sarah's Nutritionist Tips</h3>
-                      {loadingFeedback && <span className="text-xs text-gray-500">Analyzing...</span>}
+                      <h3 className="text-lg font-semibold text-white">Sarah's Nutritionist Tips</h3>
+                      {loadingFeedback && <span className="text-xs text-zinc-400">Analyzing...</span>}
                     </div>
-                    <p className="text-gray-700 leading-relaxed">{nutritionistFeedback}</p>
+                    <p className="text-zinc-300 leading-relaxed">{nutritionistFeedback}</p>
                   </div>
                 </div>
               </div>
@@ -1341,31 +1341,31 @@ Instructions:
             <div className="flex justify-end space-x-4">
               <Link
                 href="/recipes"
-                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                className="px-4 py-2 border border-zinc-700 rounded-md text-sm font-medium text-zinc-300 bg-zinc-800 hover:bg-zinc-700"
               >
                 Cancel
               </Link>
               <button
                 type="submit"
                 disabled={loading}
-                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50"
               >
                 {loading ? 'Creating...' : 'Create Recipe'}
               </button>
             </div>
           </form>
         )}
-      </div>
+      </PageContainer>
 
       {/* Webcam Modal */}
       {showCamera && (
         <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full">
-            <div className="p-4 border-b flex justify-between items-center">
-              <h3 className="text-lg font-semibold">Take Photo with Webcam</h3>
+          <div className="bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl max-w-2xl w-full">
+            <div className="p-4 border-b border-zinc-700 flex justify-between items-center">
+              <h3 className="text-lg font-semibold text-white">Take Photo with Webcam</h3>
               <button
                 onClick={handleCloseCamera}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-zinc-400 hover:text-zinc-300"
               >
                 ✕
               </button>
@@ -1389,13 +1389,13 @@ Instructions:
               <div className="flex gap-3">
                 <button
                   onClick={handleCapturePhoto}
-                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
+                  className="flex-1 px-6 py-3 bg-purple-600 text-white rounded-md hover:bg-purple-700 font-medium"
                 >
                   📸 Capture Photo
                 </button>
                 <button
                   onClick={handleCloseCamera}
-                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 font-medium"
+                  className="px-6 py-3 bg-zinc-800 text-zinc-300 rounded-md hover:bg-zinc-700 font-medium"
                 >
                   Cancel
                 </button>
@@ -1404,7 +1404,6 @@ Instructions:
           </div>
         </div>
       )}
-      </PageContainer>
     </AppLayout>
   )
 }
