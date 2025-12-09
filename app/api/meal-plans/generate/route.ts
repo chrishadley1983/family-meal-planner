@@ -189,6 +189,15 @@ export async function POST(req: NextRequest) {
               isLocked: false
             }
 
+            // DEBUG: Log batch cooking meals to verify servings calculations
+            if (meal.notes && meal.notes.includes('Batch cook')) {
+              console.log(`🍳 BATCH COOK SOURCE: ${mealData.dayOfWeek} ${mealData.mealType} - ${mealData.recipeName}`)
+              console.log(`   Servings: ${mealData.servings}`)
+              console.log(`   Note: ${mealData.notes}`)
+              console.log(`   Recipe servings: ${recipe?.servings || 'N/A'}`)
+              console.log(`   Scaling factor: ${scalingFactor ? scalingFactor.toFixed(2) : 'N/A'}x`)
+            }
+
             if (mealData.isLeftover) {
               console.log(`💾 Saving leftover: ${mealData.dayOfWeek} ${mealData.mealType} - ${mealData.recipeName}`)
             }

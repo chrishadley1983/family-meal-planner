@@ -215,6 +215,9 @@ async function generateAdvancedMealPlan(params: {
     })
   })
 
+  // DEBUG: Log the servingsMap to verify calculations
+  console.log('📊 ServingsMap calculated:', JSON.stringify(servingsMap, null, 2))
+
   // Build the advanced AI prompt
   const prompt = buildMealPlanPrompt(
     {
@@ -229,6 +232,13 @@ async function generateAdvancedMealPlan(params: {
     },
     quickOptions
   )
+
+  // DEBUG: Log the REQUIRED SERVINGS section of the prompt
+  const servingsSection = prompt.match(/\*\*REQUIRED SERVINGS[\s\S]*?(?=\n\n\*\*|$)/)?.[0]
+  if (servingsSection) {
+    console.log('📋 REQUIRED SERVINGS section sent to AI:')
+    console.log(servingsSection)
+  }
 
   try {
     console.log('🔷 Calling Claude API for advanced meal plan generation...')
