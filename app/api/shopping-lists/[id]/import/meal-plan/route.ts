@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
-import { convertToMetric, DEFAULT_CATEGORIES } from '@/lib/unit-conversion'
+import { convertToMetric, DEFAULT_CATEGORIES, findDuplicates, combineQuantities } from '@/lib/unit-conversion'
 import { SourceDetail } from '@/lib/types/shopping-list'
 import Anthropic from '@anthropic-ai/sdk'
 
@@ -313,21 +313,188 @@ If an item doesn't clearly fit any category, use "Other".`
       }
     }
 
-    // Re-fetch items with updated categories
+    // Auto-deduplicate items with AI
+    console.log('🔷 Auto-deduplicating items after import...')
+
+    // Get ALL items in the shopping list (not just newly created) to find duplicates
+    const allItems = await prisma.shoppingListItem.findMany({
+      where: {
+        shoppingListId,
+        isPurchased: false,
+      },
+      orderBy: { itemName: 'asc' },
+    })
+
+    // Find duplicates
+    const duplicateGroups = findDuplicates(
+      allItems.map((item) => ({
+        id: item.id,
+        itemName: item.itemName,
+        quantity: item.quantity,
+        unit: item.unit,
+        source: item.source || undefined,
+      }))
+    )
+
+    let totalCombined = 0
+    let totalDeleted = 0
+
+    if (duplicateGroups.length > 0) {
+      console.log(`🔷 Found ${duplicateGroups.length} duplicate groups, auto-combining...`)
+
+      for (const group of duplicateGroups) {
+        try {
+          // Fetch full item data for this group
+          const groupItems = await prisma.shoppingListItem.findMany({
+            where: { id: { in: group.items.map(i => i.id) } },
+          })
+
+          if (groupItems.length < 2) continue
+
+          // Try to combine quantities
+          let combinedQuantity = groupItems[0].quantity
+          let combinedUnit = groupItems[0].unit
+          let allCompatible = true
+
+          for (let i = 1; i < groupItems.length; i++) {
+            const result = combineQuantities(
+              combinedQuantity,
+              combinedUnit,
+              groupItems[i].quantity,
+              groupItems[i].unit
+            )
+
+            if (result) {
+              combinedQuantity = result.quantity
+              combinedUnit = result.unit
+            } else {
+              allCompatible = false
+              break
+            }
+          }
+
+          let aiSuggestedName: string | null = null
+
+          // If units aren't compatible, use AI to determine best combination
+          if (!allCompatible) {
+            const itemDescriptions = groupItems.map(i => `${i.quantity} ${i.unit} ${i.itemName}`).join('\n')
+
+            const prompt = `You are a grocery shopping assistant. Combine these duplicate shopping list items into a single item with the most practical quantity and unit for shopping.
+
+ITEMS TO COMBINE:
+${itemDescriptions}
+
+CONVERSION RULES:
+- 1 pinch ≈ 0.3g for dry spices
+- 1 whole chicken thigh ≈ 150g
+- 1 stock cube ≈ 10g or can stay as "piece" if sold by count
+- For items sold by count (eggs, stock cubes), prefer "piece" or "whole"
+- For items sold by weight, convert to grams
+- For liquids, use ml
+
+Respond with ONLY valid JSON: {"quantity": <number>, "unit": "<unit>", "itemName": "<best name>"}`
+
+            try {
+              const message = await client.messages.create({
+                model: 'claude-haiku-4-5',
+                max_tokens: 150,
+                messages: [{ role: 'user', content: prompt }],
+              })
+
+              const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
+              const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+
+              if (jsonMatch) {
+                const aiResult = JSON.parse(jsonMatch[0]) as { quantity: number; unit: string; itemName: string }
+                combinedQuantity = aiResult.quantity
+                combinedUnit = aiResult.unit
+                aiSuggestedName = aiResult.itemName || null
+              } else {
+                console.warn(`⚠️ AI could not combine group: ${group.normalizedName}`)
+                continue // Skip this group
+              }
+            } catch (aiError) {
+              console.warn(`⚠️ AI combination failed for ${group.normalizedName}:`, aiError)
+              continue // Skip this group
+            }
+          }
+
+          // Combine source details
+          const combinedSourceDetails: SourceDetail[] = []
+          for (const item of groupItems) {
+            const details = item.sourceDetails as unknown as SourceDetail[]
+            if (Array.isArray(details)) {
+              combinedSourceDetails.push(...details)
+            } else {
+              combinedSourceDetails.push({
+                type: (item.source as 'recipe' | 'staple' | 'manual') || 'manual',
+                name: item.itemName,
+                quantity: item.quantity,
+                unit: item.unit,
+              })
+            }
+          }
+
+          const primaryItem = groupItems.reduce((longest, current) =>
+            current.itemName.length > longest.itemName.length ? current : longest
+          )
+          const category = groupItems.find((i) => i.category)?.category || null
+
+          const [keepItem, ...deleteItems] = groupItems.sort((a, b) =>
+            a.createdAt.getTime() - b.createdAt.getTime()
+          )
+
+          const finalItemName = aiSuggestedName || primaryItem.itemName
+
+          await prisma.shoppingListItem.update({
+            where: { id: keepItem.id },
+            data: {
+              itemName: finalItemName,
+              quantity: Math.round(combinedQuantity * 100) / 100,
+              unit: combinedUnit,
+              category,
+              source: 'recipe',
+              sourceDetails: combinedSourceDetails as unknown as object[],
+              isConsolidated: true,
+            },
+          })
+
+          await prisma.shoppingListItem.deleteMany({
+            where: { id: { in: deleteItems.map((i) => i.id) } },
+          })
+
+          totalCombined += groupItems.length
+          totalDeleted += deleteItems.length
+          console.log(`🟢 Combined ${groupItems.length} "${group.normalizedName}" items`)
+        } catch (groupError) {
+          console.warn(`⚠️ Failed to combine group ${group.normalizedName}:`, groupError)
+        }
+      }
+
+      console.log(`🟢 Auto-deduplication complete: combined ${totalCombined} items, removed ${totalDeleted} duplicates`)
+    } else {
+      console.log('🟢 No duplicates found after import')
+    }
+
+    // Re-fetch items with updated categories and deduplication
     const finalItems = await prisma.shoppingListItem.findMany({
       where: {
         shoppingListId,
-        source: 'recipe',
       },
-      orderBy: { createdAt: 'desc' },
-      take: itemsToCreate.length,
+      orderBy: [{ category: 'asc' }, { displayOrder: 'asc' }],
     })
 
+    const dedupeMessage = totalDeleted > 0
+      ? ` (${totalDeleted} duplicates combined)`
+      : ''
+
     return NextResponse.json({
-      message: `Successfully imported ${result.count} ingredient${result.count !== 1 ? 's' : ''} from ${mealsProcessed} meal${mealsProcessed !== 1 ? 's' : ''}`,
+      message: `Successfully imported ${result.count} ingredient${result.count !== 1 ? 's' : ''} from ${mealsProcessed} meal${mealsProcessed !== 1 ? 's' : ''}${dedupeMessage}`,
       importedCount: result.count,
       mealsProcessed,
       leftoverMealsSkipped,
+      duplicatesRemoved: totalDeleted,
+      finalItemCount: finalItems.length,
       items: finalItems,
     })
   } catch (error) {
