@@ -200,6 +200,10 @@ export default function ExportShareModal({
   const handleSendEmail = () => {
     if (!emailTo || !shareLink) return
 
+    // Extract token from share URL
+    const token = shareLink.shareUrl.split('/').pop()
+    const pdfUrl = `${window.location.origin}/api/shared/shopping-list/${token}/pdf`
+
     const subject = `Shopping List: ${shoppingList.name}`
     const body = `Hi,
 
@@ -208,10 +212,13 @@ Here's my shopping list from FamilyFuel:
 📋 ${shoppingList.name}
 🛒 ${shoppingList.items.length} items
 
-View the full list here:
+View the full list online:
 ${shareLink.shareUrl}
 
-(This link expires in 48 hours)
+Download as PDF:
+${pdfUrl}
+
+(Links expire in 48 hours)
 
 ---
 Sent from FamilyFuel - Family Meal Planning Made Easy`
@@ -395,15 +402,20 @@ Sent from FamilyFuel - Family Meal Planning Made Easy`
                 <label className="block text-sm font-medium text-gray-300 mb-1">
                   Message Preview
                 </label>
-                <div className="bg-gray-700 text-gray-300 text-sm px-3 py-2 rounded border border-gray-600 max-h-32 overflow-y-auto">
+                <div className="bg-gray-700 text-gray-300 text-sm px-3 py-2 rounded border border-gray-600 max-h-40 overflow-y-auto">
                   <p>Hi,</p>
                   <p className="mt-2">Here's my shopping list from FamilyFuel:</p>
                   <p className="mt-2">📋 {shoppingList.name}</p>
                   <p>🛒 {totalItems} items</p>
                   {shareLink && (
-                    <p className="mt-2 text-purple-400 break-all">{shareLink.shareUrl}</p>
+                    <>
+                      <p className="mt-2 text-gray-400 text-xs">View online:</p>
+                      <p className="text-purple-400 break-all text-xs">{shareLink.shareUrl}</p>
+                      <p className="mt-2 text-gray-400 text-xs">Download PDF:</p>
+                      <p className="text-purple-400 break-all text-xs">{`${window.location.origin}/api/shared/shopping-list/${shareLink.shareUrl.split('/').pop()}/pdf`}</p>
+                    </>
                   )}
-                  <p className="mt-2 text-gray-500 text-xs">(Link expires in 48 hours)</p>
+                  <p className="mt-2 text-gray-500 text-xs">(Links expire in 48 hours)</p>
                 </div>
               </div>
 
