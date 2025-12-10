@@ -3,8 +3,13 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
-import { convertToMetric } from '@/lib/unit-conversion'
+import { convertToMetric, DEFAULT_CATEGORIES } from '@/lib/unit-conversion'
 import { SourceDetail } from '@/lib/types/shopping-list'
+import Anthropic from '@anthropic-ai/sdk'
+
+const client = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+})
 
 const importMealPlanSchema = z.object({
   mealPlanId: z.string().min(1, 'Meal plan ID is required'),
@@ -230,12 +235,100 @@ export async function POST(
 
     console.log(`🟢 Imported ${result.count} ingredients from meal plan`)
 
+    // Auto-categorize items that don't have a category
+    const uncategorizedItems = createdItems.filter(item => !item.category)
+    if (uncategorizedItems.length > 0) {
+      console.log(`🔷 Auto-categorizing ${uncategorizedItems.length} items using AI...`)
+
+      try {
+        // Get the user's categories
+        let userCategories = await prisma.shoppingListCategory.findMany({
+          where: { userId: session.user.id },
+          orderBy: { displayOrder: 'asc' },
+        })
+
+        if (userCategories.length === 0) {
+          // Create default categories for this user
+          const defaultCats = DEFAULT_CATEGORIES.map((cat, idx) => ({
+            userId: session.user.id,
+            name: cat.name,
+            displayOrder: cat.displayOrder,
+            isDefault: true,
+          }))
+          await prisma.shoppingListCategory.createMany({ data: defaultCats })
+          userCategories = await prisma.shoppingListCategory.findMany({
+            where: { userId: session.user.id },
+            orderBy: { displayOrder: 'asc' },
+          })
+        }
+
+        const categoryNames = userCategories.map(c => c.name)
+        const itemNames = uncategorizedItems.map(i => i.itemName)
+
+        // Use AI to categorize all items at once
+        const prompt = `You are a grocery store assistant. Categorize each shopping item into one of the available categories.
+
+AVAILABLE CATEGORIES:
+${categoryNames.join('\n')}
+
+ITEMS TO CATEGORIZE:
+${itemNames.map((item, idx) => `${idx + 1}. "${item}"`).join('\n')}
+
+Respond with ONLY a JSON array of category names in the same order as the items. Use exact category names from the list above.
+Example response format: ["Produce", "Dairy & Eggs", "Pantry"]
+
+If an item doesn't clearly fit any category, use "Other".`
+
+        const message = await client.messages.create({
+          model: 'claude-haiku-4-5',
+          max_tokens: 2048,
+          messages: [{ role: 'user', content: prompt }],
+        })
+
+        const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
+        const jsonMatch = responseText.match(/\[[\s\S]*\]/)
+
+        if (jsonMatch) {
+          const suggestedCategories = JSON.parse(jsonMatch[0]) as string[]
+
+          // Update each item with its suggested category
+          const updates = uncategorizedItems.map((item, idx) => {
+            const suggested = suggestedCategories[idx] || 'Other'
+            const matchedCategory = categoryNames.find(
+              cat => cat.toLowerCase() === suggested.toLowerCase()
+            ) || 'Other'
+
+            return prisma.shoppingListItem.update({
+              where: { id: item.id },
+              data: { category: matchedCategory },
+            })
+          })
+
+          await Promise.all(updates)
+          console.log(`🟢 Auto-categorized ${uncategorizedItems.length} items`)
+        }
+      } catch (catError) {
+        console.warn('⚠️ Auto-categorization failed, items will remain uncategorized:', catError)
+        // Don't fail the import if categorization fails
+      }
+    }
+
+    // Re-fetch items with updated categories
+    const finalItems = await prisma.shoppingListItem.findMany({
+      where: {
+        shoppingListId,
+        source: 'recipe',
+      },
+      orderBy: { createdAt: 'desc' },
+      take: itemsToCreate.length,
+    })
+
     return NextResponse.json({
       message: `Successfully imported ${result.count} ingredient${result.count !== 1 ? 's' : ''} from ${mealsProcessed} meal${mealsProcessed !== 1 ? 's' : ''}`,
       importedCount: result.count,
       mealsProcessed,
       leftoverMealsSkipped,
-      items: createdItems,
+      items: finalItems,
     })
   } catch (error) {
     if (error instanceof z.ZodError) {
