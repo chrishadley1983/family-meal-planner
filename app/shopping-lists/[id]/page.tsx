@@ -4,6 +4,7 @@ import { useEffect, useState, use } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
+import ExportShareModal from '@/components/shopping-list/ExportShareModal'
 
 interface SourceDetail {
   type: 'recipe' | 'staple' | 'manual'
@@ -120,6 +121,9 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
   const [showDedupeModal, setShowDedupeModal] = useState(false)
   const [duplicateGroups, setDuplicateGroups] = useState<DuplicateGroup[]>([])
   const [deduping, setDeduping] = useState(false)
+
+  // Export & Share
+  const [showExportModal, setShowExportModal] = useState(false)
 
   useEffect(() => {
     fetchShoppingList()
@@ -562,15 +566,38 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
             </div>
 
             {/* Status Actions */}
-            {shoppingList.status === 'Draft' && (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleUpdateStatus('Finalized')}
-                  disabled={saving}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
-                >
-                  Finalize
-                </button>
+            <div className="flex gap-2">
+              {/* Export & Share - always visible */}
+              <button
+                onClick={() => setShowExportModal(true)}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm flex items-center gap-2"
+                title="Export & Share"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+                Export & Share
+              </button>
+
+              {shoppingList.status === 'Draft' && (
+                <>
+                  <button
+                    onClick={() => handleUpdateStatus('Finalized')}
+                    disabled={saving}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                  >
+                    Finalize
+                  </button>
+                  <button
+                    onClick={() => handleUpdateStatus('Archived')}
+                    disabled={saving}
+                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
+                  >
+                    Archive
+                  </button>
+                </>
+              )}
+              {shoppingList.status === 'Finalized' && (
                 <button
                   onClick={() => handleUpdateStatus('Archived')}
                   disabled={saving}
@@ -578,17 +605,8 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
                 >
                   Archive
                 </button>
-              </div>
-            )}
-            {shoppingList.status === 'Finalized' && (
-              <button
-                onClick={() => handleUpdateStatus('Archived')}
-                disabled={saving}
-                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
-              >
-                Archive
-              </button>
-            )}
+              )}
+            </div>
           </div>
 
           {/* Notes */}
@@ -1002,6 +1020,14 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
           </div>
         </div>
       )}
+
+      {/* Export & Share Modal */}
+      <ExportShareModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        shoppingList={shoppingList}
+        itemsByCategory={itemsByCategory}
+      />
     </div>
   )
 }
