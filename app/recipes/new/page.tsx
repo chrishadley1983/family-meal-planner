@@ -1183,7 +1183,7 @@ Instructions:
                         type="number"
                         placeholder="Qty"
                         min="0"
-                        step="0.1"
+                        step="0.01"
                         className="col-span-2 rounded-md bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-purple-500 focus:ring-purple-500 px-3 py-2 border text-sm"
                         value={ing.quantity}
                         onChange={(e) => updateIngredient(index, 'quantity', parseFloat(e.target.value))}

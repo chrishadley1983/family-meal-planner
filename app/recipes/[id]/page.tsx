@@ -817,7 +817,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                             placeholder="Qty"
                             value={ing.quantity}
                             onChange={(e) => updateIngredient(index, 'quantity', parseFloat(e.target.value))}
-                            step="0.1"
+                            step="0.01"
                             className="col-span-2 text-sm"
                           />
                           <Input
