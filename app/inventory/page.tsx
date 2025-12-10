@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { AppLayout, PageContainer } from '@/components/layout'
+import { Button, Badge, Input, Select } from '@/components/ui'
+import { useSession } from 'next-auth/react'
 
 interface InventoryItem {
   id: string
@@ -15,6 +18,7 @@ interface InventoryItem {
 }
 
 export default function InventoryPage() {
+  const { data: session } = useSession()
   const [items, setItems] = useState<InventoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -102,51 +106,45 @@ export default function InventoryPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-600">Loading inventory...</p>
-      </div>
+      <AppLayout userEmail={session?.user?.email}>
+        <PageContainer>
+          <div className="flex items-center justify-center py-12">
+            <p className="text-zinc-400">Loading inventory...</p>
+          </div>
+        </PageContainer>
+      </AppLayout>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <Link href="/dashboard" className="text-blue-600 hover:text-blue-800 mb-2 inline-block">
-              ← Back to Dashboard
-            </Link>
-            <h1 className="text-3xl font-bold text-gray-900">Inventory</h1>
-            <p className="text-gray-600 mt-1">Track food items and expiry dates</p>
-          </div>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
+    <AppLayout userEmail={session?.user?.email}>
+      <PageContainer
+        title="Inventory"
+        description="Track food items and expiry dates"
+        action={
+          <Button onClick={() => setShowForm(!showForm)} variant="primary">
             {showForm ? 'Cancel' : 'Add Item'}
-          </button>
-        </div>
-
+          </Button>
+        }
+      >
         {showForm && (
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Add Inventory Item</h3>
+          <div className="card p-6 mb-6">
+            <h3 className="text-lg font-medium text-white mb-4">Add Inventory Item</h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Item Name *</label>
-                  <input
+                  <label className="block text-sm font-medium text-zinc-300 mb-1">Item Name *</label>
+                  <Input
                     type="text"
                     required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
                     value={formData.itemName}
                     onChange={(e) => setFormData({ ...formData, itemName: e.target.value })}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Category *</label>
-                  <select
+                  <label className="block text-sm font-medium text-zinc-300 mb-1">Category *</label>
+                  <Select
                     required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
                     value={formData.category}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                   >
@@ -157,36 +155,33 @@ export default function InventoryPage() {
                     <option value="Pantry">Pantry</option>
                     <option value="Frozen">Frozen</option>
                     <option value="Beverages">Beverages</option>
-                  </select>
+                  </Select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Quantity *</label>
-                  <input
+                  <label className="block text-sm font-medium text-zinc-300 mb-1">Quantity *</label>
+                  <Input
                     type="number"
                     required
                     min="0"
                     step="0.1"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
                     value={formData.quantity}
                     onChange={(e) => setFormData({ ...formData, quantity: parseFloat(e.target.value) })}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Unit *</label>
-                  <input
+                  <label className="block text-sm font-medium text-zinc-300 mb-1">Unit *</label>
+                  <Input
                     type="text"
                     required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
                     value={formData.unit}
                     onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
                     placeholder="e.g., lbs, oz, count"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Location *</label>
-                  <select
+                  <label className="block text-sm font-medium text-zinc-300 mb-1">Location *</label>
+                  <Select
                     required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
                     value={formData.location}
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                   >
@@ -195,99 +190,96 @@ export default function InventoryPage() {
                     <option value="Freezer">Freezer</option>
                     <option value="Pantry">Pantry</option>
                     <option value="Cabinet">Cabinet</option>
-                  </select>
+                  </Select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Expiry Date</label>
-                  <input
+                  <label className="block text-sm font-medium text-zinc-300 mb-1">Expiry Date</label>
+                  <Input
                     type="date"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
                     value={formData.expiryDate}
                     onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Notes</label>
-                <input
+                <label className="block text-sm font-medium text-zinc-300 mb-1">Notes</label>
+                <Input
                   type="text"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 />
               </div>
-              <button
-                type="submit"
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
+              <Button type="submit" variant="primary" className="w-full">
                 Add to Inventory
-              </button>
+              </Button>
             </form>
           </div>
         )}
 
         {items.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="card p-12 text-center">
+            <svg className="mx-auto h-12 w-12 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
             </svg>
-            <h3 className="mt-2 text-lg font-medium text-gray-900">No items in inventory</h3>
-            <p className="mt-1 text-gray-500">Start tracking your food items</p>
+            <h3 className="mt-2 text-lg font-medium text-white">No items in inventory</h3>
+            <p className="mt-1 text-zinc-400">Start tracking your food items</p>
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-            <ul className="divide-y divide-gray-200">
+          <div className="card overflow-hidden">
+            <ul className="divide-y divide-zinc-700">
               {items.map((item) => (
                 <li
                   key={item.id}
                   className={`px-6 py-4 ${
                     isExpired(item.expiryDate)
-                      ? 'bg-red-50'
+                      ? 'bg-red-900/20'
                       : isExpiringSoon(item.expiryDate)
-                      ? 'bg-yellow-50'
+                      ? 'bg-yellow-900/20'
                       : ''
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
-                      <div className="flex items-center">
-                        <p className="text-base font-medium text-gray-900">{item.itemName}</p>
-                        <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                      <div className="flex items-center flex-wrap gap-2">
+                        <p className="text-base font-medium text-white">{item.itemName}</p>
+                        <Badge variant="default" size="sm">
                           {item.category}
-                        </span>
-                        <span className="ml-2 text-sm text-gray-500">
+                        </Badge>
+                        <span className="text-sm text-zinc-400">
                           📍 {item.location}
                         </span>
                       </div>
-                      <div className="mt-1 flex items-center text-sm text-gray-600 space-x-4">
+                      <div className="mt-1 flex items-center flex-wrap gap-4 text-sm text-zinc-300">
                         <span>{item.quantity} {item.unit}</span>
                         {item.expiryDate && (
                           <span className={
                             isExpired(item.expiryDate)
-                              ? 'text-red-600 font-medium'
+                              ? 'text-red-400 font-medium'
                               : isExpiringSoon(item.expiryDate)
-                              ? 'text-yellow-600 font-medium'
+                              ? 'text-yellow-400 font-medium'
                               : ''
                           }>
                             {isExpired(item.expiryDate) ? '⚠️ Expired' : '📅'} {new Date(item.expiryDate).toLocaleDateString()}
                           </span>
                         )}
-                        {item.notes && <span className="text-gray-500">• {item.notes}</span>}
+                        {item.notes && <span className="text-zinc-500">• {item.notes}</span>}
                       </div>
                     </div>
-                    <button
+                    <Button
                       onClick={() => handleDelete(item.id)}
-                      className="ml-4 text-red-600 hover:text-red-800"
+                      variant="danger"
+                      size="sm"
+                      className="ml-4"
                     >
                       Remove
-                    </button>
+                    </Button>
                   </div>
                 </li>
               ))}
             </ul>
           </div>
         )}
-      </div>
-    </div>
+      </PageContainer>
+    </AppLayout>
   )
 }

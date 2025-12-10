@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { use } from 'react'
 import Link from 'next/link'
 import ProfileForm from '@/components/profiles/ProfileForm'
+import { AppLayout, PageContainer } from '@/components/layout'
+import { useSession } from 'next-auth/react'
 
 interface ProfilePageProps {
   params: Promise<{ id: string }>
@@ -11,6 +13,7 @@ interface ProfilePageProps {
 
 export default function EditProfilePage({ params }: ProfilePageProps) {
   const { id } = use(params)
+  const { data: session } = useSession()
   const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -21,15 +24,19 @@ export default function EditProfilePage({ params }: ProfilePageProps) {
 
   const fetchProfile = async () => {
     try {
+      console.log('📥 Fetching profile:', id)
       const response = await fetch(`/api/profiles/${id}`)
+      console.log('📥 Profile response status:', response.status)
       if (!response.ok) {
         setError('Profile not found')
         setLoading(false)
         return
       }
       const data = await response.json()
+      console.log('📥 Profile data received:', data.profile)
       setProfile(data.profile)
     } catch (err) {
+      console.error('❌ Error fetching profile:', err)
       setError('Failed to load profile')
     } finally {
       setLoading(false)
@@ -38,34 +45,42 @@ export default function EditProfilePage({ params }: ProfilePageProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-600">Loading profile...</p>
-      </div>
+      <AppLayout userEmail={session?.user?.email}>
+        <PageContainer>
+          <div className="flex items-center justify-center py-12">
+            <p className="text-zinc-400">Loading profile...</p>
+          </div>
+        </PageContainer>
+      </AppLayout>
     )
   }
 
   if (error || !profile) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-600 mb-4">{error || 'Profile not found'}</p>
-          <Link href="/profiles" className="text-blue-600 hover:text-blue-800">
-            Back to Profiles
-          </Link>
-        </div>
-      </div>
+      <AppLayout userEmail={session?.user?.email}>
+        <PageContainer>
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <p className="text-red-400 mb-4">{error || 'Profile not found'}</p>
+              <Link href="/profiles" className="text-purple-400 hover:text-purple-300">
+                ← Back to Profiles
+              </Link>
+            </div>
+          </div>
+        </PageContainer>
+      </AppLayout>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link href="/profiles" className="text-blue-600 hover:text-blue-800 mb-4 inline-block">
+    <AppLayout userEmail={session?.user?.email}>
+      <PageContainer maxWidth="2xl">
+        <Link href="/profiles" className="text-purple-400 hover:text-purple-300 mb-4 inline-block">
           ← Back to Profiles
         </Link>
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Edit Profile</h1>
+        <h1 className="text-3xl font-bold text-white mb-8">Edit Profile</h1>
         <ProfileForm mode="edit" profileId={id} initialData={profile} />
-      </div>
-    </div>
+      </PageContainer>
+    </AppLayout>
   )
 }

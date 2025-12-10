@@ -101,25 +101,25 @@ export default function MealPlanningSettingsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-600">Loading settings...</p>
+      <div className="min-h-screen bg-zinc-900 flex items-center justify-center">
+        <p className="text-zinc-400">Loading settings...</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-zinc-900">
       <div className="max-w-4xl mx-auto py-8 px-4">
         {/* Header */}
         <div className="mb-8">
           <button
             onClick={() => router.back()}
-            className="text-blue-600 hover:text-blue-700 mb-4"
+            className="text-blue-400 hover:text-blue-300 mb-4"
           >
             ← Back
           </button>
-          <h1 className="text-3xl font-bold text-gray-900">Meal Plan Settings</h1>
-          <p className="text-gray-600 mt-2">
+          <h1 className="text-3xl font-bold text-white">Meal Plan Settings</h1>
+          <p className="text-zinc-400 mt-2">
             Configure how AI generates your weekly meal plans
           </p>
         </div>
@@ -127,16 +127,16 @@ export default function MealPlanningSettingsPage() {
         {/* Settings Sections */}
         <div className="space-y-4">
           {/* Section 1: Macro Targeting Mode */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-zinc-800 rounded-lg shadow-sm border border-zinc-700">
             <button
               onClick={() => toggleSection('macros')}
-              className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50"
+              className="w-full px-6 py-4 flex items-center justify-between hover:bg-zinc-700"
             >
               <div className="flex items-center gap-3">
                 <span className="text-2xl">🎯</span>
                 <div className="text-left">
-                  <h2 className="text-lg font-semibold text-gray-900">Macro Targeting Mode</h2>
-                  <p className="text-sm text-gray-500">How strictly to track macros</p>
+                  <h2 className="text-lg font-semibold text-white">Macro Targeting Mode</h2>
+                  <p className="text-sm text-zinc-400">How strictly to track macros</p>
                 </div>
               </div>
               <span className="text-gray-400">{expandedSections.has('macros') ? '▼' : '▶'}</span>
@@ -155,10 +155,10 @@ export default function MealPlanningSettingsPage() {
                       className="mt-1"
                     />
                     <div>
-                      <div className="font-medium text-gray-900">
+                      <div className="font-medium text-white">
                         {mode.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
                       </div>
-                      <div className="text-sm text-gray-600">{MACRO_MODE_DESCRIPTIONS[mode]}</div>
+                      <div className="text-sm text-zinc-400">{MACRO_MODE_DESCRIPTIONS[mode]}</div>
                     </div>
                   </label>
                 ))}
@@ -167,16 +167,16 @@ export default function MealPlanningSettingsPage() {
           </div>
 
           {/* Section 2: Recipe Variety & Cooldowns */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-zinc-800 rounded-lg shadow-sm border border-zinc-700">
             <button
               onClick={() => toggleSection('variety')}
-              className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50"
+              className="w-full px-6 py-4 flex items-center justify-between hover:bg-zinc-700"
             >
               <div className="flex items-center gap-3">
                 <span className="text-2xl">🔄</span>
                 <div className="text-left">
-                  <h2 className="text-lg font-semibold text-gray-900">Recipe Variety & Cooldowns</h2>
-                  <p className="text-sm text-gray-500">Prevent meal repetition and ensure diversity</p>
+                  <h2 className="text-lg font-semibold text-white">Recipe Variety & Cooldowns</h2>
+                  <p className="text-sm text-zinc-400">Prevent meal repetition and ensure diversity</p>
                 </div>
               </div>
               <span className="text-gray-400">{expandedSections.has('variety') ? '▼' : '▶'}</span>
@@ -190,13 +190,13 @@ export default function MealPlanningSettingsPage() {
                     checked={settings.varietyEnabled}
                     onChange={(e) => setSettings({ ...settings, varietyEnabled: e.target.checked })}
                   />
-                  <span className="font-medium text-gray-900">Enable variety tracking</span>
+                  <span className="font-medium text-white">Enable variety tracking</span>
                 </label>
 
                 {settings.varietyEnabled && (
                   <>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-zinc-300 mb-2">
                         Dinner Cooldown: {settings.dinnerCooldown} days
                       </label>
                       <input
@@ -210,7 +210,7 @@ export default function MealPlanningSettingsPage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-zinc-300 mb-2">
                         Lunch Cooldown: {settings.lunchCooldown} days
                       </label>
                       <input
@@ -224,7 +224,7 @@ export default function MealPlanningSettingsPage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-zinc-300 mb-2">
                         Breakfast Cooldown: {settings.breakfastCooldown} days
                       </label>
                       <input
@@ -238,7 +238,7 @@ export default function MealPlanningSettingsPage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-zinc-300 mb-2">
                         Snack Cooldown: {settings.snackCooldown} days
                       </label>
                       <input
@@ -253,7 +253,7 @@ export default function MealPlanningSettingsPage() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-zinc-300 mb-2">
                           Min Different Cuisines
                         </label>
                         <input
@@ -262,11 +262,11 @@ export default function MealPlanningSettingsPage() {
                           max="7"
                           value={settings.minCuisines}
                           onChange={(e) => setSettings({ ...settings, minCuisines: parseInt(e.target.value) })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded"
+                          className="w-full px-3 py-2 border border-zinc-600 rounded"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-zinc-300 mb-2">
                           Max Same Cuisine
                         </label>
                         <input
@@ -275,7 +275,7 @@ export default function MealPlanningSettingsPage() {
                           max="7"
                           value={settings.maxSameCuisine}
                           onChange={(e) => setSettings({ ...settings, maxSameCuisine: parseInt(e.target.value) })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded"
+                          className="w-full px-3 py-2 border border-zinc-600 rounded"
                         />
                       </div>
                     </div>
@@ -286,16 +286,16 @@ export default function MealPlanningSettingsPage() {
           </div>
 
           {/* Section 3: Shopping Efficiency */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-zinc-800 rounded-lg shadow-sm border border-zinc-700">
             <button
               onClick={() => toggleSection('shopping')}
-              className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50"
+              className="w-full px-6 py-4 flex items-center justify-between hover:bg-zinc-700"
             >
               <div className="flex items-center gap-3">
                 <span className="text-2xl">🛒</span>
                 <div className="text-left">
-                  <h2 className="text-lg font-semibold text-gray-900">Shopping Efficiency</h2>
-                  <p className="text-sm text-gray-500">Minimize unique ingredients</p>
+                  <h2 className="text-lg font-semibold text-white">Shopping Efficiency</h2>
+                  <p className="text-sm text-zinc-400">Minimize unique ingredients</p>
                 </div>
               </div>
               <span className="text-gray-400">{expandedSections.has('shopping') ? '▼' : '▶'}</span>
@@ -314,8 +314,8 @@ export default function MealPlanningSettingsPage() {
                       className="mt-1"
                     />
                     <div>
-                      <div className="font-medium text-gray-900 capitalize">{mode}</div>
-                      <div className="text-sm text-gray-600">{SHOPPING_MODE_DESCRIPTIONS[mode]}</div>
+                      <div className="font-medium text-white capitalize">{mode}</div>
+                      <div className="text-sm text-zinc-400">{SHOPPING_MODE_DESCRIPTIONS[mode]}</div>
                     </div>
                   </label>
                 ))}
@@ -324,16 +324,16 @@ export default function MealPlanningSettingsPage() {
           </div>
 
           {/* Section 4: Inventory & Expiry */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-zinc-800 rounded-lg shadow-sm border border-zinc-700">
             <button
               onClick={() => toggleSection('expiry')}
-              className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50"
+              className="w-full px-6 py-4 flex items-center justify-between hover:bg-zinc-700"
             >
               <div className="flex items-center gap-3">
                 <span className="text-2xl">📦</span>
                 <div className="text-left">
-                  <h2 className="text-lg font-semibold text-gray-900">Inventory & Expiry Management</h2>
-                  <p className="text-sm text-gray-500">Use expiring items efficiently</p>
+                  <h2 className="text-lg font-semibold text-white">Inventory & Expiry Management</h2>
+                  <p className="text-sm text-zinc-400">Use expiring items efficiently</p>
                 </div>
               </div>
               <span className="text-gray-400">{expandedSections.has('expiry') ? '▼' : '▶'}</span>
@@ -353,15 +353,15 @@ export default function MealPlanningSettingsPage() {
                         className="mt-1"
                       />
                       <div>
-                        <div className="font-medium text-gray-900 capitalize">{priority}</div>
-                        <div className="text-sm text-gray-600">{EXPIRY_PRIORITY_DESCRIPTIONS[priority]}</div>
+                        <div className="font-medium text-white capitalize">{priority}</div>
+                        <div className="text-sm text-zinc-400">{EXPIRY_PRIORITY_DESCRIPTIONS[priority]}</div>
                       </div>
                     </label>
                   ))}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-zinc-300 mb-2">
                     Expiry Window: {settings.expiryWindow} days
                   </label>
                   <input
@@ -372,13 +372,13 @@ export default function MealPlanningSettingsPage() {
                     onChange={(e) => setSettings({ ...settings, expiryWindow: parseInt(e.target.value) })}
                     className="w-full"
                   />
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-zinc-400 mt-1">
                     Consider items expiring within this many days
                   </p>
                 </div>
 
-                <div className="bg-gray-50 p-4 rounded border border-gray-200">
-                  <p className="text-sm text-gray-600">
+                <div className="bg-zinc-900 p-4 rounded border border-zinc-700">
+                  <p className="text-sm text-zinc-400">
                     <strong>Note:</strong> "Use It Up" item selection will be available once you have inventory items added to the system.
                   </p>
                 </div>
@@ -387,16 +387,16 @@ export default function MealPlanningSettingsPage() {
           </div>
 
           {/* Section 5: Batch Cooking */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-zinc-800 rounded-lg shadow-sm border border-zinc-700">
             <button
               onClick={() => toggleSection('batch')}
-              className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50"
+              className="w-full px-6 py-4 flex items-center justify-between hover:bg-zinc-700"
             >
               <div className="flex items-center gap-3">
                 <span className="text-2xl">🍲</span>
                 <div className="text-left">
-                  <h2 className="text-lg font-semibold text-gray-900">Batch Cooking / Meal Prep</h2>
-                  <p className="text-sm text-gray-500">Cook once, eat multiple times</p>
+                  <h2 className="text-lg font-semibold text-white">Batch Cooking / Meal Prep</h2>
+                  <p className="text-sm text-zinc-400">Cook once, eat multiple times</p>
                 </div>
               </div>
               <span className="text-gray-400">{expandedSections.has('batch') ? '▼' : '▶'}</span>
@@ -410,12 +410,12 @@ export default function MealPlanningSettingsPage() {
                     checked={settings.batchCookingEnabled}
                     onChange={(e) => setSettings({ ...settings, batchCookingEnabled: e.target.checked })}
                   />
-                  <span className="font-medium text-gray-900">Enable batch cooking suggestions</span>
+                  <span className="font-medium text-white">Enable batch cooking suggestions</span>
                 </label>
 
                 {settings.batchCookingEnabled && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-zinc-300 mb-2">
                       Maximum Leftover Days: {settings.maxLeftoverDays}
                     </label>
                     <input
@@ -426,7 +426,7 @@ export default function MealPlanningSettingsPage() {
                       onChange={(e) => setSettings({ ...settings, maxLeftoverDays: parseInt(e.target.value) })}
                       className="w-full"
                     />
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-zinc-400 mt-1">
                       Limit how far ahead batch-cooked meals can be used
                     </p>
                   </div>
@@ -436,16 +436,16 @@ export default function MealPlanningSettingsPage() {
           </div>
 
           {/* Section 6: Priority Ordering */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-zinc-800 rounded-lg shadow-sm border border-zinc-700">
             <button
               onClick={() => toggleSection('priority')}
-              className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50"
+              className="w-full px-6 py-4 flex items-center justify-between hover:bg-zinc-700"
             >
               <div className="flex items-center gap-3">
                 <span className="text-2xl">📊</span>
                 <div className="text-left">
-                  <h2 className="text-lg font-semibold text-gray-900">Priority Ordering</h2>
-                  <p className="text-sm text-gray-500">What matters most when constraints conflict</p>
+                  <h2 className="text-lg font-semibold text-white">Priority Ordering</h2>
+                  <p className="text-sm text-zinc-400">What matters most when constraints conflict</p>
                 </div>
               </div>
               <span className="text-gray-400">{expandedSections.has('priority') ? '▼' : '▶'}</span>
@@ -453,26 +453,26 @@ export default function MealPlanningSettingsPage() {
 
             {expandedSections.has('priority') && (
               <div className="px-6 pb-6">
-                <p className="text-sm text-gray-600 mb-4">
+                <p className="text-sm text-zinc-400 mb-4">
                   When AI can't satisfy all constraints, it will prioritize in this order (top to bottom):
                 </p>
                 <div className="space-y-2">
                   {settings.priorityOrder.map((priority, index) => (
-                    <div key={priority} className="flex items-center gap-3 bg-gray-50 p-3 rounded">
-                      <span className="font-semibold text-gray-500 w-6">{index + 1}.</span>
-                      <span className="flex-1 font-medium text-gray-900">{PRIORITY_LABELS[priority]}</span>
+                    <div key={priority} className="flex items-center gap-3 bg-zinc-900 p-3 rounded">
+                      <span className="font-semibold text-zinc-400 w-6">{index + 1}.</span>
+                      <span className="flex-1 font-medium text-white">{PRIORITY_LABELS[priority]}</span>
                       <div className="flex gap-1">
                         <button
                           onClick={() => movePriority(index, 'up')}
                           disabled={index === 0}
-                          className="px-2 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                          className="px-2 py-1 text-sm bg-zinc-800 border border-zinc-600 rounded hover:bg-zinc-600 disabled:opacity-30 disabled:cursor-not-allowed"
                         >
                           ↑
                         </button>
                         <button
                           onClick={() => movePriority(index, 'down')}
                           disabled={index === settings.priorityOrder.length - 1}
-                          className="px-2 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                          className="px-2 py-1 text-sm bg-zinc-800 border border-zinc-600 rounded hover:bg-zinc-600 disabled:opacity-30 disabled:cursor-not-allowed"
                         >
                           ↓
                         </button>
@@ -484,17 +484,17 @@ export default function MealPlanningSettingsPage() {
             )}
           </div>
 
-          {/* Section 7: Sarah's Feedback */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          {/* Section 7: Emilia's Feedback */}
+          <div className="bg-zinc-800 rounded-lg shadow-sm border border-zinc-700">
             <button
               onClick={() => toggleSection('feedback')}
-              className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50"
+              className="w-full px-6 py-4 flex items-center justify-between hover:bg-zinc-700"
             >
               <div className="flex items-center gap-3">
                 <span className="text-2xl">💬</span>
                 <div className="text-left">
-                  <h2 className="text-lg font-semibold text-gray-900">Sarah's Nutritional Feedback</h2>
-                  <p className="text-sm text-gray-500">How much detail in weekly summaries</p>
+                  <h2 className="text-lg font-semibold text-white">Emilia's Nutritional Feedback</h2>
+                  <p className="text-sm text-zinc-400">How much detail in weekly summaries</p>
                 </div>
               </div>
               <span className="text-gray-400">{expandedSections.has('feedback') ? '▼' : '▶'}</span>
@@ -513,8 +513,8 @@ export default function MealPlanningSettingsPage() {
                       className="mt-1"
                     />
                     <div>
-                      <div className="font-medium text-gray-900 capitalize">{detail}</div>
-                      <div className="text-sm text-gray-600">{FEEDBACK_DETAIL_DESCRIPTIONS[detail]}</div>
+                      <div className="font-medium text-white capitalize">{detail}</div>
+                      <div className="text-sm text-zinc-400">{FEEDBACK_DETAIL_DESCRIPTIONS[detail]}</div>
                     </div>
                   </label>
                 ))}
@@ -524,7 +524,7 @@ export default function MealPlanningSettingsPage() {
         </div>
 
         {/* Save Button */}
-        <div className="mt-8 flex items-center justify-between bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="mt-8 flex items-center justify-between bg-zinc-800 rounded-lg shadow-sm border border-zinc-700 p-6">
           <div>
             {saveMessage && (
               <p className={`text-sm ${saveMessage.startsWith('✓') ? 'text-green-600' : 'text-red-600'}`}>
