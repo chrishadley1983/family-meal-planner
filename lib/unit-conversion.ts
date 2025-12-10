@@ -223,17 +223,18 @@ export function formatQuantityWithUnit(quantity: number, unit: string): string {
  * Default shopping list categories with display order
  */
 export const DEFAULT_CATEGORIES = [
-  { name: 'Produce', displayOrder: 0 },
-  { name: 'Dairy & Eggs', displayOrder: 1 },
-  { name: 'Meat & Seafood', displayOrder: 2 },
+  { name: 'Fresh Produce', displayOrder: 0 },
+  { name: 'Meat & Fish', displayOrder: 1 },
+  { name: 'Dairy & Eggs', displayOrder: 2 },
   { name: 'Bakery', displayOrder: 3 },
-  { name: 'Frozen', displayOrder: 4 },
-  { name: 'Pantry', displayOrder: 5 },
-  { name: 'Canned Goods', displayOrder: 6 },
-  { name: 'Condiments & Sauces', displayOrder: 7 },
-  { name: 'Beverages', displayOrder: 8 },
-  { name: 'Snacks', displayOrder: 9 },
-  { name: 'Household', displayOrder: 10 },
+  { name: 'Chilled & Deli', displayOrder: 4 },
+  { name: 'Frozen', displayOrder: 5 },
+  { name: 'Cupboard Staples', displayOrder: 6 },
+  { name: 'Baking & Cooking Ingredients', displayOrder: 7 },
+  { name: 'Breakfast', displayOrder: 8 },
+  { name: 'Drinks', displayOrder: 9 },
+  { name: 'Snacks & Treats', displayOrder: 10 },
+  { name: 'Household', displayOrder: 11 },
   { name: 'Other', displayOrder: 99 },
 ]
 
