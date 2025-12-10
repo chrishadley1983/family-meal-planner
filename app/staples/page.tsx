@@ -65,6 +65,19 @@ export default function StaplesPage() {
     notes: '',
   })
 
+  // Edit form state
+  const [editingStaple, setEditingStaple] = useState<StapleWithDueStatus | null>(null)
+  const [editFormData, setEditFormData] = useState({
+    itemName: '',
+    quantity: 1,
+    unit: '',
+    category: '',
+    frequency: 'weekly' as StapleFrequency,
+    isActive: true,
+    notes: '',
+  })
+  const [savingEdit, setSavingEdit] = useState(false)
+
   // Enrich staples with due status
   const staples = useMemo(() => {
     return rawStaples.map(s => enrichStapleWithDueStatus({
@@ -191,6 +204,53 @@ export default function StaplesPage() {
     } catch (error) {
       console.error('❌ Error updating staple:', error)
       alert('Failed to update staple')
+    }
+  }
+
+  const handleEditClick = (staple: StapleWithDueStatus) => {
+    setEditingStaple(staple)
+    setEditFormData({
+      itemName: staple.itemName,
+      quantity: staple.quantity,
+      unit: staple.unit,
+      category: staple.category || '',
+      frequency: staple.frequency,
+      isActive: staple.isActive,
+      notes: staple.notes || '',
+    })
+  }
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingStaple || savingEdit) return
+
+    setSavingEdit(true)
+    try {
+      console.log('🔷 Updating staple:', editFormData.itemName)
+      const response = await fetch(`/api/staples?id=${editingStaple.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...editFormData,
+          category: editFormData.category || null,
+          notes: editFormData.notes || null,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to update staple')
+      }
+
+      const data = await response.json()
+      console.log('🟢 Updated staple:', data.staple.itemName)
+      setRawStaples(rawStaples.map(s => s.id === editingStaple.id ? data.staple : s))
+      setEditingStaple(null)
+    } catch (error) {
+      console.error('❌ Error updating staple:', error)
+      alert(error instanceof Error ? error.message : 'Failed to update staple')
+    } finally {
+      setSavingEdit(false)
     }
   }
 
@@ -477,6 +537,12 @@ export default function StaplesPage() {
                       <td className="px-4 py-3 text-right">
                         <div className="flex justify-end gap-2">
                           <button
+                            onClick={() => handleEditClick(staple)}
+                            className="text-purple-400 hover:text-purple-300 text-sm"
+                          >
+                            Edit
+                          </button>
+                          <button
                             onClick={() => handleDeleteStaple(staple.id, staple.itemName)}
                             className="text-red-400 hover:text-red-300 text-sm"
                           >
@@ -608,6 +674,137 @@ export default function StaplesPage() {
                 disabled={addingStaple}
               >
                 {addingStaple ? 'Adding...' : 'Add Staple'}
+              </Button>
+            </div>
+          </form>
+        </Modal>
+
+        {/* Edit Staple Modal */}
+        <Modal
+          isOpen={!!editingStaple}
+          onClose={() => setEditingStaple(null)}
+          title="Edit Staple"
+          maxWidth="md"
+        >
+          <form onSubmit={handleEditSubmit} className="p-6 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-1">
+                  Item Name *
+                </label>
+                <Input
+                  type="text"
+                  required
+                  value={editFormData.itemName}
+                  onChange={(e) => setEditFormData({ ...editFormData, itemName: e.target.value })}
+                  placeholder="e.g., Milk"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-1">
+                  Category
+                </label>
+                <Input
+                  type="text"
+                  value={editFormData.category}
+                  onChange={(e) => setEditFormData({ ...editFormData, category: e.target.value })}
+                  placeholder="e.g., Dairy & Eggs"
+                  list="edit-category-suggestions"
+                />
+                <datalist id="edit-category-suggestions">
+                  {categories.map(cat => (
+                    <option key={cat} value={cat} />
+                  ))}
+                </datalist>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-1">
+                  Quantity *
+                </label>
+                <Input
+                  type="number"
+                  required
+                  min="0.01"
+                  step="0.01"
+                  value={editFormData.quantity}
+                  onChange={(e) => setEditFormData({ ...editFormData, quantity: parseFloat(e.target.value) || 0 })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-1">
+                  Unit *
+                </label>
+                <Input
+                  type="text"
+                  required
+                  value={editFormData.unit}
+                  onChange={(e) => setEditFormData({ ...editFormData, unit: e.target.value })}
+                  placeholder="e.g., L, kg, pack"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-1">
+                  Frequency *
+                </label>
+                <select
+                  required
+                  value={editFormData.frequency}
+                  onChange={(e) => setEditFormData({ ...editFormData, frequency: e.target.value as StapleFrequency })}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  {STAPLE_FREQUENCIES.map(f => (
+                    <option key={f.value} value={f.value}>{f.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center pt-6">
+                <input
+                  type="checkbox"
+                  id="editIsActive"
+                  checked={editFormData.isActive}
+                  onChange={(e) => setEditFormData({ ...editFormData, isActive: e.target.checked })}
+                  className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-zinc-600 rounded"
+                />
+                <label htmlFor="editIsActive" className="ml-2 text-sm text-zinc-300">
+                  Active (will be suggested for shopping lists)
+                </label>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-zinc-300 mb-1">
+                Notes
+              </label>
+              <Input
+                type="text"
+                value={editFormData.notes}
+                onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
+                placeholder="Optional notes..."
+              />
+            </div>
+            {editingStaple && (
+              <div className="text-xs text-zinc-500 pt-2">
+                Last added: {formatDate(editingStaple.lastAddedDate)}
+                {editingStaple.lastAddedDate && (
+                  <span className="ml-2">
+                    (Note: editing does not reset the schedule)
+                  </span>
+                )}
+              </div>
+            )}
+            <div className="flex justify-end gap-3 pt-4">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setEditingStaple(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={savingEdit}
+              >
+                {savingEdit ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>
           </form>
