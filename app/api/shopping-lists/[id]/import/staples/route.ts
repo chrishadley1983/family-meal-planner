@@ -58,7 +58,7 @@ export async function POST(
     console.log(`🔷 Importing ${data.stapleIds.length} staples to shopping list ${shoppingListId}`)
 
     // Fetch the selected staples
-    const staples = await prisma.weeklyStaple.findMany({
+    const staples = await prisma.staple.findMany({
       where: {
         id: { in: data.stapleIds },
         userId: session.user.id, // Ensure user owns these staples
@@ -170,7 +170,7 @@ export async function GET(
     }
 
     // Get all user staples
-    const staples = await prisma.weeklyStaple.findMany({
+    const staples = await prisma.staple.findMany({
       where: { userId: session.user.id },
       orderBy: [
         { category: 'asc' },
