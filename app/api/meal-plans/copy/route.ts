@@ -70,31 +70,22 @@ export async function POST(req: NextRequest) {
 
     // Copy meals from source plan
     if (sourcePlan.meals.length > 0) {
-      const copiedMeals = sourcePlan.meals.map((sourceMeal) => ({
+      const newMeals = sourcePlan.meals.map((sourceMeal) => ({
         mealPlanId: newMealPlan.id,
         dayOfWeek: sourceMeal.dayOfWeek,
         mealType: sourceMeal.mealType,
         recipeId: sourceMeal.recipeId,
         recipeName: sourceMeal.recipeName,
+        servings: sourceMeal.servings,
         notes: sourceMeal.notes,
         isLocked: false // Don't copy the locked status
       }))
-
-      // Recalculate servings based on new week's schedule
-      console.log('🧮 Recalculating servings for copied meals...')
-      const mealsWithServings = calculateServingsForMeals(
-        copiedMeals,
-        (weekProfileSchedules || sourcePlan.customSchedule) as any
-      )
-
-      // Filter out meals with 0 servings
-      const newMeals = filterZeroServingMeals(mealsWithServings)
 
       await prisma.meal.createMany({
         data: newMeals
       })
 
-      console.log(`✅ Copied ${newMeals.length} meals to new plan (filtered ${sourcePlan.meals.length - newMeals.length} with 0 servings)`)
+      console.log(`✅ Copied ${newMeals.length} meals to new plan`)
     }
 
     // Fetch the complete meal plan with meals

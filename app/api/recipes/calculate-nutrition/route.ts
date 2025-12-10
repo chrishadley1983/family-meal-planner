@@ -23,7 +23,9 @@ export async function POST(req: NextRequest) {
     // Calculate nutrition using Claude
     const nutrition = await calculateNutrition(ingredients, servings)
 
-    return NextResponse.json({ nutrition })
+    return NextResponse.json({
+      nutrition
+    })
   } catch (error: any) {
     console.error('Error calculating nutrition:', error)
     return NextResponse.json(

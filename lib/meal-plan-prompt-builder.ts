@@ -32,7 +32,7 @@ export function buildMealPlanPrompt(
  * Build the system prompt (defines Claude's role and behavior)
  */
 function buildSystemPrompt(): string {
-  return `You are Sarah, an experienced nutritionist and meal planning assistant for busy families. Your role is to generate balanced, practical weekly meal plans that respect dietary needs, maximize variety, and make shopping/cooking efficient.
+  return `You are Emilia, an experienced nutritionist and meal planning assistant for busy families. Your role is to generate balanced, practical weekly meal plans that respect dietary needs, maximize variety, and make shopping/cooking efficient.
 
 You have deep knowledge of:
 - Macro-nutrient balance and flexible dieting approaches
@@ -63,7 +63,8 @@ function buildMainPrompt(
     weekProfileSchedules,
     settings,
     recipeHistory,
-    inventory
+    inventory,
+    servingsMap
   } = params
 
   // Apply quick options (temporary overrides)
@@ -72,7 +73,7 @@ function buildMainPrompt(
   const sections: string[] = []
 
   // 1. Context Section
-  sections.push(buildContextSection(profiles, weekStartDate, weekProfileSchedules))
+  sections.push(buildContextSection(profiles, weekStartDate, weekProfileSchedules, servingsMap))
 
   // 2. Macro Targeting Section
   sections.push(buildMacroSection(effectiveSettings, profiles))
@@ -104,7 +105,7 @@ function buildMainPrompt(
   // 9. JSON Output Format Section
   sections.push(buildOutputFormatSection())
 
-  // 10. Sarah's Feedback Section
+  // 10. Emilia's Feedback Section
   sections.push(buildFeedbackSection(effectiveSettings))
 
   return sections.join('\n\n---\n\n')
@@ -133,13 +134,23 @@ function applyQuickOptions(
 function buildContextSection(
   profiles: any[],
   weekStartDate: string,
-  weekProfileSchedules: any[]
+  weekProfileSchedules: any[],
+  servingsMap?: Record<string, Record<string, number>>
 ): string {
   const weekStart = new Date(weekStartDate)
   const formattedDate = format(weekStart, 'MMMM d, yyyy')
+  const startDayName = format(weekStart, 'EEEE') // e.g., "Tuesday"
+
+  // Calculate the ordered list of days starting from the week start date
+  const dayIndex = weekStart.getDay() // 0=Sunday, 1=Monday, etc.
+  const allDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+  const orderedDays = [...allDays.slice(dayIndex), ...allDays.slice(0, dayIndex)]
 
   let context = `# CONTEXT\n\n`
-  context += `**Week Starting:** ${formattedDate}\n\n`
+  context += `**Week Starting:** ${formattedDate} (${startDayName})\n\n`
+  context += `**CRITICAL - Week Day Order:** This meal plan starts on ${startDayName}, not Monday. The chronological order of days for this week is:\n`
+  context += orderedDays.map((day, idx) => `${idx + 1}. ${day} (Day ${idx + 1})`).join('\n')
+  context += `\n\n**IMPORTANT FOR BATCH COOKING:** When planning batch cooking and leftovers, ONLY reference days that come chronologically BEFORE the leftover meal. For example, if this week starts on ${startDayName}, you CANNOT cook on ${orderedDays[6]} (Day 7) and use leftovers on ${orderedDays[0]} (Day 1) - that would be going backwards in time. Always plan batch cooking from earlier days to later days in the sequence above.\n\n`
   context += `**Family Profiles:**\n`
 
   profiles.forEach(profile => {
@@ -167,7 +178,7 @@ function buildContextSection(
   })
 
   if (weekProfileSchedules && weekProfileSchedules.length > 0) {
-    context += `\n**Meal Attendance Schedule:**\n`
+    context += `\n**Meal Attendance Schedule (Per Person):**\n`
     weekProfileSchedules.forEach((schedule: any) => {
       const profile = profiles.find(p => p.id === schedule.profileId)
       if (profile) {
@@ -182,6 +193,27 @@ function buildContextSection(
         })
       }
     })
+  }
+
+  // CRITICAL: Add pre-calculated serving counts so AI doesn't have to count manually
+  if (servingsMap && Object.keys(servingsMap).length > 0) {
+    context += `\n**REQUIRED SERVINGS (Pre-Calculated - Use These Exact Numbers):**\n`
+    context += `IMPORTANT: Use these exact serving counts in your meal plan. These are calculated from the attendance schedule above.\n\n`
+
+    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+    days.forEach(day => {
+      const dayCapitalized = day.charAt(0).toUpperCase() + day.slice(1)
+      const meals = servingsMap[day] || {}
+      if (Object.keys(meals).length > 0) {
+        const mealStrings = Object.entries(meals).map(([mealType, count]) => {
+          const mealName = mealType.charAt(0).toUpperCase() + mealType.slice(1).replace('-', ' ')
+          return `${mealName}: ${count} ${count === 1 ? 'serving' : 'servings'}`
+        })
+        context += `- **${dayCapitalized}:** ${mealStrings.join(', ')}\n`
+      }
+    })
+
+    context += `\n**For Batch Cooking Notes:** When writing batch cooking notes, use these serving counts. For example, if Monday dinner needs 4 servings and Thursday dinner needs 2 servings, the note should say "Batch cook 6 servings total—covers Monday (4) + Thursday (2)".\n`
   }
 
   return context
@@ -274,11 +306,26 @@ function buildVarietySection(
 ): string {
   let section = `# RECIPE VARIETY & COOLDOWNS\n\n`
 
-  section += `**Cooldown Periods:**\n`
+  section += `**Cooldown Periods (CRITICAL - MUST BE RESPECTED):**\n`
   section += `- Dinners: ${settings.dinnerCooldown} days\n`
   section += `- Lunches: ${settings.lunchCooldown} days\n`
   section += `- Breakfasts: ${settings.breakfastCooldown} days\n`
   section += `- Snacks/Desserts: ${settings.snackCooldown} days\n\n`
+
+  section += `**⚠️ COOLDOWN ENFORCEMENT - THIS IS MANDATORY:**\n`
+  section += `- DO NOT use the same recipe within its cooldown period\n`
+  section += `- The ONLY exception is batch cooking (cook once, reheat later - see Batch Cooking section)\n`
+  section += `- If batch cooking, meals must be marked correctly with isLeftover=true for reheated portions\n\n`
+
+  section += `**❌ COOLDOWN VIOLATION EXAMPLES (DO NOT DO THIS):**\n`
+  section += `- Using "Chicken Stir Fry" on Tuesday AND Thursday (only 2 days apart, requires ${settings.dinnerCooldown} days)\n`
+  section += `- Using "Spaghetti Bolognese" on Monday AND Wednesday (only 2 days apart, requires ${settings.dinnerCooldown} days)\n`
+  section += `- Scheduling the same breakfast recipe twice in the same week (requires ${settings.breakfastCooldown} days)\n\n`
+
+  section += `**✅ CORRECT APPROACHES:**\n`
+  section += `- Use completely different recipes for each meal type within the cooldown period\n`
+  section += `- OR set up batch cooking: cook once on Monday, reheat on Thursday (mark Thursday as isLeftover=true)\n`
+  section += `- Plan shows you have ${recipes.length} recipes available - plenty to avoid repeating within ${settings.dinnerCooldown} days\n\n`
 
   section += `**Cuisine Variety Requirements:**\n`
   section += `- Minimum different cuisines in the week: ${settings.minCuisines}\n`
@@ -286,7 +333,6 @@ function buildVarietySection(
 
   section += `**Special Rules:**\n`
   section += `- Manually selected recipes (from previous plans) get a +1.5 rating point bonus\n`
-  section += `- Respect cooldown periods strictly - don't use a recipe again until its cooldown has passed\n`
   section += `- Aim for diverse cuisine types across the week to prevent monotony\n`
 
   return section
@@ -409,14 +455,49 @@ function buildBatchCookingSection(settings: MealPlanSettings): string {
   section += `- Grains/Beans: 5 days\n`
   section += `- Salads: 2 days\n\n`
 
+  section += `**🔴 CRITICAL: CHRONOLOGICAL ORDER FOR BATCH COOKING**\n\n`
+  section += `You MUST respect the week's chronological day order when setting up batch cooking:\n`
+  section += `- The week has a STARTING DAY (could be Tuesday, Friday, any day)\n`
+  section += `- Days are ordered chronologically from that starting day\n`
+  section += `- You can ONLY cook on an EARLIER day and reheat on a LATER day\n`
+  section += `- NEVER reference a future day as the source of leftovers for a past day\n\n`
+
+  section += `**CHRONOLOGICAL ORDER EXAMPLE:**\n`
+  section += `If the week starts on TUESDAY, the chronological order is:\n`
+  section += `Day 1: Tuesday → Day 2: Wednesday → Day 3: Thursday → Day 4: Friday → Day 5: Saturday → Day 6: Sunday → Day 7: Monday\n\n`
+
+  section += `**✅ CORRECT BATCH COOKING EXAMPLES:**\n`
+  section += `- Week starts Tuesday: Cook on Friday (Day 4) → Reheat on Monday (Day 7) ✓ Goes forward in time\n`
+  section += `- Week starts Tuesday: Cook on Tuesday (Day 1) → Reheat on Thursday (Day 3) ✓ Goes forward in time\n`
+  section += `- Week starts Monday: Cook on Monday (Day 1) → Reheat on Wednesday (Day 3) ✓ Goes forward in time\n\n`
+
+  section += `**❌ WRONG BATCH COOKING EXAMPLES (DO NOT DO THIS):**\n`
+  section += `- Week starts Tuesday: Cook on Monday (Day 7) → Reheat on Tuesday (Day 1) ✗ Goes backwards!\n`
+  section += `- Week starts Tuesday: Cook on Thursday (Day 3) → Reheat on Wednesday (Day 2) ✗ Goes backwards!\n`
+  section += `- Setting isLeftover=true on the FIRST occurrence of a recipe ✗ Wrong!\n`
+  section += `- Putting the batch cook note on the LATER meal instead of the FIRST meal ✗ Wrong!\n\n`
+
+  section += `**BATCH COOKING SETUP RULES:**\n`
+  section += `When the same recipe appears multiple times across days:\n\n`
+  section += `**On the FIRST occurrence (chronologically earliest day):**\n`
+  section += `- Set isLeftover = false (this is when you COOK it)\n`
+  section += `- Set servings = TOTAL BATCH AMOUNT (e.g., 8 servings for Tuesday + Thursday)\n`
+  section += `- Add note: "Batch cook [X] servings total—covers [Day1] ([Y]) + [Day2] ([Z])"\n`
+  section += `- Example: "Batch cook 8 servings total—covers Tuesday (4) + Thursday (4)"\n\n`
+
+  section += `**On SUBSEQUENT occurrences (chronologically later days):**\n`
+  section += `- Set isLeftover = true (this is REHEATING)\n`
+  section += `- Set batchCookSourceDay = [the actual day name when it was cooked]\n`
+  section += `- Set servings = just this meal's amount (e.g., 4 servings)\n`
+  section += `- Add note: "Reheat from [source day]"\n`
+  section += `- Example: "Reheat from Tuesday"\n\n`
+
   section += `**Batch Cooking Strategy:**\n`
   section += `- Look for recipes marked with yieldsMultipleMeals=true\n`
   section += `- Calculate if the recipe can serve multiple meals within its shelf life\n`
   section += `- Only batch cook for consecutive or close-together days (not spread across the week)\n`
   section += `- Override maximum leftover days to ${settings.maxLeftoverDays} if ingredient shelf life allows\n`
   section += `- Include storage/reheating instructions in the meal notes\n\n`
-
-  section += `**Example:** If making a chicken casserole on Monday (3-day shelf life), it can be used for Monday dinner and Wednesday lunch.\n`
 
   return section
 }
@@ -587,7 +668,7 @@ Please generate a meal plan for the week and return it as a JSON object with thi
     {
       "dayOfWeek": "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday" | "Sunday",
       "mealType": "breakfast" | "lunch" | "dinner" | "afternoon-snack" | "dessert" | etc.,
-      "recipeId": "uuid-of-selected-recipe" | null,
+      "recipeId": "uuid-of-selected-recipe",
       "recipeName": "Name of the recipe",
       "servings": 4,
       "isLeftover": false,
@@ -599,21 +680,40 @@ Please generate a meal plan for the week and return it as a JSON object with thi
 }
 \`\`\`
 
+**CRITICAL RECIPE SELECTION RULES:**
+- **YOU MUST ONLY use recipes from the "AVAILABLE RECIPES" list above**
+- Every meal MUST have a valid recipeId from that list - do NOT suggest recipes that aren't in the database
+- **COOLDOWN PERIODS MUST BE RESPECTED** - Do NOT use the same recipe within its cooldown period (see "RECIPE VARIETY & COOLDOWNS" section)
+- The ONLY exception to cooldown is batch cooking - if using the same recipe multiple times, it MUST be set up as batch cooking with proper isLeftover flags
+- If you cannot create a complete meal plan with the available recipes (e.g., not enough variety, missing meal types, dietary restrictions can't be met), you MUST explain this in your summary
+- When explaining shortcomings in your summary, be specific: mention which meals/days couldn't be filled ideally and why (e.g., "Could not find enough breakfast recipes to meet variety targets" or "Limited gluten-free dinner options meant repeating recipes")
+
 **Important:**
-- Only include recipeId if you're assigning a specific recipe from the list
-- If no recipe is appropriate, set recipeId to null and provide a recipeName suggestion
+- Only include recipeId values that appear in the AVAILABLE RECIPES section above
+- NEVER set recipeId to null or suggest recipes not in your database
 - Calculate servings based on who's eating each meal (from attendance schedule)
 - **For batch cooking:**
-  - On the FIRST meal (when cooking): Set isLeftover=false, include total servings needed in notes (e.g., "Batch cook 6 servings for Monday + Wednesday")
-  - On SUBSEQUENT meals (leftovers): Set isLeftover=true, batchCookSourceDay="Monday", add reheating instructions in notes
-- Use notes field for batch cooking instructions, expiry reminders, storage tips, or substitution suggestions`
+  - **CRITICAL RULE:** Batch cooking MUST follow chronological order. You can ONLY cook on an earlier day and use leftovers on a LATER day. NEVER reference a future day as the source of leftovers for a past day.
+  - On the FIRST meal (when cooking):
+    * Set isLeftover=false
+    * Set servings to the TOTAL BATCH AMOUNT (e.g., if cooking on Day 1 for 4 people + Day 3 for 3 people, set servings=7)
+    * In notes, explain the breakdown using the actual day names: "Batch cook 7 servings total—covers [Day 1 name] (4) + [Day 3 name] (3)"
+  - On SUBSEQUENT meals (leftovers):
+    * Set isLeftover=true
+    * Set batchCookSourceDay to the actual day name when it was cooked (must be an earlier day in the week sequence)
+    * Set servings to just this meal's count (e.g., 3)
+    * Add reheating instructions in notes
+  - **Example for a week starting on Tuesday:**
+    * ✅ CORRECT: Cook on Tuesday (Day 1), use leftovers on Thursday (Day 3) - goes forward in time
+    * ❌ WRONG: Cook on Monday (Day 7), use leftovers on Tuesday (Day 1) - goes backward in time
+- CRITICAL: For batch cook source meals, the servings field MUST be the total batch amount, not just that meal's count. This ensures the recipe is scaled correctly for shopping lists.`
 }
 
 /**
- * Section 10: Sarah's Feedback Format
+ * Section 10: Emilia's Feedback Format
  */
 function buildFeedbackSection(settings: MealPlanSettings): string {
-  let section = `# SARAH'S WEEKLY SUMMARY\n\n`
+  let section = `# EMILIA'S WEEKLY SUMMARY\n\n`
 
   section += `**Detail Level:** ${settings.feedbackDetail.toUpperCase()}\n\n`
 
