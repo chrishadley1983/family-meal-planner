@@ -133,10 +133,10 @@ export function roundQuantity(quantity: number, unit: string): number {
   const category = getUnitCategory(unit)
   const normalizedUnit = normalizeUnit(unit).toLowerCase()
 
-  // Count-based units: no rounding
+  // Count-based units: round to whole numbers, minimum 1 if > 0
   if (category === 'count') {
-    // Round to whole numbers for count units
-    return Math.round(quantity)
+    const rounded = Math.round(quantity)
+    return quantity > 0 && rounded === 0 ? 1 : rounded
   }
 
   // Spoon measures: round to nearest 0.25

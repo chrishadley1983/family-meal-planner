@@ -493,6 +493,14 @@ Use the EXACT category names from the list. Example: ["Fresh Produce", "Cupboard
     let totalCombined = 0
     let totalDeleted = 0
 
+    // TODO: TEMPORARY - Deduplication report for testing (remove when done)
+    const dedupeReport: Array<{
+      normalizedName: string
+      originalItems: Array<{ name: string; qty: number; unit: string }>
+      result: { name: string; qty: number; unit: string }
+      method: 'units-compatible' | 'ai-combined'
+    }> = []
+
     if (duplicateGroups.length > 0) {
       console.log(`🔷 Found ${duplicateGroups.length} duplicate groups, auto-combining...`)
 
@@ -622,6 +630,15 @@ Respond with ONLY valid JSON: {"quantity": <number>, "unit": "<unit>", "itemName
 
           totalCombined += groupItems.length
           totalDeleted += deleteItems.length
+
+          // TODO: TEMPORARY - Add to dedupe report for testing
+          dedupeReport.push({
+            normalizedName: group.normalizedName,
+            originalItems: groupItems.map(i => ({ name: i.itemName, qty: i.quantity, unit: i.unit })),
+            result: { name: finalItemName, qty: normalizedCombined.quantity, unit: normalizedCombined.unit },
+            method: allCompatible ? 'units-compatible' : 'ai-combined',
+          })
+
           console.log(`🟢 Combined ${groupItems.length} "${group.normalizedName}" items`)
         } catch (groupError) {
           console.warn(`⚠️ Failed to combine group ${group.normalizedName}:`, groupError)
@@ -629,6 +646,22 @@ Respond with ONLY valid JSON: {"quantity": <number>, "unit": "<unit>", "itemName
       }
 
       console.log(`🟢 Auto-deduplication complete: combined ${totalCombined} items, removed ${totalDeleted} duplicates`)
+
+      // TODO: TEMPORARY - Print detailed dedupe report for testing
+      if (dedupeReport.length > 0) {
+        console.log('\n' + '='.repeat(80))
+        console.log('📋 DEDUPLICATION REPORT (TEMPORARY - remove when done testing)')
+        console.log('='.repeat(80))
+        for (const entry of dedupeReport) {
+          console.log(`\n🔗 Normalized name: "${entry.normalizedName}" (${entry.method})`)
+          console.log('   Original items:')
+          for (const item of entry.originalItems) {
+            console.log(`     - "${item.name}": ${item.qty} ${item.unit}`)
+          }
+          console.log(`   → Combined to: "${entry.result.name}": ${entry.result.qty} ${entry.result.unit}`)
+        }
+        console.log('\n' + '='.repeat(80) + '\n')
+      }
     } else {
       console.log('🟢 No duplicates found after import')
     }
