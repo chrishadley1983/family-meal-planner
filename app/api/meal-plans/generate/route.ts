@@ -4,8 +4,9 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { generateMealPlan } from '@/lib/claude'
 import { calculateServingsForMeals, filterZeroServingMeals } from '@/lib/meal-utils'
-import { startOfWeek, endOfWeek, subWeeks, addDays } from 'date-fns'
+import { startOfWeek, subWeeks, addDays } from 'date-fns'
 import { DEFAULT_SETTINGS } from '@/lib/types/meal-plan-settings'
+import { validateMealPlan } from '@/lib/meal-plan-validation'
 
 export async function POST(req: NextRequest) {
   try {
@@ -95,37 +96,130 @@ export async function POST(req: NextRequest) {
       hasSettings: !!settingsRecord
     })
 
-    // Generate meal plan using Claude with all advanced features
-    const generatedPlan = await generateMealPlan({
-      profiles,
-      recipes,
-      weekStartDate,
-      weekProfileSchedules, // Pass per-person schedules for week
-      settings,
-      recipeHistory: recipeHistory.map(h => ({
-        id: h.id,
-        userId: h.userId,
-        recipeId: h.recipeId,
-        mealPlanId: h.mealPlanId,
-        usedDate: h.usedDate,
-        mealType: h.mealType,
-        wasManual: h.wasManual,
-        createdAt: h.createdAt
-      })),
-      inventory,
-      quickOptions
-    })
+    // Generate meal plan using Claude with validation and retry logic
+    const MAX_RETRIES = 3
+    let generatedPlan: any = null
+    let validationResult: any = null
+    let attemptCount = 0
+
+    console.log('🔷 Starting meal plan generation with validation...')
+
+    while (attemptCount < MAX_RETRIES) {
+      attemptCount++
+      console.log(`\n🔄 Generation attempt ${attemptCount}/${MAX_RETRIES}...`)
+
+      try {
+        // Generate meal plan using Claude with all advanced features
+        generatedPlan = await generateMealPlan({
+          profiles,
+          recipes,
+          weekStartDate,
+          weekProfileSchedules, // Pass per-person schedules for week
+          settings,
+          recipeHistory: recipeHistory.map((h) => ({
+            id: h.id,
+            userId: h.userId,
+            recipeId: h.recipeId,
+            mealPlanId: h.mealPlanId,
+            usedDate: h.usedDate,
+            mealType: h.mealType,
+            wasManual: h.wasManual,
+            createdAt: h.createdAt
+          })),
+          inventory,
+          quickOptions
+        })
+
+        console.log(`✅ Meal plan generated with ${generatedPlan.meals.length} meals`)
+
+        // Validate the generated plan
+        console.log('🔍 Validating meal plan...')
+        validationResult = validateMealPlan(
+          generatedPlan.meals,
+          settings,
+          weekStartDate,
+          recipeHistory.map((h) => ({
+            recipeId: h.recipeId,
+            usedDate: h.usedDate,
+            mealType: h.mealType
+          }))
+        )
+
+        // Log validation results
+        if (validationResult.warnings.length > 0) {
+          console.log('⚠️  Validation warnings:')
+          validationResult.warnings.forEach((w: string) => console.log(`   - ${w}`))
+        }
+
+        if (validationResult.errors.length > 0) {
+          console.log('❌ Validation errors:')
+          validationResult.errors.forEach((e: string) => console.log(`   - ${e}`))
+        }
+
+        // Check if validation passed
+        if (validationResult.isValid) {
+          console.log('✅ Validation passed!')
+          break // Exit retry loop
+        } else {
+          console.log(`❌ Validation failed on attempt ${attemptCount}/${MAX_RETRIES}`)
+          if (attemptCount < MAX_RETRIES) {
+            console.log('🔄 Retrying generation with stricter constraints...')
+            // Wait a moment before retrying to avoid rate limiting
+            await new Promise(resolve => setTimeout(resolve, 1000))
+          }
+        }
+      } catch (error) {
+        console.error(`❌ Error during generation attempt ${attemptCount}:`, error)
+        if (attemptCount >= MAX_RETRIES) {
+          throw error // Re-throw if we're out of retries
+        }
+      }
+    }
+
+    // If validation still failed after all retries, return error
+    if (!validationResult || !validationResult.isValid) {
+      console.error('❌ Failed to generate valid meal plan after', MAX_RETRIES, 'attempts')
+      return NextResponse.json(
+        {
+          error: 'Failed to generate a valid meal plan that respects cooldown periods and batch cooking rules',
+          validationErrors: validationResult?.errors || [],
+          suggestion: 'Try adjusting your meal plan settings (reduce cooldown periods) or add more recipes to your library'
+        },
+        { status: 400 }
+      )
+    }
+
+    console.log('🎉 Successfully generated and validated meal plan!')
 
     // Create a set of valid recipe IDs for validation
-    const validRecipeIds = new Set(recipes.map(r => r.id))
+    const validRecipeIds = new Set(recipes.map((r) => r.id))
+
+    // Track invalid recipes for warning generation
+    const invalidRecipes: Array<{ recipeName: string; day: string; mealType: string }> = []
+
+    // Define the type for validated meals
+    interface ValidatedMeal {
+      dayOfWeek: string
+      mealType: string
+      recipeId: string | null
+      recipeName: string | null
+      notes: string | null
+      isLeftover: boolean
+      batchCookSourceDay: string | null
+    }
 
     // Validate and clean up meals - only include valid recipe IDs
     console.log('🔍 AI Response - Checking for batch cooking data...')
-    const validatedMeals = generatedPlan.meals.map((meal: any) => {
+    const validatedMeals: ValidatedMeal[] = generatedPlan.meals.map((meal: any) => {
       const recipeId = meal.recipeId && validRecipeIds.has(meal.recipeId) ? meal.recipeId : null
 
       if (meal.recipeId && !recipeId) {
         console.warn(`⚠️ Claude suggested invalid recipe ID: ${meal.recipeId} for ${meal.recipeName}`)
+        invalidRecipes.push({
+          recipeName: meal.recipeName || 'Unknown recipe',
+          day: meal.dayOfWeek,
+          mealType: meal.mealType
+        })
       }
 
       // Log batch cooking info
@@ -144,7 +238,7 @@ export async function POST(req: NextRequest) {
       }
     })
 
-    console.log(`📊 Batch cooking summary: ${validatedMeals.filter((m: any) => m.isLeftover).length} leftover meals out of ${validatedMeals.length} total`)
+    console.log(`📊 Batch cooking summary: ${validatedMeals.filter((m) => m.isLeftover).length} leftover meals out of ${validatedMeals.length} total`)
 
     // Calculate servings based on who's eating each meal
     console.log('🧮 Calculating servings for all meals...')
@@ -155,9 +249,9 @@ export async function POST(req: NextRequest) {
 
     console.log(`✅ Created ${finalMeals.length} meals (filtered ${mealsWithServings.length - finalMeals.length} with 0 servings)`)
 
-    // Create the meal plan in database (first pass - without leftover linkage)
+    // Create the meal plan in database (first pass - without leftover linkage or scaling)
     const weekStart = new Date(weekStartDate)
-    const weekEnd = endOfWeek(weekStart)
+    const weekEnd = addDays(weekStart, 6) // 7-day week
 
     console.log(`💾 Creating meal plan with ${finalMeals.filter((m: any) => m.isLeftover).length} leftover meals...`)
 
@@ -169,21 +263,40 @@ export async function POST(req: NextRequest) {
         status: 'Draft',
         customSchedule: weekProfileSchedules || null, // Store per-person schedules as JSON
         meals: {
-          create: finalMeals.map((meal: any) => {
+          create: finalMeals.map((meal) => {
+            // Find the recipe to calculate scaling factor
+            const recipe = recipes.find((r) => r.id === meal.recipeId)
+            const scalingFactor = recipe && recipe.servings > 0
+              ? meal.servings / recipe.servings
+              : null
+
             const mealData = {
               dayOfWeek: meal.dayOfWeek,
               mealType: meal.mealType,
               recipeId: meal.recipeId,
               recipeName: meal.recipeName,
               servings: meal.servings,
-              servingsManuallySet: meal.servingsManuallySet || false,
+              scalingFactor, // CRITICAL: Store scaling factor for shopping lists
               notes: meal.notes,
               isLeftover: meal.isLeftover || false,
               isLocked: false
             }
 
+            // DEBUG: Log batch cooking meals to verify servings calculations
+            if (meal.notes && meal.notes.includes('Batch cook')) {
+              console.log(`🍳 BATCH COOK SOURCE: ${mealData.dayOfWeek} ${mealData.mealType} - ${mealData.recipeName}`)
+              console.log(`   Servings: ${mealData.servings}`)
+              console.log(`   Note: ${mealData.notes}`)
+              console.log(`   Recipe servings: ${recipe?.servings || 'N/A'}`)
+              console.log(`   Scaling factor: ${scalingFactor ? scalingFactor.toFixed(2) : 'N/A'}x`)
+            }
+
             if (mealData.isLeftover) {
               console.log(`💾 Saving leftover: ${mealData.dayOfWeek} ${mealData.mealType} - ${mealData.recipeName}`)
+            }
+
+            if (scalingFactor) {
+              console.log(`📏 Scaling factor for ${mealData.recipeName}: ${scalingFactor.toFixed(2)}x (${meal.servings} servings / ${recipe?.servings} recipe servings)`)
             }
 
             return mealData
@@ -236,8 +349,8 @@ export async function POST(req: NextRequest) {
     console.log('🔷 Recording recipe usage history...')
     const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
     const historyEntries = mealPlan.meals
-      .filter(meal => meal.recipeId) // Only record meals with actual recipes
-      .map(meal => {
+      .filter((meal) => meal.recipeId) // Only record meals with actual recipes
+      .map((meal) => {
         // Calculate the actual date for this meal
         const dayIndex = daysOfWeek.indexOf(meal.dayOfWeek)
         const mealDate = addDays(weekStart, dayIndex)
@@ -260,9 +373,21 @@ export async function POST(req: NextRequest) {
       console.log(`🟢 Recorded ${historyEntries.length} recipe usage history entries`)
     }
 
+    // Build final summary with warnings if needed
+    let finalSummary = generatedPlan.summary
+
+    if (invalidRecipes.length > 0) {
+      const warningMessage = `\n\n⚠️ **Warning:** The AI suggested ${invalidRecipes.length} recipe${invalidRecipes.length > 1 ? 's' : ''} that ${invalidRecipes.length > 1 ? 'are' : 'is'} not in your database:\n` +
+        invalidRecipes.map(r => `- ${r.recipeName} (${r.day} ${r.mealType})`).join('\n') +
+        `\n\nThese meals could not be added to your plan. Please add more recipes to your database or regenerate the meal plan.`
+
+      finalSummary = (finalSummary || '') + warningMessage
+      console.warn(`⚠️ Added warning to summary for ${invalidRecipes.length} invalid recipes`)
+    }
+
     return NextResponse.json({
       mealPlan,
-      summary: generatedPlan.summary
+      summary: finalSummary
     })
   } catch (error: any) {
     console.error('Error generating meal plan:', error)

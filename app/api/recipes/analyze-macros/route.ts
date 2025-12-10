@@ -27,6 +27,9 @@ export async function POST(request: NextRequest) {
         userId: session.user.id,
         isMainUser: true,
       },
+      orderBy: {
+        createdAt: 'asc', // Fallback to oldest profile if no main user set
+      },
       select: {
         dailyCalorieTarget: true,
         dailyProteinTarget: true,
@@ -38,7 +41,7 @@ export async function POST(request: NextRequest) {
 
     if (!mainProfile) {
       return NextResponse.json(
-        { error: 'Main user profile not found. Please set a profile as main user.' },
+        { error: 'User profile not found.' },
         { status: 404 }
       )
     }
@@ -57,7 +60,9 @@ export async function POST(request: NextRequest) {
       userProfile: mainProfile,
     })
 
-    return NextResponse.json({ analysis })
+    return NextResponse.json({
+      analysis
+    })
   } catch (error) {
     console.error('Macro analysis error:', error)
     return NextResponse.json(
