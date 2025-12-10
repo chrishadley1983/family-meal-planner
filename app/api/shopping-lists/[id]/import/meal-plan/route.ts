@@ -280,7 +280,7 @@ Example response format: ["Produce", "Dairy & Eggs", "Pantry"]
 If an item doesn't clearly fit any category, use "Other".`
 
         const message = await client.messages.create({
-          model: 'claude-haiku-4-5',
+          model: 'claude-3-5-haiku-latest',
           max_tokens: 2048,
           messages: [{ role: 'user', content: prompt }],
         })

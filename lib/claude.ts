@@ -354,7 +354,7 @@ Return ONLY the JSON object, no explanatory text before or after.`
 
   try {
     const message = await client.messages.create({
-      model: 'claude-haiku-4-5',
+      model: 'claude-3-5-haiku-latest',
       max_tokens: 4096,
       messages: [{
         role: 'user',
@@ -407,7 +407,7 @@ Use standard nutrition databases for your calculations. Be as accurate as possib
 
   try {
     const message = await client.messages.create({
-      model: 'claude-haiku-4-5',
+      model: 'claude-3-5-haiku-latest',
       max_tokens: 1024,
       messages: [{
         role: 'user',
@@ -511,7 +511,7 @@ Be accurate when extracting text, and be specific and practical when suggesting 
     })
 
     const message = await client.messages.create({
-      model: 'claude-haiku-4-5',
+      model: 'claude-3-5-haiku-latest',
       max_tokens: 2048,
       messages: [{
         role: 'user',
@@ -596,7 +596,7 @@ Return ONLY a valid JSON object in this exact format:
     console.log('🔷 Calling Claude API to parse recipe text...')
 
     const message = await client.messages.create({
-      model: 'claude-haiku-4-5',
+      model: 'claude-3-5-haiku-latest',
       max_tokens: 2048,
       messages: [{
         role: 'user',
@@ -704,7 +704,7 @@ Consider: calories per serving vs daily target, macro ratios, ingredient health 
 
   try {
     const message = await client.messages.create({
-      model: 'claude-haiku-4-5',
+      model: 'claude-3-5-haiku-latest',
       max_tokens: 2048,
       messages: [{
         role: 'user',
@@ -807,7 +807,7 @@ Example tone: "Hi! This looks like a great choice - the protein content will rea
 
   try {
     const message = await client.messages.create({
-      model: 'claude-haiku-4-5',
+      model: 'claude-3-5-haiku-latest',
       max_tokens: 512,
       messages: [{
         role: 'user',
