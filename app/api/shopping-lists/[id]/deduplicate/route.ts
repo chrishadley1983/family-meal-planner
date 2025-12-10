@@ -206,7 +206,7 @@ Example: {"quantity": 5, "unit": "g", "itemName": "Black pepper"}`
 
       try {
         const message = await client.messages.create({
-          model: 'claude-3-5-haiku-latest',
+          model: 'claude-haiku-4-5',
           max_tokens: 150,
           messages: [{ role: 'user', content: prompt }],
         })
