@@ -3,6 +3,8 @@
  * Converts common cooking measurements to metric (grams/millilitres)
  */
 
+import { normalizeIngredientName } from './ingredient-normalization'
+
 // Standard conversion factors
 const CONVERSIONS: Record<string, { toMetric: number; metricUnit: string; type: 'weight' | 'volume' }> = {
   // Weight conversions (to grams)
@@ -220,6 +222,31 @@ export function formatQuantityWithUnit(quantity: number, unit: string): string {
 }
 
 /**
+ * Common units for staples and shopping list items
+ * Organized by type for easier selection
+ */
+export const COMMON_UNITS = [
+  // Volume
+  { value: 'ml', label: 'ml', type: 'volume' },
+  { value: 'L', label: 'L (litres)', type: 'volume' },
+  // Weight
+  { value: 'g', label: 'g (grams)', type: 'weight' },
+  { value: 'kg', label: 'kg', type: 'weight' },
+  // Count
+  { value: 'pack', label: 'pack', type: 'count' },
+  { value: 'bottle', label: 'bottle', type: 'count' },
+  { value: 'can', label: 'can', type: 'count' },
+  { value: 'jar', label: 'jar', type: 'count' },
+  { value: 'box', label: 'box', type: 'count' },
+  { value: 'bag', label: 'bag', type: 'count' },
+  { value: 'bunch', label: 'bunch', type: 'count' },
+  { value: 'head', label: 'head', type: 'count' },
+  { value: 'loaf', label: 'loaf', type: 'count' },
+  { value: 'dozen', label: 'dozen', type: 'count' },
+  { value: 'each', label: 'each', type: 'count' },
+]
+
+/**
  * Default shopping list categories with display order
  */
 export const DEFAULT_CATEGORIES = [
@@ -240,60 +267,9 @@ export const DEFAULT_CATEGORIES = [
 
 /**
  * Gets a normalized ingredient name for deduplication
- * Handles common variations like plural forms
+ * Now uses the enhanced normalization from ingredient-normalization module
  */
-export function normalizeIngredientName(name: string): string {
-  let normalized = name.toLowerCase().trim()
-
-  // Remove common suffixes
-  const suffixesToRemove = [
-    ', diced', ', chopped', ', sliced', ', minced', ', grated',
-    ', fresh', ', dried', ', frozen', ', canned',
-    ', large', ', medium', ', small',
-    ' (optional)',
-  ]
-
-  for (const suffix of suffixesToRemove) {
-    if (normalized.endsWith(suffix)) {
-      normalized = normalized.slice(0, -suffix.length)
-    }
-  }
-
-  // Handle common plural forms
-  const pluralMappings: Record<string, string> = {
-    'tomatoes': 'tomato',
-    'potatoes': 'potato',
-    'onions': 'onion',
-    'carrots': 'carrot',
-    'eggs': 'egg',
-    'apples': 'apple',
-    'oranges': 'orange',
-    'lemons': 'lemon',
-    'limes': 'lime',
-    'peppers': 'pepper',
-    'mushrooms': 'mushroom',
-    'cloves': 'clove',
-    'leaves': 'leaf',
-    'breasts': 'breast',
-    'thighs': 'thigh',
-    'fillets': 'fillet',
-  }
-
-  if (pluralMappings[normalized]) {
-    normalized = pluralMappings[normalized]
-  }
-
-  // Generic plural removal (words ending in 's' but not 'ss')
-  if (normalized.endsWith('s') && !normalized.endsWith('ss') && normalized.length > 3) {
-    const singular = normalized.slice(0, -1)
-    // Only apply if it makes sense (basic heuristic)
-    if (!['this', 'is', 'has', 'was', 'does'].includes(singular)) {
-      // Keep the plural form in the mapping check already handled above
-    }
-  }
-
-  return normalized.trim()
-}
+export { normalizeIngredientName } from './ingredient-normalization'
 
 /**
  * Groups items by their normalized name for deduplication suggestions

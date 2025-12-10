@@ -8,11 +8,36 @@ A comprehensive family meal planning application with AI-powered features includ
 
 - **Frontend:** React Native with Expo (iOS/Android) + React for web
 - **Backend:** Node.js with Express
-- **Database:** PostgreSQL via Supabase
+- **Database:** PostgreSQL via Supabase (remote cloud database at db.pocptwknyxyrtmnfnrph.supabase.co)
 - **Authentication:** Supabase Auth
 - **Storage:** Supabase Storage for recipe/inventory images
 - **AI Integration:** Anthropic Claude API
 - **Language:** TypeScript throughout
+
+## Database Configuration
+
+**IMPORTANT: This project uses a remote Supabase database, NOT localhost.**
+
+- **Database Host:** `db.pocptwknyxyrtmnfnrph.supabase.co:5432`
+- **Database Name:** `postgres`
+- **Schema:** `public`
+
+**Connection String Format:**
+```
+postgresql://postgres:[PASSWORD]@db.pocptwknyxyrtmnfnrph.supabase.co:5432/postgres?schema=public
+```
+
+**Critical Database Workflow:**
+1. **Never assume localhost** - All database operations use Supabase
+2. **Sync schema from database** before making schema changes:
+   ```powershell
+   npx prisma db pull
+   ```
+3. **Always use `db push` for schema changes** (not `migrate dev`):
+   ```powershell
+   npx prisma db push
+   ```
+4. **Check Supabase Table Editor** to verify schema matches before pushing changes
 
 ## Project Structure
 
@@ -65,6 +90,277 @@ This means:
 
 ---
 
+## 🔴 CRITICAL: ENVIRONMENT FILES ARE LOCAL, NOT IN GIT
+
+**The `.env` file is NOT committed to git** - it only exists on the local machine where development happens.
+
+This means:
+- **NEVER read `/home/user/family-meal-planner/.env` to diagnose user's issues** - this is the Linux environment, NOT the user's Windows machine
+- **ALWAYS ask the user to show their `.env` contents** when debugging connection issues
+- The user's `.env` on Windows (C:\Users\Chris Hadley\family-meal-planner\.env) is DIFFERENT from the Linux environment's `.env`
+- Changes to `.env` in this Linux environment DO NOT affect the user's Windows machine
+
+**When debugging "database not connecting" issues:**
+1. ✅ **FIRST** - Ask user to show their `.env` file contents
+2. ✅ **VERIFY** - Confirm DATABASE_URL points to Supabase, not localhost
+3. ✅ **CHECK** - Ensure user has restarted dev server after any `.env` changes
+4. ❌ **NEVER** - Assume the `.env` in `/home/user/...` matches the user's actual `.env`
+
+---
+
+## 🔴 CRITICAL: NEXT.JS VERSION AND CACHING
+
+**This project uses Next.js 15 (stable) NOT Next.js 16.**
+
+**Why:** Next.js 16 with Turbopack (experimental) causes severe caching issues:
+- Database connection changes not picked up even after restart
+- Code changes not reflected in running app
+- Prisma client changes ignored
+- API routes serving stale/cached responses
+- Endless debugging cycles with no clear resolution
+
+**If user reports persistent issues after changes:**
+
+1. **Verify Next.js version** - Check `package.json` line 23 shows `"next": "^15.1.0"`
+
+2. **If accidentally upgraded to Next.js 16, downgrade immediately:**
+   ```powershell
+   # In package.json, change:
+   "next": "^15.1.0"
+   "react": "^18.3.1"
+   "react-dom": "^18.3.1"
+   "@types/react": "^18.3.0"
+   "@types/react-dom": "^18.3.0"
+   ```
+
+3. **Nuclear clean and reinstall:**
+   ```powershell
+   Remove-Item package-lock.json -Force -ErrorAction SilentlyContinue
+   Remove-Item -Recurse -Force node_modules -ErrorAction SilentlyContinue
+   npm cache clean --force
+   npm install --legacy-peer-deps
+   npx prisma generate
+   Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue
+   npm run dev
+   ```
+
+**NEVER upgrade to Next.js 16 until it's officially stable** - the experimental Turbopack bundler causes more problems than it solves.
+
+---
+
+## 🔧 MCP SERVERS FOR AUTOMATED TESTING
+
+**MCP (Model Context Protocol) servers are configured to enable Claude Code to run automated tests before asking Chris for UAT.**
+
+### Configured MCP Servers
+
+The project has three MCP servers configured in `.mcp.json`:
+
+1. **Next.js DevTools MCP** (`next-devtools-mcp`)
+   - Monitors build errors, runtime errors, and TypeScript issues in real-time
+   - Provides application state and component hierarchy inspection
+   - Enables Claude to check for errors before asking for manual testing
+
+2. **Playwright MCP** (`@testinglibraryai/playwright-mcp`)
+   - Automates Chrome browser testing
+   - Takes screenshots and verifies UI changes
+   - Tests forms, navigation, and data display automatically
+   - Uses accessibility trees (not pixel-based) for reliable testing
+
+3. **Supabase MCP** (`@supabase/mcp-server`)
+   - Direct access to Supabase PostgreSQL database
+   - Query database to verify schema and data
+   - Inspect tables and records before UI testing
+   - Validates data integrity after migrations
+
+### Environment Variables Required
+
+**Chris must set these environment variables on Windows for MCP servers to work:**
+
+```powershell
+# In PowerShell (add to your profile or set before running Claude Code)
+$env:SUPABASE_ANON_KEY = "your-supabase-anon-key-here"
+```
+
+**To get your Supabase anon key:**
+1. Go to https://supabase.com/dashboard/project/pocptwknyxyrtmnfnrph
+2. Click Settings → API
+3. Copy the "anon" / "public" key (not the service_role key)
+4. Set it as an environment variable before starting Claude Code
+
+### Testing Workflow with MCP
+
+**Before asking Chris for UAT, Claude should:**
+
+✅ **Step 1: Check Build Health**
+- Use Next.js DevTools MCP to check for build/runtime errors
+- Verify zero TypeScript errors
+- Check dev server status
+
+✅ **Step 2: Verify Database State**
+- Use Supabase MCP to query database
+- Confirm schema changes applied correctly
+- Verify test data exists (e.g., recipes, profiles)
+
+✅ **Step 3: Automate Browser Tests**
+- Use Playwright MCP to test in Chrome
+- Navigate to affected pages
+- Take screenshots to verify UI changes
+- Test form submissions and data display
+
+✅ **Step 4: Report Results**
+- Only ask Chris to test after ALL automated tests pass
+- Provide clear summary of what was verified automatically
+- Specify exactly what manual testing is needed (if any)
+
+### Activating MCP Servers
+
+**After pulling changes with `.mcp.json`:**
+
+1. Set the `SUPABASE_ANON_KEY` environment variable (see above)
+2. Restart Claude Code completely to load MCP servers
+3. Run `/mcp` in Claude Code to verify all three servers are connected
+4. Look for ✅ indicators next to each server name
+
+**If MCP servers aren't loading:**
+- Verify `.mcp.json` exists in project root
+- Check environment variable is set: `echo $env:SUPABASE_ANON_KEY`
+- Restart Claude Code (not just reload)
+- Check Claude Code logs for MCP connection errors
+
+---
+
+## 🎯 MEAL PLAN COOLDOWN SETTINGS
+
+**Cooldown periods prevent recipe repetition and ensure variety in meal plans.**
+
+### What Are Cooldown Periods?
+
+Cooldown periods specify how many days must pass before the same recipe can be used again in a meal plan. They are **configurable per meal type** because different meal types have different variety expectations.
+
+### Default Cooldown Periods
+
+Located in `lib/types/meal-plan-settings.ts`:
+
+```typescript
+dinnerCooldown: 14 days      // Most variety needed
+lunchCooldown: 7 days        // Moderate variety
+breakfastCooldown: 3 days    // Less variety expected
+snackCooldown: 2 days        // Minimal variety
+```
+
+### How Cooldowns Work
+
+1. **Within Week Validation**
+   - Same recipe cannot appear within its cooldown period in the same week
+   - Example: Dinner cooldown = 14 days, same dinner recipe on Tuesday + Thursday (2 days) = VIOLATION
+
+2. **Historical Validation**
+   - Checks past 4 weeks of recipe usage history
+   - Recipe used 5 days ago with 7-day cooldown = VIOLATION (warning, not error)
+
+3. **Batch Cooking Exception**
+   - The ONLY exception to cooldown rules is batch cooking
+   - Same recipe can appear multiple times if properly flagged as batch cooking:
+     - First occurrence: `isLeftover=false` (cooking)
+     - Subsequent occurrences: `isLeftover=true` (reheating)
+
+### Validation Enforces Cooldowns
+
+The meal plan generation now includes automatic validation (see `lib/meal-plan-validation.ts`):
+- AI generates a plan
+- Validation checks cooldown periods
+- If violations found, AI retries (up to 3 attempts)
+- If all retries fail, returns error with specific violations
+
+**Error Message Format:**
+```
+Cooldown violation: "Chicken Stir Fry" used on Tuesday and Thursday
+(2 days apart, requires 14 day cooldown for Dinners - set in Meal Plan Settings)
+```
+
+### Where Settings Are Stored
+
+Cooldown settings are stored in the `mealPlanSettings` table in Supabase:
+- Each user has their own settings record
+- If no settings exist, defaults are used
+- Settings are fetched during meal plan generation/regeneration
+
+### How to View Current Settings (Database)
+
+```sql
+-- View your cooldown settings
+SELECT
+  dinnerCooldown,
+  lunchCooldown,
+  breakfastCooldown,
+  snackCooldown
+FROM "mealPlanSettings"
+WHERE "userId" = '[your-user-id]';
+```
+
+### How to Adjust Cooldown Periods (Database)
+
+**Option 1: Via Supabase Table Editor**
+1. Open Supabase Dashboard → Table Editor
+2. Find `mealPlanSettings` table
+3. Locate your user's row
+4. Edit cooldown values directly (e.g., change `dinnerCooldown` from 14 to 7)
+
+**Option 2: Via API (for programmatic updates)**
+```typescript
+// Update settings via API
+await prisma.mealPlanSettings.update({
+  where: { userId: session.user.id },
+  data: {
+    dinnerCooldown: 7,    // Reduced from 14
+    lunchCooldown: 5,     // Reduced from 7
+    // ... other settings
+  }
+})
+```
+
+### Why Adjust Cooldowns?
+
+**Reduce cooldowns if:**
+- You have a small recipe library (< 20 recipes)
+- AI keeps failing to generate valid plans
+- You prefer more repetition (e.g., meal prep enthusiasts)
+
+**Increase cooldowns if:**
+- You have a large recipe library (> 50 recipes)
+- You want maximum variety
+- You get bored easily with repeated meals
+
+### Common Cooldown Scenarios
+
+**Scenario 1: Small Recipe Library**
+- Problem: Only 15 dinner recipes, AI can't generate valid plan with 14-day cooldown
+- Solution: Reduce `dinnerCooldown` to 7 or even 3 days
+- Result: More repetition, but functional meal plans
+
+**Scenario 2: Batch Cooking Focus**
+- Problem: Want to use same recipe on Monday (cook) and Thursday (reheat)
+- Solution: Keep cooldown at 14 days, use batch cooking with proper `isLeftover` flags
+- Result: No violation because it's marked as batch cooking
+
+**Scenario 3: Maximum Variety**
+- Problem: Have 50+ recipes, want minimal repetition
+- Solution: Keep default 14-day cooldown or increase to 21 days
+- Result: High variety, different meals every 2-3 weeks
+
+### Future Enhancement: Settings UI
+
+**TODO:** Create a meal plan settings page where users can:
+- View current cooldown periods
+- Adjust cooldowns with sliders (1-30 days)
+- See preview of how many recipes needed for each cooldown
+- Reset to defaults
+
+**Suggested UI Location:** `/settings/meal-planning` (already exists for schedule editing)
+
+---
+
 ## 📋 WORKFLOW: Follow This For EVERY Change
 
 ### Phase 1: BEFORE Making Changes
@@ -81,6 +377,15 @@ This means:
   git diff --name-only origin/main origin/<branch-name>
   ```
   **Why this matters:** Features may exist on other branches that were never merged. If you skip this step, you may waste time debugging "missing" functionality that simply exists on a different branch.
+
+  **🔴 IF UNMERGED BRANCHES EXIST:**
+  1. **STOP** - Do not start new work on a diverged codebase
+  2. **REPORT** to the user which branches have unmerged commits
+  3. **MERGE** all unmerged branches into main (or current working branch) BEFORE starting new feature work
+  4. **RESOLVE** conflicts carefully, preferring to combine features rather than discard them
+  5. **PUSH** the merged result to keep everyone aligned
+
+  **Never create new feature branches from an outdated main.** This creates a mess of divergent branches that become increasingly difficult to merge.
 
 - [ ] **Understand the requirement clearly** - Ask clarifying questions if anything is ambiguous
 - [ ] **Read existing code in affected files** - Don't make assumptions about current implementation
@@ -197,6 +502,30 @@ git push origin [branch-name]
 - [ ] Changes committed with clear message
 - [ ] Changes pushed to remote
 - [ ] Notify Chris to pull latest changes
+
+#### 3.8 Merge to Main (CRITICAL)
+
+**🔴 After completing a feature, ALWAYS merge back to main:**
+
+```bash
+# Merge feature branch to main
+git checkout main
+git pull origin main
+git merge <feature-branch-name>
+git push origin main
+
+# Or if you can't push to main directly, tell the user to do it
+```
+
+- [ ] Feature branch merged to main (or PR created)
+- [ ] Main branch is up to date with all completed features
+- [ ] No orphaned feature branches with completed work
+
+**Why this matters:** Leaving completed features on unmerged branches causes:
+- Future sessions starting from outdated main
+- Duplicate work when features appear "missing"
+- Merge conflicts that grow worse over time
+- Lost work when branches are forgotten
 
 ---
 
@@ -386,6 +715,327 @@ Let me know if the error persists or if you see any new issues.
 4. **Never skip REGRESSION CHECK** - One fix shouldn't create two new bugs
 5. **Minimal fixes only** - Bug fixes are not the time to refactor
 6. **If stuck, ask** - Two iterations without progress = time to discuss
+
+---
+
+## 🌳 GIT BRANCHING STRATEGY & PREVENTING BRANCH DIVERGENCE
+
+**Critical Lesson Learned:** Branch divergence can cause complete loss of features when branches are merged incorrectly. This section ensures we never lose implemented features due to improper git workflows.
+
+### Understanding Branch Divergence
+
+**What happened:** Two branches diverged from a common ancestor. Branch A added AI features (832 lines, 8 functions), Branch B added batch cooking (271 lines, 2 functions). When Branch B was merged to main, Branch A's features were abandoned and lost.
+
+**Why it's dangerous:**
+- Features get implemented but never make it to production
+- Code that was tested and working disappears silently
+- TypeScript errors appear for "missing" functions that actually existed
+- No clear indication that features were lost until someone notices
+
+### Feature Branch Workflow
+
+**1. Before Creating a New Feature Branch:**
+
+```powershell
+# ALWAYS start from the latest main/master
+git checkout main
+git pull origin main
+
+# Verify you're up to date
+git log --oneline -5
+
+# Create your feature branch
+git checkout -b feature/your-feature-name
+```
+
+**2. While Working on a Feature Branch:**
+
+```powershell
+# Regularly sync with main to avoid divergence
+git fetch origin main
+git merge origin/main
+
+# Or use rebase if you prefer linear history (more advanced)
+git fetch origin main
+git rebase origin/main
+```
+
+**Sync frequency:** At minimum, sync with main before completing your feature and creating a PR.
+
+### Pre-Merge Verification Checklist
+
+**BEFORE merging any feature branch into main, ALWAYS complete this checklist:**
+
+#### Step 1: Inventory Current Features
+
+```powershell
+# List all exported functions in key files
+grep -rn "^export" lib/ app/api/ --include="*.ts" --include="*.tsx" > pre-merge-exports.txt
+
+# Check file sizes of critical files
+Get-ChildItem lib/*.ts, app/api/**/*.ts | Select-Object Name, Length | Out-File pre-merge-sizes.txt
+
+# List all API routes
+Get-ChildItem app/api -Recurse -Filter "route.ts" | Select-Object FullName | Out-File pre-merge-routes.txt
+```
+
+Save these files! You'll compare them after the merge.
+
+#### Step 2: Review Branch Differences
+
+```powershell
+# See what main has that your branch doesn't
+git fetch origin main
+git log HEAD..origin/main --oneline
+
+# See what your branch has that main doesn't
+git log origin/main..HEAD --oneline
+
+# See file-level differences
+git diff origin/main...HEAD --stat
+
+# CRITICAL: Review the actual diff for key files
+git diff origin/main...HEAD lib/claude.ts
+git diff origin/main...HEAD app/api/
+```
+
+**Red Flags:**
+- Main branch has added new functions you don't have
+- Your branch shows deletions of functions that exist in main
+- Large line count differences in core files
+- Different numbers of exported functions
+
+**CRITICAL: Check prisma/schema.prisma specifically:**
+```powershell
+git diff origin/main...HEAD prisma/schema.prisma
+```
+
+If schema.prisma differs, **STOP and sync with database first**:
+```powershell
+# Pull current schema from Supabase database
+npx prisma db pull
+
+# Compare what changed
+git diff prisma/schema.prisma
+
+# If fields were added to database but not in schema, commit the pull
+git add prisma/schema.prisma
+git commit -m "sync: Pull latest schema from Supabase database"
+```
+
+#### Step 3: Identify Conflicts BEFORE Merging
+
+```powershell
+# Dry-run the merge to see conflicts WITHOUT actually merging
+git merge --no-commit --no-ff origin/main
+
+# If conflicts appear, review them carefully
+git diff --name-only --diff-filter=U
+
+# Abort the dry-run merge
+git merge --abort
+```
+
+#### Step 4: Verify All Features Present
+
+Before merging, ensure your branch has ALL features from both branches:
+
+```powershell
+# Check if critical functions exist in your branch
+grep -n "export async function parseRecipeFromUrl" lib/claude.ts
+grep -n "export async function analyzeRecipeText" lib/claude.ts
+grep -n "export async function analyzeRecipePhoto" lib/claude.ts
+grep -n "export async function calculateNutrition" lib/claude.ts
+grep -n "export async function analyzeRecipeMacros" lib/claude.ts
+grep -n "export async function getNutritionistFeedbackForRecipe" lib/claude.ts
+
+# If ANY are missing, STOP and investigate before merging
+```
+
+### Safe Merge Practices
+
+#### Option 1: Merge Main Into Feature (Recommended)
+
+This keeps feature branch history and integrates main's changes:
+
+```powershell
+# On your feature branch
+git checkout feature/your-feature-name
+git fetch origin main
+git merge origin/main
+
+# Resolve any conflicts carefully
+# After resolving, verify all features present (Step 4 above)
+
+git add .
+git commit -m "merge: Integrate main into feature/your-feature-name"
+
+# Run full verification (TypeScript, tests, etc.)
+npx tsc --noEmit
+npm test
+
+# Push updated feature branch
+git push origin feature/your-feature-name
+```
+
+#### Option 2: Cherry-Pick Missing Features
+
+If you discover missing features after a merge:
+
+```powershell
+# Find the commit with the missing feature
+git log --all --grep="feature name" --oneline
+# Or search by file changes
+git log --all --oneline -- lib/claude.ts
+
+# Cherry-pick that specific commit
+git cherry-pick <commit-hash>
+
+# Resolve conflicts if any
+# Test thoroughly
+```
+
+#### Option 3: Extract and Restore (Last Resort)
+
+If features are already lost (like we just did):
+
+```powershell
+# Find the commit with complete features
+git log --all --oneline -- lib/claude.ts
+git show <commit-hash>:lib/claude.ts > /tmp/complete-file.ts
+
+# Extract missing functions and manually restore
+# This is time-consuming - prevention is better!
+```
+
+### Post-Merge Verification
+
+**IMMEDIATELY after merging, verify nothing was lost:**
+
+```powershell
+# Compare exports before and after
+grep -rn "^export" lib/ app/api/ --include="*.ts" --include="*.tsx" > post-merge-exports.txt
+diff pre-merge-exports.txt post-merge-exports.txt
+
+# Check file sizes
+Get-ChildItem lib/*.ts, app/api/**/*.ts | Select-Object Name, Length | Out-File post-merge-sizes.txt
+diff pre-merge-sizes.txt post-merge-sizes.txt
+
+# Verify all routes still exist
+Get-ChildItem app/api -Recurse -Filter "route.ts" | Select-Object FullName | Out-File post-merge-routes.txt
+diff pre-merge-routes.txt post-merge-routes.txt
+```
+
+**Red Flags After Merge:**
+- Fewer exports than before
+- Smaller file sizes in core files
+- Missing route files
+- TypeScript errors for "missing" functions
+
+**If ANY red flags:** Immediately investigate and restore missing features before continuing.
+
+### Continuous Integration Checks
+
+**Every commit should verify:**
+
+```powershell
+# 1. TypeScript compiles
+npx tsc --noEmit
+
+# 2. All tests pass
+npm test
+
+# 3. Lint passes
+npm run lint
+
+# 4. Build succeeds
+npm run build
+```
+
+If ANY of these fail after a merge, it's a strong indicator that features were lost or conflicts were resolved incorrectly.
+
+### When Multiple People Are Working
+
+**Scenario:** You and another developer both create feature branches from main.
+
+**Problem:** When the first branch merges, the second branch is now outdated and may cause divergence.
+
+**Solution:**
+
+```powershell
+# Developer 2: After Developer 1's branch is merged
+git checkout your-feature-branch
+git fetch origin main
+git merge origin/main  # Integrate Developer 1's changes
+
+# Resolve any conflicts
+# Test thoroughly
+# Push updated feature branch
+```
+
+**Rule of thumb:** Before creating a PR, ALWAYS sync with latest main first.
+
+### Emergency Recovery: What to Do If Features Are Lost
+
+If you discover features are missing after a merge:
+
+1. **Don't panic** - Git never truly deletes anything
+2. **Document what's missing** - Make a list
+3. **Find the commit** - Use `git log --all` to find where features existed
+4. **Choose recovery method:**
+   - Cherry-pick the commit with features
+   - Extract files from historical commit
+   - Merge the abandoned branch
+5. **Verify recovery** - Check all functions are restored
+6. **Test thoroughly** - TypeScript, tests, manual testing
+7. **Document the incident** - Update CLAUDE.md if needed
+
+### Key Takeaways
+
+1. ✅ **ALWAYS start feature branches from latest main**
+2. ✅ **ALWAYS sync with main before merging**
+3. ✅ **ALWAYS create pre-merge inventory of features**
+4. ✅ **ALWAYS verify all features present after merge**
+5. ✅ **ALWAYS sync schema.prisma from Supabase** before making schema changes (`npx prisma db pull`)
+6. ✅ **ALWAYS verify schema.prisma** in pre-merge checklist - schema divergence causes data loss
+7. ✅ **NEVER ignore TypeScript errors** - they often indicate lost code
+8. ✅ **NEVER delete a feature branch** until you've verified the features are in main
+9. ✅ **NEVER modify schema.prisma** without checking Supabase Table Editor first
+10. ❌ **NEVER assume a merge is safe** - always verify
+
+### Prisma Schema Divergence Prevention
+
+**The Problem:** Schema.prisma in your code can become out of sync with the actual Supabase database, leading to data loss when you run `db push`.
+
+**Prevention Workflow:**
+
+**Before ANY schema changes:**
+```powershell
+# 1. Pull current schema from Supabase
+npx prisma db pull
+
+# 2. Check what changed
+git diff prisma/schema.prisma
+
+# 3. If fields were added to database, commit the sync
+git add prisma/schema.prisma
+git commit -m "sync: Pull latest schema from Supabase"
+
+# 4. Now make your schema changes
+# Edit prisma/schema.prisma
+
+# 5. Verify in Supabase Table Editor what fields exist
+
+# 6. Push changes
+npx prisma db push
+```
+
+**Warning Signs:**
+- ⚠️ `db push` wants to DROP columns with data
+- ⚠️ Schema.prisma missing fields that exist in database
+- ⚠️ TypeScript errors about missing Prisma fields
+
+**If you see these warnings, STOP and run `npx prisma db pull` first!**
 
 ---
 
@@ -607,15 +1257,37 @@ cd apps/mobile; npx expo start -c
 
 ### Database Issues
 
+**FIRST: Check user's actual .env file** - Don't read `/home/user/family-meal-planner/.env` (Linux), ask user to show their Windows `.env` file contents.
+
+**Verify DATABASE_URL is correct:**
+```
+DATABASE_URL="postgresql://postgres:Emmie2018!!!A@db.pocptwknyxyrtmnfnrph.supabase.co:5432/postgres?schema=public"
+```
+
+Should be:
+- ✅ `db.pocptwknyxyrtmnfnrph.supabase.co` (Supabase)
+- ❌ NOT `localhost` (local database doesn't exist)
+
+**If connection still fails after .env is correct:**
+```powershell
+# Regenerate Prisma client to pick up new DATABASE_URL
+npx prisma generate
+
+# Stop server, clear caches, restart
+Remove-Item -Recurse -Force .next, node_modules/.cache -ErrorAction SilentlyContinue
+npm run dev
+```
+
+**Other database commands:**
 ```powershell
 # Check Supabase status
 npx supabase status
 
-# Reset local database
-npx supabase db reset
-
 # Check migration status
 npx supabase migration list
+
+# Pull current schema from database (before making schema changes)
+npx prisma db pull
 ```
 
 ### Type Errors After Changes
@@ -645,30 +1317,44 @@ git push origin <branch-name>
 
 ### Stale Code / Changes Not Appearing
 
-Turbopack caching can cause old code to persist even after changes. **If changes aren't appearing, clear caches before debugging further:**
+**FIRST: Check if user is on Next.js 16** - This version has severe Turbopack caching issues that simple cache clears won't fix. See "CRITICAL: NEXT.JS VERSION AND CACHING" section above.
 
+If on Next.js 15, caching can still cause old code to persist. **If changes aren't appearing, try these steps in order:**
+
+**Step 1: Simple cache clear**
 ```powershell
-# Nuclear option - clear ALL caches (single line, paste-friendly)
-Remove-Item -Recurse -Force node_modules/.cache, .next/cache, apps/web/.next, apps/mobile/.expo, $env:TEMP/turbopack-* -ErrorAction SilentlyContinue
-
-# Restart Metro bundler with cache clear
-cd apps/mobile; npx expo start -c
-
-# Restart Next.js/web with cache clear  
-cd apps/web; Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue; npm run dev
+Remove-Item -Recurse -Force .next, node_modules/.cache -ErrorAction SilentlyContinue
+npm run dev
 ```
+
+**Step 2: If Step 1 didn't work - Nuclear reinstall**
+```powershell
+Remove-Item package-lock.json -Force -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force node_modules -ErrorAction SilentlyContinue
+npm cache clean --force
+npm install --legacy-peer-deps
+npx prisma generate
+Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue
+npm run dev
+```
+
+**Step 3: If Step 2 didn't work - Check for Next.js 16**
+The user may have accidentally upgraded to Next.js 16. Downgrade immediately (see section above).
 
 **Signs of cache issues:**
 - Code changes not reflected in running app
 - Old console.log statements still appearing
 - TypeScript shows no errors but runtime behaviour is wrong
 - "I just changed that" but old behaviour persists
+- Database connection errors persist after fixing .env
+- API endpoints returning 500 errors with "Unexpected token '<'"
 
 **When to suspect caching:**
 - After switching git branches
 - After pulling significant changes
 - After changing config files (tsconfig, babel, etc.)
 - When behaviour doesn't match the code you're reading
+- After changing database configuration or Prisma schema
 
 ---
 

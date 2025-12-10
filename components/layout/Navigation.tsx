@@ -15,6 +15,7 @@ const navItems = [
   { href: '/recipes', label: 'Recipes', icon: '📖' },
   { href: '/meal-plans', label: 'Meal Plans', icon: '📅' },
   { href: '/shopping-lists', label: 'Shopping', icon: '🛒' },
+  { href: '/staples', label: 'Staples', icon: '📋' },
   { href: '/inventory', label: 'Inventory', icon: '📦' },
   { href: '/profiles', label: 'Profiles', icon: '👥' },
 ]

@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "next-devtools": {
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "next-devtools-mcp@latest"],
+      "description": "Next.js development tools - monitors build errors, runtime errors, and TypeScript issues in real-time"
+    },
+    "supabase": {
+      "type": "http",
+      "url": "https://mcp.supabase.com/mcp?project_ref=pocptwknyxyrtmnfnrph",
+      "description": "Supabase database access - query PostgreSQL database, inspect schema, verify data before UI testing"
+    },
+    "playwright": {
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@playwright/mcp@latest"],
+      "description": "Playwright browser automation - take screenshots, verify UI changes, test forms and navigation"
+    }
+  }
+}

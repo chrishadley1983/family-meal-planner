@@ -23,7 +23,7 @@ model User {
   shoppingLists          ShoppingList[]
   shoppingListCategories ShoppingListCategory[]
   inventory              InventoryItem[]
-  staples                WeeklyStaple[]
+  staples                Staple[]
   settings               AppSettings?
   mealPlanSettings       MealPlanSettings?
   recipeHistory          RecipeUsageHistory[]
@@ -226,21 +226,51 @@ model MealParticipant {
   @@map("meal_participants")
 }
 
-model WeeklyStaple {
-  id            String   @id @default(uuid())
+// Staple frequency enum
+enum StapleFrequency {
+  weekly
+  every_2_weeks
+  every_4_weeks
+  every_3_months
+}
+
+model Staple {
+  id            String          @id @default(uuid())
   userId        String
   itemName      String
   quantity      Float
   unit          String
   category      String?
-  autoAddToList Boolean  @default(true)
+  frequency     StapleFrequency @default(weekly)
+  isActive      Boolean         @default(true)
+  lastAddedDate DateTime?
   notes         String?
-  createdAt     DateTime @default(now())
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stapleImports StapleImport[]
 
   @@index([userId])
-  @@map("weekly_staples")
+  @@index([userId, isActive])
+  @@map("staples")
+}
+
+model StapleImport {
+  id             String    @id @default(uuid())
+  stapleId       String
+  shoppingListId String
+  importedAt     DateTime  @default(now())
+  wasForceAdd    Boolean   @default(false)
+  finalizedAt    DateTime?
+
+  staple       Staple       @relation(fields: [stapleId], references: [id], onDelete: Cascade)
+  shoppingList ShoppingList @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+
+  @@index([stapleId])
+  @@index([shoppingListId])
+  @@index([shoppingListId, finalizedAt])
+  @@map("staple_imports")
 }
 
 model InventoryItem {
@@ -279,9 +309,11 @@ model ShoppingList {
   finalizedAt   DateTime?
   archivedAt    DateTime?
 
-  user      User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items     ShoppingListItem[]
-  mealPlans ShoppingListMealPlan[]
+  user          User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items         ShoppingListItem[]
+  mealPlans     ShoppingListMealPlan[]
+  stapleImports StapleImport[]
+  shareLinks    ShoppingListShareLink[]
 
   @@index([userId])
   @@index([status])
@@ -345,6 +377,21 @@ model ShoppingListItem {
   @@index([shoppingListId])
   @@index([category])
   @@map("shopping_list_items")
+}
+
+model ShoppingListShareLink {
+  id             String   @id @default(uuid())
+  shoppingListId String
+  shareToken     String   @unique
+  expiresAt      DateTime
+  createdAt      DateTime @default(now())
+
+  shoppingList ShoppingList @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+
+  @@index([shareToken])
+  @@index([shoppingListId])
+  @@index([expiresAt])
+  @@map("shopping_list_share_links")
 }
 
 model AppSettings {

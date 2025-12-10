@@ -12,6 +12,62 @@ const updateShoppingListSchema = z.object({
   categoryOrder: z.array(z.string()).optional(),
 })
 
+/**
+ * Update lastAddedDate for all staples imported to a shopping list
+ * This is called when a shopping list is finalized
+ */
+async function updateStaplesLastAddedDate(shoppingListId: string, userId: string): Promise<void> {
+  try {
+    // Get all items from this shopping list that came from staples
+    const stapleItems = await prisma.shoppingListItem.findMany({
+      where: {
+        shoppingListId,
+        source: 'staple',
+      },
+      select: {
+        sourceDetails: true,
+      },
+    })
+
+    if (stapleItems.length === 0) {
+      console.log('📋 No staple items to update lastAddedDate')
+      return
+    }
+
+    // Extract unique staple IDs from sourceDetails
+    const stapleIds = new Set<string>()
+    for (const item of stapleItems) {
+      const details = item.sourceDetails as Array<{ type: string; id?: string }>
+      for (const detail of details) {
+        if (detail.type === 'staple' && detail.id) {
+          stapleIds.add(detail.id)
+        }
+      }
+    }
+
+    if (stapleIds.size === 0) {
+      console.log('📋 No staple IDs found in sourceDetails')
+      return
+    }
+
+    // Update lastAddedDate for all these staples (verify ownership)
+    const result = await prisma.staple.updateMany({
+      where: {
+        id: { in: Array.from(stapleIds) },
+        userId, // Ensure user owns these staples
+      },
+      data: {
+        lastAddedDate: new Date(),
+      },
+    })
+
+    console.log(`🟢 Updated lastAddedDate for ${result.count} staples on list finalization`)
+  } catch (error) {
+    // Log but don't fail the finalization if staple update fails
+    console.error('⚠️ Error updating staples lastAddedDate:', error)
+  }
+}
+
 // GET - Get a single shopping list with all details
 export async function GET(
   req: NextRequest,
@@ -132,6 +188,9 @@ export async function PATCH(
 
       if (data.status === 'Finalized') {
         updateData.finalizedAt = new Date()
+
+        // Update lastAddedDate for all staples imported to this list
+        await updateStaplesLastAddedDate(id, session.user.id)
       } else if (data.status === 'Archived') {
         updateData.archivedAt = new Date()
       } else if (data.status === 'Draft') {

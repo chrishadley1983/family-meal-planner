@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { convertToMetric } from '@/lib/unit-conversion'
+import type { Staple, StapleWithDueStatus, StapleDueStatus } from '@/lib/types/staples'
+import { enrichStapleWithDueStatus } from '@/lib/staples/calculations'
 
 const importStaplesSchema = z.object({
   stapleIds: z.array(z.string()).min(1, 'At least one staple must be selected'),
@@ -58,7 +60,7 @@ export async function POST(
     console.log(`🔷 Importing ${data.stapleIds.length} staples to shopping list ${shoppingListId}`)
 
     // Fetch the selected staples
-    const staples = await prisma.weeklyStaple.findMany({
+    const staples = await prisma.staple.findMany({
       where: {
         id: { in: data.stapleIds },
         userId: session.user.id, // Ensure user owns these staples
@@ -86,7 +88,7 @@ export async function POST(
     let currentOrder = (maxOrder?.displayOrder ?? -1) + 1
 
     // Convert staples to shopping list items
-    const itemsToCreate = staples.map((staple) => {
+    const itemsToCreate = staples.map((staple: Staple) => {
       // Convert to metric
       const converted = convertToMetric(staple.quantity, staple.unit)
 
@@ -169,9 +171,12 @@ export async function GET(
       )
     }
 
-    // Get all user staples
-    const staples = await prisma.weeklyStaple.findMany({
-      where: { userId: session.user.id },
+    // Get all active user staples (include inactive only if specifically requested)
+    const staples = await prisma.staple.findMany({
+      where: {
+        userId: session.user.id,
+        isActive: true, // Only show active staples for import
+      },
       orderBy: [
         { category: 'asc' },
         { itemName: 'asc' },
@@ -200,16 +205,48 @@ export async function GET(
       }
     }
 
-    // Mark which staples are already imported
-    const staplesWithStatus = staples.map((staple) => ({
-      ...staple,
-      alreadyImported: importedStapleIds.has(staple.id),
-    }))
+    // Enrich staples with due status and mark which are already imported
+    const staplesWithStatus = staples.map((staple: Staple) => {
+      const enriched = enrichStapleWithDueStatus(staple)
+      return {
+        ...enriched,
+        alreadyImported: importedStapleIds.has(staple.id),
+      }
+    })
+
+    // Sort by due status priority: overdue > dueToday > dueSoon > upcoming > notDue
+    const statusPriority: Record<StapleDueStatus, number> = {
+      overdue: 0,
+      dueToday: 1,
+      dueSoon: 2,
+      upcoming: 3,
+      notDue: 4,
+    }
+
+    type EnrichedStaple = StapleWithDueStatus & { alreadyImported: boolean }
+
+    staplesWithStatus.sort((a: EnrichedStaple, b: EnrichedStaple) => {
+      // First sort by due status
+      const statusDiff = statusPriority[a.dueStatus] - statusPriority[b.dueStatus]
+      if (statusDiff !== 0) return statusDiff
+      // Then by category
+      const catA = a.category || 'zzz'
+      const catB = b.category || 'zzz'
+      if (catA !== catB) return catA.localeCompare(catB)
+      // Then by name
+      return a.itemName.localeCompare(b.itemName)
+    })
+
+    // Count due items for summary
+    const dueCount = staplesWithStatus.filter(
+      (s: EnrichedStaple) => !s.alreadyImported && (s.dueStatus === 'overdue' || s.dueStatus === 'dueToday' || s.dueStatus === 'dueSoon')
+    ).length
 
     return NextResponse.json({
       staples: staplesWithStatus,
       totalCount: staples.length,
       alreadyImportedCount: importedStapleIds.size,
+      dueCount,
     })
   } catch (error) {
     console.error('❌ Error fetching staples for import:', error)
