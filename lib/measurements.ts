@@ -133,10 +133,10 @@ export function roundQuantity(quantity: number, unit: string): number {
   const category = getUnitCategory(unit)
   const normalizedUnit = normalizeUnit(unit).toLowerCase()
 
-  // Count-based units: no rounding
+  // Count-based units: round to whole numbers, minimum 1 if > 0
   if (category === 'count') {
-    // Round to whole numbers for count units
-    return Math.round(quantity)
+    const rounded = Math.round(quantity)
+    return quantity > 0 && rounded === 0 ? 1 : rounded
   }
 
   // Spoon measures: round to nearest 0.25
@@ -146,8 +146,9 @@ export function roundQuantity(quantity: number, unit: string): number {
 
   // Volume units
   if (normalizedUnit === 'ml') {
-    // Round to nearest 5ml
-    return Math.round(quantity / 5) * 5
+    // Round to nearest 5ml, but ensure minimum of 5ml if quantity > 0
+    const rounded = Math.round(quantity / 5) * 5
+    return quantity > 0 && rounded === 0 ? 5 : rounded
   }
 
   if (normalizedUnit === 'l') {
@@ -166,8 +167,9 @@ export function roundQuantity(quantity: number, unit: string): number {
       // Large amounts: round to nearest 10g
       return Math.round(quantity / 10) * 10
     } else {
-      // Small amounts: round to nearest 1g
-      return Math.round(quantity)
+      // Small amounts: round to nearest 1g, minimum 1g if > 0
+      const rounded = Math.round(quantity)
+      return quantity > 0 && rounded === 0 ? 1 : rounded
     }
   }
 

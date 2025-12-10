@@ -4,6 +4,7 @@ import { useEffect, useState, use } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
+import ExportShareModal from '@/components/shopping-list/ExportShareModal'
 
 interface SourceDetail {
   type: 'recipe' | 'staple' | 'manual'
@@ -91,6 +92,8 @@ interface DuplicateGroup {
     quantity: number
     unit: string
   }
+  confidence?: 'HIGH' | 'MEDIUM' | 'LOW'
+  reason?: string
 }
 
 export default function ShoppingListDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -129,6 +132,9 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
   const [showDedupeModal, setShowDedupeModal] = useState(false)
   const [duplicateGroups, setDuplicateGroups] = useState<DuplicateGroup[]>([])
   const [deduping, setDeduping] = useState(false)
+
+  // Export & Share
+  const [showExportModal, setShowExportModal] = useState(false)
 
   // Edit item modal
   const [showEditModal, setShowEditModal] = useState(false)
@@ -549,11 +555,13 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
   // Deduplication
   const handleOpenDedupeModal = async () => {
     try {
-      console.log('🔷 Finding duplicates')
-      const response = await fetch(`/api/shopping-lists/${id}/deduplicate`)
+      console.log('🔷 Finding duplicates with AI semantic matching')
+      // Use AI matching for comprehensive duplicate detection
+      const response = await fetch(`/api/shopping-lists/${id}/deduplicate?useAI=true`)
       if (!response.ok) throw new Error('Failed to find duplicates')
 
       const data = await response.json()
+      console.log('🟢 Duplicate summary:', data.summary)
       setDuplicateGroups(data.duplicateGroups || [])
       setShowDedupeModal(true)
     } catch (error) {
@@ -807,55 +815,69 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
             </div>
 
             {/* Status Actions */}
-            {shoppingList.status === 'Draft' && (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleUpdateStatus('Finalized')}
-                  disabled={saving}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
-                >
-                  Finalize
-                </button>
-                <button
-                  onClick={() => handleUpdateStatus('Archived')}
-                  disabled={saving}
-                  className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
-                >
-                  Archive
-                </button>
-              </div>
-            )}
-            {shoppingList.status === 'Finalized' && (
-              <div className="flex gap-2">
-                {purchasedItems > 0 && (
-                  <>
-                    <button
-                      onClick={handleUndoLastPurchased}
-                      disabled={saving}
-                      className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50"
-                      title="Undo the most recently purchased item"
-                    >
-                      Undo Last
-                    </button>
-                    <button
-                      onClick={handleUndoAllPurchased}
-                      disabled={saving}
-                      className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50"
-                      title="Undo all purchased items"
-                    >
-                      Undo All ({purchasedItems})
-                    </button>
-                  </>
-                )}
-                <button
-                  onClick={() => handleUpdateStatus('Archived')}
-                  disabled={saving}
-                  className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
-                >
-                  Archive
-                </button>
-              </div>
-            )}
+            <div className="flex gap-2">
+              {/* Export & Share - always visible */}
+              <button
+                onClick={() => setShowExportModal(true)}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm flex items-center gap-2"
+                title="Export & Share"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+                Export & Share
+              </button>
+
+              {shoppingList.status === 'Draft' && (
+                <>
+                  <button
+                    onClick={() => handleUpdateStatus('Finalized')}
+                    disabled={saving}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                  >
+                    Finalize
+                  </button>
+                  <button
+                    onClick={() => handleUpdateStatus('Archived')}
+                    disabled={saving}
+                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
+                  >
+                    Archive
+                  </button>
+                </>
+              )}
+              {shoppingList.status === 'Finalized' && (
+                <>
+                  {purchasedItems > 0 && (
+                    <>
+                      <button
+                        onClick={handleUndoLastPurchased}
+                        disabled={saving}
+                        className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50"
+                        title="Undo the most recently purchased item"
+                      >
+                        Undo Last
+                      </button>
+                      <button
+                        onClick={handleUndoAllPurchased}
+                        disabled={saving}
+                        className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50"
+                        title="Undo all purchased items"
+                      >
+                        Undo All ({purchasedItems})
+                      </button>
+                    </>
+                  )}
+                  <button
+                    onClick={() => handleUpdateStatus('Archived')}
+                    disabled={saving}
+                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
+                  >
+                    Archive
+                  </button>
+                </>
+              )}
+            </div>
           </div>
 
           {/* Notes */}
@@ -1445,9 +1467,23 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
               ) : (
                 <div className="space-y-4">
                   {duplicateGroups.map((group) => (
-                    <div key={group.normalizedName} className="bg-gray-750 rounded-lg p-4">
+                    <div key={group.normalizedName} className={`bg-gray-750 rounded-lg p-4 ${
+                      group.confidence === 'MEDIUM' ? 'border border-yellow-600/50' : ''
+                    }`}>
                       <div className="flex justify-between items-start mb-2">
-                        <h4 className="text-white font-medium capitalize">{group.normalizedName}</h4>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-white font-medium capitalize">{group.normalizedName}</h4>
+                          {/* Confidence badge */}
+                          {group.confidence && (
+                            <span className={`text-xs px-1.5 py-0.5 rounded ${
+                              group.confidence === 'HIGH'
+                                ? 'bg-green-900/50 text-green-400'
+                                : 'bg-yellow-900/50 text-yellow-400'
+                            }`}>
+                              {group.confidence}
+                            </span>
+                          )}
+                        </div>
                         <button
                           onClick={() => handleDeduplicate(group.items.map((i) => i.id), true)}
                           disabled={deduping}
@@ -1460,6 +1496,15 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
                           {deduping ? 'Combining...' : (group.canCombine ? 'Combine' : 'AI Combine')}
                         </button>
                       </div>
+                      {/* Show reason for MEDIUM confidence items */}
+                      {group.confidence === 'MEDIUM' && group.reason && (
+                        <p className="text-xs text-yellow-400/80 mb-2 flex items-center gap-1">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                          {group.reason}
+                        </p>
+                      )}
                       <ul className="text-sm text-gray-400 space-y-1">
                         {group.items.map((item) => (
                           <li key={item.id}>
@@ -1579,6 +1624,14 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
           </div>
         </div>
       )}
+
+      {/* Export & Share Modal */}
+      <ExportShareModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        shoppingList={shoppingList}
+        itemsByCategory={itemsByCategory}
+      />
     </div>
   )
 }

@@ -309,10 +309,11 @@ model ShoppingList {
   finalizedAt   DateTime?
   archivedAt    DateTime?
 
-  user          User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
   items         ShoppingListItem[]
   mealPlans     ShoppingListMealPlan[]
   stapleImports StapleImport[]
+  shareLinks    ShoppingListShareLink[]
 
   @@index([userId])
   @@index([status])
@@ -376,6 +377,21 @@ model ShoppingListItem {
   @@index([shoppingListId])
   @@index([category])
   @@map("shopping_list_items")
+}
+
+model ShoppingListShareLink {
+  id             String   @id @default(uuid())
+  shoppingListId String
+  shareToken     String   @unique
+  expiresAt      DateTime
+  createdAt      DateTime @default(now())
+
+  shoppingList ShoppingList @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+
+  @@index([shareToken])
+  @@index([shoppingListId])
+  @@index([expiresAt])
+  @@map("shopping_list_share_links")
 }
 
 model AppSettings {
