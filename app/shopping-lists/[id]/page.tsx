@@ -120,6 +120,12 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
   const [showDedupeModal, setShowDedupeModal] = useState(false)
   const [duplicateGroups, setDuplicateGroups] = useState<DuplicateGroup[]>([])
   const [deduping, setDeduping] = useState(false)
+  const [lastCombineResult, setLastCombineResult] = useState<{
+    message: string
+    itemName: string
+    quantity: number
+    unit: string
+  } | null>(null)
 
   useEffect(() => {
     fetchShoppingList()
@@ -425,6 +431,7 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
     if (deduping) return
 
     setDeduping(true)
+    setLastCombineResult(null) // Clear previous result
     try {
       console.log('🔷 Deduplicating items:', itemIds, 'useAI:', useAI)
       const response = await fetch(`/api/shopping-lists/${id}/deduplicate`, {
@@ -438,7 +445,19 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
         throw new Error(errorData.error || 'Failed to deduplicate')
       }
 
-      console.log('🟢 Items deduplicated')
+      const result = await response.json()
+      console.log('🟢 Items deduplicated:', result)
+
+      // Store the result for display
+      if (result.combinedItem) {
+        setLastCombineResult({
+          message: result.message,
+          itemName: result.combinedItem.itemName,
+          quantity: result.combinedItem.quantity,
+          unit: result.combinedItem.unit,
+        })
+      }
+
       // Refresh duplicates list
       const refreshResponse = await fetch(`/api/shopping-lists/${id}/deduplicate`)
       if (refreshResponse.ok) {
@@ -952,9 +971,37 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
               <h2 className="text-xl font-semibold text-white">Find Duplicates</h2>
               <p className="text-sm text-gray-400 mt-1">Combine similar items into one</p>
             </div>
+
+            {/* Success notification */}
+            {lastCombineResult && (
+              <div className="mx-4 mt-4 p-4 bg-green-900/30 border border-green-600 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <div>
+                    <p className="text-green-400 font-medium">{lastCombineResult.message}</p>
+                    <p className="text-green-300 text-sm mt-1">
+                      Combined into: <span className="font-semibold">{lastCombineResult.quantity} {lastCombineResult.unit} {lastCombineResult.itemName}</span>
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setLastCombineResult(null)}
+                    className="text-green-400 hover:text-green-300 ml-auto"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="p-4 flex-1 overflow-y-auto">
               {duplicateGroups.length === 0 ? (
-                <p className="text-gray-400 text-center py-4">No duplicates found!</p>
+                <p className="text-gray-400 text-center py-4">
+                  {lastCombineResult ? 'All duplicates have been combined!' : 'No duplicates found!'}
+                </p>
               ) : (
                 <div className="space-y-4">
                   {duplicateGroups.map((group) => (
@@ -991,7 +1038,10 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
             </div>
             <div className="px-6 py-4 bg-gray-750 flex justify-end">
               <button
-                onClick={() => setShowDedupeModal(false)}
+                onClick={() => {
+                  setShowDedupeModal(false)
+                  setLastCombineResult(null)
+                }}
                 className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
               >
                 Close
