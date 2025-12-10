@@ -9,51 +9,52 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(uuid())
-  email         String    @unique
-  passwordHash  String
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  lastLogin     DateTime?
-  preferences   Json      @default("{}")
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  lastLogin    DateTime?
+  preferences  Json      @default("{}")
 
-  profiles          FamilyProfile[]
-  recipes           Recipe[]
-  mealPlans         MealPlan[]
-  shoppingLists     ShoppingList[]
-  inventory         InventoryItem[]
-  staples           WeeklyStaple[]
-  settings          AppSettings?
-  mealPlanSettings  MealPlanSettings?
-  recipeHistory     RecipeUsageHistory[]
+  profiles               FamilyProfile[]
+  recipes                Recipe[]
+  mealPlans              MealPlan[]
+  shoppingLists          ShoppingList[]
+  shoppingListCategories ShoppingListCategory[]
+  inventory              InventoryItem[]
+  staples                WeeklyStaple[]
+  settings               AppSettings?
+  mealPlanSettings       MealPlanSettings?
+  recipeHistory          RecipeUsageHistory[]
 
   @@map("users")
 }
 
 model FamilyProfile {
-  id                    String   @id @default(uuid())
-  userId                String
-  profileName           String
-  age                   Int?
-  avatarUrl             String?
-  foodLikes             String[]
-  foodDislikes          String[]
-  allergies             Json     @default("[]")
-  mealAvailability      Json     @default("{}")
-  activityLevel         String?
-  dailyCalorieTarget    Int?
-  dailyProteinTarget    Float?
-  dailyCarbsTarget      Float?
-  dailyFatTarget        Float?
-  dailyFiberTarget      Float?
-  macroTrackingEnabled  Boolean  @default(false)
-  isMainUser            Boolean  @default(false)
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                   String   @id @default(uuid())
+  userId               String
+  profileName          String
+  age                  Int?
+  avatarUrl            String?
+  foodLikes            String[]
+  foodDislikes         String[]
+  allergies            Json     @default("[]")
+  mealAvailability     Json     @default("{}")
+  activityLevel        String?
+  dailyCalorieTarget   Int?
+  dailyProteinTarget   Float?
+  dailyCarbsTarget     Float?
+  dailyFatTarget       Float?
+  dailyFiberTarget     Float?
+  macroTrackingEnabled Boolean  @default(false)
+  isMainUser           Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
-  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  mealParticipations    MealParticipant[]
-  recipeCompatibility   RecipeProfileCompatibility[]
+  user                User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mealParticipations  MealParticipant[]
+  recipeCompatibility RecipeProfileCompatibility[]
 
   @@unique([userId, profileName])
   @@index([userId])
@@ -61,12 +62,12 @@ model FamilyProfile {
 }
 
 model Recipe {
-  id                      String   @id @default(uuid())
+  id                      String    @id @default(uuid())
   userId                  String
   recipeName              String
   description             String?
   imageUrl                String?
-  servings                Int      @default(4)
+  servings                Int       @default(4)
   prepTimeMinutes         Int?
   cookTimeMinutes         Int?
   totalTimeMinutes        Int?
@@ -75,25 +76,25 @@ model Recipe {
   difficultyLevel         String?
   recipeSource            String?
   sourceUrl               String?
-  timesUsed               Int      @default(0)
-  timesManuallySelected   Int      @default(0)
+  timesUsed               Int       @default(0)
+  timesManuallySelected   Int       @default(0)
   lastUsedDate            DateTime?
   familyRating            Float?
   ratingDate              DateTime?
   notes                   String?
   tags                    String[]
-  isVegetarian            Boolean  @default(false)
-  isVegan                 Boolean  @default(false)
-  containsMeat            Boolean  @default(false)
-  containsSeafood         Boolean  @default(false)
-  isDairyFree             Boolean  @default(false)
-  isGlutenFree            Boolean  @default(false)
-  containsNuts            Boolean  @default(false)
-  isQuickMeal             Boolean  @default(false)
-  yieldsMultipleMeals     Boolean  @default(false)
+  isVegetarian            Boolean   @default(false)
+  isVegan                 Boolean   @default(false)
+  containsMeat            Boolean   @default(false)
+  containsSeafood         Boolean   @default(false)
+  isDairyFree             Boolean   @default(false)
+  isGlutenFree            Boolean   @default(false)
+  containsNuts            Boolean   @default(false)
+  isQuickMeal             Boolean   @default(false)
+  yieldsMultipleMeals     Boolean   @default(false)
   mealsYielded            Int?
   leftoverInstructions    String?
-  freezable               Boolean  @default(false)
+  freezable               Boolean   @default(false)
   reheatingInstructions   String?
   caloriesPerServing      Int?
   proteinPerServing       Float?
@@ -102,18 +103,18 @@ model Recipe {
   fiberPerServing         Float?
   sugarPerServing         Float?
   sodiumPerServing        Int?
-  nutritionAutoCalculated Boolean  @default(false)
-  isFavorite              Boolean  @default(false)
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
-  isArchived              Boolean  @default(false)
+  nutritionAutoCalculated Boolean   @default(false)
+  isFavorite              Boolean   @default(false)
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  isArchived              Boolean   @default(false)
 
-  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  ingredients             RecipeIngredient[]
-  instructions            RecipeInstruction[]
-  profileCompatibility    RecipeProfileCompatibility[]
-  meals                   Meal[]
-  usageHistory            RecipeUsageHistory[]
+  user                 User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ingredients          RecipeIngredient[]
+  instructions         RecipeInstruction[]
+  profileCompatibility RecipeProfileCompatibility[]
+  meals                Meal[]
+  usageHistory         RecipeUsageHistory[]
 
   @@index([userId])
   @@index([familyRating])
@@ -131,54 +132,54 @@ model RecipeIngredient {
   notes          String?
   sortOrder      Int     @default(0)
 
-  recipe         Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
 
   @@index([recipeId])
   @@map("recipe_ingredients")
 }
 
 model RecipeInstruction {
-  id           String  @id @default(uuid())
+  id           String @id @default(uuid())
   recipeId     String
   stepNumber   Int
   instruction  String
   timerMinutes Int?
-  sortOrder    Int     @default(0)
+  sortOrder    Int    @default(0)
 
-  recipe       Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
 
   @@index([recipeId])
   @@map("recipe_instructions")
 }
 
 model RecipeProfileCompatibility {
-  recipeId               String
-  profileId              String
-  isCompatible           Boolean  @default(true)
+  recipeId                String
+  profileId               String
+  isCompatible            Boolean  @default(true)
   incompatibleIngredients String[]
 
-  recipe                 Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
-  profile                FamilyProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  recipe  Recipe        @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  profile FamilyProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   @@id([recipeId, profileId])
   @@map("recipe_profile_compatibility")
 }
 
 model MealPlan {
-  id                       String   @id @default(uuid())
+  id                       String    @id @default(uuid())
   userId                   String
   weekStartDate            DateTime
   weekEndDate              DateTime
-  status                   String   @default("Draft")
+  status                   String    @default("Draft")
   customSchedule           Json?
-  createdAt                DateTime @default(now())
+  createdAt                DateTime  @default(now())
   finalizedAt              DateTime?
-  weeklyNutritionalSummary Json     @default("{}")
+  weeklyNutritionalSummary Json      @default("{}")
 
-  user                     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  meals                    Meal[]
-  shoppingLists            ShoppingList[]
-  recipeHistory            RecipeUsageHistory[]
+  user          User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  meals         Meal[]
+  shoppingLists ShoppingListMealPlan[]
+  recipeHistory RecipeUsageHistory[]
 
   @@index([userId])
   @@index([weekStartDate, weekEndDate])
@@ -202,11 +203,11 @@ model Meal {
   nutritionalSummary  Json     @default("{}")
   createdAt           DateTime @default(now())
 
-  mealPlan            MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
-  recipe              Recipe?  @relation(fields: [recipeId], references: [id], onDelete: SetNull)
-  leftoverFromMeal    Meal?    @relation("LeftoverMeals", fields: [leftoverFromMealId], references: [id], onDelete: SetNull)
-  leftoverMeals       Meal[]   @relation("LeftoverMeals")
-  participants        MealParticipant[]
+  mealPlan         MealPlan          @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  recipe           Recipe?           @relation(fields: [recipeId], references: [id], onDelete: SetNull)
+  leftoverFromMeal Meal?             @relation("LeftoverMeals", fields: [leftoverFromMealId], references: [id], onDelete: SetNull)
+  leftoverMeals    Meal[]            @relation("LeftoverMeals")
+  participants     MealParticipant[]
 
   @@index([mealPlanId])
   @@index([recipeId])
@@ -216,49 +217,49 @@ model Meal {
 model MealParticipant {
   mealId      String
   profileId   String
-  portionSize Float   @default(1.0)
+  portionSize Float  @default(1.0)
 
-  meal        Meal    @relation(fields: [mealId], references: [id], onDelete: Cascade)
-  profile     FamilyProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  meal    Meal          @relation(fields: [mealId], references: [id], onDelete: Cascade)
+  profile FamilyProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   @@id([mealId, profileId])
   @@map("meal_participants")
 }
 
 model WeeklyStaple {
-  id            String  @id @default(uuid())
+  id            String   @id @default(uuid())
   userId        String
   itemName      String
   quantity      Float
   unit          String
   category      String?
-  autoAddToList Boolean @default(true)
+  autoAddToList Boolean  @default(true)
   notes         String?
   createdAt     DateTime @default(now())
 
-  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("weekly_staples")
 }
 
 model InventoryItem {
-  id                   String   @id @default(uuid())
-  userId               String
-  itemName             String
-  quantity             Float
-  unit                 String
-  category             String
-  location             String
-  expiryDate           DateTime?
-  autoPopulatedExpiry  Boolean  @default(false)
-  dateAdded            DateTime @default(now())
-  addedBy              String   @default("Manual")
-  notes                String?
-  isUsedInPlannedMeal  Boolean  @default(false)
-  updatedAt            DateTime @updatedAt
+  id                  String    @id @default(uuid())
+  userId              String
+  itemName            String
+  quantity            Float
+  unit                String
+  category            String
+  location            String
+  expiryDate          DateTime?
+  autoPopulatedExpiry Boolean   @default(false)
+  dateAdded           DateTime  @default(now())
+  addedBy             String    @default("Manual")
+  notes               String?
+  isUsedInPlannedMeal Boolean   @default(false)
+  updatedAt           DateTime  @updatedAt
 
-  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiryDate])
@@ -266,118 +267,155 @@ model InventoryItem {
 }
 
 model ShoppingList {
-  id            String   @id @default(uuid())
+  id            String    @id @default(uuid())
   userId        String
-  mealPlanId    String?
-  weekStartDate DateTime
-  status        String   @default("Generated")
+  name          String    @default("Shopping List")
+  notes         String?
+  weekStartDate DateTime?
+  status        String    @default("Draft") // Draft, Finalized, Archived
   categoryOrder String[]
-  generatedAt   DateTime @default(now())
-  completedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  finalizedAt   DateTime?
+  archivedAt    DateTime?
 
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  mealPlan      MealPlan? @relation(fields: [mealPlanId], references: [id], onDelete: SetNull)
-  items         ShoppingListItem[]
+  user      User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     ShoppingListItem[]
+  mealPlans ShoppingListMealPlan[]
 
   @@index([userId])
-  @@index([mealPlanId])
+  @@index([status])
   @@map("shopping_lists")
 }
 
-model ShoppingListItem {
-  id                 String   @id @default(uuid())
-  shoppingListId     String
-  itemName           String
-  quantity           Float
-  unit               String
-  category           String?
-  source             String?
-  sourceDetails      Json     @default("[]")
-  isConsolidated     Boolean  @default(false)
-  inInventory        Boolean  @default(false)
-  inventoryQuantity  Float?
-  netQuantityNeeded  Float?
-  isPurchased        Boolean  @default(false)
-  customNote         String?
-  priority           String   @default("Medium")
-  createdAt          DateTime @default(now())
+model ShoppingListMealPlan {
+  id             String   @id @default(uuid())
+  shoppingListId String
+  mealPlanId     String
+  importedAt     DateTime @default(now())
 
-  shoppingList       ShoppingList @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+  shoppingList ShoppingList @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+  mealPlan     MealPlan     @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+
+  @@unique([shoppingListId, mealPlanId])
+  @@index([shoppingListId])
+  @@index([mealPlanId])
+  @@map("shopping_list_meal_plans")
+}
+
+model ShoppingListCategory {
+  id           String   @id @default(uuid())
+  userId       String
+  name         String
+  displayOrder Int      @default(0)
+  isDefault    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("shopping_list_categories")
+}
+
+model ShoppingListItem {
+  id                String   @id @default(uuid())
+  shoppingListId    String
+  itemName          String
+  quantity          Float
+  unit              String
+  category          String?
+  source            String? // recipe, staple, manual
+  sourceDetails     Json     @default("[]") // Array of {type, id, name, quantity}
+  isConsolidated    Boolean  @default(false)
+  inInventory       Boolean  @default(false)
+  inventoryQuantity Float?
+  netQuantityNeeded Float?
+  isPurchased       Boolean  @default(false)
+  customNote        String?
+  priority          String   @default("Medium") // Low, Medium, High
+  displayOrder      Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  shoppingList ShoppingList @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
 
   @@index([shoppingListId])
+  @@index([category])
   @@map("shopping_list_items")
 }
 
 model AppSettings {
-  userId                    String   @id
-  theme                     String   @default("Auto")
-  notificationsEnabled      Boolean  @default(true)
-  notificationPreferences   Json     @default("{}")
-  mealPlanningPreferences   Json     @default("{}")
-  shoppingListPreferences   Json     @default("{}")
-  aiPreferences             Json     @default("{}")
-  updatedAt                 DateTime @updatedAt
+  userId                  String   @id
+  theme                   String   @default("Auto")
+  notificationsEnabled    Boolean  @default(true)
+  notificationPreferences Json     @default("{}")
+  mealPlanningPreferences Json     @default("{}")
+  shoppingListPreferences Json     @default("{}")
+  aiPreferences           Json     @default("{}")
+  updatedAt               DateTime @updatedAt
 
-  user                      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("app_settings")
 }
 
 model MealPlanSettings {
-  id                String   @id @default(uuid())
-  userId            String   @unique
+  id     String @id @default(uuid())
+  userId String @unique
 
   // Macro Targeting
-  macroMode         String   @default("balanced")
+  macroMode String @default("balanced")
 
   // Recipe Variety
-  varietyEnabled    Boolean  @default(true)
-  dinnerCooldown    Int      @default(14)
-  lunchCooldown     Int      @default(7)
-  breakfastCooldown Int      @default(3)
-  snackCooldown     Int      @default(2)
-  minCuisines       Int      @default(3)
-  maxSameCuisine    Int      @default(2)
+  varietyEnabled    Boolean @default(true)
+  dinnerCooldown    Int     @default(14)
+  lunchCooldown     Int     @default(7)
+  breakfastCooldown Int     @default(3)
+  snackCooldown     Int     @default(2)
+  minCuisines       Int     @default(3)
+  maxSameCuisine    Int     @default(2)
 
   // Shopping Efficiency
-  shoppingMode      String   @default("moderate")
+  shoppingMode String @default("moderate")
 
   // Inventory & Expiry
-  expiryPriority    String   @default("moderate")
-  expiryWindow      Int      @default(5)
-  useItUpItems      String[] @default([])
+  expiryPriority String   @default("moderate")
+  expiryWindow   Int      @default(5)
+  useItUpItems   String[] @default([])
 
   // Batch Cooking
   batchCookingEnabled Boolean @default(true)
-  maxLeftoverDays   Int      @default(4)
+  maxLeftoverDays     Int     @default(4)
 
   // Priority Ordering
-  priorityOrder     String[] @default(["macros", "ratings", "variety", "shopping", "prep", "time"])
+  priorityOrder String[] @default(["macros", "ratings", "variety", "shopping", "prep", "time"])
 
   // Sarah's Feedback
-  feedbackDetail    String   @default("medium")
+  feedbackDetail String @default("medium")
 
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("meal_plan_settings")
 }
 
 model RecipeUsageHistory {
-  id          String   @id @default(uuid())
-  userId      String
-  recipeId    String
-  mealPlanId  String
-  usedDate    DateTime
-  mealType    String
-  wasManual   Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  id         String   @id @default(uuid())
+  userId     String
+  recipeId   String
+  mealPlanId String
+  usedDate   DateTime
+  mealType   String
+  wasManual  Boolean  @default(false)
+  createdAt  DateTime @default(now())
 
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  recipe      Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
-  mealPlan    MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe   Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  mealPlan MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
 
   @@unique([userId, recipeId, mealPlanId, usedDate])
   @@index([userId, recipeId, usedDate])
