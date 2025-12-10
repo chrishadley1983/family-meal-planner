@@ -26,7 +26,14 @@ import {
 } from '@/lib/staples/calculations'
 import { parseCSV, generateCSVTemplate, downloadCSV } from '@/lib/staples/csv-parser'
 import { validateCSVData, getImportableItems, generateErrorReport } from '@/lib/staples/csv-validator'
-import { DEFAULT_CATEGORIES, COMMON_UNITS } from '@/lib/unit-conversion'
+import { COMMON_UNITS } from '@/lib/unit-conversion'
+
+// Shopping list category from API
+interface ShoppingListCategory {
+  id: string
+  name: string
+  displayOrder: number
+}
 
 // Raw staple from API
 interface RawStaple {
@@ -48,6 +55,7 @@ export default function StaplesPage() {
   const { data: session } = useSession()
   const [rawStaples, setRawStaples] = useState<RawStaple[]>([])
   const [loading, setLoading] = useState(true)
+  const [shoppingListCategories, setShoppingListCategories] = useState<ShoppingListCategory[]>([])
 
   // Filters state
   const [filters, setFilters] = useState<StapleFilters>({})
@@ -117,7 +125,20 @@ export default function StaplesPage() {
 
   useEffect(() => {
     fetchStaples()
+    fetchCategories()
   }, [])
+
+  const fetchCategories = async () => {
+    try {
+      console.log('🔷 Fetching shopping list categories...')
+      const response = await fetch('/api/shopping-lists/categories')
+      const data = await response.json()
+      console.log('🟢 Categories fetched:', data.categories?.length || 0)
+      setShoppingListCategories(data.categories || [])
+    } catch (error) {
+      console.error('❌ Error fetching categories:', error)
+    }
+  }
 
   const fetchStaples = async () => {
     try {
@@ -706,8 +727,8 @@ export default function StaplesPage() {
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
                   <option value="">Select category...</option>
-                  {DEFAULT_CATEGORIES.map(cat => (
-                    <option key={cat.name} value={cat.name}>{cat.name}</option>
+                  {shoppingListCategories.map(cat => (
+                    <option key={cat.id} value={cat.name}>{cat.name}</option>
                   ))}
                 </select>
               </div>
@@ -829,8 +850,8 @@ export default function StaplesPage() {
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
                   <option value="">Select category...</option>
-                  {DEFAULT_CATEGORIES.map(cat => (
-                    <option key={cat.name} value={cat.name}>{cat.name}</option>
+                  {shoppingListCategories.map(cat => (
+                    <option key={cat.id} value={cat.name}>{cat.name}</option>
                   ))}
                 </select>
               </div>
