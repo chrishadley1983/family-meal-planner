@@ -122,12 +122,13 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
   const [deduping, setDeduping] = useState(false)
   const [lastCombineResult, setLastCombineResult] = useState<{
     message: string
-    itemName: string
-    quantity: number
-    unit: string
+    itemName?: string
+    quantity?: number
+    unit?: string
     deletedCount: number
     previousTotal: number
     newTotal: number
+    isBulk?: boolean
   } | null>(null)
 
   useEffect(() => {
@@ -406,6 +407,43 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
       console.log('🟢 Imported', data.importedCount, 'ingredients')
       setShowMealPlanModal(false)
       await fetchShoppingList()
+
+      // Auto-run AI deduplication after import
+      console.log('🔷 Auto-deduplicating after meal plan import...')
+      const dedupeResponse = await fetch(`/api/shopping-lists/${id}/deduplicate`)
+      if (dedupeResponse.ok) {
+        const dedupeData = await dedupeResponse.json()
+        const groups = dedupeData.duplicateGroups || []
+
+        if (groups.length > 0) {
+          console.log('🔷 Found', groups.length, 'duplicate groups, auto-combining...')
+          const previousTotal = shoppingList?.items.length || 0
+          let totalItemsCombined = 0
+
+          // Combine all duplicate groups
+          for (const group of groups) {
+            const itemIds = group.items.map((i: { id: string }) => i.id)
+            const combineResponse = await fetch(`/api/shopping-lists/${id}/deduplicate`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ itemIds, useAI: true }),
+            })
+
+            if (combineResponse.ok) {
+              totalItemsCombined += itemIds.length
+            }
+          }
+
+          // Refresh the shopping list
+          await fetchShoppingList()
+          const newTotal = shoppingList?.items.length || previousTotal - (totalItemsCombined - groups.length)
+
+          console.log('🟢 Auto-combined', totalItemsCombined, 'items from', groups.length, 'groups')
+          alert(`Imported ${data.importedCount} ingredients and combined ${totalItemsCombined} duplicate items.`)
+        } else {
+          console.log('🟢 No duplicates found after import')
+        }
+      }
     } catch (error) {
       console.error('❌ Error importing meal plan:', error)
       alert(error instanceof Error ? error.message : 'Failed to import from meal plan')
@@ -482,6 +520,70 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
     } catch (error) {
       console.error('❌ Error deduplicating:', error)
       alert(error instanceof Error ? error.message : 'Failed to deduplicate')
+    } finally {
+      setDeduping(false)
+    }
+  }
+
+  // Combine all duplicate groups at once
+  const handleCombineAll = async () => {
+    if (deduping || duplicateGroups.length === 0) return
+
+    const previousTotal = shoppingList?.items.length || 0
+    const groupCount = duplicateGroups.length
+
+    setDeduping(true)
+    setLastCombineResult(null)
+
+    let totalItemsCombined = 0
+
+    try {
+      console.log('🔷 Combining all', groupCount, 'duplicate groups')
+
+      // Process each group sequentially
+      for (const group of duplicateGroups) {
+        const itemIds = group.items.map((i) => i.id)
+        console.log('🔷 Combining group:', group.normalizedName, 'with', itemIds.length, 'items')
+
+        const response = await fetch(`/api/shopping-lists/${id}/deduplicate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ itemIds, useAI: true }),
+        })
+
+        if (response.ok) {
+          const result = await response.json()
+          totalItemsCombined += itemIds.length
+          console.log('🟢 Group combined:', group.normalizedName, 'deleted:', result.deletedCount)
+        }
+      }
+
+      // Refresh duplicates list (should be empty now)
+      const refreshResponse = await fetch(`/api/shopping-lists/${id}/deduplicate`)
+      if (refreshResponse.ok) {
+        const data = await refreshResponse.json()
+        setDuplicateGroups(data.duplicateGroups || [])
+      }
+
+      // Fetch updated shopping list
+      await fetchShoppingList()
+
+      // Calculate new total
+      const newTotal = shoppingList?.items.length || previousTotal - (totalItemsCombined - groupCount)
+
+      // Set bulk combine result
+      setLastCombineResult({
+        message: `${totalItemsCombined} items combined successfully`,
+        deletedCount: totalItemsCombined - groupCount,
+        previousTotal,
+        newTotal,
+        isBulk: true,
+      })
+
+      console.log('🟢 All groups combined:', totalItemsCombined, 'items total')
+    } catch (error) {
+      console.error('❌ Error combining all:', error)
+      alert(error instanceof Error ? error.message : 'Failed to combine all')
     } finally {
       setDeduping(false)
     }
@@ -995,14 +1097,18 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
                   </svg>
                   <div className="flex-1">
                     <p className="text-green-400 font-medium">{lastCombineResult.message}</p>
-                    <p className="text-green-300 text-sm mt-1">
-                      Combined into: <span className="font-semibold">{lastCombineResult.quantity} {lastCombineResult.unit} {lastCombineResult.itemName}</span>
-                    </p>
+                    {/* Show detailed info for single combines, summary for bulk */}
+                    {!lastCombineResult.isBulk && lastCombineResult.itemName && (
+                      <p className="text-green-300 text-sm mt-1">
+                        Combined into: <span className="font-semibold">{lastCombineResult.quantity} {lastCombineResult.unit} {lastCombineResult.itemName}</span>
+                      </p>
+                    )}
                     {lastCombineResult.deletedCount > 0 && (
                       <p className="text-green-300/70 text-xs mt-2">
-                        Removed {lastCombineResult.deletedCount} duplicate{lastCombineResult.deletedCount !== 1 ? 's' : ''}
-                        <span className="mx-1">•</span>
-                        Total items: <span className="line-through opacity-60">{lastCombineResult.previousTotal}</span> → <span className="font-semibold">{lastCombineResult.newTotal}</span>
+                        {lastCombineResult.isBulk
+                          ? <>Total items: <span className="line-through opacity-60">{lastCombineResult.previousTotal}</span> → <span className="font-semibold">{lastCombineResult.newTotal}</span></>
+                          : <>Removed {lastCombineResult.deletedCount} duplicate{lastCombineResult.deletedCount !== 1 ? 's' : ''}<span className="mx-1">•</span>Total items: <span className="line-through opacity-60">{lastCombineResult.previousTotal}</span> → <span className="font-semibold">{lastCombineResult.newTotal}</span></>
+                        }
                       </p>
                     )}
                   </div>
@@ -1068,12 +1174,7 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
               <div className="flex gap-3">
                 {duplicateGroups.length > 0 && (
                   <button
-                    onClick={async () => {
-                      // Combine all groups sequentially
-                      for (const group of duplicateGroups) {
-                        await handleDeduplicate(group.items.map((i) => i.id), true)
-                      }
-                    }}
+                    onClick={handleCombineAll}
                     disabled={deduping}
                     className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
                   >
