@@ -1032,7 +1032,11 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
                         <button
                           onClick={() => handleDeduplicate(group.items.map((i) => i.id), true)}
                           disabled={deduping}
-                          className="text-sm text-blue-400 hover:text-blue-300 disabled:opacity-50"
+                          className={`px-3 py-1 text-sm rounded-lg disabled:opacity-50 transition-colors ${
+                            group.canCombine
+                              ? 'bg-green-600 hover:bg-green-700 text-white'
+                              : 'bg-purple-600 hover:bg-purple-700 text-white'
+                          }`}
                         >
                           {deduping ? 'Combining...' : (group.canCombine ? 'Combine' : 'AI Combine')}
                         </button>
@@ -1057,16 +1061,35 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
                 </div>
               )}
             </div>
-            <div className="px-6 py-4 bg-gray-750 flex justify-end">
-              <button
-                onClick={() => {
-                  setShowDedupeModal(false)
-                  setLastCombineResult(null)
-                }}
-                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
-              >
-                Close
-              </button>
+            <div className="px-6 py-4 bg-gray-750 flex justify-between">
+              <div className="text-sm text-gray-400">
+                {duplicateGroups.length > 0 && `${duplicateGroups.length} duplicate group${duplicateGroups.length !== 1 ? 's' : ''} found`}
+              </div>
+              <div className="flex gap-3">
+                {duplicateGroups.length > 0 && (
+                  <button
+                    onClick={async () => {
+                      // Combine all groups sequentially
+                      for (const group of duplicateGroups) {
+                        await handleDeduplicate(group.items.map((i) => i.id), true)
+                      }
+                    }}
+                    disabled={deduping}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                  >
+                    {deduping ? 'Combining...' : 'Combine All'}
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setShowDedupeModal(false)
+                    setLastCombineResult(null)
+                  }}
+                  className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
