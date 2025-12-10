@@ -378,6 +378,15 @@ await prisma.mealPlanSettings.update({
   ```
   **Why this matters:** Features may exist on other branches that were never merged. If you skip this step, you may waste time debugging "missing" functionality that simply exists on a different branch.
 
+  **🔴 IF UNMERGED BRANCHES EXIST:**
+  1. **STOP** - Do not start new work on a diverged codebase
+  2. **REPORT** to the user which branches have unmerged commits
+  3. **MERGE** all unmerged branches into main (or current working branch) BEFORE starting new feature work
+  4. **RESOLVE** conflicts carefully, preferring to combine features rather than discard them
+  5. **PUSH** the merged result to keep everyone aligned
+
+  **Never create new feature branches from an outdated main.** This creates a mess of divergent branches that become increasingly difficult to merge.
+
 - [ ] **Understand the requirement clearly** - Ask clarifying questions if anything is ambiguous
 - [ ] **Read existing code in affected files** - Don't make assumptions about current implementation
 - [ ] **Create a TodoWrite checklist** for the task with specific steps
@@ -493,6 +502,30 @@ git push origin [branch-name]
 - [ ] Changes committed with clear message
 - [ ] Changes pushed to remote
 - [ ] Notify Chris to pull latest changes
+
+#### 3.8 Merge to Main (CRITICAL)
+
+**🔴 After completing a feature, ALWAYS merge back to main:**
+
+```bash
+# Merge feature branch to main
+git checkout main
+git pull origin main
+git merge <feature-branch-name>
+git push origin main
+
+# Or if you can't push to main directly, tell the user to do it
+```
+
+- [ ] Feature branch merged to main (or PR created)
+- [ ] Main branch is up to date with all completed features
+- [ ] No orphaned feature branches with completed work
+
+**Why this matters:** Leaving completed features on unmerged branches causes:
+- Future sessions starting from outdated main
+- Duplicate work when features appear "missing"
+- Merge conflicts that grow worse over time
+- Lost work when branches are forgotten
 
 ---
 
