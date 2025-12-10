@@ -220,6 +220,31 @@ export function formatQuantityWithUnit(quantity: number, unit: string): string {
 }
 
 /**
+ * Common units for staples and shopping list items
+ * Organized by type for easier selection
+ */
+export const COMMON_UNITS = [
+  // Volume
+  { value: 'ml', label: 'ml', type: 'volume' },
+  { value: 'L', label: 'L (litres)', type: 'volume' },
+  // Weight
+  { value: 'g', label: 'g (grams)', type: 'weight' },
+  { value: 'kg', label: 'kg', type: 'weight' },
+  // Count
+  { value: 'pack', label: 'pack', type: 'count' },
+  { value: 'bottle', label: 'bottle', type: 'count' },
+  { value: 'can', label: 'can', type: 'count' },
+  { value: 'jar', label: 'jar', type: 'count' },
+  { value: 'box', label: 'box', type: 'count' },
+  { value: 'bag', label: 'bag', type: 'count' },
+  { value: 'bunch', label: 'bunch', type: 'count' },
+  { value: 'head', label: 'head', type: 'count' },
+  { value: 'loaf', label: 'loaf', type: 'count' },
+  { value: 'dozen', label: 'dozen', type: 'count' },
+  { value: 'each', label: 'each', type: 'count' },
+]
+
+/**
  * Default shopping list categories with display order
  */
 export const DEFAULT_CATEGORIES = [

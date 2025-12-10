@@ -26,6 +26,7 @@ import {
 } from '@/lib/staples/calculations'
 import { parseCSV, generateCSVTemplate, downloadCSV } from '@/lib/staples/csv-parser'
 import { validateCSVData, getImportableItems, generateErrorReport } from '@/lib/staples/csv-validator'
+import { DEFAULT_CATEGORIES, COMMON_UNITS } from '@/lib/unit-conversion'
 
 // Raw staple from API
 interface RawStaple {
@@ -699,18 +700,16 @@ export default function StaplesPage() {
                 <label className="block text-sm font-medium text-zinc-300 mb-1">
                   Category
                 </label>
-                <Input
-                  type="text"
+                <select
                   value={newStaple.category}
                   onChange={(e) => setNewStaple({ ...newStaple, category: e.target.value })}
-                  placeholder="e.g., Dairy & Eggs"
-                  list="category-suggestions"
-                />
-                <datalist id="category-suggestions">
-                  {categories.map(cat => (
-                    <option key={cat} value={cat} />
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="">Select category...</option>
+                  {DEFAULT_CATEGORIES.map(cat => (
+                    <option key={cat.name} value={cat.name}>{cat.name}</option>
                   ))}
-                </datalist>
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-1">
@@ -729,13 +728,17 @@ export default function StaplesPage() {
                 <label className="block text-sm font-medium text-zinc-300 mb-1">
                   Unit *
                 </label>
-                <Input
-                  type="text"
+                <select
                   required
                   value={newStaple.unit}
                   onChange={(e) => setNewStaple({ ...newStaple, unit: e.target.value })}
-                  placeholder="e.g., L, kg, pack"
-                />
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="">Select unit...</option>
+                  {COMMON_UNITS.map(unit => (
+                    <option key={unit.value} value={unit.value}>{unit.label}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-1">
@@ -820,18 +823,16 @@ export default function StaplesPage() {
                 <label className="block text-sm font-medium text-zinc-300 mb-1">
                   Category
                 </label>
-                <Input
-                  type="text"
+                <select
                   value={editFormData.category}
                   onChange={(e) => setEditFormData({ ...editFormData, category: e.target.value })}
-                  placeholder="e.g., Dairy & Eggs"
-                  list="edit-category-suggestions"
-                />
-                <datalist id="edit-category-suggestions">
-                  {categories.map(cat => (
-                    <option key={cat} value={cat} />
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="">Select category...</option>
+                  {DEFAULT_CATEGORIES.map(cat => (
+                    <option key={cat.name} value={cat.name}>{cat.name}</option>
                   ))}
-                </datalist>
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-1">
@@ -850,13 +851,17 @@ export default function StaplesPage() {
                 <label className="block text-sm font-medium text-zinc-300 mb-1">
                   Unit *
                 </label>
-                <Input
-                  type="text"
+                <select
                   required
                   value={editFormData.unit}
                   onChange={(e) => setEditFormData({ ...editFormData, unit: e.target.value })}
-                  placeholder="e.g., L, kg, pack"
-                />
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="">Select unit...</option>
+                  {COMMON_UNITS.map(unit => (
+                    <option key={unit.value} value={unit.value}>{unit.label}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-1">
