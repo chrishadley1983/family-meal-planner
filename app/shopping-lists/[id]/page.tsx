@@ -52,13 +52,20 @@ interface ShoppingList {
   mealPlans: MealPlanLink[]
 }
 
+type StapleDueStatus = 'overdue' | 'dueToday' | 'dueSoon' | 'upcoming' | 'notDue'
+
 interface Staple {
   id: string
   itemName: string
   quantity: number
   unit: string
   category: string | null
-  autoAddToList: boolean
+  frequency: 'weekly' | 'every_2_weeks' | 'every_4_weeks' | 'every_3_months'
+  isActive: boolean
+  lastAddedDate: string | null
+  nextDueDate: string | null
+  dueStatus: StapleDueStatus
+  daysUntilDue: number | null
   alreadyImported?: boolean
 }
 
@@ -112,6 +119,7 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
   const [showMealPlanModal, setShowMealPlanModal] = useState(false)
   const [staples, setStaples] = useState<Staple[]>([])
   const [selectedStaples, setSelectedStaples] = useState<Set<string>>(new Set())
+  const [forceAddMode, setForceAddMode] = useState(false)
   const [mealPlanOptions, setMealPlanOptions] = useState<MealPlanOption[]>([])
   const [selectedMealPlan, setSelectedMealPlan] = useState<string>('')
   const [importing, setImporting] = useState(false)
@@ -318,15 +326,18 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
 
       const data = await response.json()
       setStaples(data.staples || [])
+      setForceAddMode(false)
 
-      // Select all by default (excluding already imported)
+      // Pre-select items that are due (overdue, dueToday, dueSoon) and not already imported
+      const dueStatuses: StapleDueStatus[] = ['overdue', 'dueToday', 'dueSoon']
       const defaultSelected = new Set<string>(
         data.staples
-          .filter((s: Staple) => !s.alreadyImported)
+          .filter((s: Staple) => !s.alreadyImported && dueStatuses.includes(s.dueStatus))
           .map((s: Staple) => s.id)
       )
       setSelectedStaples(defaultSelected)
       setShowStaplesModal(true)
+      console.log('🟢 Loaded', data.staples.length, 'staples,', data.dueCount, 'due')
     } catch (error) {
       console.error('❌ Error fetching staples:', error)
       alert('Failed to load staples')
@@ -807,64 +818,175 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
       {/* Import Staples Modal */}
       {showStaplesModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-lg shadow-xl max-w-lg w-full max-h-[80vh] overflow-hidden flex flex-col">
+          <div className="bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col">
             <div className="p-6 border-b border-gray-700">
               <h2 className="text-xl font-semibold text-white">Import from Staples</h2>
-              <p className="text-sm text-gray-400 mt-1">Select staples to add to your shopping list</p>
+              <p className="text-sm text-gray-400 mt-1">Items due for restocking are pre-selected</p>
+              {/* Summary badges */}
+              <div className="flex flex-wrap gap-2 mt-3">
+                {(() => {
+                  const dueToday = staples.filter(s => s.dueStatus === 'dueToday' && !s.alreadyImported).length
+                  const overdue = staples.filter(s => s.dueStatus === 'overdue' && !s.alreadyImported).length
+                  const dueSoon = staples.filter(s => s.dueStatus === 'dueSoon' && !s.alreadyImported).length
+                  return (
+                    <>
+                      {overdue > 0 && (
+                        <span className="px-2 py-0.5 text-xs rounded-full bg-red-900/50 text-red-300 border border-red-700">
+                          {overdue} Overdue
+                        </span>
+                      )}
+                      {dueToday > 0 && (
+                        <span className="px-2 py-0.5 text-xs rounded-full bg-orange-900/50 text-orange-300 border border-orange-700">
+                          {dueToday} Due Today
+                        </span>
+                      )}
+                      {dueSoon > 0 && (
+                        <span className="px-2 py-0.5 text-xs rounded-full bg-yellow-900/50 text-yellow-300 border border-yellow-700">
+                          {dueSoon} Due Soon
+                        </span>
+                      )}
+                    </>
+                  )
+                })()}
+              </div>
             </div>
             <div className="p-4 flex-1 overflow-y-auto">
               {staples.length === 0 ? (
-                <p className="text-gray-400 text-center py-4">No staples found. Add staples first.</p>
+                <div className="text-center py-8">
+                  <p className="text-gray-400">No active staples found.</p>
+                  <a href="/staples" className="text-purple-400 hover:text-purple-300 text-sm mt-2 inline-block">
+                    Go to Staples to add items →
+                  </a>
+                </div>
               ) : (
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm text-gray-400 mb-2">
-                    <button
-                      onClick={() => setSelectedStaples(new Set(staples.filter((s) => !s.alreadyImported).map((s) => s.id)))}
-                      className="hover:text-white"
-                    >
-                      Select all
-                    </button>
-                    <button onClick={() => setSelectedStaples(new Set())} className="hover:text-white">
-                      Clear all
-                    </button>
-                  </div>
-                  {staples.map((staple) => (
-                    <label
-                      key={staple.id}
-                      className={`flex items-center gap-3 p-2 rounded hover:bg-gray-700 cursor-pointer ${
-                        staple.alreadyImported ? 'opacity-50' : ''
-                      }`}
-                    >
+                  {/* Selection controls */}
+                  <div className="flex justify-between items-center text-sm mb-3">
+                    <div className="flex gap-3 text-gray-400">
+                      <button
+                        onClick={() => {
+                          const dueStatuses: StapleDueStatus[] = ['overdue', 'dueToday', 'dueSoon']
+                          setSelectedStaples(new Set(
+                            staples.filter(s => !s.alreadyImported && dueStatuses.includes(s.dueStatus)).map(s => s.id)
+                          ))
+                        }}
+                        className="hover:text-white"
+                      >
+                        Select due
+                      </button>
+                      <button
+                        onClick={() => setSelectedStaples(new Set(staples.filter((s) => !s.alreadyImported).map((s) => s.id)))}
+                        className="hover:text-white"
+                      >
+                        Select all
+                      </button>
+                      <button onClick={() => setSelectedStaples(new Set())} className="hover:text-white">
+                        Clear
+                      </button>
+                    </div>
+                    <label className="flex items-center gap-2 text-gray-400 cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={selectedStaples.has(staple.id)}
-                        onChange={(e) => {
-                          const newSet = new Set(selectedStaples)
-                          if (e.target.checked) {
-                            newSet.add(staple.id)
-                          } else {
-                            newSet.delete(staple.id)
-                          }
-                          setSelectedStaples(newSet)
-                        }}
-                        disabled={staple.alreadyImported}
+                        checked={forceAddMode}
+                        onChange={(e) => setForceAddMode(e.target.checked)}
                         className="w-4 h-4 rounded"
                       />
-                      <div className="flex-1">
-                        <span className="text-white">{staple.itemName}</span>
-                        <span className="text-gray-400 text-sm ml-2">
-                          {staple.quantity} {staple.unit}
-                        </span>
-                        {staple.alreadyImported && (
-                          <span className="text-yellow-500 text-sm ml-2">(already imported)</span>
-                        )}
-                      </div>
+                      <span className="text-xs">Show all (force add)</span>
                     </label>
-                  ))}
+                  </div>
+
+                  {/* Staples list */}
+                  {staples
+                    .filter(staple => forceAddMode || staple.dueStatus !== 'notDue' || staple.alreadyImported)
+                    .map((staple) => {
+                      // Due status badge helper
+                      const getDueStatusBadge = (status: StapleDueStatus) => {
+                        switch (status) {
+                          case 'overdue':
+                            return <span className="px-1.5 py-0.5 text-xs rounded bg-red-900/50 text-red-300">Overdue</span>
+                          case 'dueToday':
+                            return <span className="px-1.5 py-0.5 text-xs rounded bg-orange-900/50 text-orange-300">Due Today</span>
+                          case 'dueSoon':
+                            return <span className="px-1.5 py-0.5 text-xs rounded bg-yellow-900/50 text-yellow-300">Due Soon</span>
+                          case 'upcoming':
+                            return <span className="px-1.5 py-0.5 text-xs rounded bg-blue-900/50 text-blue-300">Upcoming</span>
+                          case 'notDue':
+                            return <span className="px-1.5 py-0.5 text-xs rounded bg-gray-700 text-gray-400">Not Due</span>
+                          default:
+                            return null
+                        }
+                      }
+
+                      return (
+                        <label
+                          key={staple.id}
+                          className={`flex items-center gap-3 p-3 rounded border transition-colors cursor-pointer ${
+                            staple.alreadyImported
+                              ? 'opacity-50 border-gray-700 bg-gray-800/50'
+                              : selectedStaples.has(staple.id)
+                              ? 'border-purple-500 bg-purple-900/20'
+                              : 'border-gray-700 hover:bg-gray-700'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedStaples.has(staple.id)}
+                            onChange={(e) => {
+                              const newSet = new Set(selectedStaples)
+                              if (e.target.checked) {
+                                newSet.add(staple.id)
+                              } else {
+                                newSet.delete(staple.id)
+                              }
+                              setSelectedStaples(newSet)
+                            }}
+                            disabled={staple.alreadyImported}
+                            className="w-4 h-4 rounded flex-shrink-0"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-white font-medium">{staple.itemName}</span>
+                              {getDueStatusBadge(staple.dueStatus)}
+                              {staple.alreadyImported && (
+                                <span className="text-yellow-500 text-xs">(imported)</span>
+                              )}
+                            </div>
+                            <div className="text-sm text-gray-400 mt-0.5">
+                              {staple.quantity} {staple.unit}
+                              {staple.category && (
+                                <span className="text-gray-500 ml-2">• {staple.category}</span>
+                              )}
+                              {staple.daysUntilDue !== null && staple.daysUntilDue > 0 && (
+                                <span className="text-gray-500 ml-2">• in {staple.daysUntilDue}d</span>
+                              )}
+                            </div>
+                          </div>
+                        </label>
+                      )
+                    })}
+
+                  {/* Show count of hidden items when not in force-add mode */}
+                  {!forceAddMode && (() => {
+                    const hiddenCount = staples.filter(s => s.dueStatus === 'notDue' && !s.alreadyImported).length
+                    if (hiddenCount > 0) {
+                      return (
+                        <p className="text-center text-sm text-gray-500 py-2 mt-2 border-t border-gray-700">
+                          {hiddenCount} items not yet due.{' '}
+                          <button
+                            onClick={() => setForceAddMode(true)}
+                            className="text-purple-400 hover:text-purple-300"
+                          >
+                            Show all
+                          </button>
+                        </p>
+                      )
+                    }
+                    return null
+                  })()}
                 </div>
               )}
             </div>
-            <div className="px-6 py-4 bg-gray-750 flex justify-between items-center">
+            <div className="px-6 py-4 bg-gray-750 border-t border-gray-700 flex justify-between items-center">
               <span className="text-sm text-gray-400">{selectedStaples.size} selected</span>
               <div className="flex gap-3">
                 <button onClick={() => setShowStaplesModal(false)} className="px-4 py-2 text-gray-300 hover:text-white">
@@ -875,7 +997,7 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
                   disabled={selectedStaples.size === 0 || importing}
                   className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
                 >
-                  {importing ? 'Importing...' : 'Import Selected'}
+                  {importing ? 'Importing...' : `Import ${selectedStaples.size} Item${selectedStaples.size !== 1 ? 's' : ''}`}
                 </button>
               </div>
             </div>

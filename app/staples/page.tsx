@@ -360,12 +360,25 @@ export default function StaplesPage() {
             {formatDueStatus(status, daysUntilDue)}
           </Badge>
         )
-      case 'due':
+      case 'dueToday':
         return (
           <Badge variant="warning" size="sm">
             Due today
           </Badge>
         )
+      case 'dueSoon':
+        return (
+          <Badge variant="warning" size="sm">
+            {formatDueStatus(status, daysUntilDue)}
+          </Badge>
+        )
+      case 'upcoming':
+        return (
+          <Badge variant="default" size="sm">
+            {formatDueStatus(status, daysUntilDue)}
+          </Badge>
+        )
+      case 'notDue':
       default:
         return null
     }
@@ -476,8 +489,10 @@ export default function StaplesPage() {
               >
                 <option value="">All</option>
                 <option value="overdue">Overdue</option>
-                <option value="due">Due</option>
-                <option value="not_due">Not Due</option>
+                <option value="dueToday">Due Today</option>
+                <option value="dueSoon">Due Soon</option>
+                <option value="upcoming">Upcoming</option>
+                <option value="notDue">Not Due</option>
               </select>
             </div>
 
@@ -506,9 +521,9 @@ export default function StaplesPage() {
           </div>
           <div className="card p-4 text-center">
             <div className="text-2xl font-bold text-yellow-400">
-              {staples.filter(s => s.dueStatus === 'due').length}
+              {staples.filter(s => s.dueStatus === 'dueToday' || s.dueStatus === 'dueSoon').length}
             </div>
-            <div className="text-sm text-zinc-400">Due Today</div>
+            <div className="text-sm text-zinc-400">Due Soon</div>
           </div>
           <div className="card p-4 text-center">
             <div className="text-2xl font-bold text-red-400">

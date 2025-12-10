@@ -13,7 +13,12 @@ export const STAPLE_FREQUENCIES: { value: StapleFrequency; label: string; days: 
 ]
 
 // Due status for staples
-export type StapleDueStatus = 'overdue' | 'due' | 'not_due'
+// overdue: past due date
+// dueToday: due date is today
+// dueSoon: due within 3 days
+// upcoming: due within 7 days
+// notDue: not due for more than 7 days
+export type StapleDueStatus = 'overdue' | 'dueToday' | 'dueSoon' | 'upcoming' | 'notDue'
 
 // Core staple entity
 export interface Staple {

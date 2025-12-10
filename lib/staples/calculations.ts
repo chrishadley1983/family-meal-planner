@@ -40,11 +40,12 @@ export function calculateNextDueDate(lastAddedDate: Date | null, frequency: Stap
 
 /**
  * Calculate due status based on next due date
+ * Returns granular status: overdue, dueToday, dueSoon (3 days), upcoming (7 days), notDue
  */
 export function calculateDueStatus(nextDueDate: Date | null): StapleDueStatus {
   // If never added (null), it's immediately due
   if (!nextDueDate) {
-    return 'due'
+    return 'dueToday'
   }
 
   const today = new Date()
@@ -53,12 +54,19 @@ export function calculateDueStatus(nextDueDate: Date | null): StapleDueStatus {
   const dueDate = new Date(nextDueDate)
   dueDate.setHours(0, 0, 0, 0)
 
-  if (dueDate < today) {
+  const diffTime = dueDate.getTime() - today.getTime()
+  const daysUntilDue = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+  if (daysUntilDue < 0) {
     return 'overdue'
-  } else if (dueDate.getTime() === today.getTime()) {
-    return 'due'
+  } else if (daysUntilDue === 0) {
+    return 'dueToday'
+  } else if (daysUntilDue <= 3) {
+    return 'dueSoon'
+  } else if (daysUntilDue <= 7) {
+    return 'upcoming'
   }
-  return 'not_due'
+  return 'notDue'
 }
 
 /**
@@ -114,12 +122,18 @@ export function enrichStapleWithDueStatus(staple: RawStaple): StapleWithDueStatu
 }
 
 /**
- * Sort staples by due status priority (overdue first, then due, then by next due date)
+ * Sort staples by due status priority (overdue first, then dueToday, etc.)
  */
 export function sortStaplesByDueStatus(staples: StapleWithDueStatus[]): StapleWithDueStatus[] {
   return [...staples].sort((a, b) => {
-    // Priority order: overdue (0) > due (1) > not_due (2)
-    const statusOrder: Record<StapleDueStatus, number> = { overdue: 0, due: 1, not_due: 2 }
+    // Priority order: overdue (0) > dueToday (1) > dueSoon (2) > upcoming (3) > notDue (4)
+    const statusOrder: Record<StapleDueStatus, number> = {
+      overdue: 0,
+      dueToday: 1,
+      dueSoon: 2,
+      upcoming: 3,
+      notDue: 4,
+    }
     const statusDiff = statusOrder[a.dueStatus] - statusOrder[b.dueStatus]
 
     if (statusDiff !== 0) return statusDiff
@@ -215,17 +229,22 @@ export function formatFrequency(frequency: StapleFrequency): string {
  * Format due status for display
  */
 export function formatDueStatus(status: StapleDueStatus, daysUntilDue: number | null): string {
-  if (status === 'overdue') {
-    const days = Math.abs(daysUntilDue ?? 0)
-    return days === 1 ? '1 day overdue' : `${days} days overdue`
+  switch (status) {
+    case 'overdue': {
+      const days = Math.abs(daysUntilDue ?? 0)
+      return days === 1 ? '1 day overdue' : `${days} days overdue`
+    }
+    case 'dueToday':
+      return 'Due today'
+    case 'dueSoon':
+      return daysUntilDue === 1 ? 'Due tomorrow' : `Due in ${daysUntilDue} days`
+    case 'upcoming':
+      return `Due in ${daysUntilDue} days`
+    case 'notDue':
+      return daysUntilDue !== null ? `Due in ${daysUntilDue} days` : ''
+    default:
+      return ''
   }
-  if (status === 'due') {
-    return 'Due today'
-  }
-  if (daysUntilDue !== null && daysUntilDue > 0) {
-    return daysUntilDue === 1 ? 'Due tomorrow' : `Due in ${daysUntilDue} days`
-  }
-  return ''
 }
 
 /**
@@ -285,7 +304,8 @@ export function getUniqueCategories(staples: StapleWithDueStatus[]): string[] {
 
 /**
  * Check if a staple is due or overdue (for import pre-selection)
+ * Returns true for: overdue, dueToday, dueSoon
  */
 export function isDueOrOverdue(staple: StapleWithDueStatus): boolean {
-  return staple.dueStatus === 'due' || staple.dueStatus === 'overdue'
+  return staple.dueStatus === 'overdue' || staple.dueStatus === 'dueToday' || staple.dueStatus === 'dueSoon'
 }
