@@ -3,6 +3,8 @@
  * Converts common cooking measurements to metric (grams/millilitres)
  */
 
+import { normalizeIngredientName } from './ingredient-normalization'
+
 // Standard conversion factors
 const CONVERSIONS: Record<string, { toMetric: number; metricUnit: string; type: 'weight' | 'volume' }> = {
   // Weight conversions (to grams)
