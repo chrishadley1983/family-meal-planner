@@ -216,7 +216,7 @@ ${shareLink.shareUrl}
 ---
 Sent from FamilyFuel - Family Meal Planning Made Easy`
 
-    const mailtoUrl = `mailto:${encodeURIComponent(emailTo)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+    const mailtoUrl = `mailto:${emailTo}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
 
     console.log('🟢 Opening email client...')
     window.location.href = mailtoUrl
