@@ -278,9 +278,19 @@ export async function PATCH(
 
     const data = updateItemSchema.parse(body)
 
+    // Track original item name if name is being changed and not already tracked
+    const updateData: Record<string, unknown> = { ...data }
+    if (data.itemName && data.itemName !== existingItem.itemName) {
+      // Only set originalItemName if it's not already set
+      if (!existingItem.originalItemName) {
+        updateData.originalItemName = existingItem.itemName
+        console.log(`🔄 Tracking original name: "${existingItem.itemName}" → "${data.itemName}"`)
+      }
+    }
+
     const updatedItem = await prisma.shoppingListItem.update({
       where: { id: itemId },
-      data,
+      data: updateData,
     })
 
     console.log(`🟢 Updated item: ${updatedItem.itemName}`)
