@@ -5,9 +5,15 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { findDuplicates, combineQuantities, DuplicateGroup } from '@/lib/unit-conversion'
 import { SourceDetail } from '@/lib/types/shopping-list'
+import Anthropic from '@anthropic-ai/sdk'
 
 const deduplicateSchema = z.object({
   itemIds: z.array(z.string()).min(2, 'At least 2 items required to deduplicate'),
+  useAI: z.boolean().optional().default(false), // Flag to use AI for incompatible units
+})
+
+const client = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
 })
 
 // Helper to verify shopping list ownership
@@ -159,11 +165,79 @@ export async function POST(
       }
     }
 
+    // Variable to store AI-suggested name if applicable
+    let aiSuggestedName: string | null = null
+
+    // If units aren't compatible, use AI to determine best combination
     if (!allCompatible) {
-      return NextResponse.json(
-        { error: 'Items have incompatible units and cannot be combined automatically' },
-        { status: 400 }
-      )
+      if (!data.useAI) {
+        return NextResponse.json(
+          { error: 'Items have incompatible units. Set useAI: true to use AI-powered combination.' },
+          { status: 400 }
+        )
+      }
+
+      console.log('🤖 Using AI to combine items with incompatible units')
+
+      // Build the prompt for AI
+      const itemDescriptions = items.map(i => `${i.quantity} ${i.unit} ${i.itemName}`).join('\n')
+
+      const prompt = `You are a grocery shopping assistant. I need to combine these duplicate shopping list items into a single item with the most practical quantity and unit for shopping.
+
+ITEMS TO COMBINE:
+${itemDescriptions}
+
+Determine:
+1. The best unit to use for this ingredient when shopping (e.g., use "g" for spices instead of "pinch", use "whole" for items sold by count, use "ml" for liquids)
+2. The combined total quantity in that unit
+
+IMPORTANT CONVERSION RULES:
+- 1 pinch ≈ 0.3g for dry spices
+- 1 whole chicken thigh ≈ 150g
+- 1 stock cube ≈ 10g or can stay as "piece" if sold by count
+- For items typically sold by count (eggs, stock cubes), prefer "piece" or "whole"
+- For items sold by weight, convert to grams
+- For liquids, use ml
+
+Respond with ONLY valid JSON in this exact format:
+{"quantity": <number>, "unit": "<unit>", "itemName": "<best name for the item>"}
+
+Example: {"quantity": 5, "unit": "g", "itemName": "Black pepper"}`
+
+      try {
+        const message = await client.messages.create({
+          model: 'claude-haiku-4-5',
+          max_tokens: 150,
+          messages: [{ role: 'user', content: prompt }],
+        })
+
+        const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+
+        if (jsonMatch) {
+          const aiResult = JSON.parse(jsonMatch[0]) as { quantity: number; unit: string; itemName: string }
+          combinedQuantity = aiResult.quantity
+          combinedUnit = aiResult.unit
+
+          // Store AI-suggested name for later use
+          if (aiResult.itemName) {
+            aiSuggestedName = aiResult.itemName
+          }
+
+          console.log(`🟢 AI combined: ${combinedQuantity} ${combinedUnit} ${aiSuggestedName || items[0].itemName}`)
+        } else {
+          return NextResponse.json(
+            { error: 'AI could not determine how to combine these items' },
+            { status: 400 }
+          )
+        }
+      } catch (aiError) {
+        console.error('❌ AI combination failed:', aiError)
+        return NextResponse.json(
+          { error: 'AI-powered combination failed. Please try manual combination.' },
+          { status: 500 }
+        )
+      }
     }
 
     // Combine all source details
@@ -196,11 +270,13 @@ export async function POST(
       a.createdAt.getTime() - b.createdAt.getTime()
     )
 
-    // Update the kept item
+    // Update the kept item - use AI-suggested name if available, otherwise the primary item name
+    const finalItemName = aiSuggestedName || primaryItem.itemName
+
     const updatedItem = await prisma.shoppingListItem.update({
       where: { id: keepItem.id },
       data: {
-        itemName: primaryItem.itemName,
+        itemName: finalItemName,
         quantity: Math.round(combinedQuantity * 100) / 100,
         unit: combinedUnit,
         category,

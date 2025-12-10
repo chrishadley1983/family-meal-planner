@@ -421,16 +421,16 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
     }
   }
 
-  const handleDeduplicate = async (itemIds: string[]) => {
+  const handleDeduplicate = async (itemIds: string[], useAI: boolean = true) => {
     if (deduping) return
 
     setDeduping(true)
     try {
-      console.log('🔷 Deduplicating items:', itemIds)
+      console.log('🔷 Deduplicating items:', itemIds, 'useAI:', useAI)
       const response = await fetch(`/api/shopping-lists/${id}/deduplicate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ itemIds }),
+        body: JSON.stringify({ itemIds, useAI }),
       })
 
       if (!response.ok) {
@@ -961,15 +961,13 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
                     <div key={group.normalizedName} className="bg-gray-750 rounded-lg p-4">
                       <div className="flex justify-between items-start mb-2">
                         <h4 className="text-white font-medium capitalize">{group.normalizedName}</h4>
-                        {group.canCombine && (
-                          <button
-                            onClick={() => handleDeduplicate(group.items.map((i) => i.id))}
-                            disabled={deduping}
-                            className="text-sm text-blue-400 hover:text-blue-300 disabled:opacity-50"
-                          >
-                            Combine
-                          </button>
-                        )}
+                        <button
+                          onClick={() => handleDeduplicate(group.items.map((i) => i.id), true)}
+                          disabled={deduping}
+                          className="text-sm text-blue-400 hover:text-blue-300 disabled:opacity-50"
+                        >
+                          {deduping ? 'Combining...' : (group.canCombine ? 'Combine' : 'AI Combine')}
+                        </button>
                       </div>
                       <ul className="text-sm text-gray-400 space-y-1">
                         {group.items.map((item) => (
@@ -984,7 +982,7 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
                         </p>
                       )}
                       {!group.canCombine && (
-                        <p className="text-sm text-yellow-500 mt-2">Units not compatible for auto-combine</p>
+                        <p className="text-sm text-purple-400 mt-2">AI will determine the best unit</p>
                       )}
                     </div>
                   ))}
