@@ -218,8 +218,15 @@ Sent from FamilyFuel - Family Meal Planning Made Easy`
 
     const mailtoUrl = `mailto:${emailTo}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
 
-    console.log('🟢 Opening email client...')
-    window.location.href = mailtoUrl
+    console.log('🟢 Opening email client...', mailtoUrl)
+
+    // Use a temporary link element to trigger mailto (more reliable than window.location)
+    const link = document.createElement('a')
+    link.href = mailtoUrl
+    link.target = '_blank'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
   const handleCopyLink = async () => {
