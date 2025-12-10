@@ -69,6 +69,19 @@ This means:
 
 ### Phase 1: BEFORE Making Changes
 
+- [ ] **Check for unmerged branches** - CRITICAL: Before starting any work, check if there are branches with unmerged changes:
+  ```bash
+  # List all branches
+  git branch -a
+
+  # For each non-main branch, check for unmerged commits
+  git log --oneline origin/main..origin/<branch-name> | head -10
+
+  # Compare file differences between branches
+  git diff --name-only origin/main origin/<branch-name>
+  ```
+  **Why this matters:** Features may exist on other branches that were never merged. If you skip this step, you may waste time debugging "missing" functionality that simply exists on a different branch.
+
 - [ ] **Understand the requirement clearly** - Ask clarifying questions if anything is ambiguous
 - [ ] **Read existing code in affected files** - Don't make assumptions about current implementation
 - [ ] **Create a TodoWrite checklist** for the task with specific steps
