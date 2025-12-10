@@ -323,6 +323,7 @@ model ShoppingListItem {
   id                String   @id @default(uuid())
   shoppingListId    String
   itemName          String
+  originalItemName  String?  // Original name before user edits, for inventory tracking
   quantity          Float
   unit              String
   category          String?

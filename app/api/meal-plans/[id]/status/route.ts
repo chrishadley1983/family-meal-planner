@@ -14,9 +14,9 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { status, customSchedule } = await req.json()
+    const { status } = await req.json()
 
-    if (status && !['Draft', 'Finalized', 'Archived'].includes(status)) {
+    if (!['Draft', 'Finalized', 'Archived'].includes(status)) {
       return NextResponse.json(
         { error: 'Invalid status. Must be Draft, Finalized, or Archived' },
         { status: 400 }
@@ -28,9 +28,6 @@ export async function PATCH(
       where: {
         id: params.id,
         userId: session.user.id
-      },
-      include: {
-        meals: true
       }
     })
 
@@ -41,48 +38,15 @@ export async function PATCH(
       )
     }
 
-    // Build update data
-    const updateData: any = {}
+    // Update status and finalizedAt if finalizing
+    const updateData: any = { status }
 
-    // Update status if provided
-    if (status) {
-      updateData.status = status
-      if (status === 'Finalized' && existingPlan.status !== 'Finalized') {
-        updateData.finalizedAt = new Date()
-      } else if (status === 'Draft') {
-        updateData.finalizedAt = null
-      }
+    if (status === 'Finalized' && existingPlan.status !== 'Finalized') {
+      updateData.finalizedAt = new Date()
+    } else if (status === 'Draft') {
+      updateData.finalizedAt = null
     }
 
-    // Update customSchedule if provided
-    if (customSchedule) {
-      updateData.customSchedule = customSchedule
-
-      // Recalculate servings for all meals based on new schedule
-      console.log('🧮 Recalculating servings after schedule change...')
-
-      const servingsUpdates = existingPlan.meals
-        .filter(meal => !meal.servingsManuallySet) // Only recalculate if not manually set
-        .map(meal => {
-          const newServings = calculateMealServings(
-            meal.dayOfWeek,
-            meal.mealType,
-            customSchedule
-          )
-
-          return prisma.meal.update({
-            where: { id: meal.id },
-            data: { servings: newServings }
-          })
-        })
-
-      // Execute all servings updates
-      await Promise.all(servingsUpdates)
-
-      console.log(`✅ Recalculated servings for ${servingsUpdates.length} meals`)
-    }
-
-    // Update meal plan
     const mealPlan = await prisma.mealPlan.update({
       where: { id: params.id },
       data: updateData,
@@ -95,12 +59,7 @@ export async function PATCH(
       }
     })
 
-    if (status) {
-      console.log(`✅ Meal plan ${params.id} status changed to ${status}`)
-    }
-    if (customSchedule) {
-      console.log(`✅ Meal plan ${params.id} schedule updated`)
-    }
+    console.log(`✅ Meal plan ${params.id} status changed to ${status}`)
 
     return NextResponse.json({ mealPlan })
   } catch (error: any) {

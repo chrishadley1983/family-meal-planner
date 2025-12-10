@@ -49,6 +49,9 @@ export async function POST(req: NextRequest) {
       recipeSource: new URL(url).hostname
     }
 
+    return NextResponse.json({
+      recipe: recipeData
+    })
     return NextResponse.json({ recipe: recipeData })
   } catch (error: any) {
     console.error('Error importing recipe from URL:', error)

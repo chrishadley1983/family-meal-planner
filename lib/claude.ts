@@ -29,153 +29,79 @@ export async function generateMealPlan(params: {
     weekStartDate,
     preferences,
     weekProfileSchedules,
-    settings = DEFAULT_SETTINGS,
-    recipeHistory = [],
-    inventory = [],
+    settings,
+    recipeHistory,
+    inventory,
     quickOptions
   } = params
 
-  // Calculate which meals need to be planned based on all family profiles
-  type MealSchedule = {
-    monday: string[]
-    tuesday: string[]
-    wednesday: string[]
-    thursday: string[]
-    friday: string[]
-    saturday: string[]
-    sunday: string[]
-  }
-
-  const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
-
-  // Use weekProfileSchedules if provided, otherwise build from profiles
-  let activeProfiles: any[]
-  let mealScheduleUnion: MealSchedule
-  let servingsMap: Record<string, Record<string, number>> = {} // day -> mealType -> count
-
-  if (weekProfileSchedules && weekProfileSchedules.length > 0) {
-    // Use the provided per-person schedules for this week
-    activeProfiles = weekProfileSchedules.filter((ps: any) => ps.included)
-
-    mealScheduleUnion = {
-      monday: [],
-      tuesday: [],
-      wednesday: [],
-      thursday: [],
-      friday: [],
-      saturday: [],
-      sunday: []
-    }
-
-    // Build union and count servings
-    daysOfWeek.forEach(day => {
-      servingsMap[day] = {}
-
-      activeProfiles.forEach(profileSchedule => {
-        const meals = profileSchedule.schedule[day] || []
-        meals.forEach((meal: string) => {
-          // Add to union if not already there
-          if (!mealScheduleUnion[day as keyof MealSchedule].includes(meal)) {
-            mealScheduleUnion[day as keyof MealSchedule].push(meal)
-          }
-          // Count servings
-          servingsMap[day][meal] = (servingsMap[day][meal] || 0) + 1
-        })
-      })
-    })
-  } else {
-    // Build union of all meal schedules from profile defaults
-    activeProfiles = profiles
-    mealScheduleUnion = {
-      monday: [],
-      tuesday: [],
-      wednesday: [],
-      thursday: [],
-      friday: [],
-      saturday: [],
-      sunday: []
-    }
-
-    // Collect schedules from all profiles and count servings
-    daysOfWeek.forEach(day => {
-      servingsMap[day] = {}
-
-      profiles.forEach(profile => {
-        const schedule = profile.mealAvailability as MealSchedule | null
-        if (schedule) {
-          const meals = schedule[day as keyof MealSchedule] || []
-          meals.forEach(meal => {
-            if (!mealScheduleUnion[day as keyof MealSchedule].includes(meal)) {
-              mealScheduleUnion[day as keyof MealSchedule].push(meal)
-            }
-            servingsMap[day][meal] = (servingsMap[day][meal] || 0) + 1
-          })
-        }
-      })
-    })
-  }
-
-  // Build schedule summary with servings for the prompt
-  const scheduleSummary = daysOfWeek.map(day => {
-    const dayCapitalized = day.charAt(0).toUpperCase() + day.slice(1)
-    const meals = mealScheduleUnion[day as keyof MealSchedule]
-    if (meals.length === 0) {
-      return `${dayCapitalized}: No meals needed`
-    }
-    const mealsWithServings = meals.map(m => {
-      const mealName = m.charAt(0).toUpperCase() + m.slice(1).replace('-', ' ')
-      const servings = servingsMap[day][m] || 1
-      return `${mealName} (${servings} ${servings === 1 ? 'person' : 'people'})`
-    })
-    return `${dayCapitalized}: ${mealsWithServings.join(', ')}`
-  }).join('\n')
-
-  // Build per-person schedule for context
-  let perPersonSchedules: string
-  if (weekProfileSchedules && weekProfileSchedules.length > 0) {
-    perPersonSchedules = weekProfileSchedules.map((ps: any, i: number) => {
-      if (!ps.included) {
-        return `Profile ${i + 1} (${ps.profileName}): EXCLUDED from this week`
-      }
-      const summary = daysOfWeek.map(day => {
-        const meals = ps.schedule[day] || []
-        return meals.length > 0 ? meals.join(', ') : 'none'
-      }).join(' | ')
-      return `Profile ${i + 1} (${ps.profileName}): ${summary}`
-    }).join('\n')
-  } else {
-    perPersonSchedules = profiles.map((p, i) => {
-      const schedule = p.mealAvailability as MealSchedule | null
-      if (!schedule) {
-        return `Profile ${i + 1} (${p.profileName}): No specific schedule`
-      }
-      const summary = daysOfWeek.map(day => {
-        const meals = schedule[day as keyof MealSchedule] || []
-        return meals.length > 0 ? meals.join(', ') : 'none'
-      }).join(' | ')
-      return `Profile ${i + 1} (${p.profileName}): ${summary}`
-    }).join('\n')
-  }
-
-  // Build the AI prompt using the new prompt builder with all advanced features
-  const prompt = buildMealPlanPrompt(
-    {
+  // If advanced features are provided, use the advanced prompt builder
+  if (weekProfileSchedules || settings || recipeHistory?.length || inventory?.length) {
+    return generateAdvancedMealPlan({
       profiles,
       recipes,
       weekStartDate,
       weekProfileSchedules: weekProfileSchedules || [],
-      settings,
-      recipeHistory,
-      inventory
-    },
-    quickOptions
-  )
+      settings: settings || DEFAULT_SETTINGS,
+      recipeHistory: recipeHistory || [],
+      inventory: inventory || [],
+      quickOptions
+    })
+  }
+
+  // Otherwise, use the simple prompt (backward compatibility)
+
+  const prompt = `You are a family meal planning assistant. Generate a weekly meal plan based on the following information:
+
+FAMILY PROFILES:
+${profiles.map((p, i) => `
+Profile ${i + 1}: ${p.profileName}
+- Age: ${p.age || 'Not specified'}
+- Food Likes: ${p.foodLikes.join(', ') || 'None specified'}
+- Food Dislikes: ${p.foodDislikes.join(', ') || 'None specified'}
+- Activity Level: ${p.activityLevel || 'Not specified'}
+${p.macroTrackingEnabled ? `- Daily Targets: ${p.dailyCalorieTarget || 0} cal, ${p.dailyProteinTarget || 0}g protein` : ''}
+`).join('\n')}
+
+AVAILABLE RECIPES:
+${recipes.map((r, i) => `
+${i + 1}. ${r.recipeName} (ID: ${r.id})
+   - Servings: ${r.servings}
+   - Time: ${r.totalTimeMinutes || 'N/A'} min
+   - Categories: ${r.mealCategory.join(', ')}
+   - Rating: ${r.familyRating || 'Not rated'}
+   - Ingredients: ${r.ingredients.map((ing: any) => ing.ingredientName).slice(0, 5).join(', ')}...
+`).join('\n')}
+
+WEEK START DATE: ${weekStartDate}
+
+Generate a meal plan for the week with Dinner for each day (Monday through Sunday). For each meal:
+1. Select an appropriate recipe from the available recipes
+2. Consider family preferences and dietary needs
+3. Provide variety throughout the week
+4. Balance nutrition across the week
+
+Return ONLY a valid JSON object in this exact format:
+{
+  "meals": [
+    {
+      "dayOfWeek": "Monday",
+      "mealType": "Dinner",
+      "recipeId": "recipe-id-from-list",
+      "recipeName": "Recipe Name",
+      "servings": 4,
+      "notes": "Brief note about why this meal was chosen"
+    }
+  ],
+  "summary": "Brief summary of the meal plan strategy and nutritional balance"
+}
+
+Important: Return ONLY the JSON object, no other text.`
 
   try {
-    console.log('🔷 Calling Claude API for meal plan generation...')
     const message = await client.messages.create({
-      model: 'claude-haiku-4-5',
-      max_tokens: 4096,
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 2048,
       messages: [{
         role: 'user',
         content: prompt
@@ -183,31 +109,17 @@ export async function generateMealPlan(params: {
     })
 
     const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
-    console.log('🟢 Claude response received, length:', responseText.length)
-    console.log('🟢 Response preview (first 500 chars):', responseText.substring(0, 500))
 
     // Extract JSON from response
     const jsonMatch = responseText.match(/\{[\s\S]*\}/)
     if (!jsonMatch) {
-      console.error('❌ No JSON found in Claude response')
-      console.error('Full response:', responseText)
       throw new Error('Failed to parse meal plan from Claude response')
     }
 
-    console.log('🟢 JSON extracted, length:', jsonMatch[0].length)
-
-    try {
-      const mealPlan = JSON.parse(jsonMatch[0])
-      console.log('🟢 Meal plan parsed successfully, meals count:', mealPlan.meals?.length || 0)
-      return mealPlan
-    } catch (parseError: any) {
-      console.error('❌ JSON parse error:', parseError.message)
-      console.error('❌ Malformed JSON (first 1000 chars):', jsonMatch[0].substring(0, 1000))
-      console.error('❌ Malformed JSON (last 500 chars):', jsonMatch[0].substring(Math.max(0, jsonMatch[0].length - 500)))
-      throw new Error(`Invalid JSON from Claude: ${parseError.message}`)
-    }
+    const mealPlan = JSON.parse(jsonMatch[0])
+    return mealPlan
   } catch (error) {
-    console.error('❌ Error generating meal plan with Claude:', error)
+    console.error('Error generating meal plan with Claude:', error)
     throw error
   }
 }
@@ -241,7 +153,7 @@ Keep it concise and practical.`
 
   try {
     const message = await client.messages.create({
-      model: 'claude-haiku-4-5',
+      model: 'claude-3-5-sonnet-20241022',
       max_tokens: 1024,
       messages: [{
         role: 'user',
@@ -256,6 +168,107 @@ Keep it concise and practical.`
   }
 }
 
+// Advanced meal plan generation with batch cooking, servings calculation, etc.
+async function generateAdvancedMealPlan(params: {
+  profiles: any[]
+  recipes: any[]
+  weekStartDate: string
+  weekProfileSchedules: any[]
+  settings: MealPlanSettings
+  recipeHistory: RecipeUsageHistory[]
+  inventory: InventoryItem[]
+  quickOptions?: QuickOptions
+}) {
+  const {
+    profiles,
+    recipes,
+    weekStartDate,
+    weekProfileSchedules,
+    settings,
+    recipeHistory,
+    inventory,
+    quickOptions
+  } = params
+
+  // Calculate servings map
+  type MealSchedule = {
+    monday: string[]
+    tuesday: string[]
+    wednesday: string[]
+    thursday: string[]
+    friday: string[]
+    saturday: string[]
+    sunday: string[]
+  }
+
+  const daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+  let servingsMap: Record<string, Record<string, number>> = {}
+
+  daysOfWeek.forEach(day => {
+    servingsMap[day] = {}
+
+    weekProfileSchedules.forEach(profileSchedule => {
+      const meals = profileSchedule.schedule?.[day] || []
+      meals.forEach((meal: string) => {
+        servingsMap[day][meal] = (servingsMap[day][meal] || 0) + 1
+      })
+    })
+  })
+
+  // DEBUG: Log the servingsMap to verify calculations
+  console.log('📊 ServingsMap calculated:', JSON.stringify(servingsMap, null, 2))
+
+  // Build the advanced AI prompt
+  const prompt = buildMealPlanPrompt(
+    {
+      profiles,
+      recipes,
+      weekStartDate,
+      weekProfileSchedules,
+      settings,
+      recipeHistory,
+      inventory,
+      servingsMap
+    },
+    quickOptions
+  )
+
+  // DEBUG: Log the REQUIRED SERVINGS section of the prompt
+  const servingsSection = prompt.match(/\*\*REQUIRED SERVINGS[\s\S]*?(?=\n\n\*\*|$)/)?.[0]
+  if (servingsSection) {
+    console.log('📋 REQUIRED SERVINGS section sent to AI:')
+    console.log(servingsSection)
+  }
+
+  try {
+    console.log('🔷 Calling Claude API for advanced meal plan generation...')
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-5',
+      max_tokens: 4096,
+      messages: [{
+        role: 'user',
+        content: prompt
+      }]
+    })
+
+    const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
+    console.log('🟢 Claude response received, length:', responseText.length)
+
+    // Extract JSON from response
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      console.error('❌ No JSON found in Claude response')
+      throw new Error('Failed to parse meal plan from Claude response')
+    }
+
+    const mealPlan = JSON.parse(jsonMatch[0])
+    console.log('🟢 Meal plan parsed successfully, meals count:', mealPlan.meals?.length || 0)
+    return mealPlan
+  } catch (error) {
+    console.error('❌ Error generating advanced meal plan:', error)
+    throw error
+  }
+}
 export async function parseRecipeFromUrl(url: string, htmlContent: string) {
   const prompt = `You are an expert recipe extraction assistant. Carefully analyze the HTML content and extract ALL recipe details with high accuracy.
 
@@ -752,7 +765,7 @@ export async function getNutritionistFeedbackForRecipe(params: {
     ? userProfile.allergies
     : (typeof userProfile.allergies === 'string' ? [userProfile.allergies] : [])
 
-  const prompt = `You are Sarah, a friendly and knowledgeable nutritionist. Provide personalized, encouraging feedback about this recipe for your client.
+  const prompt = `You are Emilia, a friendly and knowledgeable nutritionist. Provide personalized, encouraging feedback about this recipe for your client.
 
 CLIENT PROFILE:
 Name: ${userProfile.profileName}
@@ -771,7 +784,7 @@ Daily Targets:
 RECIPE:
 Name: ${recipe.recipeName}
 ${recipe.description || ''}
-Meal Type: ${Array.isArray(recipe.mealType) ? recipe.mealType.join(', ') : 'Not specified'}
+Meal Type: ${recipe.mealType.join(', ')}
 Servings: ${recipe.servings}
 
 NUTRITION PER SERVING:
@@ -782,13 +795,13 @@ NUTRITION PER SERVING:
 
 Overall Rating: ${macroAnalysis.overallRating}
 
-Provide warm, personalized feedback (2-4 sentences) as Sarah the nutritionist:
+Provide warm, personalized feedback (2-4 sentences) as Emilia the nutritionist:
 1. Comment on how well this fits ${userProfile.profileName}'s goals
 2. Highlight positives (good nutrients, ingredients)
 3. If there are concerns (allergies, high in something they should limit), mention gently
 4. Offer 1 simple suggestion if relevant (e.g., "swap X for Y", "pair with a salad")
 
-Write in first person as Sarah. Be encouraging and friendly, not clinical. Return ONLY the feedback text, no JSON.
+Write in first person as Emilia. Be encouraging and friendly, not clinical. Return ONLY the feedback text, no JSON.
 
 Example tone: "Hi! This looks like a great choice - the protein content will really support an active lifestyle. The fiber from the beans is a nice bonus too. Just watch the sodium if you're sensitive to salt. Maybe pair it with a fresh salad to add more veggies?"`
 
