@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { isValidPriority, isValidSource, SourceDetail } from '@/lib/types/shopping-list'
+import { normalizeAndRound } from '@/lib/measurements'
 
 const createItemSchema = z.object({
   itemName: z.string().min(1, 'Item name is required').max(200),
@@ -144,18 +145,23 @@ export async function POST(
     let currentOrder = (maxOrder?.displayOrder ?? -1) + 1
 
     const createdItems = await prisma.shoppingListItem.createMany({
-      data: validatedItems.map((item) => ({
-        shoppingListId,
-        itemName: item.itemName,
-        quantity: item.quantity,
-        unit: item.unit,
-        category: item.category || null,
-        source: item.source || 'manual',
-        sourceDetails: item.sourceDetails || [],
-        customNote: item.customNote || null,
-        priority: item.priority || 'Medium',
-        displayOrder: currentOrder++,
-      })),
+      data: validatedItems.map((item) => {
+        // Apply unit normalization and smart rounding
+        const normalized = normalizeAndRound(item.quantity, item.unit)
+
+        return {
+          shoppingListId,
+          itemName: item.itemName,
+          quantity: normalized.quantity,
+          unit: normalized.unit,
+          category: item.category || null,
+          source: item.source || 'manual',
+          sourceDetails: item.sourceDetails || [],
+          customNote: item.customNote || null,
+          priority: item.priority || 'Medium',
+          displayOrder: currentOrder++,
+        }
+      }),
     })
 
     // Fetch the created items to return
@@ -286,6 +292,15 @@ export async function PATCH(
         updateData.originalItemName = existingItem.itemName
         console.log(`🔄 Tracking original name: "${existingItem.itemName}" → "${data.itemName}"`)
       }
+    }
+
+    // Apply unit normalization and smart rounding if quantity or unit is being updated
+    if (data.quantity !== undefined || data.unit !== undefined) {
+      const quantity = data.quantity ?? existingItem.quantity
+      const unit = data.unit ?? existingItem.unit
+      const normalized = normalizeAndRound(quantity, unit)
+      updateData.quantity = normalized.quantity
+      updateData.unit = normalized.unit
     }
 
     const updatedItem = await prisma.shoppingListItem.update({

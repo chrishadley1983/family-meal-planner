@@ -163,7 +163,7 @@ export default function InventoryPage() {
                     type="number"
                     required
                     min="0"
-                    step="0.1"
+                    step="0.01"
                     value={formData.quantity}
                     onChange={(e) => setFormData({ ...formData, quantity: parseFloat(e.target.value) })}
                   />

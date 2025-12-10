@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { convertToMetric, DEFAULT_CATEGORIES, findDuplicates, combineQuantities } from '@/lib/unit-conversion'
 import { lookupCategory, preprocessForAI, validateCategory, normalizeForLookup } from '@/lib/category-lookup'
+import { normalizeAndRound } from '@/lib/measurements'
 import { SourceDetail } from '@/lib/types/shopping-list'
 import Anthropic from '@anthropic-ai/sdk'
 
@@ -190,15 +191,18 @@ export async function POST(
 
     let currentOrder = (maxOrder?.displayOrder ?? -1) + 1
 
-    // Create shopping list items
+    // Create shopping list items with normalized units and smart rounding
     const itemsToCreate = Array.from(ingredientMap.entries()).map(([key, data]) => {
       const [ingredientName] = key.split('|')
+
+      // Apply unit normalization and smart rounding
+      const normalized = normalizeAndRound(data.quantity, data.unit)
 
       return {
         shoppingListId,
         itemName: ingredientName.charAt(0).toUpperCase() + ingredientName.slice(1), // Capitalize
-        quantity: Math.round(data.quantity * 100) / 100, // Round to 2 decimal places
-        unit: data.unit,
+        quantity: normalized.quantity,
+        unit: normalized.unit,
         category: data.category,
         source: 'recipe' as const,
         sourceDetails: data.sources as unknown as object[],
@@ -596,12 +600,15 @@ Respond with ONLY valid JSON: {"quantity": <number>, "unit": "<unit>", "itemName
 
           const finalItemName = aiSuggestedName || primaryItem.itemName
 
+          // Apply unit normalization and smart rounding to combined result
+          const normalizedCombined = normalizeAndRound(combinedQuantity, combinedUnit)
+
           await prisma.shoppingListItem.update({
             where: { id: keepItem.id },
             data: {
               itemName: finalItemName,
-              quantity: Math.round(combinedQuantity * 100) / 100,
-              unit: combinedUnit,
+              quantity: normalizedCombined.quantity,
+              unit: normalizedCombined.unit,
               category,
               source: 'recipe',
               sourceDetails: combinedSourceDetails as unknown as object[],
