@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { convertToMetric, DEFAULT_CATEGORIES, findDuplicates, combineQuantities } from '@/lib/unit-conversion'
+import { lookupCategory, preprocessForAI, validateCategory, normalizeForLookup } from '@/lib/category-lookup'
 import { SourceDetail } from '@/lib/types/shopping-list'
 import Anthropic from '@anthropic-ai/sdk'
 
@@ -238,7 +239,7 @@ export async function POST(
     // Auto-categorize items that don't have a category
     const uncategorizedItems = createdItems.filter(item => !item.category)
     if (uncategorizedItems.length > 0) {
-      console.log(`🔷 Auto-categorizing ${uncategorizedItems.length} items using AI...`)
+      console.log(`🔷 Auto-categorizing ${uncategorizedItems.length} items...`)
 
       try {
         // Get the user's categories
@@ -249,7 +250,7 @@ export async function POST(
 
         if (userCategories.length === 0) {
           // Create default categories for this user
-          const defaultCats = DEFAULT_CATEGORIES.map((cat, idx) => ({
+          const defaultCats = DEFAULT_CATEGORIES.map((cat) => ({
             userId: session.user.id,
             name: cat.name,
             displayOrder: cat.displayOrder,
@@ -263,89 +264,199 @@ export async function POST(
         }
 
         const categoryNames = userCategories.map(c => c.name)
-        const itemNames = uncategorizedItems.map(i => i.itemName)
 
-        // Build category guidance dynamically based on user's actual categories
-        const categoryExamples: Record<string, string> = {
-          'Fresh Produce': 'Fresh fruit, vegetables, fresh herbs (apples, carrots, broccoli, fresh mint, fresh basil, fresh coriander, lettuce, tomatoes, onions, garlic, ginger, lemons, limes, spinach, peppers)',
-          'Meat & Fish': 'Fresh and frozen raw meat, poultry, fish, and seafood (chicken breast, minced beef, pork chops, salmon fillets, prawns, lamb leg, bacon, sausages, chicken thighs, cod, tuna steaks)',
-          'Dairy & Eggs': 'Milk, cheese, yoghurt, cream, butter, and eggs (milk, semi-skimmed milk, cheddar cheese, Greek yoghurt, natural yoghurt, double cream, soured cream, butter, eggs, crème fraîche, mozzarella)',
-          'Bakery': 'Bread, rolls, pastries, and baked goods (bread, rolls, croissants, bagels, pitta bread, naan bread, tortilla wraps, crumpets, baguettes)',
-          'Chilled & Deli': 'Fresh ready meals, deli meats, fresh pasta, hummus, dips, fresh soups, cooked meats (ham, salami, fresh pasta, pesto, hummus, coleslaw, fresh soup, quiche)',
-          'Frozen': 'Frozen foods - vegetables, ready meals, desserts, ice cream (frozen peas, frozen chips, ice cream, frozen pizza, frozen berries, fish fingers, frozen pastry)',
-          'Cupboard Staples': 'Tinned goods, pasta, rice, noodles, sauces, stock, condiments (tinned tomatoes, chickpeas, kidney beans, pasta, rice, noodles, soy sauce, stock cubes, chicken stock, coconut milk, passata, peanut butter, jam, honey, maple syrup)',
-          'Baking & Cooking Ingredients': 'Flour, sugar, baking powder, spices, seasonings, oils, vinegars, extracts (plain flour, self-raising flour, sugar, brown sugar, caster sugar, salt, pepper, paprika, cumin, cardamom, cinnamon, olive oil, vegetable oil, vanilla extract, baking powder, cornflour, dried herbs)',
-          'Breakfast': 'Cereals, porridge, granola, breakfast bars, spreads (cereals, porridge oats, granola, muesli, Weetabix, breakfast bars, marmalade)',
-          'Drinks': 'Beverages - juices, squash, tea, coffee, soft drinks, water (orange juice, apple juice, squash, tea bags, coffee, cola, sparkling water, cordial)',
-          'Snacks & Treats': 'Crisps, nuts, chocolate, sweets, biscuits, popcorn (crisps, nuts, chocolate, biscuits, popcorn, dried fruit, cereal bars, sweets)',
-          'Household': 'Non-food items for home (kitchen roll, cling film, foil, washing up liquid, bin bags, cleaning products)',
-          'Other': 'Items that do not fit into any other category',
-          // Legacy mappings for backwards compatibility
-          'Produce': 'Fresh fruit, vegetables, fresh herbs',
-          'Meat & Seafood': 'Fresh and frozen raw meat, poultry, fish, and seafood',
-          'Pantry': 'Dry goods, tinned foods, pasta, rice, oils, condiments',
-          'Canned Goods': 'Tinned foods, stock/broth in cartons or tins',
-          'Condiments & Sauces': 'Sauces, dressings, spreads, vinegars',
-          'Beverages': 'Drinks - juices, tea, coffee, soft drinks',
-          'Snacks': 'Crisps, nuts, chocolate, sweets, biscuits',
+        // PHASE 1: Try lookup table first for each item
+        const lookupResults: { item: typeof uncategorizedItems[0], category: string | null }[] = []
+        const needsAI: typeof uncategorizedItems = []
+
+        for (const item of uncategorizedItems) {
+          const lookupResult = lookupCategory(item.itemName)
+          if (lookupResult) {
+            // Map lookup result to user's category names (case-insensitive match)
+            const matchedCategory = categoryNames.find(
+              cat => cat.toLowerCase() === lookupResult.toLowerCase()
+            )
+            if (matchedCategory) {
+              lookupResults.push({ item, category: matchedCategory })
+              console.log(`📋 Lookup: "${item.itemName}" → ${matchedCategory}`)
+            } else {
+              // Lookup found a category but user doesn't have it - use AI
+              needsAI.push(item)
+              console.log(`📋 Lookup: "${item.itemName}" → ${lookupResult} (not in user categories, using AI)`)
+            }
+          } else {
+            needsAI.push(item)
+            console.log(`📋 Lookup: "${item.itemName}" → not found, using AI`)
+          }
         }
 
-        // Build the category list dynamically from user's categories
-        const categoryDescriptions = categoryNames
-          .map(name => {
-            const example = categoryExamples[name] || 'General items for this category'
-            return `**${name}**: ${example}`
-          })
-          .join('\n')
+        console.log(`🔷 Lookup resolved ${lookupResults.length} items, ${needsAI.length} need AI`)
 
-        // Use AI to categorize all items at once with dynamic categories
-        const prompt = `You are a UK supermarket assistant categorising shopping list items.
+        // Update items that were resolved by lookup
+        if (lookupResults.length > 0) {
+          const lookupUpdates = lookupResults.map(({ item, category }) =>
+            prisma.shoppingListItem.update({
+              where: { id: item.id },
+              data: { category },
+            })
+          )
+          await Promise.all(lookupUpdates)
+          console.log(`🟢 Updated ${lookupResults.length} items from lookup table`)
+        }
+
+        // PHASE 2: Use AI for remaining items
+        if (needsAI.length > 0) {
+          console.log(`🔷 Using AI to categorize ${needsAI.length} items...`)
+
+          // Pre-process item names for better AI results
+          const processedItems = needsAI.map(item => ({
+            original: item.itemName,
+            processed: preprocessForAI(item.itemName),
+          }))
+
+          // Build category guidance dynamically based on user's actual categories
+          const categoryExamples: Record<string, string> = {
+            'Fresh Produce': 'Fresh fruit, vegetables, fresh herbs. Examples: apples, carrots, broccoli, fresh mint, fresh basil, fresh coriander, lettuce, tomatoes, ONIONS, GARLIC, GINGER, lemons, limes, spinach, PEPPERS (bell peppers), chillies, mushrooms, avocado, celery, cucumber, courgette',
+            'Meat & Fish': 'Fresh and frozen RAW meat, poultry, fish, and seafood. Examples: chicken breast, CHICKEN THIGHS, minced beef, GROUND BEEF, pork chops, salmon fillets, prawns, lamb, bacon, SAUSAGES, cod, tuna steaks, duck, turkey',
+            'Dairy & Eggs': 'Milk, cheese, yoghurt, cream, butter, and EGGS. Examples: milk, GREEK YOGURT, SOURED CREAM, cheddar cheese, PARMESAN, MOZZARELLA, FETA, RICOTTA, double cream, BUTTER, eggs, crème fraîche, cottage cheese, mascarpone',
+            'Bakery': 'Bread, rolls, pastries, baked goods, and flatbreads. Examples: bread, rolls, croissants, bagels, pitta bread, NAAN BREAD, TORTILLA WRAPS, ROTI, crumpets, baguettes, ciabatta',
+            'Chilled & Deli': 'Fresh ready meals, deli meats, fresh pasta, dips, cooked meats. Examples: ham, salami, FRESH PASTA, GNOCCHI, PESTO, HUMMUS, GUACAMOLE, coleslaw, fresh soup, quiche, COOKED CHICKEN, TOFU, sun-dried tomatoes, olives',
+            'Frozen': 'FROZEN foods only - must have "frozen" in name or be ice cream. Examples: frozen peas, frozen chips, ICE CREAM, frozen pizza, FROZEN BERRIES, fish fingers, frozen pastry',
+            'Cupboard Staples': 'Tinned goods, DRIED pasta, rice, noodles, stock, sauces, condiments, honey, jam. Examples: tinned tomatoes, CHOPPED TOMATOES, PASSATA, chickpeas, kidney beans, PASTA, RICE, NOODLES, SOY SAUCE, STOCK CUBES, CHICKEN STOCK, coconut milk, HONEY, MAPLE SYRUP, MUSTARD, vinegar, peanut butter, lentils',
+            'Baking & Cooking Ingredients': 'Flour, sugar, baking powder, SPICES, SEASONINGS, OILS, dried herbs. Examples: plain flour, sugar, BROWN SUGAR, SALT, PEPPER, PAPRIKA, CUMIN, CARDAMOM, cinnamon, OLIVE OIL, vegetable oil, vanilla extract, baking powder, cornflour, DRIED OREGANO, garlic powder, chilli powder, curry powder, garam masala',
+            'Breakfast': 'Cereals, porridge, granola, breakfast bars. Examples: OATS, porridge oats, granola, muesli, Weetabix, breakfast bars, cereal',
+            'Drinks': 'Beverages - juices, squash, tea, coffee, soft drinks. Examples: orange juice, apple juice, squash, tea bags, coffee, cola, sparkling water, cordial',
+            'Snacks & Treats': 'Crisps, nuts for snacking, chocolate, sweets, biscuits. Examples: crisps, CASHEWS, almonds, chocolate, biscuits, popcorn, dried fruit',
+            'Household': 'Non-food items for home. Examples: kitchen roll, cling film, foil, washing up liquid, bin bags',
+            'Other': 'ONLY use for items that genuinely do not fit ANY other category. Avoid using this.',
+          }
+
+          // Build the category list dynamically from user's categories
+          const categoryDescriptions = categoryNames
+            .map(name => {
+              const example = categoryExamples[name] || 'General items for this category'
+              return `**${name}**: ${example}`
+            })
+            .join('\n\n')
+
+          // Build the improved AI prompt with explicit NEVER rules
+          const prompt = `You are a UK supermarket assistant categorising shopping list items.
 Use British English spelling and UK grocery store conventions.
 
 AVAILABLE CATEGORIES (use ONLY these exact names):
 ${categoryDescriptions}
 
 ITEMS TO CATEGORISE:
-${itemNames.map((item, idx) => `${idx + 1}. "${item}"`).join('\n')}
+${processedItems.map((item, idx) => `${idx + 1}. "${item.processed}"`).join('\n')}
 
-IMPORTANT RULES:
-- Fresh herbs (mint, basil, coriander, parsley) → Fresh Produce (or Produce if that's available)
-- Dried spices, seasonings, flour, sugar → Baking & Cooking Ingredients (or Pantry/Cupboard Staples if available)
-- Tinned/canned goods, pasta, rice, stock → Cupboard Staples (or Pantry/Canned Goods if available)
-- Fresh deli items, hummus, fresh pasta → Chilled & Deli (if available, otherwise Other)
-- Yoghurt, cream, milk products → Dairy & Eggs
+CRITICAL RULES - READ CAREFULLY:
+
+DO put in FRESH PRODUCE:
+- All fresh vegetables: onions, garlic, peppers (bell peppers), tomatoes, potatoes, carrots, celery, mushrooms, courgettes, aubergines
+- All fresh fruit: apples, bananas, lemons, limes, oranges, berries
+- All FRESH herbs: fresh mint, fresh basil, fresh coriander, fresh parsley, ginger root
+- Avocados, bean sprouts, spring onions, shallots
+
+DO put in MEAT & FISH:
+- ALL raw chicken (breast, thigh, drumstick, whole)
+- ALL raw beef (mince, steak, joint)
+- ALL raw pork, lamb, sausages, bacon
+- ALL raw fish and seafood
+
+DO put in DAIRY & EGGS:
+- ALL eggs (eggs, large eggs, medium eggs)
+- ALL yoghurt (Greek yogurt, natural yogurt)
+- ALL cream (soured cream, double cream, heavy cream)
+- ALL cheese (parmesan, mozzarella, feta, ricotta, cheddar)
+- Butter, milk
+
+DO put in CUPBOARD STAPLES:
+- ALL tinned/canned goods (chopped tomatoes, chickpeas, beans, tinned fish)
+- ALL dried pasta, rice, noodles, lentils
+- ALL stock (chicken stock, beef stock, stock cubes, broth)
+- Coconut milk, passata, soy sauce, honey, maple syrup, jam
+
+DO put in BAKING & COOKING INGREDIENTS:
+- ALL flour (plain, self-raising)
+- ALL sugar (white, brown, caster)
+- ALL spices (paprika, cumin, cinnamon, curry powder, garam masala)
+- ALL dried herbs (dried oregano, dried basil)
+- ALL cooking oils (olive oil, vegetable oil, sesame oil)
+- Salt, pepper, baking powder, vanilla extract
+
+DO put in BAKERY:
+- Bread, rolls, naan, pitta, tortillas, wraps, roti
+
+DO put in CHILLED & DELI:
+- Fresh pasta, gnocchi, pesto, hummus, guacamole
+- Cooked/prepared chicken, deli meats
+- Tofu, sun-dried tomatoes
+
+NEVER put vegetables like onions, garlic, peppers, tomatoes in Baking & Cooking Ingredients
+NEVER put raw meat/chicken in Chilled & Deli (that's for COOKED meats only)
+NEVER put eggs in Fresh Produce - eggs go in Dairy & Eggs
+NEVER put dried pasta/rice in Baking & Cooking Ingredients - they go in Cupboard Staples
+NEVER put stock/broth in Baking & Cooking Ingredients - they go in Cupboard Staples
+NEVER put fresh vegetables in Cupboard Staples
 
 Respond with ONLY a JSON array of category names in the exact order as the items above.
-Use the EXACT category names from the list above. Example format: ["Fresh Produce", "Cupboard Staples", "Dairy & Eggs"]`
+Use the EXACT category names from the list. Example: ["Fresh Produce", "Cupboard Staples", "Dairy & Eggs"]`
 
-        const message = await client.messages.create({
-          model: 'claude-haiku-4-5',
-          max_tokens: 2048,
-          messages: [{ role: 'user', content: prompt }],
-        })
+          console.log(`🔷 AI prompt built, sending ${needsAI.length} items to Claude...`)
 
-        const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
-        const jsonMatch = responseText.match(/\[[\s\S]*\]/)
-
-        if (jsonMatch) {
-          const suggestedCategories = JSON.parse(jsonMatch[0]) as string[]
-
-          // Update each item with its suggested category
-          const updates = uncategorizedItems.map((item, idx) => {
-            const suggested = suggestedCategories[idx] || 'Other'
-            const matchedCategory = categoryNames.find(
-              cat => cat.toLowerCase() === suggested.toLowerCase()
-            ) || 'Other'
-
-            return prisma.shoppingListItem.update({
-              where: { id: item.id },
-              data: { category: matchedCategory },
-            })
+          const message = await client.messages.create({
+            model: 'claude-haiku-4-5',
+            max_tokens: 4096,
+            temperature: 0, // Lower temperature for more consistent results
+            messages: [{ role: 'user', content: prompt }],
           })
 
-          await Promise.all(updates)
-          console.log(`🟢 Auto-categorized ${uncategorizedItems.length} items`)
+          const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
+          console.log(`🔷 AI response received, parsing...`)
+
+          const jsonMatch = responseText.match(/\[[\s\S]*\]/)
+
+          if (jsonMatch) {
+            const suggestedCategories = JSON.parse(jsonMatch[0]) as string[]
+
+            // PHASE 3: Validate and correct AI suggestions using keyword rules
+            const updates = needsAI.map((item, idx) => {
+              const aiSuggested = suggestedCategories[idx] || 'Other'
+
+              // Match to user's category names (case-insensitive)
+              let matchedCategory = categoryNames.find(
+                cat => cat.toLowerCase() === aiSuggested.toLowerCase()
+              ) || 'Other'
+
+              // Apply validation/correction rules
+              const validatedCategory = validateCategory(item.itemName, matchedCategory)
+              if (validatedCategory !== matchedCategory) {
+                // Check if validated category exists in user's categories
+                const validatedMatch = categoryNames.find(
+                  cat => cat.toLowerCase() === validatedCategory.toLowerCase()
+                )
+                if (validatedMatch) {
+                  console.log(`🔧 Corrected: "${item.itemName}" from ${matchedCategory} → ${validatedMatch}`)
+                  matchedCategory = validatedMatch
+                }
+              }
+
+              console.log(`🤖 AI: "${item.itemName}" → ${matchedCategory}`)
+
+              return prisma.shoppingListItem.update({
+                where: { id: item.id },
+                data: { category: matchedCategory },
+              })
+            })
+
+            await Promise.all(updates)
+            console.log(`🟢 AI categorized ${needsAI.length} items`)
+          } else {
+            console.warn('⚠️ AI response did not contain valid JSON array')
+          }
         }
+
+        console.log(`🟢 Auto-categorization complete: ${lookupResults.length} from lookup, ${needsAI.length} from AI`)
       } catch (catError) {
         console.warn('⚠️ Auto-categorization failed, items will remain uncategorized:', catError)
         // Don't fail the import if categorization fails
