@@ -9,26 +9,26 @@
 -- Add new columns to shopping_lists
 ALTER TABLE "shopping_lists" ADD COLUMN IF NOT EXISTS "name" TEXT NOT NULL DEFAULT 'Shopping List';
 ALTER TABLE "shopping_lists" ADD COLUMN IF NOT EXISTS "notes" TEXT;
-ALTER TABLE "shopping_lists" ADD COLUMN IF NOT EXISTS "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
-ALTER TABLE "shopping_lists" ADD COLUMN IF NOT EXISTS "finalized_at" TIMESTAMP(3);
-ALTER TABLE "shopping_lists" ADD COLUMN IF NOT EXISTS "archived_at" TIMESTAMP(3);
+ALTER TABLE "shopping_lists" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "shopping_lists" ADD COLUMN IF NOT EXISTS "finalizedAt" TIMESTAMP(3);
+ALTER TABLE "shopping_lists" ADD COLUMN IF NOT EXISTS "archivedAt" TIMESTAMP(3);
 
--- Rename generated_at to created_at for consistency (if exists)
+-- Rename generatedAt to createdAt for consistency (if exists)
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'shopping_lists' AND column_name = 'generated_at') THEN
-        ALTER TABLE "shopping_lists" RENAME COLUMN "generated_at" TO "created_at";
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'shopping_lists' AND column_name = 'generatedAt') THEN
+        ALTER TABLE "shopping_lists" RENAME COLUMN "generatedAt" TO "createdAt";
     END IF;
 END $$;
 
--- Drop the old completed_at column (replaced by status + archivedAt)
-ALTER TABLE "shopping_lists" DROP COLUMN IF EXISTS "completed_at";
+-- Drop the old completedAt column (replaced by status + archivedAt)
+ALTER TABLE "shopping_lists" DROP COLUMN IF EXISTS "completedAt";
 
 -- Update status default from 'Generated' to 'Draft'
 ALTER TABLE "shopping_lists" ALTER COLUMN "status" SET DEFAULT 'Draft';
 
 -- Make weekStartDate optional (nullable)
-ALTER TABLE "shopping_lists" ALTER COLUMN "week_start_date" DROP NOT NULL;
+ALTER TABLE "shopping_lists" ALTER COLUMN "weekStartDate" DROP NOT NULL;
 
 -- Add index on status for filtering
 CREATE INDEX IF NOT EXISTS "shopping_lists_status_idx" ON "shopping_lists"("status");
@@ -39,50 +39,65 @@ CREATE INDEX IF NOT EXISTS "shopping_lists_status_idx" ON "shopping_lists"("stat
 
 CREATE TABLE IF NOT EXISTS "shopping_list_meal_plans" (
     "id" TEXT NOT NULL,
-    "shopping_list_id" TEXT NOT NULL,
-    "meal_plan_id" TEXT NOT NULL,
-    "imported_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "shoppingListId" TEXT NOT NULL,
+    "mealPlanId" TEXT NOT NULL,
+    "importedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "shopping_list_meal_plans_pkey" PRIMARY KEY ("id")
 );
 
 -- Add unique constraint to prevent duplicate associations
-ALTER TABLE "shopping_list_meal_plans"
-ADD CONSTRAINT "shopping_list_meal_plans_shopping_list_id_meal_plan_id_key"
-UNIQUE ("shopping_list_id", "meal_plan_id");
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'shopping_list_meal_plans_shoppingListId_mealPlanId_key') THEN
+        ALTER TABLE "shopping_list_meal_plans"
+        ADD CONSTRAINT "shopping_list_meal_plans_shoppingListId_mealPlanId_key"
+        UNIQUE ("shoppingListId", "mealPlanId");
+    END IF;
+END $$;
 
 -- Add indexes for the join table
-CREATE INDEX IF NOT EXISTS "shopping_list_meal_plans_shopping_list_id_idx" ON "shopping_list_meal_plans"("shopping_list_id");
-CREATE INDEX IF NOT EXISTS "shopping_list_meal_plans_meal_plan_id_idx" ON "shopping_list_meal_plans"("meal_plan_id");
+CREATE INDEX IF NOT EXISTS "shopping_list_meal_plans_shoppingListId_idx" ON "shopping_list_meal_plans"("shoppingListId");
+CREATE INDEX IF NOT EXISTS "shopping_list_meal_plans_mealPlanId_idx" ON "shopping_list_meal_plans"("mealPlanId");
 
 -- Add foreign key constraints
-ALTER TABLE "shopping_list_meal_plans"
-ADD CONSTRAINT "shopping_list_meal_plans_shopping_list_id_fkey"
-FOREIGN KEY ("shopping_list_id") REFERENCES "shopping_lists"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'shopping_list_meal_plans_shoppingListId_fkey') THEN
+        ALTER TABLE "shopping_list_meal_plans"
+        ADD CONSTRAINT "shopping_list_meal_plans_shoppingListId_fkey"
+        FOREIGN KEY ("shoppingListId") REFERENCES "shopping_lists"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 
-ALTER TABLE "shopping_list_meal_plans"
-ADD CONSTRAINT "shopping_list_meal_plans_meal_plan_id_fkey"
-FOREIGN KEY ("meal_plan_id") REFERENCES "meal_plans"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'shopping_list_meal_plans_mealPlanId_fkey') THEN
+        ALTER TABLE "shopping_list_meal_plans"
+        ADD CONSTRAINT "shopping_list_meal_plans_mealPlanId_fkey"
+        FOREIGN KEY ("mealPlanId") REFERENCES "meal_plans"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- ============================================
--- 3. Migrate existing meal_plan_id data to join table
+-- 3. Migrate existing mealPlanId data to join table
 -- ============================================
 
--- If there are existing shopping lists with meal_plan_id, migrate them to the join table
-INSERT INTO "shopping_list_meal_plans" ("id", "shopping_list_id", "meal_plan_id", "imported_at")
+-- If there are existing shopping lists with mealPlanId, migrate them to the join table
+INSERT INTO "shopping_list_meal_plans" ("id", "shoppingListId", "mealPlanId", "importedAt")
 SELECT
     gen_random_uuid()::TEXT,
     "id",
-    "meal_plan_id",
-    COALESCE("created_at", CURRENT_TIMESTAMP)
+    "mealPlanId",
+    COALESCE("createdAt", CURRENT_TIMESTAMP)
 FROM "shopping_lists"
-WHERE "meal_plan_id" IS NOT NULL
-ON CONFLICT ("shopping_list_id", "meal_plan_id") DO NOTHING;
+WHERE "mealPlanId" IS NOT NULL
+ON CONFLICT ("shoppingListId", "mealPlanId") DO NOTHING;
 
--- Now drop the old meal_plan_id column and its index/constraint
-DROP INDEX IF EXISTS "shopping_lists_meal_plan_id_idx";
-ALTER TABLE "shopping_lists" DROP CONSTRAINT IF EXISTS "shopping_lists_meal_plan_id_fkey";
-ALTER TABLE "shopping_lists" DROP COLUMN IF EXISTS "meal_plan_id";
+-- Now drop the old mealPlanId column and its index/constraint
+DROP INDEX IF EXISTS "shopping_lists_mealPlanId_idx";
+ALTER TABLE "shopping_lists" DROP CONSTRAINT IF EXISTS "shopping_lists_mealPlanId_fkey";
+ALTER TABLE "shopping_lists" DROP COLUMN IF EXISTS "mealPlanId";
 
 -- ============================================
 -- 4. Create shopping_list_categories table
@@ -90,36 +105,46 @@ ALTER TABLE "shopping_lists" DROP COLUMN IF EXISTS "meal_plan_id";
 
 CREATE TABLE IF NOT EXISTS "shopping_list_categories" (
     "id" TEXT NOT NULL,
-    "user_id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "display_order" INTEGER NOT NULL DEFAULT 0,
-    "is_default" BOOLEAN NOT NULL DEFAULT false,
-    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "displayOrder" INTEGER NOT NULL DEFAULT 0,
+    "isDefault" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "shopping_list_categories_pkey" PRIMARY KEY ("id")
 );
 
 -- Add unique constraint for user + category name
-ALTER TABLE "shopping_list_categories"
-ADD CONSTRAINT "shopping_list_categories_user_id_name_key"
-UNIQUE ("user_id", "name");
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'shopping_list_categories_userId_name_key') THEN
+        ALTER TABLE "shopping_list_categories"
+        ADD CONSTRAINT "shopping_list_categories_userId_name_key"
+        UNIQUE ("userId", "name");
+    END IF;
+END $$;
 
 -- Add index for user lookup
-CREATE INDEX IF NOT EXISTS "shopping_list_categories_user_id_idx" ON "shopping_list_categories"("user_id");
+CREATE INDEX IF NOT EXISTS "shopping_list_categories_userId_idx" ON "shopping_list_categories"("userId");
 
 -- Add foreign key constraint
-ALTER TABLE "shopping_list_categories"
-ADD CONSTRAINT "shopping_list_categories_user_id_fkey"
-FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'shopping_list_categories_userId_fkey') THEN
+        ALTER TABLE "shopping_list_categories"
+        ADD CONSTRAINT "shopping_list_categories_userId_fkey"
+        FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 
 -- ============================================
 -- 5. Modify shopping_list_items table
 -- ============================================
 
 -- Add new columns to shopping_list_items
-ALTER TABLE "shopping_list_items" ADD COLUMN IF NOT EXISTS "display_order" INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE "shopping_list_items" ADD COLUMN IF NOT EXISTS "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "shopping_list_items" ADD COLUMN IF NOT EXISTS "displayOrder" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "shopping_list_items" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
 
 -- Add index on category for grouping
 CREATE INDEX IF NOT EXISTS "shopping_list_items_category_idx" ON "shopping_list_items"("category");
@@ -132,4 +157,4 @@ CREATE INDEX IF NOT EXISTS "shopping_list_items_category_idx" ON "shopping_list_
 UPDATE "shopping_lists" SET "status" = 'Draft' WHERE "status" = 'Generated';
 
 -- Update any 'Completed' status to 'Archived'
-UPDATE "shopping_lists" SET "status" = 'Archived', "archived_at" = CURRENT_TIMESTAMP WHERE "status" = 'Completed';
+UPDATE "shopping_lists" SET "status" = 'Archived', "archivedAt" = CURRENT_TIMESTAMP WHERE "status" = 'Completed';
