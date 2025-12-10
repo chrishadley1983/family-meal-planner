@@ -27,6 +27,7 @@ interface ShoppingListItem {
   customNote: string | null
   priority: string
   displayOrder: number
+  updatedAt: string
 }
 
 interface MealPlanLink {
@@ -288,6 +289,38 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
     } catch (error) {
       console.error('❌ Error undoing purchased:', error)
       alert('Failed to undo purchased items')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleUndoLastPurchased = async () => {
+    if (!shoppingList || saving) return
+
+    // Find the most recently updated purchased item
+    const purchasedItemsList = shoppingList.items
+      .filter((i) => i.isPurchased)
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+
+    if (purchasedItemsList.length === 0) return
+
+    const lastPurchased = purchasedItemsList[0]
+
+    setSaving(true)
+    try {
+      console.log('🔷 Undoing last purchased item:', lastPurchased.itemName)
+
+      await fetch(`/api/shopping-lists/${id}/items?itemId=${lastPurchased.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPurchased: false }),
+      })
+
+      console.log('🟢 Item marked as unpurchased:', lastPurchased.itemName)
+      await fetchShoppingList()
+    } catch (error) {
+      console.error('❌ Error undoing last purchased:', error)
+      alert('Failed to undo last purchased item')
     } finally {
       setSaving(false)
     }
@@ -784,14 +817,24 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
             {shoppingList.status === 'Finalized' && (
               <div className="flex gap-2">
                 {purchasedItems > 0 && (
-                  <button
-                    onClick={handleUndoAllPurchased}
-                    disabled={saving}
-                    className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50"
-                    title="Undo all purchased items"
-                  >
-                    Undo Purchased ({purchasedItems})
-                  </button>
+                  <>
+                    <button
+                      onClick={handleUndoLastPurchased}
+                      disabled={saving}
+                      className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50"
+                      title="Undo the most recently purchased item"
+                    >
+                      Undo Last
+                    </button>
+                    <button
+                      onClick={handleUndoAllPurchased}
+                      disabled={saving}
+                      className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50"
+                      title="Undo all purchased items"
+                    >
+                      Undo All ({purchasedItems})
+                    </button>
+                  </>
                 )}
                 <button
                   onClick={() => handleUpdateStatus('Archived')}
