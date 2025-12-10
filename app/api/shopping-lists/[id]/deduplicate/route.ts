@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { findDuplicates, combineQuantities, DuplicateGroup } from '@/lib/unit-conversion'
+import { normalizeAndRound } from '@/lib/measurements'
 import { SourceDetail } from '@/lib/types/shopping-list'
 import Anthropic from '@anthropic-ai/sdk'
 
@@ -273,12 +274,15 @@ Example: {"quantity": 5, "unit": "g", "itemName": "Black pepper"}`
     // Update the kept item - use AI-suggested name if available, otherwise the primary item name
     const finalItemName = aiSuggestedName || primaryItem.itemName
 
+    // Apply unit normalization and smart rounding to combined result
+    const normalizedCombined = normalizeAndRound(combinedQuantity, combinedUnit)
+
     const updatedItem = await prisma.shoppingListItem.update({
       where: { id: keepItem.id },
       data: {
         itemName: finalItemName,
-        quantity: Math.round(combinedQuantity * 100) / 100,
-        unit: combinedUnit,
+        quantity: normalizedCombined.quantity,
+        unit: normalizedCombined.unit,
         category,
         source: 'recipe', // Combined items are marked as recipe source
         sourceDetails: combinedSourceDetails as unknown as object[],
