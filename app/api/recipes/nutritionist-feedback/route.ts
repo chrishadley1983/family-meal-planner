@@ -27,6 +27,9 @@ export async function POST(request: NextRequest) {
         userId: session.user.id,
         isMainUser: true,
       },
+      orderBy: {
+        createdAt: 'asc', // Fallback to oldest profile if no main user set
+      },
       select: {
         profileName: true,
         age: true,
@@ -43,7 +46,7 @@ export async function POST(request: NextRequest) {
 
     if (!mainProfile) {
       return NextResponse.json(
-        { error: 'Main user profile not found. Please set a profile as main user.' },
+        { error: 'User profile not found.' },
         { status: 404 }
       )
     }
@@ -54,7 +57,7 @@ export async function POST(request: NextRequest) {
         recipeName: recipe.recipeName,
         description: recipe.description,
         servings: recipe.servings || 4,
-        mealCategory: recipe.mealCategory || [],
+        mealType: recipe.mealType || recipe.mealCategory || [],
         ingredients: recipe.ingredients,
       },
       userProfile: {
@@ -72,7 +75,9 @@ export async function POST(request: NextRequest) {
       macroAnalysis,
     })
 
-    return NextResponse.json({ feedback })
+    return NextResponse.json({
+      feedback
+    })
   } catch (error) {
     console.error('Nutritionist feedback error:', error)
     return NextResponse.json(

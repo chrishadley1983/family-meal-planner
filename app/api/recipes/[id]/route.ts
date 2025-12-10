@@ -144,13 +144,10 @@ export async function PUT(
 
     // Calculate total time if prep and cook times are being updated
     let totalTimeMinutes = existingRecipe.totalTimeMinutes
-    let isQuickMeal = existingRecipe.isQuickMeal
     if (data.prepTimeMinutes !== undefined || data.cookTimeMinutes !== undefined) {
       const prepTime = data.prepTimeMinutes ?? existingRecipe.prepTimeMinutes ?? 0
       const cookTime = data.cookTimeMinutes ?? existingRecipe.cookTimeMinutes ?? 0
       totalTimeMinutes = prepTime + cookTime || null
-      // Update isQuickMeal based on new total time
-      isQuickMeal = totalTimeMinutes !== null && totalTimeMinutes < 30
     }
 
     // If rating is being updated, set rating date
@@ -179,7 +176,6 @@ export async function PUT(
       data: {
         ...recipeData,
         totalTimeMinutes,
-        isQuickMeal,
         ratingDate,
         ...(ingredients !== undefined && {
           ingredients: {

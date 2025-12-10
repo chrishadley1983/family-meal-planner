@@ -1,6 +1,6 @@
 /**
  * Generate a colorful SVG illustration for recipes without user-provided photos
- * Style matches Sarah's friendly cartoon aesthetic
+ * Style matches Emilia's friendly cartoon aesthetic
  */
 
 // Color schemes based on meal category
