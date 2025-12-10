@@ -120,6 +120,14 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
   const [showDedupeModal, setShowDedupeModal] = useState(false)
   const [duplicateGroups, setDuplicateGroups] = useState<DuplicateGroup[]>([])
   const [deduping, setDeduping] = useState(false)
+
+  // Edit item modal
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingItem, setEditingItem] = useState<ShoppingListItem | null>(null)
+  const [editItemName, setEditItemName] = useState('')
+  const [editItemQuantity, setEditItemQuantity] = useState('')
+  const [editItemUnit, setEditItemUnit] = useState('')
+  const [savingEdit, setSavingEdit] = useState(false)
   const [lastCombineResult, setLastCombineResult] = useState<{
     message: string
     itemName?: string
@@ -249,6 +257,78 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
       await fetchShoppingList()
     } catch (error) {
       console.error('❌ Error toggling purchased:', error)
+    }
+  }
+
+  const handleUndoAllPurchased = async () => {
+    if (!shoppingList || saving) return
+
+    const purchasedItemsList = shoppingList.items.filter((i) => i.isPurchased)
+    if (purchasedItemsList.length === 0) return
+
+    if (!confirm(`Undo ${purchasedItemsList.length} purchased items?`)) return
+
+    setSaving(true)
+    try {
+      console.log('🔷 Undoing all purchased items:', purchasedItemsList.length)
+
+      // Update all purchased items to unpurchased
+      await Promise.all(
+        purchasedItemsList.map((item) =>
+          fetch(`/api/shopping-lists/${id}/items?itemId=${item.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ isPurchased: false }),
+          })
+        )
+      )
+
+      console.log('🟢 All items marked as unpurchased')
+      await fetchShoppingList()
+    } catch (error) {
+      console.error('❌ Error undoing purchased:', error)
+      alert('Failed to undo purchased items')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleOpenEditModal = (item: ShoppingListItem) => {
+    setEditingItem(item)
+    setEditItemName(item.itemName)
+    setEditItemQuantity(item.quantity.toString())
+    setEditItemUnit(item.unit)
+    setShowEditModal(true)
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editingItem || savingEdit) return
+    if (!editItemName.trim() || !editItemQuantity || !editItemUnit.trim()) return
+
+    setSavingEdit(true)
+    try {
+      console.log('🔷 Updating item:', editingItem.id)
+      const response = await fetch(`/api/shopping-lists/${id}/items?itemId=${editingItem.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          itemName: editItemName.trim(),
+          quantity: parseFloat(editItemQuantity),
+          unit: editItemUnit.trim(),
+        }),
+      })
+
+      if (!response.ok) throw new Error('Failed to update item')
+
+      console.log('🟢 Item updated')
+      setShowEditModal(false)
+      setEditingItem(null)
+      await fetchShoppingList()
+    } catch (error) {
+      console.error('❌ Error updating item:', error)
+      alert('Failed to update item')
+    } finally {
+      setSavingEdit(false)
     }
   }
 
@@ -572,12 +652,28 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
     }
   }
 
-  // Get unpurchased items grouped by category
+  // Get unpurchased items grouped by category, sorted alphabetically
   const unpurchasedItemsByCategory = Object.entries(itemsByCategory).reduce(
     (acc, [category, items]) => {
-      const unpurchased = items.filter((item) => !item.isPurchased)
+      const unpurchased = items
+        .filter((item) => !item.isPurchased)
+        .sort((a, b) => a.itemName.localeCompare(b.itemName))
       if (unpurchased.length > 0) {
         acc[category] = unpurchased
+      }
+      return acc
+    },
+    {} as Record<string, ShoppingListItem[]>
+  )
+
+  // Get purchased items grouped by category, sorted alphabetically
+  const purchasedItemsByCategory = Object.entries(itemsByCategory).reduce(
+    (acc, [category, items]) => {
+      const purchased = items
+        .filter((item) => item.isPurchased)
+        .sort((a, b) => a.itemName.localeCompare(b.itemName))
+      if (purchased.length > 0) {
+        acc[category] = purchased
       }
       return acc
     },
@@ -686,13 +782,25 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
               </div>
             )}
             {shoppingList.status === 'Finalized' && (
-              <button
-                onClick={() => handleUpdateStatus('Archived')}
-                disabled={saving}
-                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
-              >
-                Archive
-              </button>
+              <div className="flex gap-2">
+                {purchasedItems > 0 && (
+                  <button
+                    onClick={handleUndoAllPurchased}
+                    disabled={saving}
+                    className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50"
+                    title="Undo all purchased items"
+                  >
+                    Undo Purchased ({purchasedItems})
+                  </button>
+                )}
+                <button
+                  onClick={() => handleUpdateStatus('Archived')}
+                  disabled={saving}
+                  className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
+                >
+                  Archive
+                </button>
+              </div>
             )}
           </div>
 
@@ -852,8 +960,14 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
                   {items.map((item) => (
                     <li key={item.id} className="px-4 py-3 flex items-center gap-3 hover:bg-gray-750">
                       <button
-                        onClick={() => handleTogglePurchased(item.id, item.isPurchased)}
-                        className="w-6 h-6 rounded-full border-2 border-gray-500 hover:border-green-500 flex-shrink-0 transition-colors"
+                        onClick={() => shoppingList.status === 'Finalized' && handleTogglePurchased(item.id, item.isPurchased)}
+                        disabled={shoppingList.status !== 'Finalized'}
+                        title={shoppingList.status !== 'Finalized' ? 'Finalize the list to mark items as purchased' : 'Mark as purchased'}
+                        className={`w-6 h-6 rounded-full border-2 flex-shrink-0 transition-colors ${
+                          shoppingList.status === 'Finalized'
+                            ? 'border-gray-500 hover:border-green-500 cursor-pointer'
+                            : 'border-gray-700 cursor-not-allowed opacity-50'
+                        }`}
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
@@ -874,20 +988,84 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
                         </div>
                       </div>
                       {shoppingList.status === 'Draft' && (
-                        <button
-                          onClick={() => handleDeleteItem(item.id)}
-                          className="text-red-400 hover:text-red-300 p-1"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleOpenEditModal(item)}
+                            className="text-blue-400 hover:text-blue-300 p-1"
+                            title="Edit item"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteItem(item.id)}
+                            className="text-red-400 hover:text-red-300 p-1"
+                            title="Delete item"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
                       )}
                     </li>
                   ))}
                 </ul>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Purchased Items Section */}
+        {Object.keys(purchasedItemsByCategory).length > 0 && (
+          <div className="mt-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium text-gray-400">Purchased Items ({purchasedItems})</h3>
+            </div>
+            <div className="space-y-4 opacity-60">
+              {Object.entries(purchasedItemsByCategory).map(([category, items]) => (
+                <div key={`purchased-${category}`} className="bg-gray-800 rounded-lg overflow-hidden">
+                  <div className="px-4 py-3 bg-gray-750 border-b border-gray-700">
+                    <h3 className="text-gray-400 font-medium">{category}</h3>
+                    <span className="text-sm text-gray-500">{items.length} items</span>
+                  </div>
+                  <ul className="divide-y divide-gray-700">
+                    {items.map((item) => (
+                      <li key={item.id} className="px-4 py-3 flex items-center gap-3 hover:bg-gray-750">
+                        <button
+                          onClick={() => shoppingList.status === 'Finalized' && handleTogglePurchased(item.id, item.isPurchased)}
+                          disabled={shoppingList.status !== 'Finalized'}
+                          title={shoppingList.status !== 'Finalized' ? 'List must be finalized to modify items' : 'Undo purchase'}
+                          className={`w-6 h-6 rounded-full flex-shrink-0 transition-colors flex items-center justify-center ${
+                            shoppingList.status === 'Finalized'
+                              ? 'bg-green-600 hover:bg-green-500 cursor-pointer'
+                              : 'bg-green-800 cursor-not-allowed'
+                          }`}
+                        >
+                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-400 line-through">{item.itemName}</span>
+                            {item.isConsolidated && (
+                              <span className="text-xs bg-blue-900/50 text-blue-400 px-1.5 py-0.5 rounded">
+                                combined
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {item.quantity} {item.unit}
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -1161,6 +1339,77 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
                   Close
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Item Modal */}
+      {showEditModal && editingItem && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6 border-b border-gray-700">
+              <h2 className="text-xl font-semibold text-white">Edit Item</h2>
+              <p className="text-sm text-gray-400 mt-1">Update the item name or quantity</p>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Item Name</label>
+                <input
+                  type="text"
+                  value={editItemName}
+                  onChange={(e) => setEditItemName(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white"
+                  placeholder="Item name"
+                />
+                {editingItem.itemName !== editItemName.trim() && editItemName.trim() && (
+                  <p className="text-xs text-yellow-400 mt-1">
+                    Original: {editingItem.itemName}
+                  </p>
+                )}
+              </div>
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-sm text-gray-400 mb-1">Quantity</label>
+                  <input
+                    type="number"
+                    value={editItemQuantity}
+                    onChange={(e) => setEditItemQuantity(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white"
+                    placeholder="Quantity"
+                    step="0.01"
+                    min="0"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm text-gray-400 mb-1">Unit</label>
+                  <input
+                    type="text"
+                    value={editItemUnit}
+                    onChange={(e) => setEditItemUnit(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white"
+                    placeholder="Unit (e.g., kg, g, pieces)"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="px-6 py-4 bg-gray-750 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowEditModal(false)
+                  setEditingItem(null)
+                }}
+                className="px-4 py-2 text-gray-300 hover:text-white"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                disabled={savingEdit || !editItemName.trim() || !editItemQuantity || !editItemUnit.trim()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              >
+                {savingEdit ? 'Saving...' : 'Save Changes'}
+              </button>
             </div>
           </div>
         </div>
