@@ -85,6 +85,8 @@ interface DuplicateGroup {
     quantity: number
     unit: string
   }
+  confidence?: 'HIGH' | 'MEDIUM' | 'LOW'
+  reason?: string
 }
 
 export default function ShoppingListDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -542,11 +544,13 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
   // Deduplication
   const handleOpenDedupeModal = async () => {
     try {
-      console.log('🔷 Finding duplicates')
-      const response = await fetch(`/api/shopping-lists/${id}/deduplicate`)
+      console.log('🔷 Finding duplicates with AI semantic matching')
+      // Use AI matching for comprehensive duplicate detection
+      const response = await fetch(`/api/shopping-lists/${id}/deduplicate?useAI=true`)
       if (!response.ok) throw new Error('Failed to find duplicates')
 
       const data = await response.json()
+      console.log('🟢 Duplicate summary:', data.summary)
       setDuplicateGroups(data.duplicateGroups || [])
       setShowDedupeModal(true)
     } catch (error) {
@@ -1341,9 +1345,23 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
               ) : (
                 <div className="space-y-4">
                   {duplicateGroups.map((group) => (
-                    <div key={group.normalizedName} className="bg-gray-750 rounded-lg p-4">
+                    <div key={group.normalizedName} className={`bg-gray-750 rounded-lg p-4 ${
+                      group.confidence === 'MEDIUM' ? 'border border-yellow-600/50' : ''
+                    }`}>
                       <div className="flex justify-between items-start mb-2">
-                        <h4 className="text-white font-medium capitalize">{group.normalizedName}</h4>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-white font-medium capitalize">{group.normalizedName}</h4>
+                          {/* Confidence badge */}
+                          {group.confidence && (
+                            <span className={`text-xs px-1.5 py-0.5 rounded ${
+                              group.confidence === 'HIGH'
+                                ? 'bg-green-900/50 text-green-400'
+                                : 'bg-yellow-900/50 text-yellow-400'
+                            }`}>
+                              {group.confidence}
+                            </span>
+                          )}
+                        </div>
                         <button
                           onClick={() => handleDeduplicate(group.items.map((i) => i.id), true)}
                           disabled={deduping}
@@ -1356,6 +1374,15 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
                           {deduping ? 'Combining...' : (group.canCombine ? 'Combine' : 'AI Combine')}
                         </button>
                       </div>
+                      {/* Show reason for MEDIUM confidence items */}
+                      {group.confidence === 'MEDIUM' && group.reason && (
+                        <p className="text-xs text-yellow-400/80 mb-2 flex items-center gap-1">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                          {group.reason}
+                        </p>
+                      )}
                       <ul className="text-sm text-gray-400 space-y-1">
                         {group.items.map((item) => (
                           <li key={item.id}>

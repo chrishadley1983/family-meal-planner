@@ -240,60 +240,9 @@ export const DEFAULT_CATEGORIES = [
 
 /**
  * Gets a normalized ingredient name for deduplication
- * Handles common variations like plural forms
+ * Now uses the enhanced normalization from ingredient-normalization module
  */
-export function normalizeIngredientName(name: string): string {
-  let normalized = name.toLowerCase().trim()
-
-  // Remove common suffixes
-  const suffixesToRemove = [
-    ', diced', ', chopped', ', sliced', ', minced', ', grated',
-    ', fresh', ', dried', ', frozen', ', canned',
-    ', large', ', medium', ', small',
-    ' (optional)',
-  ]
-
-  for (const suffix of suffixesToRemove) {
-    if (normalized.endsWith(suffix)) {
-      normalized = normalized.slice(0, -suffix.length)
-    }
-  }
-
-  // Handle common plural forms
-  const pluralMappings: Record<string, string> = {
-    'tomatoes': 'tomato',
-    'potatoes': 'potato',
-    'onions': 'onion',
-    'carrots': 'carrot',
-    'eggs': 'egg',
-    'apples': 'apple',
-    'oranges': 'orange',
-    'lemons': 'lemon',
-    'limes': 'lime',
-    'peppers': 'pepper',
-    'mushrooms': 'mushroom',
-    'cloves': 'clove',
-    'leaves': 'leaf',
-    'breasts': 'breast',
-    'thighs': 'thigh',
-    'fillets': 'fillet',
-  }
-
-  if (pluralMappings[normalized]) {
-    normalized = pluralMappings[normalized]
-  }
-
-  // Generic plural removal (words ending in 's' but not 'ss')
-  if (normalized.endsWith('s') && !normalized.endsWith('ss') && normalized.length > 3) {
-    const singular = normalized.slice(0, -1)
-    // Only apply if it makes sense (basic heuristic)
-    if (!['this', 'is', 'has', 'was', 'does'].includes(singular)) {
-      // Keep the plural form in the mapping check already handled above
-    }
-  }
-
-  return normalized.trim()
-}
+export { normalizeIngredientName } from './ingredient-normalization'
 
 /**
  * Groups items by their normalized name for deduplication suggestions
