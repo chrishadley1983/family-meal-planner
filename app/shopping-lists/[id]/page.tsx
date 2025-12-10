@@ -125,6 +125,9 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
     itemName: string
     quantity: number
     unit: string
+    deletedCount: number
+    previousTotal: number
+    newTotal: number
   } | null>(null)
 
   useEffect(() => {
@@ -430,6 +433,9 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
   const handleDeduplicate = async (itemIds: string[], useAI: boolean = true) => {
     if (deduping) return
 
+    // Capture the current total before combining
+    const previousTotal = shoppingList?.items.length || 0
+
     setDeduping(true)
     setLastCombineResult(null) // Clear previous result
     try {
@@ -448,23 +454,31 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
       const result = await response.json()
       console.log('🟢 Items deduplicated:', result)
 
-      // Store the result for display
-      if (result.combinedItem) {
-        setLastCombineResult({
-          message: result.message,
-          itemName: result.combinedItem.itemName,
-          quantity: result.combinedItem.quantity,
-          unit: result.combinedItem.unit,
-        })
-      }
-
       // Refresh duplicates list
       const refreshResponse = await fetch(`/api/shopping-lists/${id}/deduplicate`)
       if (refreshResponse.ok) {
         const data = await refreshResponse.json()
         setDuplicateGroups(data.duplicateGroups || [])
       }
+
+      // Fetch updated shopping list and get new total
       await fetchShoppingList()
+
+      // Calculate new total after refresh (items.length will be updated by fetchShoppingList)
+      const newTotal = previousTotal - (result.deletedCount || 0)
+
+      // Store the result for display with count info
+      if (result.combinedItem) {
+        setLastCombineResult({
+          message: result.message,
+          itemName: result.combinedItem.itemName,
+          quantity: result.combinedItem.quantity,
+          unit: result.combinedItem.unit,
+          deletedCount: result.deletedCount || 0,
+          previousTotal,
+          newTotal,
+        })
+      }
     } catch (error) {
       console.error('❌ Error deduplicating:', error)
       alert(error instanceof Error ? error.message : 'Failed to deduplicate')
@@ -979,15 +993,22 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
                   <svg className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <div>
+                  <div className="flex-1">
                     <p className="text-green-400 font-medium">{lastCombineResult.message}</p>
                     <p className="text-green-300 text-sm mt-1">
                       Combined into: <span className="font-semibold">{lastCombineResult.quantity} {lastCombineResult.unit} {lastCombineResult.itemName}</span>
                     </p>
+                    {lastCombineResult.deletedCount > 0 && (
+                      <p className="text-green-300/70 text-xs mt-2">
+                        Removed {lastCombineResult.deletedCount} duplicate{lastCombineResult.deletedCount !== 1 ? 's' : ''}
+                        <span className="mx-1">•</span>
+                        Total items: <span className="line-through opacity-60">{lastCombineResult.previousTotal}</span> → <span className="font-semibold">{lastCombineResult.newTotal}</span>
+                      </p>
+                    )}
                   </div>
                   <button
                     onClick={() => setLastCombineResult(null)}
-                    className="text-green-400 hover:text-green-300 ml-auto"
+                    className="text-green-400 hover:text-green-300"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
