@@ -265,19 +265,59 @@ export async function POST(
         const categoryNames = userCategories.map(c => c.name)
         const itemNames = uncategorizedItems.map(i => i.itemName)
 
-        // Use AI to categorize all items at once
-        const prompt = `You are a grocery store assistant. Categorize each shopping item into one of the available categories.
+        // Use AI to categorize all items at once with detailed UK-focused prompt
+        const prompt = `You are a UK supermarket assistant categorising shopping list items.
+Use British English spelling and UK grocery store conventions.
 
-AVAILABLE CATEGORIES:
-${categoryNames.join('\n')}
+CATEGORY DEFINITIONS AND EXAMPLES:
 
-ITEMS TO CATEGORIZE:
+**Produce** - Fresh fruit, vegetables, and fresh herbs
+Examples: apples, carrots, broccoli, fresh mint, fresh basil, fresh coriander, lettuce, tomatoes, onions, garlic, ginger, lemons, limes
+
+**Dairy & Eggs** - Milk, cheese, yoghurt, cream, butter, and eggs
+Examples: milk, semi-skimmed milk, cheddar cheese, Greek yoghurt, natural yoghurt, double cream, soured cream, butter, eggs, crème fraîche
+
+**Meat & Seafood** - Fresh and frozen raw meat, poultry, and fish
+Examples: chicken breast, minced beef, pork chops, salmon fillets, prawns, lamb leg, bacon, sausages, chicken thighs
+
+**Bakery** - Bread, rolls, pastries, and baked goods
+Examples: bread, rolls, croissants, bagels, pitta bread, naan bread, tortilla wraps, crumpets
+
+**Frozen** - Frozen foods (except raw meat/fish which go in Meat & Seafood)
+Examples: frozen peas, frozen chips, ice cream, frozen pizza, frozen berries
+
+**Pantry** - Dry goods, baking ingredients, dried spices, seasonings, oils, grains, pasta, rice, sugar, flour, stock cubes
+Examples: plain flour, self-raising flour, sugar, brown sugar, caster sugar, salt, kosher salt, black pepper, paprika, cumin, cardamom pods, cinnamon, dried oregano, olive oil, vegetable oil, rice, pasta, dried noodles, stock cubes, honey, maple syrup, vanilla extract, baking powder, cornflour
+
+**Canned Goods** - Tinned foods, stock/broth in cartons or tins, coconut milk
+Examples: tinned tomatoes, chickpeas, kidney beans, coconut milk, chicken stock, beef broth, low-sodium chicken broth, tinned sweetcorn, tinned tuna
+
+**Condiments & Sauces** - Sauces, dressings, spreads, vinegars
+Examples: soy sauce, ketchup, mayonnaise, mustard, hot sauce, Worcestershire sauce, fish sauce, oyster sauce, vinegar, balsamic vinegar, jam, peanut butter
+
+**Beverages** - Drinks (non-dairy)
+Examples: juice, squash, tea, coffee, soft drinks, water
+
+**Snacks** - Crisps, nuts, chocolate, sweets, biscuits
+Examples: crisps, nuts, chocolate, biscuits, popcorn, dried fruit
+
+**Household** - Non-food items
+Examples: kitchen roll, cling film, foil, washing up liquid
+
+**Other** - Items that don't fit elsewhere
+
+ITEMS TO CATEGORISE:
 ${itemNames.map((item, idx) => `${idx + 1}. "${item}"`).join('\n')}
 
-Respond with ONLY a JSON array of category names in the same order as the items. Use exact category names from the list above.
-Example response format: ["Produce", "Dairy & Eggs", "Pantry"]
+IMPORTANT RULES:
+- Fresh herbs (mint, basil, coriander, parsley) → Produce
+- Dried spices and seasonings (pepper, salt, paprika, cumin) → Pantry
+- Sugar, flour, baking ingredients → Pantry
+- Stock, broth (liquid or cubes) → Canned Goods
+- Yoghurt, cream, milk products → Dairy & Eggs
 
-If an item doesn't clearly fit any category, use "Other".`
+Respond with ONLY a JSON array of category names in the exact order as the items above.
+Use the exact category names provided. Example format: ["Produce", "Pantry", "Dairy & Eggs"]`
 
         const message = await client.messages.create({
           model: 'claude-haiku-4-5',
