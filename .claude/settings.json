@@ -1,0 +1,10 @@
+{
+  "hooks": {
+    "user_prompt": [
+      {
+        "command": "bash .claude/hooks/inject-guidelines.sh 2>/dev/null || powershell -ExecutionPolicy Bypass -File \"C:\\Users\\Chris Hadley\\.claude\\hooks\\inject-guidelines.ps1\" 2>nul",
+        "timeout": 5000
+      }
+    ]
+  }
+}
