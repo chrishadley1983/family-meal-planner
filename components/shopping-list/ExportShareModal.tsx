@@ -91,13 +91,18 @@ export default function ExportShareModal({
   const handleShowQrCode = async () => {
     setQrLoading(true)
     setShowQrCode(true)
+    setErrorMessage('') // Clear any previous errors
 
     try {
+      console.log('🔷 Fetching share link for list:', shoppingList.id)
+
       // First check if there's an existing share link
       let linkData: ShareLinkData
 
       const getResponse = await fetch(`/api/shopping-lists/${shoppingList.id}/share`)
+      console.log('🔷 GET response status:', getResponse.status)
       const getData = await getResponse.json()
+      console.log('🔷 GET response data:', getData)
 
       if (getData.shareUrl) {
         // Use existing link
@@ -108,15 +113,20 @@ export default function ExportShareModal({
         console.log('🔗 Using existing share link')
       } else {
         // Create new share link
+        console.log('🔷 Creating new share link...')
         const postResponse = await fetch(`/api/shopping-lists/${shoppingList.id}/share`, {
           method: 'POST',
         })
+        console.log('🔷 POST response status:', postResponse.status)
 
         if (!postResponse.ok) {
-          throw new Error('Failed to create share link')
+          const errorData = await postResponse.json()
+          console.error('❌ POST error:', errorData)
+          throw new Error(errorData.error || 'Failed to create share link')
         }
 
         const postData = await postResponse.json()
+        console.log('🔷 POST response data:', postData)
         linkData = {
           shareUrl: postData.shareUrl,
           expiresAt: postData.expiresAt,
@@ -128,6 +138,7 @@ export default function ExportShareModal({
       setShareLink(linkData)
 
       // Generate QR code
+      console.log('🔷 Generating QR code for URL:', linkData.shareUrl)
       const qrDataUrl = await QRCode.toDataURL(linkData.shareUrl, {
         width: 200,
         margin: 2,
@@ -136,10 +147,11 @@ export default function ExportShareModal({
           light: '#FFFFFF',
         },
       })
+      console.log('🟢 QR code generated successfully')
       setQrCodeDataUrl(qrDataUrl)
     } catch (error) {
       console.error('❌ Failed to generate QR code:', error)
-      setErrorMessage('Failed to generate share link')
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to generate share link')
     } finally {
       setQrLoading(false)
     }
