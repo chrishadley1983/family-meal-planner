@@ -265,59 +265,58 @@ export async function POST(
         const categoryNames = userCategories.map(c => c.name)
         const itemNames = uncategorizedItems.map(i => i.itemName)
 
-        // Use AI to categorize all items at once with detailed UK-focused prompt
+        // Build category guidance dynamically based on user's actual categories
+        const categoryExamples: Record<string, string> = {
+          'Fresh Produce': 'Fresh fruit, vegetables, fresh herbs (apples, carrots, broccoli, fresh mint, fresh basil, fresh coriander, lettuce, tomatoes, onions, garlic, ginger, lemons, limes, spinach, peppers)',
+          'Meat & Fish': 'Fresh and frozen raw meat, poultry, fish, and seafood (chicken breast, minced beef, pork chops, salmon fillets, prawns, lamb leg, bacon, sausages, chicken thighs, cod, tuna steaks)',
+          'Dairy & Eggs': 'Milk, cheese, yoghurt, cream, butter, and eggs (milk, semi-skimmed milk, cheddar cheese, Greek yoghurt, natural yoghurt, double cream, soured cream, butter, eggs, crème fraîche, mozzarella)',
+          'Bakery': 'Bread, rolls, pastries, and baked goods (bread, rolls, croissants, bagels, pitta bread, naan bread, tortilla wraps, crumpets, baguettes)',
+          'Chilled & Deli': 'Fresh ready meals, deli meats, fresh pasta, hummus, dips, fresh soups, cooked meats (ham, salami, fresh pasta, pesto, hummus, coleslaw, fresh soup, quiche)',
+          'Frozen': 'Frozen foods - vegetables, ready meals, desserts, ice cream (frozen peas, frozen chips, ice cream, frozen pizza, frozen berries, fish fingers, frozen pastry)',
+          'Cupboard Staples': 'Tinned goods, pasta, rice, noodles, sauces, stock, condiments (tinned tomatoes, chickpeas, kidney beans, pasta, rice, noodles, soy sauce, stock cubes, chicken stock, coconut milk, passata, peanut butter, jam, honey, maple syrup)',
+          'Baking & Cooking Ingredients': 'Flour, sugar, baking powder, spices, seasonings, oils, vinegars, extracts (plain flour, self-raising flour, sugar, brown sugar, caster sugar, salt, pepper, paprika, cumin, cardamom, cinnamon, olive oil, vegetable oil, vanilla extract, baking powder, cornflour, dried herbs)',
+          'Breakfast': 'Cereals, porridge, granola, breakfast bars, spreads (cereals, porridge oats, granola, muesli, Weetabix, breakfast bars, marmalade)',
+          'Drinks': 'Beverages - juices, squash, tea, coffee, soft drinks, water (orange juice, apple juice, squash, tea bags, coffee, cola, sparkling water, cordial)',
+          'Snacks & Treats': 'Crisps, nuts, chocolate, sweets, biscuits, popcorn (crisps, nuts, chocolate, biscuits, popcorn, dried fruit, cereal bars, sweets)',
+          'Household': 'Non-food items for home (kitchen roll, cling film, foil, washing up liquid, bin bags, cleaning products)',
+          'Other': 'Items that do not fit into any other category',
+          // Legacy mappings for backwards compatibility
+          'Produce': 'Fresh fruit, vegetables, fresh herbs',
+          'Meat & Seafood': 'Fresh and frozen raw meat, poultry, fish, and seafood',
+          'Pantry': 'Dry goods, tinned foods, pasta, rice, oils, condiments',
+          'Canned Goods': 'Tinned foods, stock/broth in cartons or tins',
+          'Condiments & Sauces': 'Sauces, dressings, spreads, vinegars',
+          'Beverages': 'Drinks - juices, tea, coffee, soft drinks',
+          'Snacks': 'Crisps, nuts, chocolate, sweets, biscuits',
+        }
+
+        // Build the category list dynamically from user's categories
+        const categoryDescriptions = categoryNames
+          .map(name => {
+            const example = categoryExamples[name] || 'General items for this category'
+            return `**${name}**: ${example}`
+          })
+          .join('\n')
+
+        // Use AI to categorize all items at once with dynamic categories
         const prompt = `You are a UK supermarket assistant categorising shopping list items.
 Use British English spelling and UK grocery store conventions.
 
-CATEGORY DEFINITIONS AND EXAMPLES:
-
-**Produce** - Fresh fruit, vegetables, and fresh herbs
-Examples: apples, carrots, broccoli, fresh mint, fresh basil, fresh coriander, lettuce, tomatoes, onions, garlic, ginger, lemons, limes
-
-**Dairy & Eggs** - Milk, cheese, yoghurt, cream, butter, and eggs
-Examples: milk, semi-skimmed milk, cheddar cheese, Greek yoghurt, natural yoghurt, double cream, soured cream, butter, eggs, crème fraîche
-
-**Meat & Seafood** - Fresh and frozen raw meat, poultry, and fish
-Examples: chicken breast, minced beef, pork chops, salmon fillets, prawns, lamb leg, bacon, sausages, chicken thighs
-
-**Bakery** - Bread, rolls, pastries, and baked goods
-Examples: bread, rolls, croissants, bagels, pitta bread, naan bread, tortilla wraps, crumpets
-
-**Frozen** - Frozen foods (except raw meat/fish which go in Meat & Seafood)
-Examples: frozen peas, frozen chips, ice cream, frozen pizza, frozen berries
-
-**Pantry** - Dry goods, baking ingredients, dried spices, seasonings, oils, grains, pasta, rice, sugar, flour, stock cubes
-Examples: plain flour, self-raising flour, sugar, brown sugar, caster sugar, salt, kosher salt, black pepper, paprika, cumin, cardamom pods, cinnamon, dried oregano, olive oil, vegetable oil, rice, pasta, dried noodles, stock cubes, honey, maple syrup, vanilla extract, baking powder, cornflour
-
-**Canned Goods** - Tinned foods, stock/broth in cartons or tins, coconut milk
-Examples: tinned tomatoes, chickpeas, kidney beans, coconut milk, chicken stock, beef broth, low-sodium chicken broth, tinned sweetcorn, tinned tuna
-
-**Condiments & Sauces** - Sauces, dressings, spreads, vinegars
-Examples: soy sauce, ketchup, mayonnaise, mustard, hot sauce, Worcestershire sauce, fish sauce, oyster sauce, vinegar, balsamic vinegar, jam, peanut butter
-
-**Beverages** - Drinks (non-dairy)
-Examples: juice, squash, tea, coffee, soft drinks, water
-
-**Snacks** - Crisps, nuts, chocolate, sweets, biscuits
-Examples: crisps, nuts, chocolate, biscuits, popcorn, dried fruit
-
-**Household** - Non-food items
-Examples: kitchen roll, cling film, foil, washing up liquid
-
-**Other** - Items that don't fit elsewhere
+AVAILABLE CATEGORIES (use ONLY these exact names):
+${categoryDescriptions}
 
 ITEMS TO CATEGORISE:
 ${itemNames.map((item, idx) => `${idx + 1}. "${item}"`).join('\n')}
 
 IMPORTANT RULES:
-- Fresh herbs (mint, basil, coriander, parsley) → Produce
-- Dried spices and seasonings (pepper, salt, paprika, cumin) → Pantry
-- Sugar, flour, baking ingredients → Pantry
-- Stock, broth (liquid or cubes) → Canned Goods
+- Fresh herbs (mint, basil, coriander, parsley) → Fresh Produce (or Produce if that's available)
+- Dried spices, seasonings, flour, sugar → Baking & Cooking Ingredients (or Pantry/Cupboard Staples if available)
+- Tinned/canned goods, pasta, rice, stock → Cupboard Staples (or Pantry/Canned Goods if available)
+- Fresh deli items, hummus, fresh pasta → Chilled & Deli (if available, otherwise Other)
 - Yoghurt, cream, milk products → Dairy & Eggs
 
 Respond with ONLY a JSON array of category names in the exact order as the items above.
-Use the exact category names provided. Example format: ["Produce", "Pantry", "Dairy & Eggs"]`
+Use the EXACT category names from the list above. Example format: ["Fresh Produce", "Cupboard Staples", "Dairy & Eggs"]`
 
         const message = await client.messages.create({
           model: 'claude-haiku-4-5',
