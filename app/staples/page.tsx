@@ -1,34 +1,96 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import Link from 'next/link'
+import { useEffect, useState, useMemo } from 'react'
 import { AppLayout, PageContainer } from '@/components/layout'
-import { Button, Badge, Input } from '@/components/ui'
+import { Button, Badge, Input, Modal } from '@/components/ui'
 import { useSession } from 'next-auth/react'
+import type {
+  StapleFrequency,
+  StapleDueStatus,
+  StapleWithDueStatus,
+  StapleFilters,
+  StapleSortField,
+  StapleSortOptions,
+} from '@/lib/types/staples'
+import { STAPLE_FREQUENCIES } from '@/lib/types/staples'
+import {
+  enrichStapleWithDueStatus,
+  sortStaplesByDueStatus,
+  sortStaples,
+  filterStaples,
+  formatFrequency,
+  formatDueStatus,
+  formatDate,
+  getUniqueCategories,
+} from '@/lib/staples/calculations'
 
-interface Staple {
+// Raw staple from API
+interface RawStaple {
   id: string
+  userId: string
   itemName: string
   quantity: number
   unit: string
-  category?: string
-  autoAddToList: boolean
-  notes?: string
+  category: string | null
+  frequency: StapleFrequency
+  isActive: boolean
+  lastAddedDate: string | null
+  notes: string | null
+  createdAt: string
+  updatedAt: string
 }
 
 export default function StaplesPage() {
   const { data: session } = useSession()
-  const [staples, setStaples] = useState<Staple[]>([])
+  const [rawStaples, setRawStaples] = useState<RawStaple[]>([])
   const [loading, setLoading] = useState(true)
-  const [showForm, setShowForm] = useState(false)
-  const [formData, setFormData] = useState({
+
+  // Filters state
+  const [filters, setFilters] = useState<StapleFilters>({})
+  const [sortOptions, setSortOptions] = useState<StapleSortOptions>({
+    field: 'nextDueDate',
+    order: 'asc',
+  })
+
+  // Add form state
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [addingStaple, setAddingStaple] = useState(false)
+  const [newStaple, setNewStaple] = useState({
     itemName: '',
     quantity: 1,
     unit: '',
     category: '',
-    autoAddToList: true,
-    notes: ''
+    frequency: 'weekly' as StapleFrequency,
+    isActive: true,
+    notes: '',
   })
+
+  // Enrich staples with due status
+  const staples = useMemo(() => {
+    return rawStaples.map(s => enrichStapleWithDueStatus({
+      ...s,
+      lastAddedDate: s.lastAddedDate ? new Date(s.lastAddedDate) : null,
+      createdAt: new Date(s.createdAt),
+      updatedAt: new Date(s.updatedAt),
+    }))
+  }, [rawStaples])
+
+  // Apply filters and sorting
+  const filteredAndSortedStaples = useMemo(() => {
+    let result = filterStaples(staples, filters)
+
+    // Default sort: by due status priority, then by nextDueDate
+    if (sortOptions.field === 'nextDueDate' && sortOptions.order === 'asc') {
+      result = sortStaplesByDueStatus(result)
+    } else {
+      result = sortStaples(result, sortOptions)
+    }
+
+    return result
+  }, [staples, filters, sortOptions])
+
+  // Get unique categories for filter dropdown
+  const categories = useMemo(() => getUniqueCategories(staples), [staples])
 
   useEffect(() => {
     fetchStaples()
@@ -36,77 +98,145 @@ export default function StaplesPage() {
 
   const fetchStaples = async () => {
     try {
+      console.log('🔷 Fetching staples...')
       const response = await fetch('/api/staples')
       const data = await response.json()
-      setStaples(data.staples || [])
+      console.log('🟢 Staples fetched:', data.staples?.length || 0)
+      setRawStaples(data.staples || [])
     } catch (error) {
-      console.error('Error fetching staples:', error)
+      console.error('❌ Error fetching staples:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleAddStaple = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (addingStaple) return
 
+    setAddingStaple(true)
     try {
+      console.log('🔷 Creating staple:', newStaple.itemName)
       const response = await fetch('/api/staples', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...newStaple,
+          category: newStaple.category || null,
+          notes: newStaple.notes || null,
+        }),
       })
 
-      if (response.ok) {
-        const data = await response.json()
-        setStaples([...staples, data.staple])
-        setFormData({
-          itemName: '',
-          quantity: 1,
-          unit: '',
-          category: '',
-          autoAddToList: true,
-          notes: ''
-        })
-        setShowForm(false)
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to create staple')
       }
+
+      const data = await response.json()
+      console.log('🟢 Created staple:', data.staple.itemName)
+      setRawStaples([...rawStaples, data.staple])
+      setNewStaple({
+        itemName: '',
+        quantity: 1,
+        unit: '',
+        category: '',
+        frequency: 'weekly',
+        isActive: true,
+        notes: '',
+      })
+      setShowAddForm(false)
     } catch (error) {
-      console.error('Error creating staple:', error)
+      console.error('❌ Error creating staple:', error)
+      alert(error instanceof Error ? error.message : 'Failed to create staple')
+    } finally {
+      setAddingStaple(false)
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this staple?')) return
+  const handleDeleteStaple = async (id: string, itemName: string) => {
+    if (!confirm(`Delete "${itemName}"? This cannot be undone.`)) return
 
     try {
-      const response = await fetch(`/api/staples?id=${id}`, {
-        method: 'DELETE'
-      })
+      console.log('🔷 Deleting staple:', itemName)
+      const response = await fetch(`/api/staples?id=${id}`, { method: 'DELETE' })
 
-      if (response.ok) {
-        setStaples(staples.filter(s => s.id !== id))
+      if (!response.ok) {
+        throw new Error('Failed to delete staple')
       }
+
+      console.log('🟢 Staple deleted')
+      setRawStaples(rawStaples.filter(s => s.id !== id))
     } catch (error) {
-      console.error('Error deleting staple:', error)
+      console.error('❌ Error deleting staple:', error)
+      alert('Failed to delete staple')
     }
   }
 
-  const groupedStaples = staples.reduce((acc, staple) => {
-    const category = staple.category || 'Uncategorized'
-    if (!acc[category]) {
-      acc[category] = []
+  const handleToggleActive = async (staple: StapleWithDueStatus) => {
+    try {
+      console.log('🔷 Toggling active status for:', staple.itemName)
+      const response = await fetch(`/api/staples?id=${staple.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: !staple.isActive }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update staple')
+      }
+
+      const data = await response.json()
+      console.log('🟢 Staple updated:', data.staple.isActive ? 'Active' : 'Inactive')
+      setRawStaples(rawStaples.map(s => s.id === staple.id ? data.staple : s))
+    } catch (error) {
+      console.error('❌ Error updating staple:', error)
+      alert('Failed to update staple')
     }
-    acc[category].push(staple)
-    return acc
-  }, {} as Record<string, Staple[]>)
+  }
+
+  const getDueStatusBadge = (status: StapleDueStatus, daysUntilDue: number | null) => {
+    switch (status) {
+      case 'overdue':
+        return (
+          <Badge variant="error" size="sm">
+            {formatDueStatus(status, daysUntilDue)}
+          </Badge>
+        )
+      case 'due':
+        return (
+          <Badge variant="warning" size="sm">
+            Due today
+          </Badge>
+        )
+      default:
+        return null
+    }
+  }
+
+  const handleSortChange = (field: StapleSortField) => {
+    if (sortOptions.field === field) {
+      // Toggle order if same field
+      setSortOptions({
+        field,
+        order: sortOptions.order === 'asc' ? 'desc' : 'asc',
+      })
+    } else {
+      // New field, default to ascending
+      setSortOptions({ field, order: 'asc' })
+    }
+  }
+
+  const getSortIcon = (field: StapleSortField) => {
+    if (sortOptions.field !== field) return null
+    return sortOptions.order === 'asc' ? ' ↑' : ' ↓'
+  }
 
   if (loading) {
     return (
       <AppLayout userEmail={session?.user?.email}>
         <PageContainer>
           <div className="flex items-center justify-center py-12">
-            <p className="text-zinc-400">Loading staples...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-400"></div>
           </div>
         </PageContainer>
       </AppLayout>
@@ -116,135 +246,372 @@ export default function StaplesPage() {
   return (
     <AppLayout userEmail={session?.user?.email}>
       <PageContainer
-        title="Weekly Staples"
-        description="Items you buy every week"
+        title="Staples"
+        description="Recurring household items that get suggested for shopping lists"
         action={
-          <Button onClick={() => setShowForm(!showForm)} variant="primary">
-            {showForm ? 'Cancel' : 'Add Staple'}
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => setShowAddForm(true)} variant="primary">
+              Add Staple
+            </Button>
+          </div>
         }
       >
-        {showForm && (
-          <div className="card p-6 mb-6">
-            <h3 className="text-lg font-medium text-white mb-4">Add New Staple</h3>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-zinc-300 mb-1">Item Name *</label>
-                  <Input
-                    type="text"
-                    required
-                    value={formData.itemName}
-                    onChange={(e) => setFormData({ ...formData, itemName: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-zinc-300 mb-1">Category</label>
-                  <Input
-                    type="text"
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    placeholder="e.g., Dairy, Produce"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-zinc-300 mb-1">Quantity *</label>
-                  <Input
-                    type="number"
-                    required
-                    min="0"
-                    step="0.1"
-                    value={formData.quantity}
-                    onChange={(e) => setFormData({ ...formData, quantity: parseFloat(e.target.value) })}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-zinc-300 mb-1">Unit *</label>
-                  <Input
-                    type="text"
-                    required
-                    value={formData.unit}
-                    onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                    placeholder="e.g., dozen, lbs, gallons"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-1">Notes</label>
-                <Input
-                  type="text"
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                />
-              </div>
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="autoAddToList"
-                  className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-zinc-600 rounded"
-                  checked={formData.autoAddToList}
-                  onChange={(e) => setFormData({ ...formData, autoAddToList: e.target.checked })}
-                />
-                <label htmlFor="autoAddToList" className="ml-2 block text-sm text-zinc-300">
-                  Automatically add to shopping lists
-                </label>
-              </div>
-              <Button type="submit" variant="primary" className="w-full">
+        {/* Filters */}
+        <div className="card p-4 mb-6">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-zinc-300">Category:</label>
+              <select
+                value={filters.category || ''}
+                onChange={(e) => setFilters({ ...filters, category: e.target.value || undefined })}
+                className="px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="">All</option>
+                {categories.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-zinc-300">Frequency:</label>
+              <select
+                value={filters.frequency || ''}
+                onChange={(e) => setFilters({ ...filters, frequency: e.target.value as StapleFrequency || undefined })}
+                className="px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="">All</option>
+                {STAPLE_FREQUENCIES.map(f => (
+                  <option key={f.value} value={f.value}>{f.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-zinc-300">Status:</label>
+              <select
+                value={filters.isActive === undefined ? '' : filters.isActive ? 'active' : 'inactive'}
+                onChange={(e) => {
+                  const value = e.target.value
+                  setFilters({
+                    ...filters,
+                    isActive: value === '' ? undefined : value === 'active',
+                  })
+                }}
+                className="px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="">All</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-zinc-300">Due:</label>
+              <select
+                value={filters.dueStatus || ''}
+                onChange={(e) => setFilters({ ...filters, dueStatus: e.target.value as StapleDueStatus || undefined })}
+                className="px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="">All</option>
+                <option value="overdue">Overdue</option>
+                <option value="due">Due</option>
+                <option value="not_due">Not Due</option>
+              </select>
+            </div>
+
+            {(filters.category || filters.frequency || filters.isActive !== undefined || filters.dueStatus) && (
+              <button
+                onClick={() => setFilters({})}
+                className="text-sm text-zinc-400 hover:text-white"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Summary Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="card p-4 text-center">
+            <div className="text-2xl font-bold text-white">{staples.length}</div>
+            <div className="text-sm text-zinc-400">Total Staples</div>
+          </div>
+          <div className="card p-4 text-center">
+            <div className="text-2xl font-bold text-green-400">
+              {staples.filter(s => s.isActive).length}
+            </div>
+            <div className="text-sm text-zinc-400">Active</div>
+          </div>
+          <div className="card p-4 text-center">
+            <div className="text-2xl font-bold text-yellow-400">
+              {staples.filter(s => s.dueStatus === 'due').length}
+            </div>
+            <div className="text-sm text-zinc-400">Due Today</div>
+          </div>
+          <div className="card p-4 text-center">
+            <div className="text-2xl font-bold text-red-400">
+              {staples.filter(s => s.dueStatus === 'overdue').length}
+            </div>
+            <div className="text-sm text-zinc-400">Overdue</div>
+          </div>
+        </div>
+
+        {/* Empty State */}
+        {staples.length === 0 ? (
+          <div className="card p-12 text-center">
+            <svg className="mx-auto h-16 w-16 text-zinc-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            <h3 className="text-xl font-medium text-white mb-2">No staples yet</h3>
+            <p className="text-zinc-400 mb-6">
+              Add recurring items you buy regularly. They&apos;ll be suggested for your shopping lists based on their frequency.
+            </p>
+            <div className="flex justify-center gap-4">
+              <Button onClick={() => setShowAddForm(true)} variant="primary">
                 Add Staple
               </Button>
-            </form>
+            </div>
+          </div>
+        ) : filteredAndSortedStaples.length === 0 ? (
+          <div className="card p-12 text-center">
+            <h3 className="text-lg font-medium text-white mb-2">No staples match your filters</h3>
+            <p className="text-zinc-400 mb-4">Try adjusting your filter criteria</p>
+            <button
+              onClick={() => setFilters({})}
+              className="text-purple-400 hover:text-purple-300"
+            >
+              Clear all filters
+            </button>
+          </div>
+        ) : (
+          /* Staples Table */
+          <div className="card overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-zinc-800/50 border-b border-zinc-700">
+                  <tr>
+                    <th
+                      className="px-4 py-3 text-left text-sm font-medium text-zinc-300 cursor-pointer hover:text-white"
+                      onClick={() => handleSortChange('itemName')}
+                    >
+                      Name{getSortIcon('itemName')}
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-zinc-300">
+                      Qty
+                    </th>
+                    <th
+                      className="px-4 py-3 text-left text-sm font-medium text-zinc-300 cursor-pointer hover:text-white"
+                      onClick={() => handleSortChange('category')}
+                    >
+                      Category{getSortIcon('category')}
+                    </th>
+                    <th
+                      className="px-4 py-3 text-left text-sm font-medium text-zinc-300 cursor-pointer hover:text-white"
+                      onClick={() => handleSortChange('frequency')}
+                    >
+                      Frequency{getSortIcon('frequency')}
+                    </th>
+                    <th
+                      className="px-4 py-3 text-left text-sm font-medium text-zinc-300 cursor-pointer hover:text-white"
+                      onClick={() => handleSortChange('lastAddedDate')}
+                    >
+                      Last Added{getSortIcon('lastAddedDate')}
+                    </th>
+                    <th
+                      className="px-4 py-3 text-left text-sm font-medium text-zinc-300 cursor-pointer hover:text-white"
+                      onClick={() => handleSortChange('nextDueDate')}
+                    >
+                      Next Due{getSortIcon('nextDueDate')}
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-zinc-300">
+                      Status
+                    </th>
+                    <th className="px-4 py-3 text-right text-sm font-medium text-zinc-300">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-700">
+                  {filteredAndSortedStaples.map((staple) => (
+                    <tr key={staple.id} className={`hover:bg-zinc-800/30 ${!staple.isActive ? 'opacity-50' : ''}`}>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-white font-medium">{staple.itemName}</span>
+                          {getDueStatusBadge(staple.dueStatus, staple.daysUntilDue)}
+                        </div>
+                        {staple.notes && (
+                          <p className="text-xs text-zinc-500 mt-0.5">{staple.notes}</p>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-zinc-300">
+                        {staple.quantity} {staple.unit}
+                      </td>
+                      <td className="px-4 py-3 text-zinc-300">
+                        {staple.category || <span className="text-zinc-500">-</span>}
+                      </td>
+                      <td className="px-4 py-3 text-zinc-300">
+                        {formatFrequency(staple.frequency)}
+                      </td>
+                      <td className="px-4 py-3 text-zinc-300">
+                        {formatDate(staple.lastAddedDate)}
+                      </td>
+                      <td className="px-4 py-3 text-zinc-300">
+                        {staple.nextDueDate
+                          ? formatDate(staple.nextDueDate)
+                          : <span className="text-yellow-400">Immediately</span>
+                        }
+                      </td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => handleToggleActive(staple)}
+                          className={`px-2 py-1 text-xs font-medium rounded-full transition-colors ${
+                            staple.isActive
+                              ? 'bg-green-900/50 text-green-400 hover:bg-green-900/70'
+                              : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'
+                          }`}
+                        >
+                          {staple.isActive ? 'Active' : 'Inactive'}
+                        </button>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => handleDeleteStaple(staple.id, staple.itemName)}
+                            className="text-red-400 hover:text-red-300 text-sm"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
-        {staples.length === 0 ? (
-          <div className="card p-12 text-center">
-            <svg className="mx-auto h-12 w-12 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-            <h3 className="mt-2 text-lg font-medium text-white">No staples yet</h3>
-            <p className="mt-1 text-zinc-400">Add items you buy regularly each week</p>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {Object.entries(groupedStaples).map(([category, items]) => (
-              <div key={category} className="card overflow-hidden">
-                <div className="bg-zinc-800/50 px-6 py-3 border-b border-zinc-700">
-                  <h3 className="text-lg font-medium text-white">{category}</h3>
-                </div>
-                <ul className="divide-y divide-zinc-700">
-                  {items.map((staple) => (
-                    <li key={staple.id} className="px-6 py-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center flex-wrap gap-2">
-                            <p className="text-base font-medium text-white">{staple.itemName}</p>
-                            {staple.autoAddToList && (
-                              <Badge variant="success" size="sm">
-                                Auto-add
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-sm text-zinc-400 mt-1">
-                            {staple.quantity} {staple.unit}
-                            {staple.notes && ` • ${staple.notes}`}
-                          </p>
-                        </div>
-                        <Button
-                          onClick={() => handleDelete(staple.id)}
-                          variant="danger"
-                          size="sm"
-                          className="ml-4"
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+        {/* Add Staple Modal */}
+        <Modal
+          isOpen={showAddForm}
+          onClose={() => setShowAddForm(false)}
+          title="Add New Staple"
+          maxWidth="md"
+        >
+          <form onSubmit={handleAddStaple} className="p-6 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-1">
+                  Item Name *
+                </label>
+                <Input
+                  type="text"
+                  required
+                  value={newStaple.itemName}
+                  onChange={(e) => setNewStaple({ ...newStaple, itemName: e.target.value })}
+                  placeholder="e.g., Milk"
+                />
               </div>
-            ))}
-          </div>
-        )}
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-1">
+                  Category
+                </label>
+                <Input
+                  type="text"
+                  value={newStaple.category}
+                  onChange={(e) => setNewStaple({ ...newStaple, category: e.target.value })}
+                  placeholder="e.g., Dairy & Eggs"
+                  list="category-suggestions"
+                />
+                <datalist id="category-suggestions">
+                  {categories.map(cat => (
+                    <option key={cat} value={cat} />
+                  ))}
+                </datalist>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-1">
+                  Quantity *
+                </label>
+                <Input
+                  type="number"
+                  required
+                  min="0.01"
+                  step="0.01"
+                  value={newStaple.quantity}
+                  onChange={(e) => setNewStaple({ ...newStaple, quantity: parseFloat(e.target.value) || 0 })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-1">
+                  Unit *
+                </label>
+                <Input
+                  type="text"
+                  required
+                  value={newStaple.unit}
+                  onChange={(e) => setNewStaple({ ...newStaple, unit: e.target.value })}
+                  placeholder="e.g., L, kg, pack"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-1">
+                  Frequency *
+                </label>
+                <select
+                  required
+                  value={newStaple.frequency}
+                  onChange={(e) => setNewStaple({ ...newStaple, frequency: e.target.value as StapleFrequency })}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  {STAPLE_FREQUENCIES.map(f => (
+                    <option key={f.value} value={f.value}>{f.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center pt-6">
+                <input
+                  type="checkbox"
+                  id="isActive"
+                  checked={newStaple.isActive}
+                  onChange={(e) => setNewStaple({ ...newStaple, isActive: e.target.checked })}
+                  className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-zinc-600 rounded"
+                />
+                <label htmlFor="isActive" className="ml-2 text-sm text-zinc-300">
+                  Active (will be suggested for shopping lists)
+                </label>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-zinc-300 mb-1">
+                Notes
+              </label>
+              <Input
+                type="text"
+                value={newStaple.notes}
+                onChange={(e) => setNewStaple({ ...newStaple, notes: e.target.value })}
+                placeholder="Optional notes..."
+              />
+            </div>
+            <div className="flex justify-end gap-3 pt-4">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setShowAddForm(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={addingStaple}
+              >
+                {addingStaple ? 'Adding...' : 'Add Staple'}
+              </Button>
+            </div>
+          </form>
+        </Modal>
       </PageContainer>
     </AppLayout>
   )
