@@ -11,6 +11,7 @@ import type {
   StapleFilters,
   StapleSortField,
   StapleSortOptions,
+  CSVImportSummary,
 } from '@/lib/types/staples'
 import { STAPLE_FREQUENCIES } from '@/lib/types/staples'
 import {
@@ -23,6 +24,8 @@ import {
   formatDate,
   getUniqueCategories,
 } from '@/lib/staples/calculations'
+import { parseCSV, generateCSVTemplate, downloadCSV } from '@/lib/staples/csv-parser'
+import { validateCSVData, getImportableItems, generateErrorReport } from '@/lib/staples/csv-validator'
 
 // Raw staple from API
 interface RawStaple {
@@ -77,6 +80,12 @@ export default function StaplesPage() {
     notes: '',
   })
   const [savingEdit, setSavingEdit] = useState(false)
+
+  // CSV Import state
+  const [showCSVImport, setShowCSVImport] = useState(false)
+  const [csvSummary, setCsvSummary] = useState<CSVImportSummary | null>(null)
+  const [importingCSV, setImportingCSV] = useState(false)
+  const [csvFileName, setCsvFileName] = useState('')
 
   // Enrich staples with due status
   const staples = useMemo(() => {
@@ -254,6 +263,95 @@ export default function StaplesPage() {
     }
   }
 
+  // CSV Import handlers
+  const handleDownloadTemplate = () => {
+    const template = generateCSVTemplate()
+    downloadCSV(template, 'staples-template.csv')
+  }
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setCsvFileName(file.name)
+
+    try {
+      const content = await file.text()
+      const rows = parseCSV(content)
+
+      if (rows.length === 0) {
+        alert('No data found in CSV file')
+        return
+      }
+
+      console.log('🔷 Validating CSV with', rows.length, 'rows')
+      const existingNames = rawStaples.map(s => s.itemName)
+      const summary = validateCSVData(rows, existingNames)
+      console.log('🟢 CSV validation complete:', summary.validCount, 'valid,', summary.errorCount, 'errors')
+      setCsvSummary(summary)
+    } catch (error) {
+      console.error('❌ Error parsing CSV:', error)
+      alert(error instanceof Error ? error.message : 'Failed to parse CSV file')
+    }
+
+    // Reset file input
+    e.target.value = ''
+  }
+
+  const handleDownloadErrorReport = () => {
+    if (!csvSummary) return
+    const report = generateErrorReport(csvSummary)
+    downloadCSV(report, 'staples-import-errors.csv')
+  }
+
+  const handleImportCSV = async () => {
+    if (!csvSummary || importingCSV) return
+
+    const itemsToImport = getImportableItems(csvSummary)
+    if (itemsToImport.length === 0) {
+      alert('No valid items to import')
+      return
+    }
+
+    setImportingCSV(true)
+    try {
+      console.log('🔷 Importing', itemsToImport.length, 'staples')
+
+      // Import each item
+      const imported: RawStaple[] = []
+      for (const item of itemsToImport) {
+        const response = await fetch('/api/staples', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(item),
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          imported.push(data.staple)
+        }
+      }
+
+      console.log('🟢 Imported', imported.length, 'staples')
+      setRawStaples([...rawStaples, ...imported])
+      setShowCSVImport(false)
+      setCsvSummary(null)
+      setCsvFileName('')
+      alert(`Successfully imported ${imported.length} staple${imported.length !== 1 ? 's' : ''}`)
+    } catch (error) {
+      console.error('❌ Error importing staples:', error)
+      alert('Failed to import staples')
+    } finally {
+      setImportingCSV(false)
+    }
+  }
+
+  const handleCloseCSVImport = () => {
+    setShowCSVImport(false)
+    setCsvSummary(null)
+    setCsvFileName('')
+  }
+
   const getDueStatusBadge = (status: StapleDueStatus, daysUntilDue: number | null) => {
     switch (status) {
       case 'overdue':
@@ -310,6 +408,9 @@ export default function StaplesPage() {
         description="Recurring household items that get suggested for shopping lists"
         action={
           <div className="flex gap-2">
+            <Button onClick={() => setShowCSVImport(true)} variant="secondary">
+              Import CSV
+            </Button>
             <Button onClick={() => setShowAddForm(true)} variant="primary">
               Add Staple
             </Button>
@@ -808,6 +909,175 @@ export default function StaplesPage() {
               </Button>
             </div>
           </form>
+        </Modal>
+
+        {/* CSV Import Modal */}
+        <Modal
+          isOpen={showCSVImport}
+          onClose={handleCloseCSVImport}
+          title="Import Staples from CSV"
+          maxWidth="4xl"
+        >
+          <div className="p-6 space-y-6">
+            {/* Step 1: Download Template */}
+            <div className="flex items-center justify-between p-4 bg-zinc-800/50 rounded-lg">
+              <div>
+                <h4 className="font-medium text-white">Step 1: Download Template</h4>
+                <p className="text-sm text-zinc-400 mt-1">
+                  Start with our template CSV for the correct format
+                </p>
+              </div>
+              <Button onClick={handleDownloadTemplate} variant="secondary" size="sm">
+                Download Template
+              </Button>
+            </div>
+
+            {/* Step 2: Upload File */}
+            <div className="p-4 bg-zinc-800/50 rounded-lg">
+              <h4 className="font-medium text-white mb-2">Step 2: Upload Your CSV</h4>
+              <div className="flex items-center gap-4">
+                <label className="flex-1 flex items-center justify-center px-4 py-8 border-2 border-dashed border-zinc-600 rounded-lg cursor-pointer hover:border-purple-500 hover:bg-zinc-800/50 transition-colors">
+                  <div className="text-center">
+                    <svg className="mx-auto h-12 w-12 text-zinc-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <span className="text-zinc-400">
+                      {csvFileName ? csvFileName : 'Click to select a CSV file'}
+                    </span>
+                  </div>
+                  <input
+                    type="file"
+                    accept=".csv,text/csv"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+
+            {/* Step 3: Preview & Validate */}
+            {csvSummary && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium text-white">Step 3: Preview & Validate</h4>
+                  <div className="flex items-center gap-4 text-sm">
+                    <span className="text-green-400">{csvSummary.validCount} valid</span>
+                    <span className="text-yellow-400">{csvSummary.warningCount} warnings</span>
+                    <span className="text-red-400">{csvSummary.errorCount} errors</span>
+                  </div>
+                </div>
+
+                {/* Summary */}
+                <div className="p-3 bg-zinc-800 rounded-lg">
+                  <p className="text-sm text-zinc-300">
+                    {csvSummary.validCount} item{csvSummary.validCount !== 1 ? 's' : ''} ready to import
+                    {csvSummary.duplicateCount > 0 && (
+                      <span className="text-yellow-400">
+                        , {csvSummary.duplicateCount} will be skipped (duplicates)
+                      </span>
+                    )}
+                    {csvSummary.errorCount > 0 && (
+                      <span className="text-red-400">
+                        , {csvSummary.errorCount} have errors (cannot import)
+                      </span>
+                    )}
+                  </p>
+                </div>
+
+                {/* Preview Table */}
+                <div className="max-h-64 overflow-auto rounded-lg border border-zinc-700">
+                  <table className="w-full text-sm">
+                    <thead className="bg-zinc-800 sticky top-0">
+                      <tr>
+                        <th className="px-3 py-2 text-left text-zinc-300">Row</th>
+                        <th className="px-3 py-2 text-left text-zinc-300">Name</th>
+                        <th className="px-3 py-2 text-left text-zinc-300">Qty</th>
+                        <th className="px-3 py-2 text-left text-zinc-300">Unit</th>
+                        <th className="px-3 py-2 text-left text-zinc-300">Category</th>
+                        <th className="px-3 py-2 text-left text-zinc-300">Frequency</th>
+                        <th className="px-3 py-2 text-left text-zinc-300">Status</th>
+                        <th className="px-3 py-2 text-left text-zinc-300">Issues</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-700">
+                      {csvSummary.results.map((result) => (
+                        <tr
+                          key={result.row}
+                          className={
+                            result.status === 'error'
+                              ? 'bg-red-900/20'
+                              : result.status === 'warning'
+                              ? 'bg-yellow-900/20'
+                              : ''
+                          }
+                        >
+                          <td className="px-3 py-2 text-zinc-400">{result.row}</td>
+                          <td className="px-3 py-2 text-white">{result.data.name}</td>
+                          <td className="px-3 py-2 text-zinc-300">{result.data.quantity}</td>
+                          <td className="px-3 py-2 text-zinc-300">{result.data.unit}</td>
+                          <td className="px-3 py-2 text-zinc-300">{result.data.category || '-'}</td>
+                          <td className="px-3 py-2 text-zinc-300">{result.data.frequency || 'weekly'}</td>
+                          <td className="px-3 py-2">
+                            {result.status === 'valid' && (
+                              <span className="text-green-400">Valid</span>
+                            )}
+                            {result.status === 'warning' && (
+                              <span className="text-yellow-400">Warning</span>
+                            )}
+                            {result.status === 'error' && (
+                              <span className="text-red-400">Error</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-xs">
+                            {result.errors.map((e, i) => (
+                              <div key={i} className="text-red-400">{e}</div>
+                            ))}
+                            {result.warnings.map((w, i) => (
+                              <div key={i} className="text-yellow-400">{w}</div>
+                            ))}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Error Report Download */}
+                {(csvSummary.errorCount > 0 || csvSummary.warningCount > 0) && (
+                  <div className="flex justify-end">
+                    <button
+                      onClick={handleDownloadErrorReport}
+                      className="text-sm text-purple-400 hover:text-purple-300"
+                    >
+                      Download Error Report
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex justify-end gap-3 pt-4 border-t border-zinc-700">
+              <Button
+                variant="secondary"
+                onClick={handleCloseCSVImport}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleImportCSV}
+                disabled={!csvSummary || csvSummary.validCount === 0 || csvSummary.errorCount > 0 || importingCSV}
+              >
+                {importingCSV
+                  ? 'Importing...'
+                  : csvSummary
+                  ? `Import ${csvSummary.validCount} Staple${csvSummary.validCount !== 1 ? 's' : ''}`
+                  : 'Import'
+                }
+              </Button>
+            </div>
+          </div>
         </Modal>
       </PageContainer>
     </AppLayout>

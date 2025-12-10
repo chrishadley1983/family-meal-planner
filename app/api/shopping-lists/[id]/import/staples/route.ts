@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { convertToMetric } from '@/lib/unit-conversion'
+import type { Staple } from '@/lib/types/staples'
 
 const importStaplesSchema = z.object({
   stapleIds: z.array(z.string()).min(1, 'At least one staple must be selected'),
@@ -86,7 +87,7 @@ export async function POST(
     let currentOrder = (maxOrder?.displayOrder ?? -1) + 1
 
     // Convert staples to shopping list items
-    const itemsToCreate = staples.map((staple) => {
+    const itemsToCreate = staples.map((staple: Staple) => {
       // Convert to metric
       const converted = convertToMetric(staple.quantity, staple.unit)
 
@@ -201,7 +202,7 @@ export async function GET(
     }
 
     // Mark which staples are already imported
-    const staplesWithStatus = staples.map((staple) => ({
+    const staplesWithStatus = staples.map((staple: Staple) => ({
       ...staple,
       alreadyImported: importedStapleIds.has(staple.id),
     }))
