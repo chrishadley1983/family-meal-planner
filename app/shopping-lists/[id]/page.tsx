@@ -405,44 +405,14 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
 
       const data = await response.json()
       console.log('🟢 Imported', data.importedCount, 'ingredients')
+      console.log('🟢 Duplicates removed (server-side):', data.duplicatesRemoved || 0)
+      console.log('🟢 Final item count:', data.finalItemCount || data.importedCount)
       setShowMealPlanModal(false)
       await fetchShoppingList()
 
-      // Auto-run AI deduplication after import
-      console.log('🔷 Auto-deduplicating after meal plan import...')
-      const dedupeResponse = await fetch(`/api/shopping-lists/${id}/deduplicate`)
-      if (dedupeResponse.ok) {
-        const dedupeData = await dedupeResponse.json()
-        const groups = dedupeData.duplicateGroups || []
-
-        if (groups.length > 0) {
-          console.log('🔷 Found', groups.length, 'duplicate groups, auto-combining...')
-          const previousTotal = shoppingList?.items.length || 0
-          let totalItemsCombined = 0
-
-          // Combine all duplicate groups
-          for (const group of groups) {
-            const itemIds = group.items.map((i: { id: string }) => i.id)
-            const combineResponse = await fetch(`/api/shopping-lists/${id}/deduplicate`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ itemIds, useAI: true }),
-            })
-
-            if (combineResponse.ok) {
-              totalItemsCombined += itemIds.length
-            }
-          }
-
-          // Refresh the shopping list
-          await fetchShoppingList()
-          const newTotal = shoppingList?.items.length || previousTotal - (totalItemsCombined - groups.length)
-
-          console.log('🟢 Auto-combined', totalItemsCombined, 'items from', groups.length, 'groups')
-          alert(`Imported ${data.importedCount} ingredients and combined ${totalItemsCombined} duplicate items.`)
-        } else {
-          console.log('🟢 No duplicates found after import')
-        }
+      // Show success message with dedupe info if applicable (dedupe happens server-side)
+      if (data.duplicatesRemoved > 0) {
+        alert(`Imported ${data.importedCount} ingredients and combined ${data.duplicatesRemoved} duplicates.\nFinal count: ${data.finalItemCount} items.`)
       }
     } catch (error) {
       console.error('❌ Error importing meal plan:', error)
