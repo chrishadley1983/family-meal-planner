@@ -1,9 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { generateRecipeSVG } from '@/lib/generate-recipe-image'
+import { AppLayout, PageContainer } from '@/components/layout'
+import { Button, Badge, Input, Select } from '@/components/ui'
+import { useSession } from 'next-auth/react'
 
 interface Recipe {
   id: string
@@ -32,6 +35,7 @@ interface Recipe {
 }
 
 export default function RecipesPage() {
+  const { data: session } = useSession()
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -46,6 +50,12 @@ export default function RecipesPage() {
   const [filterPrepTime, setFilterPrepTime] = useState('')
   const [filterDifficulty, setFilterDifficulty] = useState('')
   const [filterIngredient, setFilterIngredient] = useState('')
+
+  // CSV Import states
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const [importResult, setImportResult] = useState<{ success: boolean; message: string } | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     fetchRecipes()
@@ -84,6 +94,90 @@ export default function RecipesPage() {
       }
     } catch (error) {
       console.error('Error deleting recipe:', error)
+    }
+  }
+
+  const handleDownloadTemplate = () => {
+    const template = `recipeName,description,servings,prepTimeMinutes,cookTimeMinutes,cuisineType,difficultyLevel,mealCategory,ingredientName,quantity,unit,notes,stepNumber,instruction
+"Spaghetti Carbonara","Classic Italian pasta dish",4,10,15,"Italian","Easy","Dinner","spaghetti",400,"g","",1,"Cook spaghetti according to package directions"
+"Spaghetti Carbonara","Classic Italian pasta dish",4,10,15,"Italian","Easy","Dinner","bacon",200,"g","diced",2,"Fry bacon until crispy"
+"Spaghetti Carbonara","Classic Italian pasta dish",4,10,15,"Italian","Easy","Dinner","eggs",3,"whole","",3,"Whisk eggs with parmesan"
+"Spaghetti Carbonara","Classic Italian pasta dish",4,10,15,"Italian","Easy","Dinner","parmesan",100,"g","grated",4,"Combine pasta with bacon and egg mixture"`
+
+    const blob = new Blob([template], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'recipe-template.csv'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    console.log('📂 handleImportCSV called, file selected:', file?.name)
+    if (!file) {
+      console.log('❌ No file selected')
+      return
+    }
+
+    setImporting(true)
+    setImportResult(null)
+
+    try {
+      console.log('📄 Reading file content...')
+      const text = await file.text()
+      console.log('📄 File content read, length:', text.length)
+
+      console.log('🔷 Calling import CSV API...')
+      const response = await fetch('/api/recipes/import-csv', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ csvData: text })
+      })
+
+      console.log('🟢 Import API response:', response.status, response.ok)
+      const data = await response.json()
+
+      if (response.ok) {
+        console.log('✅ Import successful:', data.imported, 'recipes imported')
+
+        // Build detailed message including any errors
+        let message = `Successfully imported ${data.imported} recipe(s).`
+
+        if (data.failed > 0 && data.errors && data.errors.length > 0) {
+          message += `\n\nFailed to import ${data.failed} recipe(s):`
+          data.errors.forEach((err: any) => {
+            message += `\n• ${err.recipeName}: ${err.error}`
+          })
+        }
+
+        setImportResult({
+          success: data.failed === 0,
+          message
+        })
+
+        if (data.imported > 0) {
+          fetchRecipes() // Refresh recipe list only if some recipes were imported
+        }
+      } else {
+        console.error('❌ Import failed:', data.error)
+        setImportResult({
+          success: false,
+          message: data.error || 'Failed to import recipes'
+        })
+      }
+    } catch (error) {
+      console.error('❌ Error importing CSV:', error)
+      setImportResult({
+        success: false,
+        message: 'Error importing CSV file'
+      })
+    } finally {
+      setImporting(false)
+      e.target.value = '' // Reset file input
     }
   }
 
@@ -190,43 +284,76 @@ export default function RecipesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-600">Loading recipes...</p>
-      </div>
+      <AppLayout userEmail={session?.user?.email}>
+        <PageContainer>
+          <div className="flex items-center justify-center py-12">
+            <p className="text-zinc-400">Loading recipes...</p>
+          </div>
+        </PageContainer>
+      </AppLayout>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <Link href="/dashboard" className="text-blue-600 hover:text-blue-800 mb-2 inline-block">
-              ← Back to Dashboard
+    <AppLayout userEmail={session?.user?.email}>
+      <PageContainer
+        title="Recipes"
+        description="Manage your family recipes"
+        action={
+          <div className="flex gap-2">
+            <Button onClick={handleDownloadTemplate} variant="secondary" size="sm">
+              Download Template
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv"
+              onChange={handleImportCSV}
+              className="hidden"
+              disabled={importing}
+            />
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={importing}
+              onClick={() => {
+                console.log('📂 Import CSV button clicked')
+                fileInputRef.current?.click()
+              }}
+            >
+              {importing ? 'Importing...' : 'Import CSV'}
+            </Button>
+            <Link href="/recipes/new">
+              <Button variant="primary">Add Recipe</Button>
             </Link>
-            <h1 className="text-3xl font-bold text-gray-900">Recipes</h1>
-            <p className="text-gray-600 mt-1">Manage your family recipes</p>
           </div>
-          <Link
-            href="/recipes/new"
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
-            Add Recipe
-          </Link>
-        </div>
+        }
+      >
+        {/* Import Result Notification */}
+        {importResult && (
+          <div className={`mb-4 p-4 rounded-lg ${importResult.success ? 'bg-green-900/20 border border-green-700' : 'bg-red-900/20 border border-red-700'}`}>
+            <p className={`whitespace-pre-line ${importResult.success ? 'text-green-400' : 'text-red-400'}`}>
+              {importResult.message}
+            </p>
+            <button
+              onClick={() => setImportResult(null)}
+              className="mt-2 text-sm text-zinc-400 hover:text-white"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {/* Basic Filters */}
-        <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+        <div className="card p-4 mb-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <input
+            <Input
               type="text"
               placeholder="Search recipes..."
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <select
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            <Select
               value={filterMealType}
               onChange={(e) => setFilterMealType(e.target.value)}
             >
@@ -234,9 +361,8 @@ export default function RecipesPage() {
               {mealTypes.map(type => (
                 <option key={type} value={type}>{type}</option>
               ))}
-            </select>
-            <select
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            </Select>
+            <Select
               value={filterCuisineType}
               onChange={(e) => setFilterCuisineType(e.target.value)}
             >
@@ -244,44 +370,45 @@ export default function RecipesPage() {
               {cuisineTypes.map(type => (
                 <option key={type} value={type}>{type}</option>
               ))}
-            </select>
+            </Select>
           </div>
 
           {/* Advanced Filters Toggle */}
           <div className="flex items-center justify-between">
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-              className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md border border-gray-300"
             >
               <svg className={`w-4 h-4 transition-transform ${showAdvancedFilters ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
-              Advanced Filters
+              <span>Advanced Filters</span>
               {activeFilterCount > 0 && (
-                <span className="ml-2 px-2 py-0.5 text-xs bg-blue-500 text-white rounded-full">
+                <Badge variant="purple" size="sm">
                   {activeFilterCount}
-                </span>
+                </Badge>
               )}
-            </button>
+            </Button>
             {activeFilterCount > 0 && (
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={clearAllFilters}
-                className="text-sm text-blue-600 hover:text-blue-800"
               >
                 Clear All Filters
-              </button>
+              </Button>
             )}
           </div>
 
           {/* Advanced Filters Panel */}
           {showAdvancedFilters && (
-            <div className="mt-4 pt-4 border-t border-gray-200">
+            <div className="mt-4 pt-4 border-t border-zinc-800">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {/* Calorie Filter */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Calories (per serving)</label>
-                  <select
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  <label className="label">Calories (per serving)</label>
+                  <Select
                     value={filterCalories}
                     onChange={(e) => setFilterCalories(e.target.value)}
                   >
@@ -290,14 +417,13 @@ export default function RecipesPage() {
                     <option value="300-500">300-500</option>
                     <option value="500-700">500-700</option>
                     <option value=">700">Over 700</option>
-                  </select>
+                  </Select>
                 </div>
 
                 {/* Protein Filter */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Protein (grams)</label>
-                  <select
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  <label className="label">Protein (grams)</label>
+                  <Select
                     value={filterProtein}
                     onChange={(e) => setFilterProtein(e.target.value)}
                   >
@@ -305,14 +431,13 @@ export default function RecipesPage() {
                     <option value="<10">Low (&lt;10g)</option>
                     <option value="10-20">Medium (10-20g)</option>
                     <option value=">20">High (&gt;20g)</option>
-                  </select>
+                  </Select>
                 </div>
 
                 {/* Prep Time Filter */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Prep Time</label>
-                  <select
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  <label className="label">Prep Time</label>
+                  <Select
                     value={filterPrepTime}
                     onChange={(e) => setFilterPrepTime(e.target.value)}
                   >
@@ -320,14 +445,13 @@ export default function RecipesPage() {
                     <option value="<30">Quick (&lt;30 min)</option>
                     <option value="30-60">Medium (30-60 min)</option>
                     <option value=">60">Long (&gt;60 min)</option>
-                  </select>
+                  </Select>
                 </div>
 
                 {/* Difficulty Filter */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Difficulty</label>
-                  <select
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  <label className="label">Difficulty</label>
+                  <Select
                     value={filterDifficulty}
                     onChange={(e) => setFilterDifficulty(e.target.value)}
                   >
@@ -335,16 +459,15 @@ export default function RecipesPage() {
                     <option value="Easy">Easy</option>
                     <option value="Medium">Medium</option>
                     <option value="Hard">Hard</option>
-                  </select>
+                  </Select>
                 </div>
 
                 {/* Ingredient Search */}
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Contains Ingredient</label>
-                  <input
+                  <label className="label">Contains Ingredient</label>
+                  <Input
                     type="text"
                     placeholder="e.g., chicken, tomatoes..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                     value={filterIngredient}
                     onChange={(e) => setFilterIngredient(e.target.value)}
                   />
@@ -353,7 +476,7 @@ export default function RecipesPage() {
 
               {/* Dietary Tags */}
               <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Dietary Preferences</label>
+                <label className="label">Dietary Preferences</label>
                 <div className="flex flex-wrap gap-2">
                   {[
                     { value: 'vegetarian', label: 'Vegetarian' },
@@ -364,7 +487,7 @@ export default function RecipesPage() {
                     { value: 'contains-seafood', label: 'Contains Seafood' },
                     { value: 'contains-nuts', label: 'Contains Nuts' }
                   ].map(diet => (
-                    <label key={diet.value} className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-md cursor-pointer hover:bg-gray-50 text-sm">
+                    <label key={diet.value} className="flex items-center gap-2 px-3 py-2 border border-zinc-700 rounded-md cursor-pointer hover:bg-zinc-800 text-sm text-zinc-300 transition-colors">
                       <input
                         type="checkbox"
                         checked={filterDietary.includes(diet.value)}
@@ -375,7 +498,7 @@ export default function RecipesPage() {
                             setFilterDietary(filterDietary.filter(d => d !== diet.value))
                           }
                         }}
-                        className="rounded border-gray-300"
+                        className="w-4 h-4 bg-zinc-800 border-zinc-700 rounded text-purple-600 focus:ring-purple-500 focus:ring-offset-zinc-900"
                       />
                       {diet.label}
                     </label>
@@ -387,24 +510,23 @@ export default function RecipesPage() {
         </div>
 
         {filteredRecipes.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="card p-12 text-center">
+            <svg className="mx-auto h-12 w-12 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
             </svg>
-            <h3 className="mt-2 text-lg font-medium text-gray-900">
+            <h3 className="mt-2 text-lg font-medium text-white">
               {activeFilterCount > 0 ? 'No recipes found' : 'No recipes yet'}
             </h3>
-            <p className="mt-1 text-gray-500">
+            <p className="mt-1 text-zinc-400">
               {activeFilterCount > 0
                 ? 'Try adjusting your search or filters'
                 : 'Get started by adding your first recipe'}
             </p>
             {activeFilterCount === 0 && (
-              <Link
-                href="/recipes/new"
-                className="mt-4 inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-              >
-                Add Recipe
+              <Link href="/recipes/new" className="mt-4 inline-block">
+                <Button variant="primary">
+                  Add Recipe
+                </Button>
               </Link>
             )}
           </div>
@@ -415,9 +537,9 @@ export default function RecipesPage() {
               const imageUrl = recipe.imageUrl || generateRecipeSVG(recipe.recipeName, recipe.mealType)
 
               return (
-                <div key={recipe.id} className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+                <div key={recipe.id} className="card-interactive overflow-hidden">
                   {/* Recipe Image */}
-                  <div className="relative h-48 w-full bg-gray-100">
+                  <div className="relative h-48 w-full bg-zinc-800 -m-6 mb-4">
                     <Image
                       src={imageUrl}
                       alt={recipe.recipeName}
@@ -427,63 +549,63 @@ export default function RecipesPage() {
                     />
                   </div>
 
-                  <div className="p-6">
+                  <div>
                     <div className="flex items-start justify-between mb-3">
-                    <h3 className="text-lg font-semibold text-gray-900 flex-1">{recipe.recipeName}</h3>
-                    {recipe.familyRating && (
-                      <div className="flex items-center ml-2">
-                        <svg className="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                        </svg>
-                        <span className="ml-1 text-sm text-gray-600">{recipe.familyRating.toFixed(1)}</span>
-                      </div>
+                      <h3 className="text-lg font-semibold text-white flex-1">{recipe.recipeName}</h3>
+                      {recipe.familyRating && (
+                        <div className="flex items-center ml-2">
+                          <svg className="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                          </svg>
+                          <span className="ml-1 text-sm text-zinc-400">{recipe.familyRating.toFixed(1)}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {recipe.description && (
+                      <p className="text-sm text-zinc-400 mb-3 line-clamp-2">{recipe.description}</p>
                     )}
-                  </div>
 
-                  {recipe.description && (
-                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">{recipe.description}</p>
-                  )}
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {recipe.mealType.map(cat => (
+                        <Badge key={cat} variant="purple" size="sm">
+                          {cat}
+                        </Badge>
+                      ))}
+                    </div>
 
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {recipe.mealType.map(cat => (
-                      <span key={cat} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {cat}
-                      </span>
-                    ))}
-                  </div>
+                    <div className="flex items-center text-sm text-zinc-400 space-x-4 mb-4">
+                      <span>🍽️ {recipe.servings} servings</span>
+                      {recipe.totalTimeMinutes && (
+                        <span>⏱️ {recipe.totalTimeMinutes} min</span>
+                      )}
+                    </div>
 
-                  <div className="flex items-center text-sm text-gray-500 space-x-4 mb-4">
-                    <span>🍽️ {recipe.servings} servings</span>
-                    {recipe.totalTimeMinutes && (
-                      <span>⏱️ {recipe.totalTimeMinutes} min</span>
-                    )}
-                  </div>
+                    <div className="text-xs text-zinc-500 mb-4">
+                      Used {recipe.timesUsed} times • {recipe.ingredients.length} ingredients
+                    </div>
 
-                  <div className="text-xs text-gray-500 mb-4">
-                    Used {recipe.timesUsed} times • {recipe.ingredients.length} ingredients
-                  </div>
-
-                  <div className="flex space-x-2">
-                    <Link
-                      href={`/recipes/${recipe.id}`}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 text-center"
-                    >
-                      View/Edit
-                    </Link>
-                    <button
-                      onClick={() => handleDelete(recipe.id)}
-                      className="px-3 py-2 border border-red-300 rounded-md text-sm font-medium text-red-700 bg-white hover:bg-red-50"
-                    >
-                      Delete
-                    </button>
+                    <div className="flex space-x-2">
+                      <Link href={`/recipes/${recipe.id}`} className="flex-1">
+                        <Button variant="secondary" size="sm" className="w-full">
+                          View/Edit
+                        </Button>
+                      </Link>
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={() => handleDelete(recipe.id)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
               )
             })}
           </div>
         )}
-      </div>
-    </div>
+      </PageContainer>
+    </AppLayout>
   )
 }

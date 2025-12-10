@@ -6,6 +6,9 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { generateRecipeSVG } from '@/lib/generate-recipe-image'
+import { AppLayout, PageContainer } from '@/components/layout'
+import { Button, Badge, Input, Select } from '@/components/ui'
+import { useSession } from 'next-auth/react'
 
 interface RecipePageProps {
   params: Promise<{ id: string }>
@@ -33,12 +36,15 @@ type MacroAnalysis = {
 export default function ViewRecipePage({ params }: RecipePageProps) {
   const { id } = use(params)
   const router = useRouter()
+  const { data: session } = useSession()
   const [recipe, setRecipe] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
   const [rating, setRating] = useState<number | null>(null)
   const [duplicating, setDuplicating] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [isFavorite, setIsFavorite] = useState(false)
+  const [togglingFavorite, setTogglingFavorite] = useState(false)
 
   // Edit form state
   const [recipeName, setRecipeName] = useState('')
@@ -198,6 +204,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
       console.log('📥 Recipe data loaded:', data.recipe?.recipeName)
       setRecipe(data.recipe)
       setRating(data.recipe.familyRating)
+      setIsFavorite(data.recipe.isFavorite || false)
 
       // Set edit form state
       setRecipeName(data.recipe.recipeName || '')
@@ -254,6 +261,34 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
       console.error('Failed to duplicate recipe')
     } finally {
       setDuplicating(false)
+    }
+  }
+
+  const handleToggleFavorite = async () => {
+    console.log('⭐ Toggling favorite from', isFavorite, 'to', !isFavorite)
+    setTogglingFavorite(true)
+    try {
+      const newFavoriteStatus = !isFavorite
+      const response = await fetch(`/api/recipes/${id}/favorite`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isFavorite: newFavoriteStatus })
+      })
+
+      console.log('⭐ Favorite API response:', response.status, response.ok)
+      if (response.ok) {
+        const data = await response.json()
+        console.log('✅ Favorite updated:', data.recipe.isFavorite)
+        setIsFavorite(data.recipe.isFavorite)
+        // Update recipe state as well
+        setRecipe(data.recipe)
+      } else {
+        console.error('❌ Failed to update favorite:', await response.text())
+      }
+    } catch (err) {
+      console.error('❌ Failed to toggle favorite:', err)
+    } finally {
+      setTogglingFavorite(false)
     }
   }
 
@@ -426,9 +461,13 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-600">Loading recipe...</p>
-      </div>
+      <AppLayout userEmail={session?.user?.email}>
+        <PageContainer>
+          <div className="flex items-center justify-center py-12">
+            <p className="text-zinc-400">Loading recipe...</p>
+          </div>
+        </PageContainer>
+      </AppLayout>
     )
   }
 
@@ -437,26 +476,26 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link href="/recipes" className="text-blue-600 hover:text-blue-800 mb-4 inline-block">
+    <AppLayout userEmail={session?.user?.email}>
+      <PageContainer maxWidth="7xl">
+        <Link href="/recipes" className="text-purple-400 hover:text-purple-300 mb-6 inline-block">
           ← Back to Recipes
         </Link>
 
-        <div className="bg-white shadow-sm rounded-lg overflow-hidden">
+        <div className="card overflow-hidden">
           <div className="p-6">
             {/* Header with title, edit button, duplicate, and rating */}
             <div className="flex justify-between items-start mb-6">
               <div className="flex-1">
                 {isEditing ? (
-                  <input
+                  <Input
                     type="text"
                     value={recipeName}
                     onChange={(e) => setRecipeName(e.target.value)}
-                    className="text-3xl font-bold text-gray-900 mb-2 w-full border-b-2 border-blue-500 focus:outline-none"
+                    className="text-3xl font-bold text-white mb-2 w-full bg-transparent border-none border-b-2 border-purple-500 rounded-none px-0 focus:ring-0 focus:border-purple-400"
                   />
                 ) : (
-                  <h1 className="text-3xl font-bold text-gray-900 mb-2">{recipe.recipeName}</h1>
+                  <h1 className="text-3xl font-bold text-white mb-2">{recipe.recipeName}</h1>
                 )}
                 {isEditing ? (
                   <textarea
@@ -464,24 +503,24 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                     onChange={(e) => setDescription(e.target.value)}
                     rows={2}
                     placeholder="Description..."
-                    className="text-gray-600 w-full border rounded-md px-2 py-1 mt-2"
+                    className="input w-full mt-2"
                   />
                 ) : (
-                  recipe.description && <p className="text-gray-600">{recipe.description}</p>
+                  recipe.description && <p className="text-zinc-400">{recipe.description}</p>
                 )}
 
                 {/* Recipe Image */}
                 {isEditing ? (
                   <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Recipe Image</label>
+                    <label className="block text-sm font-medium text-white mb-2">Recipe Image</label>
                     <input
                       type="file"
                       accept="image/*"
                       onChange={handleRecipeImageChange}
-                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      className="block w-full text-sm text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-700 file:cursor-pointer cursor-pointer"
                     />
                     {imagePreview && (
-                      <div className="mt-2 relative h-48 w-full bg-gray-100 rounded-md overflow-hidden">
+                      <div className="mt-2 relative h-48 w-full bg-zinc-800 rounded-md overflow-hidden">
                         <Image
                           src={imagePreview}
                           alt="Recipe preview"
@@ -493,7 +532,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                     )}
                   </div>
                 ) : (
-                  <div className="mt-4 relative h-64 w-full bg-gray-100 rounded-md overflow-hidden">
+                  <div className="mt-4 relative h-64 w-full bg-zinc-800 rounded-md overflow-hidden">
                     <Image
                       src={recipe.imageUrl || generateRecipeSVG(recipe.recipeName, recipe.mealType)}
                       alt={recipe.recipeName}
@@ -507,46 +546,64 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
               <div className="flex items-center space-x-3 ml-4">
                 {!isEditing && (
                   <>
-                    <button
+                    <Button
+                      onClick={handleToggleFavorite}
+                      disabled={togglingFavorite}
+                      variant="ghost"
+                      size="sm"
+                      title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+                    >
+                      <span className={`text-xl ${isFavorite ? 'text-yellow-400' : 'text-zinc-600'}`}>
+                        {isFavorite ? '★' : '☆'}
+                      </span>
+                    </Button>
+                    <Button
                       onClick={() => setIsEditing(true)}
-                      className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                      variant="secondary"
+                      size="sm"
                     >
                       Edit
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={handleDuplicate}
                       disabled={duplicating}
-                      className="px-3 py-2 border border-blue-300 rounded-md text-sm font-medium text-blue-700 bg-white hover:bg-blue-50 disabled:opacity-50"
+                      variant="ghost"
+                      size="sm"
+                      isLoading={duplicating}
                       title="Duplicate this recipe"
                     >
                       {duplicating ? 'Duplicating...' : 'Duplicate'}
-                    </button>
+                    </Button>
                   </>
                 )}
                 {isEditing ? (
                   <div className="flex space-x-2">
-                    <button
+                    <Button
                       onClick={undo}
                       disabled={history.length === 0 || saving}
-                      className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      variant="secondary"
+                      size="sm"
                       title="Undo last change"
                     >
                       ↶ Undo
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={handleSaveEdit}
                       disabled={saving}
-                      className="px-3 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 disabled:opacity-50"
+                      variant="primary"
+                      size="sm"
+                      isLoading={saving}
                     >
                       {saving ? 'Saving...' : 'Save'}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={handleCancelEdit}
                       disabled={saving}
-                      className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 bg-white hover:bg-gray-50"
+                      variant="ghost"
+                      size="sm"
                     >
                       Cancel
-                    </button>
+                    </Button>
                   </div>
                 ) : (
                   <div className="flex items-center space-x-2">
@@ -554,11 +611,11 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                       <button
                         key={star}
                         onClick={() => handleRating(star)}
-                        className="focus:outline-none"
+                        className="focus:outline-none transition-colors"
                       >
                         <svg
                           className={`h-6 w-6 ${
-                            rating && star <= rating ? 'text-yellow-400' : 'text-gray-300'
+                            rating && star <= rating ? 'text-yellow-400' : 'text-zinc-600'
                           }`}
                           fill="currentColor"
                           viewBox="0 0 20 20"
@@ -573,19 +630,19 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
             </div>
 
             {/* Times and servings */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 p-4 bg-zinc-800/50 rounded-lg border border-zinc-700">
               <div>
-                <p className="text-sm text-gray-500">Servings</p>
+                <p className="text-sm text-zinc-400">Servings</p>
                 {isEditing ? (
                   <>
-                    <input
+                    <Input
                       type="number"
                       value={servings}
                       onChange={(e) => setServings(parseInt(e.target.value) || 1)}
                       min="1"
-                      className="text-lg font-semibold w-full border rounded px-2 py-1"
+                      className="text-lg font-semibold w-full mt-1"
                     />
-                    <label className="flex items-center mt-2 text-xs text-gray-600 cursor-pointer">
+                    <label className="flex items-center mt-2 text-xs text-zinc-400 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={scaleIngredients}
@@ -604,83 +661,81 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                     </label>
                   </>
                 ) : (
-                  <p className="text-lg font-semibold">{recipe.servings}</p>
+                  <p className="text-lg font-semibold text-white">{recipe.servings}</p>
                 )}
               </div>
               <div>
-                <p className="text-sm text-gray-500">Prep Time (min)</p>
+                <p className="text-sm text-zinc-400">Prep Time (min)</p>
                 {isEditing ? (
-                  <input
+                  <Input
                     type="number"
                     value={prepTimeMinutes}
                     onChange={(e) => setPrepTimeMinutes(e.target.value ? parseInt(e.target.value) : '')}
                     min="0"
-                    className="text-lg font-semibold w-full border rounded px-2 py-1"
+                    className="text-lg font-semibold w-full mt-1"
                   />
                 ) : (
-                  recipe.prepTimeMinutes && <p className="text-lg font-semibold">{recipe.prepTimeMinutes} min</p>
+                  recipe.prepTimeMinutes && <p className="text-lg font-semibold text-white">{recipe.prepTimeMinutes} min</p>
                 )}
               </div>
               <div>
-                <p className="text-sm text-gray-500">Cook Time (min)</p>
+                <p className="text-sm text-zinc-400">Cook Time (min)</p>
                 {isEditing ? (
-                  <input
+                  <Input
                     type="number"
                     value={cookTimeMinutes}
                     onChange={(e) => setCookTimeMinutes(e.target.value ? parseInt(e.target.value) : '')}
                     min="0"
-                    className="text-lg font-semibold w-full border rounded px-2 py-1"
+                    className="text-lg font-semibold w-full mt-1"
                   />
                 ) : (
-                  recipe.cookTimeMinutes && <p className="text-lg font-semibold">{recipe.cookTimeMinutes} min</p>
+                  recipe.cookTimeMinutes && <p className="text-lg font-semibold text-white">{recipe.cookTimeMinutes} min</p>
                 )}
               </div>
               {recipe.totalTimeMinutes && !isEditing && (
                 <div>
-                  <p className="text-sm text-gray-500">Total Time</p>
-                  <p className="text-lg font-semibold">{recipe.totalTimeMinutes} min</p>
+                  <p className="text-sm text-zinc-400">Total Time</p>
+                  <p className="text-lg font-semibold text-white">{recipe.totalTimeMinutes} min</p>
                 </div>
               )}
             </div>
 
             {/* Cuisine, Difficulty, Categories */}
-            <div className="mb-6 pb-6 border-b">
+            <div className="mb-6 pb-6 border-b border-zinc-800">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
-                  <p className="text-sm text-gray-500 mb-1">Cuisine Type</p>
+                  <p className="text-sm text-zinc-400 mb-1">Cuisine Type</p>
                   {isEditing ? (
-                    <input
+                    <Input
                       type="text"
                       value={cuisineType}
                       onChange={(e) => setCuisineType(e.target.value)}
                       placeholder="e.g., Italian, Mexican"
-                      className="w-full border rounded px-3 py-2"
                     />
                   ) : (
-                    recipe.cuisineType && <p className="text-sm font-medium">{recipe.cuisineType}</p>
+                    recipe.cuisineType && <p className="text-sm font-medium text-white">{recipe.cuisineType}</p>
                   )}
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500 mb-1">Difficulty</p>
+                  <p className="text-sm text-zinc-400 mb-1">Difficulty</p>
                   {isEditing ? (
-                    <select
+                    <Select
                       value={difficultyLevel}
                       onChange={(e) => setDifficultyLevel(e.target.value)}
-                      className="w-full border rounded px-3 py-2"
                     >
                       <option value="">Select...</option>
                       <option value="Easy">Easy</option>
                       <option value="Medium">Medium</option>
                       <option value="Hard">Hard</option>
-                    </select>
+                    </Select>
                   ) : (
-                    recipe.difficultyLevel && <p className="text-sm font-medium">{recipe.difficultyLevel}</p>
+                    recipe.difficultyLevel && <p className="text-sm font-medium text-white">{recipe.difficultyLevel}</p>
                   )}
                 </div>
               </div>
 
               <div>
-                <p className="text-sm text-gray-500 mb-2">Meal Categories</p>
+                <p className="text-sm text-zinc-400 mb-2">Meal Categories</p>
                 {isEditing ? (
                   <div className="flex flex-wrap gap-2">
                     {mealCategories.map(cat => (
@@ -688,10 +743,10 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                         key={cat}
                         type="button"
                         onClick={() => toggleCategory(cat)}
-                        className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
                           mealType.includes(cat)
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                            ? 'bg-purple-600 text-white'
+                            : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
                         }`}
                       >
                         {cat}
@@ -702,9 +757,9 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                   recipe.mealType.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                       {recipe.mealType.map((cat: string) => (
-                        <span key={cat} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        <Badge key={cat} variant="purple" size="sm">
                           {cat}
-                        </span>
+                        </Badge>
                       ))}
                     </div>
                   )
@@ -715,23 +770,26 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
             {/* Ingredients */}
             <div className="mb-6">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-gray-900">Ingredients</h2>
+                <h2 className="text-xl font-bold text-white">Ingredients</h2>
                 <div className="flex gap-2">
                   {!macroAnalysis && !loadingAI && (
-                    <button
+                    <Button
                       onClick={() => fetchAIAnalysis(isEditing ? { recipeName, servings, ingredients, mealType } : recipe)}
-                      className="px-3 py-1 bg-green-600 text-white rounded-md text-sm hover:bg-green-700"
+                      variant="secondary"
+                      size="sm"
+                      className="bg-green-600 hover:bg-green-700 text-white"
                     >
                       Analyze Nutrition
-                    </button>
+                    </Button>
                   )}
                   {isEditing && (
-                    <button
+                    <Button
                       onClick={addIngredient}
-                      className="px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
+                      variant="primary"
+                      size="sm"
                     >
                       Add Ingredient
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>
@@ -747,38 +805,38 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                           </div>
                         )}
                         <div className="flex-1 grid grid-cols-12 gap-2 items-center">
-                          <input
+                          <Input
                             type="text"
                             placeholder="Ingredient"
                             value={ing.ingredientName}
                             onChange={(e) => updateIngredient(index, 'ingredientName', e.target.value)}
-                            className="col-span-5 border rounded px-2 py-1 text-sm"
+                            className="col-span-5 text-sm"
                           />
-                          <input
+                          <Input
                             type="number"
                             placeholder="Qty"
                             value={ing.quantity}
                             onChange={(e) => updateIngredient(index, 'quantity', parseFloat(e.target.value))}
                             step="0.1"
-                            className="col-span-2 border rounded px-2 py-1 text-sm"
+                            className="col-span-2 text-sm"
                           />
-                          <input
+                          <Input
                             type="text"
                             placeholder="Unit"
                             value={ing.unit}
                             onChange={(e) => updateIngredient(index, 'unit', e.target.value)}
-                            className="col-span-2 border rounded px-2 py-1 text-sm"
+                            className="col-span-2 text-sm"
                           />
-                          <input
+                          <Input
                             type="text"
                             placeholder="Notes"
                             value={ing.notes || ''}
                             onChange={(e) => updateIngredient(index, 'notes', e.target.value)}
-                            className="col-span-2 border rounded px-2 py-1 text-sm"
+                            className="col-span-2 text-sm"
                           />
                           <button
                             onClick={() => removeIngredient(index)}
-                            className="col-span-1 text-red-600 hover:text-red-800"
+                            className="col-span-1 text-red-500 hover:text-red-400 text-2xl"
                           >
                             ×
                           </button>
@@ -792,16 +850,16 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                   {recipe.ingredients.map((ing: any, index: number) => {
                     const rating = getIngredientRating(ing.ingredientName)
                     return (
-                      <li key={index} className="flex items-start">
+                      <li key={index} className="flex items-start text-zinc-300">
                         {rating && (
                           <div className="flex items-center mr-2" title={rating.reason}>
                             <div className={`w-3 h-3 rounded-full ${getTrafficLightClass(rating.rating)}`}></div>
                           </div>
                         )}
-                        <span className="text-gray-400 mr-3">•</span>
+                        <span className="text-zinc-500 mr-3">•</span>
                         <span>
-                          <strong>{ing.quantity} {ing.unit}</strong> {ing.ingredientName}
-                          {ing.notes && <span className="text-gray-500 text-sm"> ({ing.notes})</span>}
+                          <strong className="text-white">{ing.quantity} {ing.unit}</strong> {ing.ingredientName}
+                          {ing.notes && <span className="text-zinc-500 text-sm"> ({ing.notes})</span>}
                         </span>
                       </li>
                     )
@@ -814,65 +872,61 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
             {macroAnalysis && (
               <>
                 {/* Macro Breakdown */}
-                <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                <div className="mb-6 p-4 bg-gradient-to-r from-purple-900/20 to-blue-900/20 rounded-lg border border-purple-800/30">
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-bold text-gray-900">Nutritional Analysis (per serving)</h3>
+                    <h3 className="font-bold text-white">Nutritional Analysis (per serving)</h3>
                     <div className="flex items-center space-x-2">
-                      <span className="text-sm font-medium text-gray-600">Overall Rating:</span>
+                      <span className="text-sm font-medium text-zinc-300">Overall Rating:</span>
                       <div className={`w-4 h-4 rounded-full ${getTrafficLightClass(macroAnalysis.overallRating)}`}></div>
                     </div>
                   </div>
 
-                  <p className="text-sm text-gray-700 mb-4 italic">{macroAnalysis.overallExplanation}</p>
+                  <p className="text-sm text-zinc-300 mb-4 italic">{macroAnalysis.overallExplanation}</p>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <div className="bg-white p-3 rounded-md shadow-sm">
-                      <p className="text-xs text-gray-500 mb-1">Calories</p>
-                      <p className="text-lg font-bold text-gray-900">{macroAnalysis.perServing.calories}</p>
+                    <div className="bg-zinc-800/50 p-3 rounded-md border border-zinc-700">
+                      <p className="text-xs text-zinc-400 mb-1">Calories</p>
+                      <p className="text-lg font-bold text-white">{macroAnalysis.perServing.calories}</p>
                     </div>
-                    <div className="bg-white p-3 rounded-md shadow-sm">
-                      <p className="text-xs text-gray-500 mb-1">Protein</p>
-                      <p className="text-lg font-bold text-gray-900">{macroAnalysis.perServing.protein}g</p>
+                    <div className="bg-zinc-800/50 p-3 rounded-md border border-zinc-700">
+                      <p className="text-xs text-zinc-400 mb-1">Protein</p>
+                      <p className="text-lg font-bold text-white">{macroAnalysis.perServing.protein}g</p>
                     </div>
-                    <div className="bg-white p-3 rounded-md shadow-sm">
-                      <p className="text-xs text-gray-500 mb-1">Carbs</p>
-                      <p className="text-lg font-bold text-gray-900">{macroAnalysis.perServing.carbs}g</p>
+                    <div className="bg-zinc-800/50 p-3 rounded-md border border-zinc-700">
+                      <p className="text-xs text-zinc-400 mb-1">Carbs</p>
+                      <p className="text-lg font-bold text-white">{macroAnalysis.perServing.carbs}g</p>
                     </div>
-                    <div className="bg-white p-3 rounded-md shadow-sm">
-                      <p className="text-xs text-gray-500 mb-1">Fat</p>
-                      <p className="text-lg font-bold text-gray-900">{macroAnalysis.perServing.fat}g</p>
+                    <div className="bg-zinc-800/50 p-3 rounded-md border border-zinc-700">
+                      <p className="text-xs text-zinc-400 mb-1">Fat</p>
+                      <p className="text-lg font-bold text-white">{macroAnalysis.perServing.fat}g</p>
                     </div>
-                    <div className="bg-white p-3 rounded-md shadow-sm">
-                      <p className="text-xs text-gray-500 mb-1">Fiber</p>
-                      <p className="text-lg font-bold text-gray-900">{macroAnalysis.perServing.fiber}g</p>
+                    <div className="bg-zinc-800/50 p-3 rounded-md border border-zinc-700">
+                      <p className="text-xs text-zinc-400 mb-1">Fiber</p>
+                      <p className="text-lg font-bold text-white">{macroAnalysis.perServing.fiber}g</p>
                     </div>
-                    <div className="bg-white p-3 rounded-md shadow-sm">
-                      <p className="text-xs text-gray-500 mb-1">Sugar</p>
-                      <p className="text-lg font-bold text-gray-900">{macroAnalysis.perServing.sugar}g</p>
+                    <div className="bg-zinc-800/50 p-3 rounded-md border border-zinc-700">
+                      <p className="text-xs text-zinc-400 mb-1">Sugar</p>
+                      <p className="text-lg font-bold text-white">{macroAnalysis.perServing.sugar}g</p>
                     </div>
-                    <div className="bg-white p-3 rounded-md shadow-sm">
-                      <p className="text-xs text-gray-500 mb-1">Sodium</p>
-                      <p className="text-lg font-bold text-gray-900">{macroAnalysis.perServing.sodium}mg</p>
+                    <div className="bg-zinc-800/50 p-3 rounded-md border border-zinc-700">
+                      <p className="text-xs text-zinc-400 mb-1">Sodium</p>
+                      <p className="text-lg font-bold text-white">{macroAnalysis.perServing.sodium}mg</p>
                     </div>
                   </div>
                 </div>
 
-                {/* Sarah's Nutritionist Feedback */}
+                {/* Emilia's Nutritionist Feedback */}
                 {nutritionistFeedback && (
-                  <div className="mb-6 p-5 bg-gradient-to-r from-pink-50 to-purple-50 rounded-lg border border-pink-200">
+                  <div className="mb-6 p-5 bg-gradient-to-r from-pink-900/20 to-purple-900/20 rounded-lg border border-pink-800/30">
                     <div className="flex items-start space-x-4">
                       <div className="flex-shrink-0">
-                        <Image
-                          src="/sarah-avatar.png"
-                          alt="Sarah the AI Nutritionist"
-                          width={60}
-                          height={60}
-                          className="rounded-full border-2 border-pink-300"
-                        />
+                        <div className="w-[60px] h-[60px] rounded-full border-2 border-pink-500 bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center text-3xl">
+                          👩‍⚕️
+                        </div>
                       </div>
                       <div className="flex-1">
-                        <h3 className="font-bold text-gray-900 mb-2">Sarah&apos;s Nutritionist Feedback</h3>
-                        <div className="text-sm text-gray-700 whitespace-pre-line">
+                        <h3 className="font-bold text-white mb-2">Emilia&apos;s Nutritionist Feedback</h3>
+                        <div className="text-sm text-zinc-300 whitespace-pre-line">
                           {nutritionistFeedback}
                         </div>
                       </div>
@@ -884,29 +938,30 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
 
             {/* Loading AI Analysis */}
             {loadingAI && (
-              <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200 text-center">
-                <p className="text-sm text-gray-600">Analyzing nutritional content...</p>
+              <div className="mb-6 p-4 bg-blue-900/20 rounded-lg border border-blue-800/30 text-center">
+                <p className="text-sm text-zinc-300">Analyzing nutritional content...</p>
               </div>
             )}
 
             {/* Instructions */}
             <div className="mb-6">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-gray-900">Instructions</h2>
+                <h2 className="text-xl font-bold text-white">Instructions</h2>
                 {isEditing && (
-                  <button
+                  <Button
                     onClick={addInstruction}
-                    className="px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
+                    variant="primary"
+                    size="sm"
                   >
                     Add Step
-                  </button>
+                  </Button>
                 )}
               </div>
               {isEditing ? (
                 <div className="space-y-2">
                   {instructions.map((inst, index) => (
                     <div key={index} className="flex gap-2 items-start">
-                      <span className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-blue-100 text-blue-800 font-medium text-sm">
+                      <span className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-purple-900/50 text-purple-300 border border-purple-700 font-medium text-sm">
                         {inst.stepNumber}
                       </span>
                       <textarea
@@ -914,11 +969,11 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                         placeholder="Describe this step..."
                         value={inst.instruction}
                         onChange={(e) => updateInstruction(index, e.target.value)}
-                        className="flex-1 border rounded px-3 py-2 text-sm"
+                        className="input flex-1 text-sm"
                       />
                       <button
                         onClick={() => removeInstruction(index)}
-                        className="text-red-600 hover:text-red-800 text-xl"
+                        className="text-red-500 hover:text-red-400 text-2xl"
                       >
                         ×
                       </button>
@@ -929,10 +984,10 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                 <ol className="space-y-4">
                   {recipe.instructions.map((inst: any, index: number) => (
                     <li key={index} className="flex">
-                      <span className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-blue-100 text-blue-800 font-semibold mr-4">
+                      <span className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-purple-900/50 text-purple-300 border border-purple-700 font-semibold mr-4">
                         {inst.stepNumber}
                       </span>
-                      <p className="flex-1 pt-1">{inst.instruction}</p>
+                      <p className="flex-1 pt-1 text-zinc-300">{inst.instruction}</p>
                     </li>
                   ))}
                 </ol>
@@ -941,33 +996,33 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
 
             {/* Notes */}
             <div className="mb-6">
-              <h3 className="font-semibold text-gray-900 mb-2">Notes</h3>
+              <h3 className="font-semibold text-white mb-2">Notes</h3>
               {isEditing ? (
                 <textarea
                   rows={3}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Add any notes about this recipe..."
-                  className="w-full border rounded px-3 py-2"
+                  className="input w-full"
                 />
               ) : (
                 recipe.notes && (
-                  <div className="p-4 bg-yellow-50 rounded-lg">
-                    <p className="text-sm text-gray-700">{recipe.notes}</p>
+                  <div className="p-4 bg-yellow-900/20 rounded-lg border border-yellow-800/30">
+                    <p className="text-sm text-zinc-300">{recipe.notes}</p>
                   </div>
                 )
               )}
             </div>
 
             {!isEditing && (
-              <div className="text-sm text-gray-500 border-t pt-4">
+              <div className="text-sm text-zinc-500 border-t border-zinc-800 pt-4">
                 Used {recipe.timesUsed} times
                 {recipe.lastUsedDate && ` • Last used ${new Date(recipe.lastUsedDate).toLocaleDateString()}`}
               </div>
             )}
           </div>
         </div>
-      </div>
-    </div>
+      </PageContainer>
+    </AppLayout>
   )
 }
