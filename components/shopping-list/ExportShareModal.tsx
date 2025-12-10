@@ -216,17 +216,11 @@ ${shareLink.shareUrl}
 ---
 Sent from FamilyFuel - Family Meal Planning Made Easy`
 
-    const mailtoUrl = `mailto:${emailTo}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+    // Use Gmail compose URL directly (more reliable than mailto:)
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(emailTo)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
 
-    console.log('🟢 Opening email client...', mailtoUrl)
-
-    // Use a temporary link element to trigger mailto (more reliable than window.location)
-    const link = document.createElement('a')
-    link.href = mailtoUrl
-    link.target = '_blank'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    console.log('🟢 Opening Gmail compose...')
+    window.open(gmailUrl, '_blank')
   }
 
   const handleCopyLink = async () => {
