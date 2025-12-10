@@ -48,25 +48,6 @@ const CATEGORY_ORDER = [
 ]
 
 /**
- * Converts image to base64 data URL for PDF embedding
- */
-async function loadLogoAsBase64(): Promise<string> {
-  try {
-    const response = await fetch('/logo-pdf.png')
-    const blob = await response.blob()
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onloadend = () => resolve(reader.result as string)
-      reader.onerror = reject
-      reader.readAsDataURL(blob)
-    })
-  } catch (error) {
-    console.warn('⚠️ Could not load logo for PDF:', error)
-    return ''
-  }
-}
-
-/**
  * Sorts categories in a logical shopping order
  */
 function sortCategories(categories: string[]): string[] {
@@ -87,7 +68,7 @@ function sortCategories(categories: string[]): string[] {
 }
 
 /**
- * Formats quantity with unit for display
+ * Formats quantity with unit for display - WITH SPACE
  */
 function formatQuantity(quantity: number, unit: string): string {
   // Handle whole numbers vs decimals
@@ -95,8 +76,8 @@ function formatQuantity(quantity: number, unit: string): string {
     ? quantity.toString()
     : quantity.toFixed(1).replace(/\.0$/, '')
 
-  // Combine quantity and unit
-  return `${formattedQty}${unit}`
+  // Combine quantity and unit WITH A SPACE
+  return `${formattedQty} ${unit}`
 }
 
 /**
@@ -120,43 +101,37 @@ export async function generateShoppingListPDF(
 
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
-  const margin = 15
+  const margin = 12
   let currentY = margin
-
-  // Load logo
-  const logoBase64 = await loadLogoAsBase64()
 
   // === HEADER ===
 
-  // Logo (left side)
-  if (logoBase64) {
-    try {
-      doc.addImage(logoBase64, 'PNG', margin, currentY, 40, 14)
-    } catch (error) {
-      console.warn('⚠️ Could not add logo to PDF:', error)
-    }
-  }
+  // Text logo (left side) - styled "FamilyFuel"
+  doc.setFontSize(20)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(BRAND_COLORS.purple)
+  doc.text('FamilyFuel', margin, currentY + 6)
 
   // Title and date (right side)
   const dateStr = format(new Date(), 'd MMM yyyy')
-  doc.setFontSize(18)
+  doc.setFontSize(16)
   doc.setTextColor(BRAND_COLORS.black)
   doc.setFont('helvetica', 'bold')
-  doc.text('Shopping List', pageWidth - margin, currentY + 5, { align: 'right' })
+  doc.text('Shopping List', pageWidth - margin, currentY + 4, { align: 'right' })
 
-  doc.setFontSize(11)
+  doc.setFontSize(9)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(BRAND_COLORS.gray)
-  doc.text(dateStr, pageWidth - margin, currentY + 12, { align: 'right' })
+  doc.text(dateStr, pageWidth - margin, currentY + 10, { align: 'right' })
 
-  currentY += 25
+  currentY += 16
 
   // Divider line
   doc.setDrawColor(BRAND_COLORS.purpleLight)
   doc.setLineWidth(0.5)
   doc.line(margin, currentY, pageWidth - margin, currentY)
 
-  currentY += 8
+  currentY += 5
 
   // === ITEMS BY CATEGORY ===
 
@@ -170,6 +145,11 @@ export async function generateShoppingListPDF(
     const items = itemsByCategory[category]
     if (!items || items.length === 0) continue
 
+    // Sort items alphabetically within category
+    const sortedItems = [...items].sort((a, b) =>
+      a.itemName.toLowerCase().localeCompare(b.itemName.toLowerCase())
+    )
+
     // Category header row
     tableData.push([
       {
@@ -178,8 +158,8 @@ export async function generateShoppingListPDF(
           fontStyle: 'bold',
           fillColor: [139, 92, 246], // Purple
           textColor: [255, 255, 255],
-          fontSize: 10,
-          cellPadding: { top: 3, bottom: 3, left: 5, right: 5 },
+          fontSize: 8,
+          cellPadding: { top: 2, bottom: 2, left: 4, right: 4 },
         },
       },
       {
@@ -190,9 +170,10 @@ export async function generateShoppingListPDF(
       },
     ])
 
-    // Item rows
-    for (const item of items) {
-      const checkbox = item.isPurchased ? '☑' : '☐'
+    // Item rows - sorted alphabetically
+    for (const item of sortedItems) {
+      // Use simple ASCII checkbox that renders correctly
+      const checkbox = item.isPurchased ? '[x]' : '[  ]'
       const quantityStr = formatQuantity(item.quantity, item.unit)
 
       tableData.push([
@@ -201,8 +182,8 @@ export async function generateShoppingListPDF(
           styles: {
             fontStyle: 'normal',
             textColor: item.isPurchased ? [156, 163, 175] : [31, 41, 55],
-            fontSize: 10,
-            cellPadding: { top: 2, bottom: 2, left: 8, right: 5 },
+            fontSize: 8,
+            cellPadding: { top: 1.5, bottom: 1.5, left: 6, right: 4 },
           },
         },
         {
@@ -210,18 +191,18 @@ export async function generateShoppingListPDF(
           styles: {
             fontStyle: 'normal',
             textColor: [107, 114, 128],
-            fontSize: 10,
+            fontSize: 8,
             halign: 'right',
-            cellPadding: { top: 2, bottom: 2, left: 5, right: 5 },
+            cellPadding: { top: 1.5, bottom: 1.5, left: 4, right: 4 },
           },
         },
       ])
     }
 
-    // Add spacing between categories
+    // Add small spacing between categories
     tableData.push([
-      { content: '', styles: { cellPadding: 1, minCellHeight: 2 } },
-      { content: '', styles: { cellPadding: 1, minCellHeight: 2 } },
+      { content: '', styles: { cellPadding: 0.5, minCellHeight: 1 } },
+      { content: '', styles: { cellPadding: 0.5, minCellHeight: 1 } },
     ])
   }
 
@@ -238,14 +219,14 @@ export async function generateShoppingListPDF(
     },
     columnStyles: {
       0: { cellWidth: 'auto' },
-      1: { cellWidth: 30 },
+      1: { cellWidth: 28 },
     },
     margin: { left: margin, right: margin },
     didDrawPage: (data) => {
       // Add footer on each page
-      const footerY = pageHeight - 10
+      const footerY = pageHeight - 8
 
-      doc.setFontSize(8)
+      doc.setFontSize(7)
       doc.setTextColor(BRAND_COLORS.grayLight)
       doc.text('Powered by FamilyFuel', pageWidth / 2, footerY, { align: 'center' })
 
