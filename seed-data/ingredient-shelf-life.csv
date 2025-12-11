@@ -1,0 +1,641 @@
+ingredientName,shelfLifeDays,defaultLocation,category
+Semi-skimmed milk,7,fridge,Dairy
+Whole milk,7,fridge,Dairy
+Skimmed milk,7,fridge,Dairy
+Oat milk,10,fridge,Dairy
+Almond milk,10,fridge,Dairy
+Soya milk,10,fridge,Dairy
+Coconut milk,10,fridge,Dairy
+Double cream,7,fridge,Dairy
+Single cream,5,fridge,Dairy
+Whipping cream,7,fridge,Dairy
+Soured cream,14,fridge,Dairy
+Creme fraiche,14,fridge,Dairy
+Greek yoghurt,21,fridge,Dairy
+Natural yoghurt,21,fridge,Dairy
+Flavoured yoghurt,14,fridge,Dairy
+Cottage cheese,7,fridge,Dairy
+Cream cheese,14,fridge,Dairy
+Cheddar cheese,42,fridge,Dairy
+Red Leicester,42,fridge,Dairy
+Mature cheddar,56,fridge,Dairy
+Mild cheddar,42,fridge,Dairy
+Parmesan,90,fridge,Dairy
+Mozzarella,7,fridge,Dairy
+Feta cheese,30,fridge,Dairy
+Brie,14,fridge,Dairy
+Camembert,14,fridge,Dairy
+Stilton,21,fridge,Dairy
+Halloumi,30,fridge,Dairy
+Goats cheese,14,fridge,Dairy
+Mascarpone,7,fridge,Dairy
+Ricotta,7,fridge,Dairy
+Grated cheese,14,fridge,Dairy
+Cheese slices,21,fridge,Dairy
+Butter,60,fridge,Dairy
+Unsalted butter,60,fridge,Dairy
+Salted butter,60,fridge,Dairy
+Spreadable butter,42,fridge,Dairy
+Margarine,90,fridge,Dairy
+Large eggs,28,fridge,Dairy
+Medium eggs,28,fridge,Dairy
+Free range eggs,28,fridge,Dairy
+Organic eggs,28,fridge,Dairy
+Quail eggs,21,fridge,Dairy
+Duck eggs,21,fridge,Dairy
+Chicken breast,3,fridge,Meat
+Chicken thighs,3,fridge,Meat
+Chicken drumsticks,3,fridge,Meat
+Chicken wings,3,fridge,Meat
+Whole chicken,3,fridge,Meat
+Chicken mince,2,fridge,Meat
+Turkey breast,3,fridge,Meat
+Turkey mince,2,fridge,Meat
+Beef mince,2,fridge,Meat
+Beef steak,3,fridge,Meat
+Sirloin steak,3,fridge,Meat
+Ribeye steak,3,fridge,Meat
+Fillet steak,3,fridge,Meat
+Rump steak,3,fridge,Meat
+Beef joint,4,fridge,Meat
+Beef brisket,4,fridge,Meat
+Stewing beef,3,fridge,Meat
+Lamb mince,2,fridge,Meat
+Lamb chops,3,fridge,Meat
+Lamb leg,4,fridge,Meat
+Lamb shoulder,4,fridge,Meat
+Lamb shanks,3,fridge,Meat
+Pork chops,3,fridge,Meat
+Pork loin,3,fridge,Meat
+Pork belly,3,fridge,Meat
+Pork mince,2,fridge,Meat
+Pork tenderloin,3,fridge,Meat
+Pork shoulder,4,fridge,Meat
+Gammon joint,5,fridge,Meat
+Gammon steaks,4,fridge,Meat
+Bacon rashers,7,fridge,Meat
+Streaky bacon,7,fridge,Meat
+Back bacon,7,fridge,Meat
+Smoked bacon,7,fridge,Meat
+Pancetta,7,fridge,Meat
+Chorizo,21,fridge,Meat
+Salami,30,fridge,Meat
+Pepperoni,21,fridge,Meat
+Ham slices,5,fridge,Meat
+Cooked ham,5,fridge,Meat
+Parma ham,14,fridge,Meat
+Prosciutto,14,fridge,Meat
+Sausages,4,fridge,Meat
+Pork sausages,4,fridge,Meat
+Cumberland sausages,4,fridge,Meat
+Chipolatas,4,fridge,Meat
+Chicken sausages,4,fridge,Meat
+Beef sausages,4,fridge,Meat
+Venison,3,fridge,Meat
+Duck breast,3,fridge,Meat
+Liver,2,fridge,Meat
+Kidney,2,fridge,Meat
+Black pudding,7,fridge,Meat
+White pudding,7,fridge,Meat
+Haggis,5,fridge,Meat
+Fresh salmon,2,fridge,Fish
+Salmon fillets,2,fridge,Fish
+Smoked salmon,14,fridge,Fish
+Fresh cod,2,fridge,Fish
+Cod fillets,2,fridge,Fish
+Fresh haddock,2,fridge,Fish
+Smoked haddock,5,fridge,Fish
+Sea bass,2,fridge,Fish
+Mackerel,2,fridge,Fish
+Smoked mackerel,7,fridge,Fish
+Fresh trout,2,fridge,Fish
+Rainbow trout,2,fridge,Fish
+Tuna steak,2,fridge,Fish
+Swordfish,2,fridge,Fish
+Plaice,2,fridge,Fish
+Sole,2,fridge,Fish
+Sardines,2,fridge,Fish
+Anchovies,30,fridge,Fish
+Fresh prawns,2,fridge,Fish
+Cooked prawns,3,fridge,Fish
+King prawns,2,fridge,Fish
+Tiger prawns,2,fridge,Fish
+Crab meat,2,fridge,Fish
+Lobster,2,fridge,Fish
+Mussels,2,fridge,Fish
+Clams,2,fridge,Fish
+Scallops,2,fridge,Fish
+Squid,2,fridge,Fish
+Calamari,2,fridge,Fish
+Octopus,2,fridge,Fish
+Fish fingers,90,freezer,Fish
+Fish cakes,90,freezer,Fish
+Battered fish,90,freezer,Fish
+White bread,5,cupboard,Bakery
+Wholemeal bread,5,cupboard,Bakery
+Seeded bread,5,cupboard,Bakery
+Sourdough,7,cupboard,Bakery
+Ciabatta,3,cupboard,Bakery
+Baguette,2,cupboard,Bakery
+Brioche,5,cupboard,Bakery
+Pitta bread,7,cupboard,Bakery
+Naan bread,7,cupboard,Bakery
+Wraps,14,cupboard,Bakery
+Tortillas,21,cupboard,Bakery
+Crumpets,7,cupboard,Bakery
+English muffins,7,cupboard,Bakery
+Bagels,5,cupboard,Bakery
+Croissants,3,cupboard,Bakery
+Pain au chocolat,3,cupboard,Bakery
+Danish pastry,3,cupboard,Bakery
+Scones,5,cupboard,Bakery
+Hot cross buns,5,cupboard,Bakery
+Teacakes,5,cupboard,Bakery
+Fruit loaf,7,cupboard,Bakery
+Banana bread,5,cupboard,Bakery
+Breadsticks,180,cupboard,Bakery
+Crackers,180,cupboard,Bakery
+Rice cakes,180,cupboard,Bakery
+Oatcakes,90,cupboard,Bakery
+Crispbreads,180,cupboard,Bakery
+Apples,14,fridge,Fruit
+Bananas,7,cupboard,Fruit
+Oranges,21,fridge,Fruit
+Satsumas,14,fridge,Fruit
+Clementines,14,fridge,Fruit
+Lemons,21,fridge,Fruit
+Limes,14,fridge,Fruit
+Grapefruit,21,fridge,Fruit
+Pears,7,fridge,Fruit
+Grapes,7,fridge,Fruit
+Strawberries,5,fridge,Fruit
+Raspberries,3,fridge,Fruit
+Blueberries,7,fridge,Fruit
+Blackberries,3,fridge,Fruit
+Cherries,5,fridge,Fruit
+Plums,7,fridge,Fruit
+Peaches,5,fridge,Fruit
+Nectarines,5,fridge,Fruit
+Apricots,5,fridge,Fruit
+Mangoes,5,fridge,Fruit
+Pineapple,5,fridge,Fruit
+Kiwi fruit,14,fridge,Fruit
+Melon,5,fridge,Fruit
+Watermelon,7,fridge,Fruit
+Honeydew melon,7,fridge,Fruit
+Cantaloupe,5,fridge,Fruit
+Papaya,5,fridge,Fruit
+Passion fruit,7,fridge,Fruit
+Pomegranate,14,fridge,Fruit
+Figs,3,fridge,Fruit
+Dates,30,cupboard,Fruit
+Dried apricots,180,cupboard,Fruit
+Raisins,365,cupboard,Fruit
+Sultanas,365,cupboard,Fruit
+Dried cranberries,180,cupboard,Fruit
+Dried mango,180,cupboard,Fruit
+Prunes,180,cupboard,Fruit
+Potatoes,21,cupboard,Vegetables
+New potatoes,14,fridge,Vegetables
+Sweet potatoes,21,cupboard,Vegetables
+Carrots,21,fridge,Vegetables
+Parsnips,21,fridge,Vegetables
+Onions,30,cupboard,Vegetables
+Red onions,30,cupboard,Vegetables
+White onions,30,cupboard,Vegetables
+Spring onions,7,fridge,Vegetables
+Shallots,30,cupboard,Vegetables
+Garlic,30,cupboard,Vegetables
+Leeks,10,fridge,Vegetables
+Celery,14,fridge,Vegetables
+Broccoli,7,fridge,Vegetables
+Cauliflower,7,fridge,Vegetables
+Cabbage,14,fridge,Vegetables
+Red cabbage,14,fridge,Vegetables
+Savoy cabbage,10,fridge,Vegetables
+Brussels sprouts,7,fridge,Vegetables
+Kale,7,fridge,Vegetables
+Spinach,5,fridge,Vegetables
+Lettuce,7,fridge,Vegetables
+Romaine lettuce,7,fridge,Vegetables
+Iceberg lettuce,10,fridge,Vegetables
+Rocket,5,fridge,Vegetables
+Watercress,3,fridge,Vegetables
+Mixed salad leaves,5,fridge,Vegetables
+Cucumber,7,fridge,Vegetables
+Tomatoes,7,fridge,Vegetables
+Cherry tomatoes,7,fridge,Vegetables
+Vine tomatoes,7,fridge,Vegetables
+Beef tomatoes,7,fridge,Vegetables
+Peppers,10,fridge,Vegetables
+Red peppers,10,fridge,Vegetables
+Yellow peppers,10,fridge,Vegetables
+Green peppers,10,fridge,Vegetables
+Chilli peppers,14,fridge,Vegetables
+Jalapeños,14,fridge,Vegetables
+Aubergine,7,fridge,Vegetables
+Courgette,7,fridge,Vegetables
+Butternut squash,30,cupboard,Vegetables
+Pumpkin,30,cupboard,Vegetables
+Mushrooms,5,fridge,Vegetables
+Chestnut mushrooms,5,fridge,Vegetables
+Button mushrooms,5,fridge,Vegetables
+Portobello mushrooms,5,fridge,Vegetables
+Shiitake mushrooms,7,fridge,Vegetables
+Oyster mushrooms,5,fridge,Vegetables
+Asparagus,4,fridge,Vegetables
+Green beans,5,fridge,Vegetables
+Runner beans,5,fridge,Vegetables
+Broad beans,5,fridge,Vegetables
+Mangetout,5,fridge,Vegetables
+Sugar snap peas,5,fridge,Vegetables
+Peas,5,fridge,Vegetables
+Sweetcorn,5,fridge,Vegetables
+Corn on the cob,5,fridge,Vegetables
+Artichokes,7,fridge,Vegetables
+Beetroot,14,fridge,Vegetables
+Radishes,10,fridge,Vegetables
+Turnips,14,fridge,Vegetables
+Swede,21,fridge,Vegetables
+Celeriac,14,fridge,Vegetables
+Fennel,10,fridge,Vegetables
+Pak choi,5,fridge,Vegetables
+Chard,5,fridge,Vegetables
+Beansprouts,3,fridge,Vegetables
+Avocado,5,fridge,Vegetables
+Fresh basil,7,fridge,Herbs
+Fresh parsley,10,fridge,Herbs
+Fresh coriander,7,fridge,Herbs
+Fresh mint,7,fridge,Herbs
+Fresh rosemary,14,fridge,Herbs
+Fresh thyme,10,fridge,Herbs
+Fresh sage,10,fridge,Herbs
+Fresh dill,7,fridge,Herbs
+Fresh chives,7,fridge,Herbs
+Fresh tarragon,7,fridge,Herbs
+Fresh oregano,10,fridge,Herbs
+Fresh bay leaves,14,fridge,Herbs
+Ginger root,21,fridge,Herbs
+Lemongrass,14,fridge,Herbs
+Dried basil,365,cupboard,Herbs
+Dried oregano,365,cupboard,Herbs
+Dried thyme,365,cupboard,Herbs
+Dried rosemary,365,cupboard,Herbs
+Dried mixed herbs,365,cupboard,Herbs
+Dried parsley,365,cupboard,Herbs
+Bay leaves,730,cupboard,Herbs
+Cumin seeds,730,cupboard,Spices
+Coriander seeds,730,cupboard,Spices
+Fennel seeds,730,cupboard,Spices
+Mustard seeds,730,cupboard,Spices
+Caraway seeds,730,cupboard,Spices
+Cardamom pods,730,cupboard,Spices
+Cinnamon sticks,730,cupboard,Spices
+Ground cinnamon,365,cupboard,Spices
+Ground cumin,365,cupboard,Spices
+Ground coriander,365,cupboard,Spices
+Ground ginger,365,cupboard,Spices
+Ground turmeric,365,cupboard,Spices
+Paprika,365,cupboard,Spices
+Smoked paprika,365,cupboard,Spices
+Cayenne pepper,365,cupboard,Spices
+Chilli powder,365,cupboard,Spices
+Chilli flakes,365,cupboard,Spices
+Curry powder,365,cupboard,Spices
+Garam masala,365,cupboard,Spices
+Chinese five spice,365,cupboard,Spices
+Mixed spice,365,cupboard,Spices
+Nutmeg,730,cupboard,Spices
+Ground nutmeg,365,cupboard,Spices
+Cloves,730,cupboard,Spices
+Black pepper,730,cupboard,Spices
+White pepper,730,cupboard,Spices
+Sea salt,1095,cupboard,Spices
+Table salt,1095,cupboard,Spices
+Rock salt,1095,cupboard,Spices
+Vanilla extract,730,cupboard,Spices
+Vanilla pods,365,cupboard,Spices
+Spaghetti,730,cupboard,Pasta & Rice
+Penne,730,cupboard,Pasta & Rice
+Fusilli,730,cupboard,Pasta & Rice
+Tagliatelle,730,cupboard,Pasta & Rice
+Linguine,730,cupboard,Pasta & Rice
+Rigatoni,730,cupboard,Pasta & Rice
+Farfalle,730,cupboard,Pasta & Rice
+Macaroni,730,cupboard,Pasta & Rice
+Lasagne sheets,730,cupboard,Pasta & Rice
+Cannelloni,730,cupboard,Pasta & Rice
+Orzo,730,cupboard,Pasta & Rice
+Egg noodles,365,cupboard,Pasta & Rice
+Rice noodles,730,cupboard,Pasta & Rice
+Udon noodles,365,cupboard,Pasta & Rice
+Ramen noodles,365,cupboard,Pasta & Rice
+Fresh pasta,3,fridge,Pasta & Rice
+Fresh ravioli,3,fridge,Pasta & Rice
+Fresh tortellini,3,fridge,Pasta & Rice
+White rice,730,cupboard,Pasta & Rice
+Basmati rice,730,cupboard,Pasta & Rice
+Brown rice,365,cupboard,Pasta & Rice
+Jasmine rice,730,cupboard,Pasta & Rice
+Arborio rice,730,cupboard,Pasta & Rice
+Wild rice,730,cupboard,Pasta & Rice
+Long grain rice,730,cupboard,Pasta & Rice
+Risotto rice,730,cupboard,Pasta & Rice
+Microwave rice,365,cupboard,Pasta & Rice
+Couscous,730,cupboard,Pasta & Rice
+Bulgur wheat,365,cupboard,Pasta & Rice
+Quinoa,730,cupboard,Pasta & Rice
+Pearl barley,730,cupboard,Pasta & Rice
+Polenta,365,cupboard,Pasta & Rice
+Plain flour,365,cupboard,Baking
+Self-raising flour,365,cupboard,Baking
+Strong bread flour,365,cupboard,Baking
+Wholemeal flour,180,cupboard,Baking
+Cornflour,730,cupboard,Baking
+Rice flour,365,cupboard,Baking
+Almond flour,180,cupboard,Baking
+Coconut flour,180,cupboard,Baking
+Caster sugar,730,cupboard,Baking
+Granulated sugar,730,cupboard,Baking
+Icing sugar,730,cupboard,Baking
+Brown sugar,730,cupboard,Baking
+Demerara sugar,730,cupboard,Baking
+Muscovado sugar,730,cupboard,Baking
+Honey,730,cupboard,Baking
+Golden syrup,730,cupboard,Baking
+Maple syrup,365,cupboard,Baking
+Treacle,730,cupboard,Baking
+Baking powder,365,cupboard,Baking
+Bicarbonate of soda,730,cupboard,Baking
+Dried yeast,365,cupboard,Baking
+Fresh yeast,14,fridge,Baking
+Cocoa powder,730,cupboard,Baking
+Dark chocolate,365,cupboard,Baking
+Milk chocolate,365,cupboard,Baking
+White chocolate,365,cupboard,Baking
+Chocolate chips,365,cupboard,Baking
+Desiccated coconut,180,cupboard,Baking
+Flaked almonds,180,cupboard,Baking
+Ground almonds,180,cupboard,Baking
+Mixed nuts,180,cupboard,Baking
+Walnuts,180,cupboard,Baking
+Pecans,180,cupboard,Baking
+Hazelnuts,180,cupboard,Baking
+Cashews,180,cupboard,Baking
+Pistachios,180,cupboard,Baking
+Pine nuts,90,cupboard,Baking
+Sunflower seeds,180,cupboard,Baking
+Pumpkin seeds,180,cupboard,Baking
+Sesame seeds,365,cupboard,Baking
+Chia seeds,365,cupboard,Baking
+Flaxseeds,180,cupboard,Baking
+Poppy seeds,365,cupboard,Baking
+Tinned tomatoes,730,cupboard,Tinned Goods
+Chopped tomatoes,730,cupboard,Tinned Goods
+Tomato passata,730,cupboard,Tinned Goods
+Tomato puree,365,cupboard,Tinned Goods
+Sun-dried tomatoes,365,cupboard,Tinned Goods
+Tinned sweetcorn,730,cupboard,Tinned Goods
+Tinned peas,730,cupboard,Tinned Goods
+Tinned carrots,730,cupboard,Tinned Goods
+Tinned beans,730,cupboard,Tinned Goods
+Baked beans,730,cupboard,Tinned Goods
+Kidney beans,730,cupboard,Tinned Goods
+Black beans,730,cupboard,Tinned Goods
+Cannellini beans,730,cupboard,Tinned Goods
+Butter beans,730,cupboard,Tinned Goods
+Borlotti beans,730,cupboard,Tinned Goods
+Chickpeas,730,cupboard,Tinned Goods
+Lentils,730,cupboard,Tinned Goods
+Red lentils,730,cupboard,Tinned Goods
+Green lentils,730,cupboard,Tinned Goods
+Puy lentils,730,cupboard,Tinned Goods
+Split peas,730,cupboard,Tinned Goods
+Tinned tuna,1095,cupboard,Tinned Goods
+Tinned salmon,1095,cupboard,Tinned Goods
+Tinned sardines,1095,cupboard,Tinned Goods
+Tinned mackerel,1095,cupboard,Tinned Goods
+Tinned anchovies,730,cupboard,Tinned Goods
+Tinned crab,730,cupboard,Tinned Goods
+Tinned soup,730,cupboard,Tinned Goods
+Tinned fruit,730,cupboard,Tinned Goods
+Tinned peaches,730,cupboard,Tinned Goods
+Tinned pineapple,730,cupboard,Tinned Goods
+Tinned pears,730,cupboard,Tinned Goods
+Tinned mandarin,730,cupboard,Tinned Goods
+Coconut milk,730,cupboard,Tinned Goods
+Coconut cream,730,cupboard,Tinned Goods
+Condensed milk,730,cupboard,Tinned Goods
+Evaporated milk,730,cupboard,Tinned Goods
+Olive oil,730,cupboard,Oils & Condiments
+Extra virgin olive oil,365,cupboard,Oils & Condiments
+Vegetable oil,730,cupboard,Oils & Condiments
+Sunflower oil,730,cupboard,Oils & Condiments
+Rapeseed oil,730,cupboard,Oils & Condiments
+Coconut oil,730,cupboard,Oils & Condiments
+Sesame oil,365,cupboard,Oils & Condiments
+Groundnut oil,730,cupboard,Oils & Condiments
+Balsamic vinegar,1095,cupboard,Oils & Condiments
+Red wine vinegar,730,cupboard,Oils & Condiments
+White wine vinegar,730,cupboard,Oils & Condiments
+Cider vinegar,730,cupboard,Oils & Condiments
+Rice vinegar,730,cupboard,Oils & Condiments
+Malt vinegar,730,cupboard,Oils & Condiments
+Ketchup,365,cupboard,Oils & Condiments
+Brown sauce,365,cupboard,Oils & Condiments
+Mayonnaise,90,fridge,Oils & Condiments
+Salad cream,90,fridge,Oils & Condiments
+Mustard,365,cupboard,Oils & Condiments
+English mustard,365,cupboard,Oils & Condiments
+Dijon mustard,365,cupboard,Oils & Condiments
+Wholegrain mustard,365,cupboard,Oils & Condiments
+Horseradish sauce,90,fridge,Oils & Condiments
+Mint sauce,365,cupboard,Oils & Condiments
+Cranberry sauce,365,cupboard,Oils & Condiments
+Worcestershire sauce,730,cupboard,Oils & Condiments
+Soy sauce,730,cupboard,Oils & Condiments
+Fish sauce,730,cupboard,Oils & Condiments
+Oyster sauce,365,cupboard,Oils & Condiments
+Hoisin sauce,365,cupboard,Oils & Condiments
+Sweet chilli sauce,365,cupboard,Oils & Condiments
+Sriracha,365,cupboard,Oils & Condiments
+Tabasco,1095,cupboard,Oils & Condiments
+Pesto,7,fridge,Oils & Condiments
+Red pesto,7,fridge,Oils & Condiments
+Tahini,180,cupboard,Oils & Condiments
+Peanut butter,180,cupboard,Oils & Condiments
+Almond butter,180,cupboard,Oils & Condiments
+Marmite,730,cupboard,Oils & Condiments
+Jam,365,cupboard,Oils & Condiments
+Strawberry jam,365,cupboard,Oils & Condiments
+Raspberry jam,365,cupboard,Oils & Condiments
+Marmalade,365,cupboard,Oils & Condiments
+Lemon curd,90,fridge,Oils & Condiments
+Nutella,365,cupboard,Oils & Condiments
+Capers,365,fridge,Oils & Condiments
+Olives,365,fridge,Oils & Condiments
+Gherkins,365,fridge,Oils & Condiments
+Pickled onions,365,cupboard,Oils & Condiments
+Chutney,365,cupboard,Oils & Condiments
+Mango chutney,365,cupboard,Oils & Condiments
+Pickle,365,cupboard,Oils & Condiments
+Cornflakes,365,cupboard,Cereals
+Bran flakes,365,cupboard,Cereals
+Weetabix,365,cupboard,Cereals
+Shredded wheat,365,cupboard,Cereals
+Porridge oats,365,cupboard,Cereals
+Muesli,180,cupboard,Cereals
+Granola,180,cupboard,Cereals
+Rice Krispies,365,cupboard,Cereals
+Coco Pops,365,cupboard,Cereals
+Cheerios,365,cupboard,Cereals
+Special K,365,cupboard,Cereals
+Shreddies,365,cupboard,Cereals
+Frosties,365,cupboard,Cereals
+Fruit and Fibre,365,cupboard,Cereals
+All Bran,365,cupboard,Cereals
+Crisps,90,cupboard,Snacks
+Ready salted crisps,90,cupboard,Snacks
+Salt and vinegar crisps,90,cupboard,Snacks
+Cheese and onion crisps,90,cupboard,Snacks
+Prawn cocktail crisps,90,cupboard,Snacks
+Tortilla chips,90,cupboard,Snacks
+Popcorn,90,cupboard,Snacks
+Pretzels,180,cupboard,Snacks
+Nuts,180,cupboard,Snacks
+Trail mix,180,cupboard,Snacks
+Digestive biscuits,180,cupboard,Snacks
+Rich tea biscuits,180,cupboard,Snacks
+Chocolate digestives,180,cupboard,Snacks
+Hobnobs,180,cupboard,Snacks
+Custard creams,180,cupboard,Snacks
+Bourbon biscuits,180,cupboard,Snacks
+Shortbread,180,cupboard,Snacks
+Jaffa Cakes,180,cupboard,Snacks
+Cereal bars,180,cupboard,Snacks
+Flapjacks,14,cupboard,Snacks
+Chocolate bar,365,cupboard,Snacks
+Fruit pastilles,365,cupboard,Snacks
+Wine gums,365,cupboard,Snacks
+Jelly babies,365,cupboard,Snacks
+Haribo,365,cupboard,Snacks
+Orange juice,7,fridge,Beverages
+Apple juice,7,fridge,Beverages
+Cranberry juice,14,fridge,Beverages
+Grape juice,7,fridge,Beverages
+Pineapple juice,7,fridge,Beverages
+Tomato juice,7,fridge,Beverages
+Smoothie,3,fridge,Beverages
+Long life orange juice,365,cupboard,Beverages
+Long life apple juice,365,cupboard,Beverages
+Squash,365,cupboard,Beverages
+Cordial,365,cupboard,Beverages
+Lemonade,7,fridge,Beverages
+Cola,7,fridge,Beverages
+Sparkling water,365,cupboard,Beverages
+Tonic water,365,cupboard,Beverages
+Tea bags,730,cupboard,Beverages
+Loose leaf tea,365,cupboard,Beverages
+Green tea,730,cupboard,Beverages
+Herbal tea,730,cupboard,Beverages
+Ground coffee,90,cupboard,Beverages
+Instant coffee,730,cupboard,Beverages
+Coffee beans,90,cupboard,Beverages
+Hot chocolate,365,cupboard,Beverages
+Frozen peas,365,freezer,Frozen
+Frozen sweetcorn,365,freezer,Frozen
+Frozen mixed vegetables,365,freezer,Frozen
+Frozen spinach,365,freezer,Frozen
+Frozen broccoli,365,freezer,Frozen
+Frozen chips,365,freezer,Frozen
+Frozen roast potatoes,365,freezer,Frozen
+Frozen berries,365,freezer,Frozen
+Frozen strawberries,365,freezer,Frozen
+Frozen raspberries,365,freezer,Frozen
+Frozen blueberries,365,freezer,Frozen
+Frozen mango,365,freezer,Frozen
+Frozen prawns,180,freezer,Frozen
+Frozen fish fillets,180,freezer,Frozen
+Frozen salmon,180,freezer,Frozen
+Frozen cod,180,freezer,Frozen
+Frozen chicken breasts,270,freezer,Frozen
+Frozen chicken portions,270,freezer,Frozen
+Frozen mince,120,freezer,Frozen
+Frozen sausages,120,freezer,Frozen
+Frozen burgers,120,freezer,Frozen
+Frozen pizza,180,freezer,Frozen
+Frozen ready meals,180,freezer,Frozen
+Frozen lasagne,180,freezer,Frozen
+Frozen pie,180,freezer,Frozen
+Frozen pastry,180,freezer,Frozen
+Puff pastry,180,freezer,Frozen
+Shortcrust pastry,180,freezer,Frozen
+Filo pastry,180,freezer,Frozen
+Ice cream,180,freezer,Frozen
+Vanilla ice cream,180,freezer,Frozen
+Chocolate ice cream,180,freezer,Frozen
+Ice lollies,365,freezer,Frozen
+Frozen yorkshire puddings,180,freezer,Frozen
+Frozen bread,90,freezer,Frozen
+Frozen garlic bread,180,freezer,Frozen
+Hummus,14,fridge,Deli
+Tzatziki,7,fridge,Deli
+Guacamole,5,fridge,Deli
+Taramasalata,14,fridge,Deli
+Coleslaw,7,fridge,Deli
+Potato salad,5,fridge,Deli
+Pasta salad,3,fridge,Deli
+Scotch egg,7,fridge,Deli
+Pork pie,7,fridge,Deli
+Sausage roll,3,fridge,Deli
+Quiche,5,fridge,Deli
+Coronation chicken,3,fridge,Deli
+Egg mayonnaise,3,fridge,Deli
+Tuna mayo,3,fridge,Deli
+Sandwich filler,5,fridge,Deli
+Tofu,7,fridge,Vegetarian
+Tempeh,7,fridge,Vegetarian
+Quorn mince,5,fridge,Vegetarian
+Quorn pieces,5,fridge,Vegetarian
+Vegetarian sausages,7,fridge,Vegetarian
+Veggie burgers,7,fridge,Vegetarian
+Falafel,5,fridge,Vegetarian
+Paneer,14,fridge,Vegetarian
+Vegetable stock cubes,730,cupboard,Stock & Gravy
+Chicken stock cubes,730,cupboard,Stock & Gravy
+Beef stock cubes,730,cupboard,Stock & Gravy
+Fish stock cubes,730,cupboard,Stock & Gravy
+Vegetable stock pot,365,cupboard,Stock & Gravy
+Chicken stock pot,365,cupboard,Stock & Gravy
+Beef stock pot,365,cupboard,Stock & Gravy
+Fresh stock,5,fridge,Stock & Gravy
+Gravy granules,365,cupboard,Stock & Gravy
+Instant gravy,365,cupboard,Stock & Gravy
+White sauce mix,365,cupboard,Stock & Gravy
+Cheese sauce mix,365,cupboard,Stock & Gravy
+Curry paste,365,cupboard,World Foods
+Tikka masala paste,365,cupboard,World Foods
+Korma paste,365,cupboard,World Foods
+Madras paste,365,cupboard,World Foods
+Thai green curry paste,365,cupboard,World Foods
+Thai red curry paste,365,cupboard,World Foods
+Miso paste,365,fridge,World Foods
+Teriyaki sauce,365,cupboard,World Foods
+Satay sauce,365,cupboard,World Foods
+Curry sauce,365,cupboard,World Foods
+Stir fry sauce,365,cupboard,World Foods
+Pad thai sauce,365,cupboard,World Foods
+Harissa paste,365,cupboard,World Foods
+Chipotle paste,365,cupboard,World Foods
+Refried beans,730,cupboard,World Foods
+Salsa,14,fridge,World Foods
+Taco shells,365,cupboard,World Foods
+Fajita kit,365,cupboard,World Foods
+Spring roll wrappers,7,fridge,World Foods
+Wonton wrappers,7,fridge,World Foods
+Baby formula,30,cupboard,Baby
+Baby food jars,365,cupboard,Baby
+Baby rice,365,cupboard,Baby
+Baby rusks,365,cupboard,Baby
+Baby puree pouches,365,cupboard,Baby
+Follow-on milk,30,cupboard,Baby
