@@ -852,25 +852,27 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                   })}
                 </div>
               ) : (
-                <ul className="space-y-2">
+                <div className="space-y-2">
                   {recipe.ingredients.map((ing: any, index: number) => {
                     const rating = getIngredientRating(ing.ingredientName)
                     return (
-                      <li key={index} className="flex items-start text-zinc-300">
-                        {rating && (
-                          <div className="flex items-center mr-2" title={rating.reason}>
-                            <div className={`w-3 h-3 rounded-full ${getTrafficLightClass(rating.rating)}`}></div>
-                          </div>
-                        )}
-                        <span className="text-zinc-500 mr-3">•</span>
+                      <div key={index} className="flex items-center gap-3 text-zinc-300">
+                        <div className="flex-shrink-0 w-3 flex items-center justify-center">
+                          {rating && (
+                            <div
+                              className={`w-3 h-3 rounded-full ${getTrafficLightClass(rating.rating)}`}
+                              title={rating.reason}
+                            ></div>
+                          )}
+                        </div>
                         <span>
                           <strong className="text-white">{ing.quantity} {ing.unit}</strong> {ing.ingredientName}
                           {ing.notes && <span className="text-zinc-500 text-sm"> ({ing.notes})</span>}
                         </span>
-                      </li>
+                      </div>
                     )
                   })}
-                </ul>
+                </div>
               )}
             </div>
 
