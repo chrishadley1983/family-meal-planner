@@ -99,10 +99,10 @@ export default function NewRecipePage() {
   // Auto-fetch macro analysis when recipe changes
   useEffect(() => {
     if (recipeName && ingredients.some(i => i.ingredientName && i.unit)) {
-      // Debounce the analysis fetch
+      // Debounce the analysis fetch (0.5 seconds after user stops typing)
       const timer = setTimeout(() => {
         fetchMacroAnalysis()
-      }, 1000)
+      }, 500)
       return () => clearTimeout(timer)
     }
   }, [recipeName, ingredients, servings])
@@ -114,6 +114,7 @@ export default function NewRecipePage() {
     }
 
     setLoadingMacros(true)
+    startLoading('Analyzing nutritional information...')
     try {
       const response = await fetch('/api/recipes/analyze-macros', {
         method: 'POST',
@@ -131,10 +132,15 @@ export default function NewRecipePage() {
       if (response.ok && data.analysis) {
         setMacroAnalysis(data.analysis)
         // Once we have macro analysis, fetch nutritionist feedback
+        // (loading popup stays open until feedback completes)
         fetchNutritionistFeedback(data.analysis)
+      } else {
+        // Analysis failed, stop the loading popup
+        stopLoading()
       }
     } catch (err) {
       console.error('Failed to fetch macro analysis:', err)
+      stopLoading()
     } finally {
       setLoadingMacros(false)
     }
@@ -167,6 +173,7 @@ export default function NewRecipePage() {
       console.error('Failed to fetch nutritionist feedback:', err)
     } finally {
       setLoadingFeedback(false)
+      stopLoading()
     }
   }
 

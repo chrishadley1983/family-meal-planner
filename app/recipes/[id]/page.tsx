@@ -9,6 +9,7 @@ import { generateRecipeSVG } from '@/lib/generate-recipe-image'
 import { AppLayout, PageContainer } from '@/components/layout'
 import { Button, Badge, Input, Select } from '@/components/ui'
 import { useSession } from 'next-auth/react'
+import { useAILoading } from '@/components/providers/AILoadingProvider'
 
 interface RecipePageProps {
   params: Promise<{ id: string }>
@@ -37,6 +38,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
   const { id } = use(params)
   const router = useRouter()
   const { data: session } = useSession()
+  const { startLoading, stopLoading } = useAILoading()
   const [recipe, setRecipe] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
@@ -89,6 +91,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
 
     console.log('✅ Starting AI analysis...')
     setLoadingAI(true)
+    startLoading('Analyzing nutritional information...')
     try {
       // Fetch macro analysis
       console.log('📡 Calling macro analysis API...')
@@ -143,6 +146,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
     } finally {
       console.log('🏁 AI analysis complete, loadingAI set to false')
       setLoadingAI(false)
+      stopLoading()
     }
   }
 
@@ -167,11 +171,11 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
   // Auto-refresh AI analysis when editing ingredients
   useEffect(() => {
     if (isEditing && recipeName && ingredients.some(i => i.ingredientName && i.unit)) {
-      // Debounce the analysis fetch
+      // Debounce the analysis fetch (0.5 seconds after user stops typing)
       const timer = setTimeout(() => {
         console.log('🔄 Auto-refreshing AI analysis while editing')
         fetchAIAnalysis({ recipeName, servings, ingredients, mealType })
-      }, 1500)
+      }, 500)
       return () => clearTimeout(timer)
     }
   }, [isEditing, recipeName, ingredients, servings, mealType])
