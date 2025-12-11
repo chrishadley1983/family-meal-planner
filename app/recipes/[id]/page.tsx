@@ -122,6 +122,34 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
         console.log('✅ Macro analysis received:', macroData)
         setMacroAnalysis(macroData.analysis)
 
+        // Sync macro values to database (keeps filter values in sync with displayed values)
+        if (macroData.analysis?.perServing) {
+          console.log('🔄 Syncing macros to database...')
+          try {
+            const syncResponse = await fetch(`/api/recipes/${id}/sync-macros`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                caloriesPerServing: macroData.analysis.perServing.calories ? Math.round(macroData.analysis.perServing.calories) : null,
+                proteinPerServing: macroData.analysis.perServing.protein ? Math.round(macroData.analysis.perServing.protein * 10) / 10 : null,
+                carbsPerServing: macroData.analysis.perServing.carbs ? Math.round(macroData.analysis.perServing.carbs * 10) / 10 : null,
+                fatPerServing: macroData.analysis.perServing.fat ? Math.round(macroData.analysis.perServing.fat * 10) / 10 : null,
+                fiberPerServing: macroData.analysis.perServing.fiber ? Math.round(macroData.analysis.perServing.fiber * 10) / 10 : null,
+                sugarPerServing: macroData.analysis.perServing.sugar ? Math.round(macroData.analysis.perServing.sugar * 10) / 10 : null,
+                sodiumPerServing: macroData.analysis.perServing.sodium ? Math.round(macroData.analysis.perServing.sodium) : null,
+              })
+            })
+            if (syncResponse.ok) {
+              const syncData = await syncResponse.json()
+              console.log('✅ Macros synced:', syncData.synced ? 'updated' : 'already in sync')
+            } else {
+              console.warn('⚠️ Failed to sync macros:', syncResponse.status)
+            }
+          } catch (syncErr) {
+            console.warn('⚠️ Failed to sync macros:', syncErr)
+          }
+        }
+
         // Fetch nutritionist feedback
         console.log('📡 Calling nutritionist feedback API...')
         const feedbackResponse = await fetch('/api/recipes/nutritionist-feedback', {
