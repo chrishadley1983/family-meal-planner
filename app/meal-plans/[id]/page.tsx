@@ -7,6 +7,7 @@ import { formatDate, formatDateRange } from '@/lib/date-utils'
 import { AppLayout, PageContainer } from '@/components/layout'
 import { Button, Badge, Select, Modal } from '@/components/ui'
 import { useSession } from 'next-auth/react'
+import { useAILoading } from '@/components/providers/AILoadingProvider'
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useSortable } from '@dnd-kit/sortable'
@@ -277,6 +278,7 @@ export default function MealPlanDetailPage() {
   const params = useParams()
   const router = useRouter()
   const { data: session } = useSession()
+  const { startLoading, stopLoading } = useAILoading()
   const mealPlanId = params.id as string
 
   const [mealPlan, setMealPlan] = useState<MealPlan | null>(null)
@@ -736,6 +738,7 @@ export default function MealPlanDetailPage() {
     }
 
     setRegenerating(true)
+    startLoading('Regenerating your meal plan...')
     try {
       console.log('🔷 Regenerating meal plan with AI...')
       const response = await fetch(`/api/meal-plans/${mealPlanId}/regenerate`, {
@@ -757,6 +760,7 @@ export default function MealPlanDetailPage() {
       alert(error.message || 'Failed to regenerate meal plan')
     } finally {
       setRegenerating(false)
+      stopLoading()
     }
   }
 

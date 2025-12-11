@@ -9,6 +9,7 @@ import { AppLayout, PageContainer } from '@/components/layout'
 import { Button, Badge, Input, Select } from '@/components/ui'
 import { useSession } from 'next-auth/react'
 import { getWeekDaysWithDates } from '@/lib/date-utils'
+import { useAILoading } from '@/components/providers/AILoadingProvider'
 
 interface MealPlan {
   id: string
@@ -54,6 +55,7 @@ interface WeekProfileSchedule {
 export default function MealPlansPage() {
   const router = useRouter()
   const { data: session } = useSession()
+  const { startLoading, stopLoading } = useAILoading()
   const [mealPlans, setMealPlans] = useState<MealPlan[]>([])
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [quickOptions, setQuickOptions] = useState({
@@ -208,6 +210,12 @@ export default function MealPlansPage() {
     setGenerating(true)
     setGeneratedSummary('')
 
+    // Show AI loading popup with context-specific message
+    const loadingMessage = copyFromPlanId
+      ? 'Copying your meal plan...'
+      : 'Generating your weekly meal plan...'
+    startLoading(loadingMessage)
+
     try {
       // If copying from previous week, use copy endpoint
       if (copyFromPlanId) {
@@ -273,6 +281,7 @@ export default function MealPlansPage() {
       alert('Failed to generate meal plan. Please try again.')
     } finally {
       setGenerating(false)
+      stopLoading()
     }
   }
 

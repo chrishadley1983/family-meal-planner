@@ -6,6 +6,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { AppLayout, PageContainer } from '@/components/layout'
 import { useSession } from 'next-auth/react'
+import { useAILoading } from '@/components/providers/AILoadingProvider'
 
 type InputMethod = 'manual' | 'url' | 'photo' | 'text'
 
@@ -31,6 +32,7 @@ type MacroAnalysis = {
 export default function NewRecipePage() {
   const router = useRouter()
   const { data: session } = useSession()
+  const { startLoading, stopLoading } = useAILoading()
   const [inputMethod, setInputMethod] = useState<InputMethod>('manual')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -232,6 +234,7 @@ export default function NewRecipePage() {
 
     setImporting(true)
     setError('')
+    startLoading('Importing recipe from URL...')
 
     try {
       const response = await fetch('/api/recipes/import-url', {
@@ -245,6 +248,7 @@ export default function NewRecipePage() {
       if (!response.ok) {
         setError(data.error || 'Failed to import recipe from URL')
         setImporting(false)
+        stopLoading()
         return
       }
 
@@ -284,9 +288,11 @@ export default function NewRecipePage() {
       // Switch to manual mode for review/editing
       setInputMethod('manual')
       setImporting(false)
+      stopLoading()
     } catch (err) {
       setError('An error occurred while importing the recipe')
       setImporting(false)
+      stopLoading()
     }
   }
 
@@ -298,6 +304,7 @@ export default function NewRecipePage() {
 
     setImporting(true)
     setError('')
+    startLoading('Parsing recipe text...')
 
     try {
       console.log('🔷 Parsing recipe text with AI...')
@@ -312,6 +319,7 @@ export default function NewRecipePage() {
       if (!response.ok) {
         setError(data.error || 'Failed to parse recipe text')
         setImporting(false)
+        stopLoading()
         return
       }
 
@@ -352,10 +360,12 @@ export default function NewRecipePage() {
       // Switch to manual mode for review/editing
       setInputMethod('manual')
       setImporting(false)
+      stopLoading()
     } catch (err) {
       console.error('❌ Error parsing recipe text:', err)
       setError('An error occurred while parsing the recipe text')
       setImporting(false)
+      stopLoading()
     }
   }
 
@@ -367,6 +377,7 @@ export default function NewRecipePage() {
 
     setImporting(true)
     setError('')
+    startLoading('Analyzing recipe photos...')
 
     try {
       console.log(`🔷 Analyzing ${photoFiles.length} photo(s)...`)
@@ -394,6 +405,7 @@ export default function NewRecipePage() {
       if (!response.ok) {
         setError(data.error || 'Failed to analyze recipe photo(s)')
         setImporting(false)
+        stopLoading()
         return
       }
 
@@ -426,10 +438,12 @@ export default function NewRecipePage() {
       // Switch to manual mode for review/editing
       setInputMethod('manual')
       setImporting(false)
+      stopLoading()
     } catch (err) {
       console.error('❌ Error analyzing photo(s):', err)
       setError('An error occurred while analyzing the photo(s)')
       setImporting(false)
+      stopLoading()
     }
   }
 

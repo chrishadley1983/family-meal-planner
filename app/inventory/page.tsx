@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { AppLayout, PageContainer } from '@/components/layout'
 import { Button, Badge, Input, Modal } from '@/components/ui'
 import { useSession } from 'next-auth/react'
+import { useAILoading } from '@/components/providers/AILoadingProvider'
 import { COMMON_UNITS, DEFAULT_CATEGORIES } from '@/lib/unit-conversion'
 import {
   enrichInventoryItemWithExpiry,
@@ -68,6 +69,7 @@ interface ShoppingListCategory {
 
 export default function InventoryPage() {
   const { data: session } = useSession()
+  const { startLoading, stopLoading } = useAILoading()
   const [rawItems, setRawItems] = useState<RawInventoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [categories, setCategories] = useState<ShoppingListCategory[]>([])
@@ -482,6 +484,7 @@ export default function InventoryPage() {
     setAnalyzingPhoto(true)
     setExtractedItems([])
     setPhotoSummary('')
+    startLoading('Analyzing inventory photos...')
 
     try {
       console.log('🔷 Analyzing', photoImages.length, 'photo(s)...')
@@ -511,6 +514,7 @@ export default function InventoryPage() {
       alert(error instanceof Error ? error.message : 'Failed to analyze photo')
     } finally {
       setAnalyzingPhoto(false)
+      stopLoading()
     }
   }
 
