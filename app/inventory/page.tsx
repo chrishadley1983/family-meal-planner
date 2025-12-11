@@ -138,6 +138,8 @@ export default function InventoryPage() {
     unit: string
     category?: string
     location?: string
+    expiryDate?: string
+    shelfLifeDays?: number
     confidence?: string
     selected: boolean
   }>>([])
@@ -154,6 +156,8 @@ export default function InventoryPage() {
     unit: string
     category?: string
     location?: string
+    expiryDate?: string
+    shelfLifeDays?: number
     confidence?: string
     selected: boolean
   }>>([])
@@ -522,11 +526,22 @@ export default function InventoryPage() {
       const data = await response.json()
       console.log('🟢 Extracted', data.items?.length || 0, 'items')
 
+      // Calculate expiry dates from shelf life days
+      const today = new Date()
       setExtractedItems(
-        (data.items || []).map((item: any) => ({
-          ...item,
-          selected: true,
-        }))
+        (data.items || []).map((item: any) => {
+          let expiryDate = ''
+          if (item.shelfLifeDays) {
+            const expiry = new Date(today)
+            expiry.setDate(expiry.getDate() + item.shelfLifeDays)
+            expiryDate = expiry.toISOString().split('T')[0]
+          }
+          return {
+            ...item,
+            expiryDate,
+            selected: true,
+          }
+        })
       )
       setPhotoSummary(data.summary || '')
     } catch (error) {
@@ -559,7 +574,7 @@ export default function InventoryPage() {
             unit: item.unit,
             category: item.category || 'Other',
             location: item.location || null,
-            expiryDate: null,
+            expiryDate: item.expiryDate || null,
             isActive: true,
             notes: null,
           }),
@@ -635,11 +650,22 @@ export default function InventoryPage() {
       const data = await response.json()
       console.log('🟢 Extracted', data.items?.length || 0, 'inventory items from URL')
 
+      // Calculate expiry dates from shelf life days
+      const today = new Date()
       setUrlExtractedItems(
-        (data.items || []).map((item: any) => ({
-          ...item,
-          selected: true,
-        }))
+        (data.items || []).map((item: any) => {
+          let expiryDate = ''
+          if (item.shelfLifeDays) {
+            const expiry = new Date(today)
+            expiry.setDate(expiry.getDate() + item.shelfLifeDays)
+            expiryDate = expiry.toISOString().split('T')[0]
+          }
+          return {
+            ...item,
+            expiryDate,
+            selected: true,
+          }
+        })
       )
       setUrlSummary(data.summary || '')
     } catch (error) {
@@ -671,7 +697,7 @@ export default function InventoryPage() {
             unit: item.unit,
             category: item.category || 'Other',
             location: item.location || null,
-            expiryDate: null,
+            expiryDate: item.expiryDate || null,
             isActive: true,
             notes: null,
           }),
@@ -1969,6 +1995,14 @@ export default function InventoryPage() {
                                 <option key={loc.value} value={loc.value}>{loc.label}</option>
                               ))}
                             </select>
+                            {/* Expiry date input */}
+                            <input
+                              type="date"
+                              value={item.expiryDate || ''}
+                              onChange={(e) => updatePhotoItem(i, 'expiryDate', e.target.value)}
+                              className="px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                              title="Expiry date"
+                            />
                           </div>
                         </div>
                         {item.confidence && (
@@ -2300,6 +2334,14 @@ export default function InventoryPage() {
                                 <option key={loc.value} value={loc.value}>{loc.label}</option>
                               ))}
                             </select>
+                            {/* Expiry date input */}
+                            <input
+                              type="date"
+                              value={item.expiryDate || ''}
+                              onChange={(e) => updateUrlItem(i, 'expiryDate', e.target.value)}
+                              className="px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                              title="Expiry date"
+                            />
                           </div>
                         </div>
                         {item.confidence && (

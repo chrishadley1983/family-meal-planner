@@ -854,22 +854,30 @@ The image${imageCount > 1 ? 's' : ''} may contain:
 - A receipt or shopping list (extract the items)
 - Food packaging with product names
 
+IMPORTANT - ITEM NAMING RULES:
+- Use GENERIC product names only, NOT brand names or country of origin
+- Example: "Semi-Skimmed Milk" NOT "Cowbelle British Semi-Skimmed Milk"
+- Example: "Pineapple Hot Sauce" NOT "Sauce Shop Burnt Pineapple Hot Sauce"
+- Focus on WHAT the product is, not WHO makes it or WHERE it's from
+
 For each item identified, provide:
-1. The name of the item (be specific, e.g., "Semi-skimmed Milk" not just "Milk")
+1. The GENERIC name of the item (no brands!)
 2. Estimated quantity if visible (e.g., 2 bottles, 500g pack)
 3. Unit of measurement (e.g., "each", "g", "ml", "litres")
 4. Suggested category (Meat & Fish, Fresh Produce, Dairy & Eggs, Bakery, Chilled & Deli, Frozen, Cupboard Staples, Baking & Cooking Ingredients, Breakfast, Drinks, Snacks & Treats, Household, Other)
 5. Suggested storage location (fridge, freezer, cupboard, pantry)
+6. Estimated shelf life in days (for expiry calculation)
 
 Return ONLY a valid JSON object in this exact format:
 {
   "items": [
     {
-      "itemName": "string (be specific)",
+      "itemName": "string (GENERIC name only - no brands!)",
       "quantity": number (default 1 if unsure),
       "unit": "string (e.g., 'each', 'g', 'kg', 'ml', 'litres', 'pack')",
       "category": "string (from categories above)",
       "location": "fridge" | "freezer" | "cupboard" | "pantry",
+      "shelfLifeDays": number (estimated days until expiry, e.g., milk=7, bread=5, canned=365),
       "confidence": "high" | "medium" | "low"
     }
   ],
@@ -878,10 +886,11 @@ Return ONLY a valid JSON object in this exact format:
 
 Important:
 - Include ALL visible food items
-- Be as specific as possible with item names
+- Use GENERIC names only - strip out all brand names and country of origin
 - Use metric units (g, ml, litres) where appropriate
 - Don't include non-food items (cleaning products, etc.) unless they're explicitly household category
-- Set confidence to "low" if item is partially obscured or unclear`
+- Set confidence to "low" if item is partially obscured or unclear
+- Estimate realistic shelf life based on product type and storage location`
 
   try {
     console.log('🔷 Calling Claude API to analyze inventory photo...')
@@ -975,11 +984,12 @@ Return ONLY a valid JSON object in this exact format:
 {
   "items": [
     {
-      "itemName": "string (generic name only - no brands!)",
+      "itemName": "string (GENERIC name only - no brands!)",
       "quantity": number,
       "unit": "string (e.g., 'each', 'g', 'kg', 'ml', 'litres', 'pack')",
       "category": "string (Meat & Fish, Fresh Produce, Dairy & Eggs, Bakery, Chilled & Deli, Frozen, Cupboard Staples, Baking & Cooking Ingredients, Breakfast, Drinks, Snacks & Treats, Household, Other)",
       "location": "fridge" | "freezer" | "cupboard" | "pantry",
+      "shelfLifeDays": number (estimated days until expiry, e.g., milk=7, bread=5, canned=365),
       "confidence": "high" | "medium" | "low"
     }
   ],
@@ -988,8 +998,10 @@ Return ONLY a valid JSON object in this exact format:
 
 Important:
 - Extract ALL food items mentioned
+- Use GENERIC names only - strip out all brand names and country of origin
 - Use metric units (g, ml, litres)
 - If unsure about quantity, default to 1
+- Estimate realistic shelf life based on product type
 - Set confidence to "low" if item details are unclear`
 
   try {
