@@ -269,62 +269,192 @@ async function generateAdvancedMealPlan(params: {
     throw error
   }
 }
+// Helper function to extract JSON-LD Recipe schema from HTML
+function extractJsonLdRecipe(htmlContent: string): any | null {
+  try {
+    // Find all JSON-LD script tags
+    const jsonLdRegex = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi
+    let match
+    const jsonLdBlocks: any[] = []
+
+    while ((match = jsonLdRegex.exec(htmlContent)) !== null) {
+      try {
+        const parsed = JSON.parse(match[1])
+        jsonLdBlocks.push(parsed)
+      } catch {
+        // Skip invalid JSON
+      }
+    }
+
+    // Search for Recipe schema in all blocks
+    for (const block of jsonLdBlocks) {
+      // Handle @graph arrays (common in WordPress sites)
+      if (block['@graph'] && Array.isArray(block['@graph'])) {
+        for (const item of block['@graph']) {
+          if (item['@type'] === 'Recipe' ||
+              (Array.isArray(item['@type']) && item['@type'].includes('Recipe'))) {
+            return item
+          }
+        }
+      }
+
+      // Handle direct Recipe type
+      if (block['@type'] === 'Recipe' ||
+          (Array.isArray(block['@type']) && block['@type'].includes('Recipe'))) {
+        return block
+      }
+
+      // Handle arrays of objects
+      if (Array.isArray(block)) {
+        for (const item of block) {
+          if (item['@type'] === 'Recipe' ||
+              (Array.isArray(item['@type']) && item['@type'].includes('Recipe'))) {
+            return item
+          }
+        }
+      }
+    }
+
+    return null
+  } catch (error) {
+    console.error('Error extracting JSON-LD:', error)
+    return null
+  }
+}
+
+// Helper function to extract visible text content from HTML (remove scripts, styles, etc.)
+function extractVisibleText(htmlContent: string): string {
+  // Remove script and style tags with their content
+  let text = htmlContent
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<noscript[^>]*>[\s\S]*?<\/noscript>/gi, '')
+
+  // Replace common block elements with newlines
+  text = text.replace(/<\/(p|div|li|h[1-6]|tr|br)>/gi, '\n')
+
+  // Remove all remaining HTML tags
+  text = text.replace(/<[^>]+>/g, ' ')
+
+  // Decode common HTML entities
+  text = text
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&frac12;/g, '1/2')
+    .replace(/&frac14;/g, '1/4')
+    .replace(/&frac34;/g, '3/4')
+
+  // Collapse whitespace
+  text = text.replace(/\s+/g, ' ').trim()
+
+  return text
+}
+
 export async function parseRecipeFromUrl(url: string, htmlContent: string) {
-  const prompt = `You are an expert recipe extraction assistant. Carefully analyze the HTML content and extract ALL recipe details with high accuracy.
+  console.log('🔷 Parsing recipe from URL:', url)
+
+  // Step 1: Try to extract JSON-LD structured data
+  const jsonLdRecipe = extractJsonLdRecipe(htmlContent)
+
+  let structuredDataSection = ''
+  if (jsonLdRecipe) {
+    console.log('🟢 Found JSON-LD Recipe schema data')
+    structuredDataSection = `
+**STRUCTURED DATA FOUND (JSON-LD Schema.org Recipe):**
+This is the most reliable source - use this data primarily!
+\`\`\`json
+${JSON.stringify(jsonLdRecipe, null, 2).substring(0, 15000)}
+\`\`\`
+
+`
+  } else {
+    console.log('⚠️ No JSON-LD Recipe schema found, relying on HTML parsing')
+  }
+
+  // Step 2: Extract visible text as backup
+  const visibleText = extractVisibleText(htmlContent).substring(0, 8000)
+
+  const prompt = `You are an expert recipe extraction assistant. Extract ALL recipe details with high accuracy from the provided data.
 
 URL: ${url}
 
-HTML CONTENT:
-${htmlContent.substring(0, 25000)}
+${structuredDataSection}**HTML CONTENT (backup - use if structured data is missing information):**
+${htmlContent.substring(0, jsonLdRecipe ? 10000 : 20000)}
 
-CRITICAL INSTRUCTIONS:
-1. **Ingredients**: MUST include quantity + unit + name for EVERY ingredient
-   - Convert fractions to decimals (1/2 = 0.5)
-   - Use standard units (tsp, tbsp, cup, g, kg, ml, l, oz, lb, whole, clove, etc.)
-   - If quantity is missing, use 1 as default
-   - Parse ranges (e.g., "2-3 cups" = 2.5 cups)
+**VISIBLE TEXT CONTENT (for reference):**
+${visibleText}
 
-2. **Cooking Instructions**: Extract EVERY step in order
-   - Number steps sequentially (1, 2, 3...)
-   - Each step should be a complete instruction
-   - Look for "Method", "Directions", "Instructions", "Steps" sections
+---
 
-3. **Times**: Convert ALL times to minutes
-   - "1 hour" = 60 minutes
-   - "1 hour 30 mins" = 90 minutes
-   - "30 seconds" = 0.5 minutes
+EXTRACTION PRIORITY:
+1. **FIRST**: Use JSON-LD structured data if available (most accurate)
+2. **SECOND**: Parse HTML content for any missing details
+3. **THIRD**: Use visible text as fallback
 
-4. **Servings**: Extract the number (e.g., "Serves 4" = 4)
+CRITICAL INSTRUCTIONS FOR INGREDIENTS:
+- **MUST extract ALL ingredients** - count them carefully, don't miss any!
+- Each ingredient MUST have: quantity (number), unit (string), ingredientName (string)
+- Convert fractions: 1/2 → 0.5, 1/4 → 0.25, 3/4 → 0.75
+- Parse text like "900 grams Potatoes" → quantity: 900, unit: "g", ingredientName: "Potatoes"
+- Parse text like "2 unit(s) Carrot" → quantity: 2, unit: "whole", ingredientName: "Carrot"
+- Parse text like "4 unit(s) Garlic Clove" → quantity: 4, unit: "cloves", ingredientName: "Garlic"
+- Parse text like "2 carton(s) Tomato Passata" → quantity: 2, unit: "cartons", ingredientName: "Tomato Passata"
+- Parse text like "2 sachet(s) Dried Oregano" → quantity: 2, unit: "sachets", ingredientName: "Dried Oregano"
+- If quantity is missing, default to 1
+- For items like "salt and pepper to taste" use quantity: 1, unit: "to taste"
 
-Extract and return ONLY a valid JSON object in this EXACT format:
+LOOK FOR INGREDIENTS IN:
+- JSON-LD "recipeIngredient" array
+- HTML elements with class/id containing "ingredient"
+- Lists near "Ingredients" heading
+- Data attributes like data-ingredient
+
+CRITICAL INSTRUCTIONS FOR COOKING STEPS:
+- Extract EVERY cooking step in order
+- Number steps sequentially (1, 2, 3...)
+- Look in JSON-LD "recipeInstructions"
+- Look for "Method", "Directions", "Instructions", "Steps" sections in HTML
+
+TIME CONVERSION:
+- "1 hour" = 60 minutes
+- "1 hour 30 mins" = 90 minutes
+- "PT30M" (ISO 8601) = 30 minutes
+- "PT1H" = 60 minutes
+- "PT1H30M" = 90 minutes
+
+Return ONLY a valid JSON object:
 {
   "recipeName": "string",
   "description": "string or null",
   "servings": number,
   "prepTimeMinutes": number or null,
   "cookTimeMinutes": number or null,
-  "cuisineType": "string or null (e.g., 'Pasta', 'Curry', 'Stir-fry', 'Thai', 'BBQ', 'Pizza', 'Salad')",
+  "cuisineType": "string or null",
   "difficultyLevel": "Easy" | "Medium" | "Hard" | null,
-  "mealType": ["Breakfast" | "Lunch" | "Dinner" | "Snack" | "Dessert"],
-  "isVegetarian": boolean (true if no meat/seafood),
-  "isVegan": boolean (true if no animal products at all),
-  "containsMeat": boolean (true if contains beef, pork, chicken, lamb, etc.),
-  "containsSeafood": boolean (true if contains fish, shrimp, etc.),
-  "isDairyFree": boolean (true if no milk, cheese, butter, cream, yogurt),
-  "isGlutenFree": boolean (true if no wheat, flour, bread, pasta with gluten),
-  "containsNuts": boolean (true if contains any nuts or nut products),
+  "mealType": ["Dinner"],
+  "isVegetarian": boolean,
+  "isVegan": boolean,
+  "containsMeat": boolean,
+  "containsSeafood": boolean,
+  "isDairyFree": boolean,
+  "isGlutenFree": boolean,
+  "containsNuts": boolean,
   "ingredients": [
     {
       "ingredientName": "string",
-      "quantity": number (REQUIRED - use 1 if not specified),
-      "unit": "string (REQUIRED - use 'whole', 'clove', 'pinch', etc. if no unit)",
-      "notes": "string or null (e.g., 'chopped', 'diced')"
+      "quantity": number,
+      "unit": "string",
+      "notes": "string or null"
     }
   ],
   "instructions": [
     {
       "stepNumber": number,
-      "instruction": "string (complete step description)"
+      "instruction": "string"
     }
   ],
   "caloriesPerServing": number or null,
@@ -335,26 +465,11 @@ Extract and return ONLY a valid JSON object in this EXACT format:
   "notes": "string or null"
 }
 
-EXAMPLE of GOOD extraction:
-{
-  "ingredientName": "lean beef mince",
-  "quantity": 500,
-  "unit": "g",
-  "notes": "lean"
-}
-
-EXAMPLE of BAD extraction (missing quantity/unit):
-{
-  "ingredientName": "lean beef mince",
-  "quantity": null,  // WRONG - should never be null!
-  "unit": null       // WRONG - should never be null!
-}
-
-Return ONLY the JSON object, no explanatory text before or after.`
+Return ONLY the JSON object, no other text.`
 
   try {
     const message = await client.messages.create({
-      model: 'claude-haiku-4-5',
+      model: 'claude-sonnet-4-5-20250514',
       max_tokens: 4096,
       messages: [{
         role: 'user',
@@ -363,6 +478,7 @@ Return ONLY the JSON object, no explanatory text before or after.`
     })
 
     const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
+    console.log('🟢 Claude response received')
 
     // Extract JSON from response
     const jsonMatch = responseText.match(/\{[\s\S]*\}/)
@@ -371,9 +487,10 @@ Return ONLY the JSON object, no explanatory text before or after.`
     }
 
     const recipe = JSON.parse(jsonMatch[0])
+    console.log('🟢 Recipe parsed:', recipe.recipeName, '- Ingredients:', recipe.ingredients?.length || 0)
     return recipe
   } catch (error) {
-    console.error('Error parsing recipe with Claude:', error)
+    console.error('❌ Error parsing recipe with Claude:', error)
     throw error
   }
 }
