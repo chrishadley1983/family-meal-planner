@@ -16,6 +16,10 @@ export interface InventoryCheckResult {
   inventoryItemId: string | null
   isAvailable: boolean
   isSufficientQuantity: boolean
+  /** When partially covered, this is the remaining quantity still needed */
+  remainingQuantity: number
+  /** True if some (but not all) quantity is covered by inventory */
+  isPartiallyCovered: boolean
 }
 
 /**
@@ -55,7 +59,28 @@ export async function checkInventoryForItems(
     if (match) {
       // Check if units are compatible for quantity comparison
       const unitsMatch = normalizeUnit(match.unit) === normalizeUnit(item.unit)
-      const isSufficientQuantity = unitsMatch ? match.quantity >= item.quantity : true // Assume sufficient if units don't match
+
+      let isSufficientQuantity = false
+      let remainingQuantity = item.quantity
+      let isPartiallyCovered = false
+
+      if (unitsMatch) {
+        // Units match - we can compare quantities
+        if (match.quantity >= item.quantity) {
+          // Fully covered by inventory
+          isSufficientQuantity = true
+          remainingQuantity = 0
+        } else if (match.quantity > 0) {
+          // Partially covered - calculate the difference
+          isPartiallyCovered = true
+          remainingQuantity = Math.round((item.quantity - match.quantity) * 100) / 100
+        }
+        // else: match.quantity is 0, remainingQuantity stays as full amount
+      } else {
+        // Units don't match - can't reliably compare, assume we need the full amount
+        // This is safer than assuming sufficient (previous bug)
+        remainingQuantity = item.quantity
+      }
 
       results.push({
         itemName: item.itemName,
@@ -66,6 +91,8 @@ export async function checkInventoryForItems(
         inventoryItemId: match.id,
         isAvailable: true,
         isSufficientQuantity,
+        remainingQuantity,
+        isPartiallyCovered,
       })
     } else {
       results.push({
@@ -77,6 +104,8 @@ export async function checkInventoryForItems(
         inventoryItemId: null,
         isAvailable: false,
         isSufficientQuantity: false,
+        remainingQuantity: item.quantity,
+        isPartiallyCovered: false,
       })
     }
   }

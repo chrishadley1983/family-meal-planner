@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { convertToMetric, DEFAULT_CATEGORIES, findDuplicates, combineQuantities } from '@/lib/unit-conversion'
 import { lookupCategory, preprocessForAI, validateCategory, normalizeForLookup } from '@/lib/category-lookup'
 import { normalizeAndRound } from '@/lib/measurements'
+import { normalizeIngredientName } from '@/lib/ingredient-normalization'
 import { SourceDetail } from '@/lib/types/shopping-list'
 import Anthropic from '@anthropic-ai/sdk'
 import {
@@ -116,6 +117,7 @@ export async function POST(
       unit: string
       category: string | null
       sources: SourceDetail[]
+      originalName: string // Keep original name for display
     }>()
 
     let mealsProcessed = 0
@@ -148,8 +150,12 @@ export async function POST(
         // Convert to metric
         const converted = convertToMetric(scaledQuantity, ingredient.unit)
 
-        // Create a normalized key for grouping (lowercase, trimmed)
-        const ingredientKey = `${ingredient.ingredientName.toLowerCase().trim()}|${converted.unit}`
+        // Normalize ingredient name for grouping (combines "sesame oil" + "toasted sesame oil" etc.)
+        const normalizedName = normalizeIngredientName(ingredient.ingredientName)
+        const ingredientKey = `${normalizedName}|${converted.unit}`
+
+        // Keep track of original name for display (use first encountered, typically most descriptive)
+        const originalName = ingredient.ingredientName.trim()
 
         const sourceDetail: SourceDetail = {
           type: 'recipe',
@@ -166,12 +172,13 @@ export async function POST(
           existing.quantity += converted.quantity
           existing.sources.push(sourceDetail)
         } else {
-          // New ingredient
+          // New ingredient - store original name for display
           ingredientMap.set(ingredientKey, {
             quantity: converted.quantity,
             unit: converted.unit,
             category: ingredient.category || null,
             sources: [sourceDetail],
+            originalName, // Keep original name for display
           })
         }
       }
@@ -204,11 +211,11 @@ export async function POST(
       if (!settings.skipInventoryCheck) {
         console.log('🔷 Checking inventory for existing items...')
 
-        // Prepare items for inventory check
+        // Prepare items for inventory check (use normalized names from keys)
         const itemsToCheck = Array.from(ingredientMap.entries()).map(([key, value]) => {
-          const [ingredientName] = key.split('|')
+          const [normalizedName] = key.split('|')
           return {
-            itemName: ingredientName,
+            itemName: normalizedName,
             quantity: value.quantity,
             unit: value.unit,
           }
@@ -217,32 +224,57 @@ export async function POST(
         // Check inventory
         const inventoryResults = await checkInventoryForItems(session.user.id, itemsToCheck)
 
-        // Filter out items that are available in sufficient quantity
-        const availableItems = inventoryResults.filter(r => r.isAvailable && r.isSufficientQuantity)
+        // Process inventory results
+        let fullyExcludedCount = 0
+        let partiallyReducedCount = 0
 
-        if (availableItems.length > 0) {
-          console.log(`🟢 Found ${availableItems.length} items already in inventory`)
+        for (const result of inventoryResults) {
+          if (!result.isAvailable) continue // No match in inventory
 
-          // Remove available items from ingredientMap
-          for (const item of availableItems) {
-            const keyToRemove = Array.from(ingredientMap.keys()).find(key => {
-              const [name] = key.split('|')
-              return name.toLowerCase() === item.itemName.toLowerCase()
+          // Find the matching key in ingredientMap
+          const matchingKey = Array.from(ingredientMap.keys()).find(key => {
+            const [name] = key.split('|')
+            return name.toLowerCase() === result.itemName.toLowerCase()
+          })
+
+          if (!matchingKey) continue
+
+          const mapData = ingredientMap.get(matchingKey)!
+
+          if (result.isSufficientQuantity) {
+            // Fully covered - remove from shopping list entirely
+            excludedFromInventory.push({
+              itemName: mapData.originalName,
+              recipeQuantity: mapData.quantity,
+              recipeUnit: mapData.unit,
+              inventoryQuantity: result.availableQuantity,
+              inventoryItemId: result.inventoryItemId,
             })
-            if (keyToRemove) {
-              const data = ingredientMap.get(keyToRemove)!
-              excludedFromInventory.push({
-                itemName: item.itemName,
-                recipeQuantity: data.quantity,
-                recipeUnit: data.unit,
-                inventoryQuantity: item.availableQuantity,
-                inventoryItemId: item.inventoryItemId,
-              })
-              ingredientMap.delete(keyToRemove)
-            }
-          }
+            ingredientMap.delete(matchingKey)
+            fullyExcludedCount++
+          } else if (result.isPartiallyCovered && result.remainingQuantity < result.requestedQuantity) {
+            // Partially covered - reduce quantity to just what's still needed
+            console.log(`🔶 Partial coverage: ${mapData.originalName} needs ${result.requestedQuantity}${mapData.unit}, have ${result.availableQuantity}${result.availableUnit}, adding ${result.remainingQuantity}${mapData.unit} to list`)
 
-          console.log(`🔄 Excluded ${excludedFromInventory.length} items found in inventory`)
+            // Record the partial exclusion (the amount we're NOT buying)
+            excludedFromInventory.push({
+              itemName: mapData.originalName,
+              recipeQuantity: result.availableQuantity, // The amount covered by inventory
+              recipeUnit: mapData.unit,
+              inventoryQuantity: result.availableQuantity,
+              inventoryItemId: result.inventoryItemId,
+            })
+
+            // Update the quantity in ingredientMap to just the remaining amount needed
+            mapData.quantity = result.remainingQuantity
+            partiallyReducedCount++
+          }
+          // else: No inventory match or can't compare units - leave full amount on list
+        }
+
+        console.log(`🟢 Fully excluded ${fullyExcludedCount} items from inventory`)
+        if (partiallyReducedCount > 0) {
+          console.log(`🟡 Partially reduced ${partiallyReducedCount} items (only buying what's needed beyond inventory)`)
         }
       }
     }
@@ -258,14 +290,15 @@ export async function POST(
 
     // Create shopping list items with normalized units and smart rounding
     const itemsToCreate = Array.from(ingredientMap.entries()).map(([key, data]) => {
-      const [ingredientName] = key.split('|')
-
       // Apply unit normalization and smart rounding
       const normalized = normalizeAndRound(data.quantity, data.unit)
 
+      // Use originalName for display (properly capitalized from recipe)
+      const displayName = data.originalName.charAt(0).toUpperCase() + data.originalName.slice(1)
+
       return {
         shoppingListId,
-        itemName: ingredientName.charAt(0).toUpperCase() + ingredientName.slice(1), // Capitalize
+        itemName: displayName,
         quantity: normalized.quantity,
         unit: normalized.unit,
         category: data.category,
