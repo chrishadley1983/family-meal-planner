@@ -6,7 +6,7 @@ import { z } from 'zod'
 import {
   getExcludedItems,
   addBackExcludedItem,
-} from '@/lib/inventory'
+} from '@/lib/inventory/server'
 
 // GET - Get excluded items for a shopping list
 export async function GET(

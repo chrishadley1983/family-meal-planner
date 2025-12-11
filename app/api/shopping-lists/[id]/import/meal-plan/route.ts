@@ -12,7 +12,7 @@ import {
   checkInventoryForItems,
   getInventorySettings,
   recordExcludedItems,
-} from '@/lib/inventory'
+} from '@/lib/inventory/server'
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,

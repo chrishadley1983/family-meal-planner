@@ -7,7 +7,7 @@ import {
   previewDeduction,
   performDeduction,
   getRecipeIngredientsForDeduction,
-} from '@/lib/inventory'
+} from '@/lib/inventory/server'
 
 // Schema for marking meal as cooked
 const cookMealSchema = z.object({

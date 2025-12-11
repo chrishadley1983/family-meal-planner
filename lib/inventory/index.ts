@@ -1,6 +1,9 @@
 /**
  * Inventory Management Module
  * Re-exports all inventory-related utilities
+ *
+ * NOTE: This file only exports CLIENT-SAFE utilities.
+ * For server-only utilities (Prisma-based), import from './server'
  */
 
 // Types
@@ -54,20 +57,6 @@ export {
 } from './duplicate-detection'
 export type { DuplicateCheckResult } from './duplicate-detection'
 
-// Inventory Check (Shopping List Integration)
-export {
-  checkInventoryForItems,
-  getInventorySettings,
-  recordExcludedItems,
-  getExcludedItems,
-  addBackExcludedItem,
-} from './inventory-check'
+// Types only for server modules (no runtime imports)
 export type { InventoryCheckResult } from './inventory-check'
-
-// Inventory Deduction (Meal Cooking Integration)
-export {
-  previewDeduction,
-  performDeduction,
-  getRecipeIngredientsForDeduction,
-} from './inventory-deduction'
 export type { DeductionItem, DeductionResult, DeductionSummary } from './inventory-deduction'
