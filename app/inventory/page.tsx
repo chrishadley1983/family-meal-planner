@@ -12,6 +12,7 @@ import type {
   InventorySortField,
   InventorySortOptions,
   InventoryStatistics,
+  CSVInventoryImportSummary,
 } from '@/lib/types/inventory'
 import { STORAGE_LOCATIONS } from '@/lib/types/inventory'
 import {
@@ -28,6 +29,8 @@ import {
   getLocationLabel,
   getUniqueCategories,
 } from '@/lib/inventory/calculations'
+import { parseCSV, generateCSVTemplate, downloadCSV } from '@/lib/inventory/csv-parser'
+import { validateCSVData, getImportableItems, generateErrorReport } from '@/lib/inventory/csv-validator'
 import { COMMON_UNITS, DEFAULT_CATEGORIES } from '@/lib/unit-conversion'
 
 // Raw inventory item from API
@@ -104,6 +107,31 @@ export default function InventoryPage() {
   // Duplicate detection modal
   const [duplicateMatch, setDuplicateMatch] = useState<InventoryItemWithExpiry | null>(null)
   const [pendingNewItem, setPendingNewItem] = useState<typeof newItem | null>(null)
+
+  // CSV Import state
+  const [showCSVImport, setShowCSVImport] = useState(false)
+  const [csvSummary, setCsvSummary] = useState<CSVInventoryImportSummary | null>(null)
+  const [importingCSV, setImportingCSV] = useState(false)
+  const [csvFileName, setCsvFileName] = useState('')
+
+  // Photo Import state
+  const [showPhotoImport, setShowPhotoImport] = useState(false)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const [analyzingPhoto, setAnalyzingPhoto] = useState(false)
+  const [extractedItems, setExtractedItems] = useState<Array<{
+    name: string
+    quantity: number
+    unit: string
+    suggestedCategory: string
+    suggestedLocation: string | null
+    expiryDate?: string
+    calculatedExpiry?: Date
+    expiryIsEstimated?: boolean
+    confidence: 'high' | 'medium' | 'low'
+    selected: boolean
+  }>>([])
+  const [photoProcessingNotes, setPhotoProcessingNotes] = useState<string | null>(null)
+  const [importingPhoto, setImportingPhoto] = useState(false)
 
   // Enrich items with expiry status
   const items = useMemo(() => {
@@ -489,6 +517,242 @@ export default function InventoryPage() {
     }
   }
 
+  // CSV Import handlers
+  const handleDownloadTemplate = () => {
+    const template = generateCSVTemplate()
+    downloadCSV(template, 'inventory-import-template.csv')
+  }
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setCsvFileName(file.name)
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const content = e.target?.result as string
+      try {
+        console.log('🔷 Parsing CSV file:', file.name)
+        const rows = parseCSV(content)
+        const existingNames = items.filter(i => i.isActive).map(i => i.itemName)
+        const summary = validateCSVData(rows, existingNames)
+        console.log('🟢 CSV validation complete:', {
+          total: summary.totalRows,
+          valid: summary.validCount,
+          warnings: summary.warningCount,
+          errors: summary.errorCount,
+        })
+        setCsvSummary(summary)
+      } catch (error) {
+        console.error('❌ Error parsing CSV:', error)
+        alert('Failed to parse CSV file. Please check the format.')
+      }
+    }
+    reader.readAsText(file)
+  }
+
+  const handleImportCSV = async () => {
+    if (!csvSummary) return
+
+    const itemsToImport = getImportableItems(csvSummary, true) // Include warnings
+    if (itemsToImport.length === 0) {
+      alert('No valid items to import')
+      return
+    }
+
+    setImportingCSV(true)
+    console.log('🔷 Importing', itemsToImport.length, 'items from CSV')
+
+    let successCount = 0
+    let errorCount = 0
+
+    for (const item of itemsToImport) {
+      try {
+        const response = await fetch('/api/inventory', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...item,
+            addedBy: 'CSV',
+          }),
+        })
+
+        if (response.ok) {
+          successCount++
+        } else {
+          errorCount++
+          console.error('❌ Failed to import:', item.itemName)
+        }
+      } catch (error) {
+        errorCount++
+        console.error('❌ Error importing item:', item.itemName, error)
+      }
+    }
+
+    console.log('🟢 CSV import complete:', { success: successCount, errors: errorCount })
+
+    // Refresh inventory
+    await fetchItems()
+
+    // Reset state
+    setShowCSVImport(false)
+    setCsvSummary(null)
+    setCsvFileName('')
+    setImportingCSV(false)
+
+    // Show result
+    if (errorCount === 0) {
+      alert(`Successfully imported ${successCount} items!`)
+    } else {
+      alert(`Imported ${successCount} items. ${errorCount} items failed to import.`)
+    }
+  }
+
+  const handleResetCSVImport = () => {
+    setCsvSummary(null)
+    setCsvFileName('')
+  }
+
+  // Photo Import handlers
+  const handlePhotoSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file (JPEG or PNG)')
+      return
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Image is too large. Please select an image under 10MB.')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string
+      setPhotoPreview(dataUrl)
+      setExtractedItems([])
+      setPhotoProcessingNotes(null)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleAnalyzePhoto = async () => {
+    if (!photoPreview) return
+
+    setAnalyzingPhoto(true)
+    setExtractedItems([])
+
+    try {
+      console.log('🔷 Sending photo for AI analysis...')
+      const response = await fetch('/api/inventory/import-photo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageData: photoPreview }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to analyze photo')
+      }
+
+      const data = await response.json()
+      console.log('🟢 AI extracted', data.items?.length || 0, 'items')
+
+      // Add selected flag to items (default to high/medium confidence)
+      setExtractedItems(
+        (data.items || []).map((item: any) => ({
+          ...item,
+          selected: item.confidence !== 'low',
+        }))
+      )
+      setPhotoProcessingNotes(data.processingNotes)
+    } catch (error) {
+      console.error('❌ Error analyzing photo:', error)
+      alert(error instanceof Error ? error.message : 'Failed to analyze photo')
+    } finally {
+      setAnalyzingPhoto(false)
+    }
+  }
+
+  const handleToggleExtractedItem = (index: number) => {
+    setExtractedItems(prev =>
+      prev.map((item, i) =>
+        i === index ? { ...item, selected: !item.selected } : item
+      )
+    )
+  }
+
+  const handleImportSelectedItems = async () => {
+    const selectedItems = extractedItems.filter(item => item.selected)
+    if (selectedItems.length === 0) {
+      alert('Please select at least one item to import')
+      return
+    }
+
+    setImportingPhoto(true)
+    console.log('🔷 Importing', selectedItems.length, 'items from photo')
+
+    let successCount = 0
+    let errorCount = 0
+
+    for (const item of selectedItems) {
+      try {
+        const response = await fetch('/api/inventory', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            itemName: item.name,
+            quantity: item.quantity,
+            unit: item.unit,
+            category: item.suggestedCategory,
+            location: item.suggestedLocation || null,
+            expiryDate: item.expiryDate || (item.calculatedExpiry ? new Date(item.calculatedExpiry).toISOString().split('T')[0] : null),
+            addedBy: 'Photo',
+          }),
+        })
+
+        if (response.ok) {
+          successCount++
+        } else {
+          errorCount++
+          console.error('❌ Failed to import:', item.name)
+        }
+      } catch (error) {
+        errorCount++
+        console.error('❌ Error importing item:', item.name, error)
+      }
+    }
+
+    console.log('🟢 Photo import complete:', { success: successCount, errors: errorCount })
+
+    // Refresh inventory
+    await fetchItems()
+
+    // Reset state
+    setShowPhotoImport(false)
+    setPhotoPreview(null)
+    setExtractedItems([])
+    setPhotoProcessingNotes(null)
+    setImportingPhoto(false)
+
+    // Show result
+    if (errorCount === 0) {
+      alert(`Successfully imported ${successCount} items!`)
+    } else {
+      alert(`Imported ${successCount} items. ${errorCount} items failed to import.`)
+    }
+  }
+
+  const handleResetPhotoImport = () => {
+    setPhotoPreview(null)
+    setExtractedItems([])
+    setPhotoProcessingNotes(null)
+  }
+
   // Sort handlers
   const handleSortChange = (field: InventorySortField) => {
     if (sortOptions.field === field) {
@@ -535,6 +799,12 @@ export default function InventoryPage() {
         description="Track your household food items and expiry dates"
         action={
           <div className="flex gap-2">
+            <Button onClick={() => setShowPhotoImport(true)} variant="secondary">
+              Scan Photo
+            </Button>
+            <Button onClick={() => setShowCSVImport(true)} variant="secondary">
+              Import CSV
+            </Button>
             <Button onClick={() => setShowAddForm(true)} variant="primary">
               Add Item
             </Button>
@@ -1240,6 +1510,419 @@ export default function InventoryPage() {
               >
                 {processingBulk ? 'Updating...' : 'Update'}
               </Button>
+            </div>
+          </div>
+        </Modal>
+
+        {/* CSV Import Modal */}
+        <Modal
+          isOpen={showCSVImport}
+          onClose={() => {
+            setShowCSVImport(false)
+            setCsvSummary(null)
+            setCsvFileName('')
+          }}
+          title="Import Inventory from CSV"
+          maxWidth="lg"
+        >
+          <div className="p-6 space-y-6">
+            {/* Step 1: Download Template */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-600 text-xs">1</span>
+                Download Template
+              </h3>
+              <p className="text-sm text-zinc-400 ml-8">
+                Start with our template to ensure your data is formatted correctly.
+              </p>
+              <div className="ml-8">
+                <Button onClick={handleDownloadTemplate} variant="secondary" size="sm">
+                  Download CSV Template
+                </Button>
+              </div>
+            </div>
+
+            {/* Step 2: Upload File */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-600 text-xs">2</span>
+                Upload Your File
+              </h3>
+              <p className="text-sm text-zinc-400 ml-8">
+                Upload your completed CSV file for validation.
+              </p>
+              <div className="ml-8">
+                <div className="flex items-center gap-3">
+                  <label className="cursor-pointer">
+                    <span className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white text-sm rounded-lg transition-colors">
+                      Choose File
+                    </span>
+                    <input
+                      type="file"
+                      accept=".csv"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                  </label>
+                  {csvFileName && (
+                    <span className="text-sm text-zinc-400">{csvFileName}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Step 3: Preview & Import */}
+            {csvSummary && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-600 text-xs">3</span>
+                  Preview & Import
+                </h3>
+
+                {/* Summary Stats */}
+                <div className="ml-8 grid grid-cols-4 gap-3">
+                  <div className="bg-zinc-800/50 p-3 rounded-lg text-center">
+                    <div className="text-xl font-bold text-white">{csvSummary.totalRows}</div>
+                    <div className="text-xs text-zinc-400">Total Rows</div>
+                  </div>
+                  <div className="bg-zinc-800/50 p-3 rounded-lg text-center">
+                    <div className="text-xl font-bold text-green-400">{csvSummary.validCount}</div>
+                    <div className="text-xs text-zinc-400">Valid</div>
+                  </div>
+                  <div className="bg-zinc-800/50 p-3 rounded-lg text-center">
+                    <div className="text-xl font-bold text-amber-400">{csvSummary.warningCount}</div>
+                    <div className="text-xs text-zinc-400">Warnings</div>
+                  </div>
+                  <div className="bg-zinc-800/50 p-3 rounded-lg text-center">
+                    <div className="text-xl font-bold text-red-400">{csvSummary.errorCount}</div>
+                    <div className="text-xs text-zinc-400">Errors</div>
+                  </div>
+                </div>
+
+                {/* Preview Table */}
+                <div className="ml-8 max-h-64 overflow-y-auto border border-zinc-700 rounded-lg">
+                  <table className="w-full text-sm">
+                    <thead className="bg-zinc-800 sticky top-0">
+                      <tr>
+                        <th className="px-3 py-2 text-left text-zinc-300">Row</th>
+                        <th className="px-3 py-2 text-left text-zinc-300">Status</th>
+                        <th className="px-3 py-2 text-left text-zinc-300">Name</th>
+                        <th className="px-3 py-2 text-left text-zinc-300">Qty</th>
+                        <th className="px-3 py-2 text-left text-zinc-300">Category</th>
+                        <th className="px-3 py-2 text-left text-zinc-300">Issues</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-700">
+                      {csvSummary.results.map((result) => (
+                        <tr
+                          key={result.row}
+                          className={
+                            result.status === 'error'
+                              ? 'bg-red-900/20'
+                              : result.status === 'warning'
+                              ? 'bg-amber-900/20'
+                              : ''
+                          }
+                        >
+                          <td className="px-3 py-2 text-zinc-400">{result.row}</td>
+                          <td className="px-3 py-2">
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                result.status === 'valid'
+                                  ? 'bg-green-900/50 text-green-400'
+                                  : result.status === 'warning'
+                                  ? 'bg-amber-900/50 text-amber-400'
+                                  : 'bg-red-900/50 text-red-400'
+                              }`}
+                            >
+                              {result.status}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-white">{result.data.name}</td>
+                          <td className="px-3 py-2 text-zinc-300">
+                            {result.data.quantity} {result.data.unit}
+                          </td>
+                          <td className="px-3 py-2 text-zinc-300">{result.data.category}</td>
+                          <td className="px-3 py-2">
+                            {result.errors.length > 0 && (
+                              <span className="text-red-400 text-xs">{result.errors.join(', ')}</span>
+                            )}
+                            {result.warnings.length > 0 && (
+                              <span className="text-amber-400 text-xs">{result.warnings.join(', ')}</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Import Info */}
+                <div className="ml-8 text-sm text-zinc-400">
+                  {csvSummary.validCount + csvSummary.warningCount > 0 ? (
+                    <p>
+                      {csvSummary.validCount + csvSummary.warningCount} item(s) will be imported.
+                      {csvSummary.warningCount > 0 && ' Items with warnings will use auto-calculated expiry dates.'}
+                      {csvSummary.errorCount > 0 && ` ${csvSummary.errorCount} item(s) with errors will be skipped.`}
+                    </p>
+                  ) : (
+                    <p className="text-red-400">No valid items to import. Please fix the errors and try again.</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex justify-between pt-4 border-t border-zinc-700">
+              <div>
+                {csvSummary && (
+                  <Button
+                    variant="ghost"
+                    onClick={handleResetCSVImport}
+                    disabled={importingCSV}
+                  >
+                    Reset
+                  </Button>
+                )}
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setShowCSVImport(false)
+                    setCsvSummary(null)
+                    setCsvFileName('')
+                  }}
+                  disabled={importingCSV}
+                >
+                  Cancel
+                </Button>
+                {csvSummary && csvSummary.validCount + csvSummary.warningCount > 0 && (
+                  <Button
+                    variant="primary"
+                    onClick={handleImportCSV}
+                    disabled={importingCSV}
+                  >
+                    {importingCSV
+                      ? 'Importing...'
+                      : `Import ${csvSummary.validCount + csvSummary.warningCount} Items`}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </Modal>
+
+        {/* Photo Import Modal */}
+        <Modal
+          isOpen={showPhotoImport}
+          onClose={() => {
+            setShowPhotoImport(false)
+            setPhotoPreview(null)
+            setExtractedItems([])
+            setPhotoProcessingNotes(null)
+          }}
+          title="Scan Groceries from Photo"
+          maxWidth="lg"
+        >
+          <div className="p-6 space-y-6">
+            {/* Step 1: Upload Photo */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-600 text-xs">1</span>
+                Upload Photo
+              </h3>
+              <p className="text-sm text-zinc-400 ml-8">
+                Take a photo of your groceries, fridge contents, or receipt.
+              </p>
+              <div className="ml-8 flex items-center gap-3">
+                <label className="cursor-pointer">
+                  <span className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white text-sm rounded-lg transition-colors inline-flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Choose Photo
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handlePhotoSelect}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+
+            {/* Photo Preview */}
+            {photoPreview && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-600 text-xs">2</span>
+                  Preview
+                </h3>
+                <div className="ml-8 flex items-start gap-4">
+                  <div className="relative">
+                    <img
+                      src={photoPreview}
+                      alt="Photo preview"
+                      className="max-w-xs max-h-48 rounded-lg border border-zinc-700 object-contain"
+                    />
+                    <button
+                      onClick={handleResetPhotoImport}
+                      className="absolute -top-2 -right-2 p-1 bg-zinc-800 hover:bg-zinc-700 rounded-full border border-zinc-600"
+                    >
+                      <svg className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div className="flex-1">
+                    {!analyzingPhoto && extractedItems.length === 0 && (
+                      <Button onClick={handleAnalyzePhoto} variant="primary">
+                        Analyze Photo
+                      </Button>
+                    )}
+                    {analyzingPhoto && (
+                      <div className="flex items-center gap-3 text-zinc-400">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-400"></div>
+                        <span>Analyzing photo with AI...</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Extracted Items */}
+            {extractedItems.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-600 text-xs">3</span>
+                  Review & Import
+                </h3>
+
+                {photoProcessingNotes && (
+                  <div className="ml-8 p-3 bg-zinc-800/50 rounded-lg text-sm text-zinc-400">
+                    <strong className="text-zinc-300">AI Notes:</strong> {photoProcessingNotes}
+                  </div>
+                )}
+
+                <div className="ml-8 max-h-64 overflow-y-auto border border-zinc-700 rounded-lg">
+                  <table className="w-full text-sm">
+                    <thead className="bg-zinc-800 sticky top-0">
+                      <tr>
+                        <th className="px-3 py-2 text-left">
+                          <input
+                            type="checkbox"
+                            checked={extractedItems.every(i => i.selected)}
+                            onChange={() => {
+                              const allSelected = extractedItems.every(i => i.selected)
+                              setExtractedItems(prev =>
+                                prev.map(item => ({ ...item, selected: !allSelected }))
+                              )
+                            }}
+                            className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-zinc-600 rounded"
+                          />
+                        </th>
+                        <th className="px-3 py-2 text-left text-zinc-300">Item</th>
+                        <th className="px-3 py-2 text-left text-zinc-300">Qty</th>
+                        <th className="px-3 py-2 text-left text-zinc-300">Category</th>
+                        <th className="px-3 py-2 text-left text-zinc-300">Location</th>
+                        <th className="px-3 py-2 text-left text-zinc-300">Confidence</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-700">
+                      {extractedItems.map((item, index) => (
+                        <tr
+                          key={index}
+                          className={`${
+                            item.selected ? '' : 'opacity-50'
+                          } ${
+                            item.confidence === 'low' ? 'bg-amber-900/10' : ''
+                          }`}
+                        >
+                          <td className="px-3 py-2">
+                            <input
+                              type="checkbox"
+                              checked={item.selected}
+                              onChange={() => handleToggleExtractedItem(index)}
+                              className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-zinc-600 rounded"
+                            />
+                          </td>
+                          <td className="px-3 py-2 text-white">{item.name}</td>
+                          <td className="px-3 py-2 text-zinc-300">
+                            {item.quantity} {item.unit}
+                          </td>
+                          <td className="px-3 py-2 text-zinc-300">{item.suggestedCategory}</td>
+                          <td className="px-3 py-2 text-zinc-300">
+                            {item.suggestedLocation ? getLocationLabel(item.suggestedLocation as StorageLocation) : '-'}
+                          </td>
+                          <td className="px-3 py-2">
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                item.confidence === 'high'
+                                  ? 'bg-green-900/50 text-green-400'
+                                  : item.confidence === 'medium'
+                                  ? 'bg-amber-900/50 text-amber-400'
+                                  : 'bg-red-900/50 text-red-400'
+                              }`}
+                            >
+                              {item.confidence}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="ml-8 text-sm text-zinc-400">
+                  {extractedItems.filter(i => i.selected).length} of {extractedItems.length} items selected for import.
+                  Items with low confidence are deselected by default.
+                </div>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex justify-between pt-4 border-t border-zinc-700">
+              <div>
+                {(photoPreview || extractedItems.length > 0) && (
+                  <Button
+                    variant="ghost"
+                    onClick={handleResetPhotoImport}
+                    disabled={analyzingPhoto || importingPhoto}
+                  >
+                    Reset
+                  </Button>
+                )}
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setShowPhotoImport(false)
+                    setPhotoPreview(null)
+                    setExtractedItems([])
+                    setPhotoProcessingNotes(null)
+                  }}
+                  disabled={analyzingPhoto || importingPhoto}
+                >
+                  Cancel
+                </Button>
+                {extractedItems.length > 0 && extractedItems.some(i => i.selected) && (
+                  <Button
+                    variant="primary"
+                    onClick={handleImportSelectedItems}
+                    disabled={importingPhoto}
+                  >
+                    {importingPhoto
+                      ? 'Importing...'
+                      : `Import ${extractedItems.filter(i => i.selected).length} Items`}
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </Modal>

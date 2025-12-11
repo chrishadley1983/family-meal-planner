@@ -725,6 +725,97 @@ Consider: calories per serving vs daily target, macro ratios, ingredient health 
   }
 }
 
+export async function analyzeInventoryPhoto(imageData: string) {
+  const prompt = `You are a grocery item recognition assistant. Analyze this image and extract grocery/food items for inventory tracking.
+
+The image may contain:
+- Grocery shopping bags or items on a counter/table
+- Items inside a refrigerator, freezer, or pantry
+- A single food product with packaging
+- A receipt with item names
+
+For each recognizable food item, extract:
+1. Item name (be specific: "Semi-skimmed Milk" not just "Milk")
+2. Quantity (if multiple items visible, count them)
+3. Unit (pack, bottle, tin, bag, whole, bunch, etc.)
+4. Suggested category
+5. Suggested storage location
+6. Expiry date if visible on packaging
+7. Your confidence in the identification
+
+Return ONLY a valid JSON object in this exact format:
+{
+  "items": [
+    {
+      "name": "string",
+      "quantity": number (default 1 if unclear),
+      "unit": "string (e.g., 'pack', 'bottle', 'tin', 'bag', 'whole', 'bunch', 'loaf', 'carton')",
+      "suggestedCategory": "Fresh Produce" | "Dairy & Eggs" | "Meat & Fish" | "Bakery" | "Cupboard Staples" | "Frozen" | "Condiments" | "Beverages" | "Snacks" | "Other",
+      "suggestedLocation": "fridge" | "freezer" | "cupboard" | "pantry" | null,
+      "expiryDate": "YYYY-MM-DD" or null (only if clearly visible on packaging),
+      "brand": "string" or null (if visible),
+      "confidence": "high" | "medium" | "low"
+    }
+  ],
+  "processingNotes": "string (any general observations about the image, items that couldn't be identified, etc.)"
+}
+
+Important:
+- Be specific with item names (include type/variety where visible)
+- Only include items you can clearly identify
+- Mark confidence as "low" if you're unsure
+- For fresh produce without packaging, don't include expiry date (system will calculate it)
+- Suggest appropriate storage location based on item type
+- If you see a receipt, extract item names from it`
+
+  try {
+    console.log('🔷 Analyzing inventory photo with Claude Vision...')
+
+    const content: any[] = [
+      {
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: imageData.startsWith('data:image/png') ? 'image/png' :
+                     imageData.startsWith('data:image/jpeg') ? 'image/jpeg' :
+                     imageData.startsWith('data:image/jpg') ? 'image/jpeg' : 'image/jpeg',
+          data: imageData.replace(/^data:image\/\w+;base64,/, '')
+        }
+      },
+      {
+        type: 'text',
+        text: prompt
+      }
+    ]
+
+    const message = await client.messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 2048,
+      messages: [{
+        role: 'user',
+        content
+      }]
+    })
+
+    const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
+    console.log('🟢 Claude vision response received, length:', responseText.length)
+
+    // Extract JSON from response
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      throw new Error('Failed to parse inventory items from Claude response')
+    }
+
+    const result = JSON.parse(jsonMatch[0])
+    console.log('🟢 Extracted', result.items?.length || 0, 'items from photo')
+
+    return result
+  } catch (error) {
+    console.error('❌ Error analyzing inventory photo with Claude:', error)
+    throw error
+  }
+}
+
 export async function getNutritionistFeedbackForRecipe(params: {
   recipe: {
     recipeName: string
