@@ -2,13 +2,16 @@
 
 import { SessionProvider } from 'next-auth/react'
 import { AILoadingProvider } from '@/components/providers/AILoadingProvider'
+import { NotificationProvider } from '@/components/providers/NotificationProvider'
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
-      <AILoadingProvider>
-        {children}
-      </AILoadingProvider>
+      <NotificationProvider>
+        <AILoadingProvider>
+          {children}
+        </AILoadingProvider>
+      </NotificationProvider>
     </SessionProvider>
   )
 }

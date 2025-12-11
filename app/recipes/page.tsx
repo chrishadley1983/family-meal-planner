@@ -7,6 +7,7 @@ import { generateRecipeSVG } from '@/lib/generate-recipe-image'
 import { AppLayout, PageContainer } from '@/components/layout'
 import { Button, Badge, Input, Select } from '@/components/ui'
 import { useSession } from 'next-auth/react'
+import { useNotification } from '@/components/providers/NotificationProvider'
 
 interface Recipe {
   id: string
@@ -36,6 +37,7 @@ interface Recipe {
 
 export default function RecipesPage() {
   const { data: session } = useSession()
+  const { confirm } = useNotification()
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -82,7 +84,13 @@ export default function RecipesPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this recipe?')) return
+    const confirmed = await confirm({
+      title: 'Delete Recipe',
+      message: 'Are you sure you want to delete this recipe?',
+      confirmText: 'Delete',
+      confirmVariant: 'danger',
+    })
+    if (!confirmed) return
 
     try {
       const response = await fetch(`/api/recipes/${id}`, {
@@ -92,8 +100,8 @@ export default function RecipesPage() {
       if (response.ok) {
         setRecipes(recipes.filter(r => r.id !== id))
       }
-    } catch (error) {
-      console.error('Error deleting recipe:', error)
+    } catch (err) {
+      console.error('Error deleting recipe:', err)
     }
   }
 

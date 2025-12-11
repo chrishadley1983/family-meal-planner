@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
+import { useNotification } from '@/components/providers/NotificationProvider'
 
 interface ShoppingListMealPlan {
   id: string
@@ -34,6 +35,7 @@ interface ShoppingList {
 
 export default function ShoppingListsPage() {
   const router = useRouter()
+  const { error, confirm } = useNotification()
   const [shoppingLists, setShoppingLists] = useState<ShoppingList[]>([])
   const [loading, setLoading] = useState(true)
   const [filterStatus, setFilterStatus] = useState<string>('all')
@@ -85,9 +87,9 @@ export default function ShoppingListsPage() {
 
       // Navigate to the new list
       router.push(`/shopping-lists/${data.shoppingList.id}`)
-    } catch (error) {
-      console.error('❌ Error creating shopping list:', error)
-      alert(error instanceof Error ? error.message : 'Failed to create shopping list')
+    } catch (err) {
+      console.error('❌ Error creating shopping list:', err)
+      error(err instanceof Error ? err.message : 'Failed to create shopping list')
     } finally {
       setCreating(false)
       setShowCreateModal(false)
@@ -98,7 +100,13 @@ export default function ShoppingListsPage() {
 
   const handleDeleteList = async (e: React.MouseEvent, listId: string) => {
     e.stopPropagation()
-    if (!confirm('Are you sure you want to delete this shopping list?')) return
+    const confirmed = await confirm({
+      title: 'Delete Shopping List',
+      message: 'Are you sure you want to delete this shopping list?',
+      confirmText: 'Delete',
+      confirmVariant: 'danger',
+    })
+    if (!confirmed) return
 
     try {
       console.log('🔷 Deleting shopping list:', listId)
@@ -112,9 +120,9 @@ export default function ShoppingListsPage() {
 
       console.log('🟢 Shopping list deleted')
       setShoppingLists((lists) => lists.filter((l) => l.id !== listId))
-    } catch (error) {
-      console.error('❌ Error deleting shopping list:', error)
-      alert('Failed to delete shopping list')
+    } catch (err) {
+      console.error('❌ Error deleting shopping list:', err)
+      error('Failed to delete shopping list')
     }
   }
 
@@ -138,9 +146,9 @@ export default function ShoppingListsPage() {
       setShoppingLists((lists) =>
         lists.map((l) => (l.id === listId ? data.shoppingList : l))
       )
-    } catch (error) {
-      console.error('❌ Error archiving shopping list:', error)
-      alert('Failed to archive shopping list')
+    } catch (err) {
+      console.error('❌ Error archiving shopping list:', err)
+      error('Failed to archive shopping list')
     }
   }
 

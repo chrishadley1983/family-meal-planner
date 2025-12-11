@@ -10,6 +10,7 @@ import { Button, Badge, Input, Select } from '@/components/ui'
 import { useSession } from 'next-auth/react'
 import { getWeekDaysWithDates } from '@/lib/date-utils'
 import { useAILoading } from '@/components/providers/AILoadingProvider'
+import { useNotification } from '@/components/providers/NotificationProvider'
 
 interface MealPlan {
   id: string
@@ -56,6 +57,7 @@ export default function MealPlansPage() {
   const router = useRouter()
   const { data: session } = useSession()
   const { startLoading, stopLoading } = useAILoading()
+  const { error, warning } = useNotification()
   const [mealPlans, setMealPlans] = useState<MealPlan[]>([])
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [quickOptions, setQuickOptions] = useState({
@@ -203,7 +205,7 @@ export default function MealPlansPage() {
 
   const handleGeneratePlan = async () => {
     if (!selectedWeek) {
-      alert('Please select a week')
+      warning('Please select a week')
       return
     }
 
@@ -235,7 +237,7 @@ export default function MealPlansPage() {
         const data = await response.json()
 
         if (!response.ok) {
-          alert(data.error || 'Failed to copy meal plan')
+          error(data.error || 'Failed to copy meal plan')
           setGenerating(false)
           return
         }
@@ -263,7 +265,7 @@ export default function MealPlansPage() {
         const data = await response.json()
 
         if (!response.ok) {
-          alert(data.error || 'Failed to generate meal plan')
+          error(data.error || 'Failed to generate meal plan')
           setGenerating(false)
           return
         }
@@ -276,9 +278,9 @@ export default function MealPlansPage() {
       // Reset schedule override after generating
       setShowScheduleOverride(false)
       resetToDefaultSchedules()
-    } catch (error) {
-      console.error('❌ Error generating meal plan:', error)
-      alert('Failed to generate meal plan. Please try again.')
+    } catch (err) {
+      console.error('❌ Error generating meal plan:', err)
+      error('Failed to generate meal plan. Please try again.')
     } finally {
       setGenerating(false)
       stopLoading()

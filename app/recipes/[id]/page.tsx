@@ -10,6 +10,7 @@ import { AppLayout, PageContainer } from '@/components/layout'
 import { Button, Badge, Input, Select } from '@/components/ui'
 import { useSession } from 'next-auth/react'
 import { useAILoading } from '@/components/providers/AILoadingProvider'
+import { useNotification } from '@/components/providers/NotificationProvider'
 
 interface RecipePageProps {
   params: Promise<{ id: string }>
@@ -39,6 +40,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
   const router = useRouter()
   const { data: session } = useSession()
   const { startLoading, stopLoading } = useAILoading()
+  const { error, warning } = useNotification()
   const [recipe, setRecipe] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
@@ -357,7 +359,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
       }
     } catch (err) {
       console.error('Failed to save recipe')
-      alert('Failed to save changes')
+      error('Failed to save changes')
     } finally {
       setSaving(false)
     }
@@ -449,7 +451,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
     const file = e.target.files?.[0]
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        alert('Image too large. Please use an image under 5MB.')
+        warning('Image too large. Please use an image under 5MB.')
         return
       }
 

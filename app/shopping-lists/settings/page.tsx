@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useNotification } from '@/components/providers/NotificationProvider'
 
 interface Category {
   id: string
@@ -11,6 +12,7 @@ interface Category {
 }
 
 export default function ShoppingListSettingsPage() {
+  const { error, confirm } = useNotification()
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -64,21 +66,21 @@ export default function ShoppingListSettingsPage() {
       console.log('🟢 Category added')
       setNewCategoryName('')
       await fetchCategories()
-    } catch (error) {
-      console.error('❌ Error adding category:', error)
-      alert(error instanceof Error ? error.message : 'Failed to add category')
+    } catch (err) {
+      console.error('❌ Error adding category:', err)
+      error(err instanceof Error ? err.message : 'Failed to add category')
     } finally {
       setAddingCategory(false)
     }
   }
 
-  const handleUpdateCategory = async (id: string) => {
+  const handleUpdateCategory = async (categoryId: string) => {
     if (!editName.trim() || saving) return
 
     setSaving(true)
     try {
-      console.log('🔷 Updating category:', id)
-      const response = await fetch(`/api/shopping-lists/categories?id=${id}`, {
+      console.log('🔷 Updating category:', categoryId)
+      const response = await fetch(`/api/shopping-lists/categories?id=${categoryId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: editName.trim() }),
@@ -93,20 +95,26 @@ export default function ShoppingListSettingsPage() {
       setEditingId(null)
       setEditName('')
       await fetchCategories()
-    } catch (error) {
-      console.error('❌ Error updating category:', error)
-      alert(error instanceof Error ? error.message : 'Failed to update category')
+    } catch (err) {
+      console.error('❌ Error updating category:', err)
+      error(err instanceof Error ? err.message : 'Failed to update category')
     } finally {
       setSaving(false)
     }
   }
 
-  const handleDeleteCategory = async (id: string, name: string) => {
-    if (!confirm(`Delete category "${name}"? Items in this category will become uncategorized.`)) return
+  const handleDeleteCategory = async (categoryId: string, name: string) => {
+    const confirmed = await confirm({
+      title: 'Delete Category',
+      message: `Delete category "${name}"? Items in this category will become uncategorized.`,
+      confirmText: 'Delete',
+      confirmVariant: 'danger',
+    })
+    if (!confirmed) return
 
     try {
-      console.log('🔷 Deleting category:', id)
-      const response = await fetch(`/api/shopping-lists/categories?id=${id}`, {
+      console.log('🔷 Deleting category:', categoryId)
+      const response = await fetch(`/api/shopping-lists/categories?id=${categoryId}`, {
         method: 'DELETE',
       })
 
@@ -114,14 +122,20 @@ export default function ShoppingListSettingsPage() {
 
       console.log('🟢 Category deleted')
       await fetchCategories()
-    } catch (error) {
-      console.error('❌ Error deleting category:', error)
-      alert('Failed to delete category')
+    } catch (err) {
+      console.error('❌ Error deleting category:', err)
+      error('Failed to delete category')
     }
   }
 
   const handleResetToDefaults = async () => {
-    if (!confirm('Reset all categories to defaults? This will delete any custom categories.')) return
+    const confirmed = await confirm({
+      title: 'Reset Categories',
+      message: 'Reset all categories to defaults? This will delete any custom categories.',
+      confirmText: 'Reset',
+      confirmVariant: 'danger',
+    })
+    if (!confirmed) return
 
     try {
       console.log('🔷 Resetting categories to defaults')
@@ -133,9 +147,9 @@ export default function ShoppingListSettingsPage() {
 
       console.log('🟢 Categories reset to defaults')
       await fetchCategories()
-    } catch (error) {
-      console.error('❌ Error resetting categories:', error)
-      alert('Failed to reset categories')
+    } catch (err) {
+      console.error('❌ Error resetting categories:', err)
+      error('Failed to reset categories')
     }
   }
 

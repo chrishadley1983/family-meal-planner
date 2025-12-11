@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 import ExportShareModal from '@/components/shopping-list/ExportShareModal'
+import { useNotification } from '@/components/providers/NotificationProvider'
 
 interface SourceDetail {
   type: 'recipe' | 'staple' | 'manual'
@@ -112,6 +113,7 @@ interface ExcludedItem {
 export default function ShoppingListDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
+  const { success, error, warning, confirm } = useNotification()
 
   const [shoppingList, setShoppingList] = useState<ShoppingList | null>(null)
   const [itemsByCategory, setItemsByCategory] = useState<Record<string, ShoppingListItem[]>>({})
@@ -261,9 +263,9 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
       const data = await response.json()
       setShoppingList(data.shoppingList)
       console.log('🟢 Status updated')
-    } catch (error) {
-      console.error('❌ Error updating status:', error)
-      alert('Failed to update status')
+    } catch (err) {
+      console.error('❌ Error updating status:', err)
+      error('Failed to update status')
     } finally {
       setSaving(false)
     }
@@ -285,9 +287,9 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
       const data = await response.json()
       setShoppingList(data.shoppingList)
       setEditingName(false)
-    } catch (error) {
-      console.error('❌ Error updating name:', error)
-      alert('Failed to update name')
+    } catch (err) {
+      console.error('❌ Error updating name:', err)
+      error('Failed to update name')
     } finally {
       setSaving(false)
     }
@@ -309,9 +311,9 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
       const data = await response.json()
       setShoppingList(data.shoppingList)
       setEditingNotes(false)
-    } catch (error) {
-      console.error('❌ Error updating notes:', error)
-      alert('Failed to update notes')
+    } catch (err) {
+      console.error('❌ Error updating notes:', err)
+      error('Failed to update notes')
     } finally {
       setSaving(false)
     }
@@ -341,7 +343,12 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
     const purchasedItemsList = shoppingList.items.filter((i) => i.isPurchased)
     if (purchasedItemsList.length === 0) return
 
-    if (!confirm(`Undo ${purchasedItemsList.length} purchased items?`)) return
+    const confirmed = await confirm({
+      title: 'Undo Purchased Items',
+      message: `Undo ${purchasedItemsList.length} purchased items?`,
+      confirmText: 'Undo All',
+    })
+    if (!confirmed) return
 
     setSaving(true)
     try {
@@ -360,9 +367,9 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
 
       console.log('🟢 All items marked as unpurchased')
       await fetchShoppingList()
-    } catch (error) {
-      console.error('❌ Error undoing purchased:', error)
-      alert('Failed to undo purchased items')
+    } catch (err) {
+      console.error('❌ Error undoing purchased:', err)
+      error('Failed to undo purchased items')
     } finally {
       setSaving(false)
     }
@@ -392,9 +399,9 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
 
       console.log('🟢 Item marked as unpurchased:', lastPurchased.itemName)
       await fetchShoppingList()
-    } catch (error) {
-      console.error('❌ Error undoing last purchased:', error)
-      alert('Failed to undo last purchased item')
+    } catch (err) {
+      console.error('❌ Error undoing last purchased:', err)
+      error('Failed to undo last purchased item')
     } finally {
       setSaving(false)
     }
@@ -431,9 +438,9 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
       setShowEditModal(false)
       setEditingItem(null)
       await fetchShoppingList()
-    } catch (error) {
-      console.error('❌ Error updating item:', error)
-      alert('Failed to update item')
+    } catch (err) {
+      console.error('❌ Error updating item:', err)
+      error('Failed to update item')
     } finally {
       setSavingEdit(false)
     }
@@ -464,9 +471,11 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
             })
 
             if (matchingItem) {
-              const confirmAdd = confirm(
-                `"${matchingItem.itemName}" is in your inventory (${matchingItem.quantity} ${matchingItem.unit}). Add anyway?`
-              )
+              const confirmAdd = await confirm({
+                title: 'Item in Inventory',
+                message: `"${matchingItem.itemName}" is in your inventory (${matchingItem.quantity} ${matchingItem.unit}). Add anyway?`,
+                confirmText: 'Add Anyway',
+              })
               if (!confirmAdd) {
                 setAddingItem(false)
                 return
@@ -515,9 +524,9 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
       setNewItemUnit('')
       setShowAddItem(false)
       await fetchShoppingList()
-    } catch (error) {
-      console.error('❌ Error adding item:', error)
-      alert('Failed to add item')
+    } catch (err) {
+      console.error('❌ Error adding item:', err)
+      error('Failed to add item')
     } finally {
       setAddingItem(false)
     }
@@ -559,7 +568,7 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
     }
 
     if (quantity <= 0) {
-      alert('Quantity must be greater than 0')
+      warning('Quantity must be greater than 0')
       return
     }
 
@@ -586,9 +595,9 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
       setAddBackItem(null)
       await fetchShoppingList()
       console.log('🟢 Item added back to shopping list')
-    } catch (error) {
-      console.error('❌ Error adding back item:', error)
-      alert(error instanceof Error ? error.message : 'Failed to add item')
+    } catch (err) {
+      console.error('❌ Error adding back item:', err)
+      error(err instanceof Error ? err.message : 'Failed to add item')
     } finally {
       setAddingBack(false)
     }
@@ -636,9 +645,9 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
       setSelectedStaples(defaultSelected)
       setShowStaplesModal(true)
       console.log('🟢 Loaded', data.staples.length, 'staples,', data.dueCount, 'due')
-    } catch (error) {
-      console.error('❌ Error fetching staples:', error)
-      alert('Failed to load staples')
+    } catch (err) {
+      console.error('❌ Error fetching staples:', err)
+      error('Failed to load staples')
     }
   }
 
@@ -660,9 +669,9 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
       console.log('🟢 Imported', data.importedCount, 'staples')
       setShowStaplesModal(false)
       await fetchShoppingList()
-    } catch (error) {
-      console.error('❌ Error importing staples:', error)
-      alert('Failed to import staples')
+    } catch (err) {
+      console.error('❌ Error importing staples:', err)
+      error('Failed to import staples')
     } finally {
       setImporting(false)
     }
@@ -679,9 +688,9 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
       setMealPlanOptions(data.mealPlans || [])
       setSelectedMealPlan('')
       setShowMealPlanModal(true)
-    } catch (error) {
-      console.error('❌ Error fetching meal plans:', error)
-      alert('Failed to load meal plans')
+    } catch (err) {
+      console.error('❌ Error fetching meal plans:', err)
+      error('Failed to load meal plans')
     }
   }
 
@@ -738,9 +747,9 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
           })
         }
       }
-    } catch (error) {
-      console.error('❌ Error importing meal plan:', error)
-      alert(error instanceof Error ? error.message : 'Failed to import from meal plan')
+    } catch (err) {
+      console.error('❌ Error importing meal plan:', err)
+      error(err instanceof Error ? err.message : 'Failed to import from meal plan')
     } finally {
       setImporting(false)
     }
@@ -758,9 +767,9 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
       console.log('🟢 Duplicate summary:', data.summary)
       setDuplicateGroups(data.duplicateGroups || [])
       setShowDedupeModal(true)
-    } catch (error) {
-      console.error('❌ Error finding duplicates:', error)
-      alert('Failed to find duplicates')
+    } catch (err) {
+      console.error('❌ Error finding duplicates:', err)
+      error('Failed to find duplicates')
     }
   }
 
@@ -815,9 +824,9 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
           newTotal,
         })
       }
-    } catch (error) {
-      console.error('❌ Error deduplicating:', error)
-      alert(error instanceof Error ? error.message : 'Failed to deduplicate')
+    } catch (err) {
+      console.error('❌ Error deduplicating:', err)
+      error(err instanceof Error ? err.message : 'Failed to deduplicate')
     } finally {
       // Remove this group from the combining set
       setCombiningGroups(prev => {
@@ -884,9 +893,9 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
       })
 
       console.log('🟢 All groups combined:', totalItemsCombined, 'items total')
-    } catch (error) {
-      console.error('❌ Error combining all:', error)
-      alert(error instanceof Error ? error.message : 'Failed to combine all')
+    } catch (err) {
+      console.error('❌ Error combining all:', err)
+      error(err instanceof Error ? err.message : 'Failed to combine all')
     } finally {
       setCombiningAll(false)
     }
@@ -909,9 +918,9 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
       setSelectedConvertItems(purchasedIds)
       setShowConvertModal(true)
       console.log('🟢 Loaded', data.items.length, 'items for conversion preview')
-    } catch (error) {
-      console.error('❌ Error fetching conversion preview:', error)
-      alert('Failed to load conversion preview')
+    } catch (err) {
+      console.error('❌ Error fetching conversion preview:', err)
+      error('Failed to load conversion preview')
     }
   }
 
@@ -944,10 +953,10 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
       await fetchShoppingList()
 
       // Show success message
-      alert(`Successfully added to inventory:\n${data.created} new items created\n${data.merged} items merged with existing`)
-    } catch (error) {
-      console.error('❌ Error converting to inventory:', error)
-      alert(error instanceof Error ? error.message : 'Failed to convert items')
+      success(`Successfully added to inventory: ${data.created} new items created, ${data.merged} items merged with existing`)
+    } catch (err) {
+      console.error('❌ Error converting to inventory:', err)
+      error(err instanceof Error ? err.message : 'Failed to convert items')
     } finally {
       setConverting(false)
     }

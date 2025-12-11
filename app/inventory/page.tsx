@@ -5,6 +5,7 @@ import { AppLayout, PageContainer } from '@/components/layout'
 import { Button, Badge, Input, Modal } from '@/components/ui'
 import { useSession } from 'next-auth/react'
 import { useAILoading } from '@/components/providers/AILoadingProvider'
+import { useNotification } from '@/components/providers/NotificationProvider'
 import { COMMON_UNITS, DEFAULT_CATEGORIES } from '@/lib/unit-conversion'
 import {
   enrichInventoryItemWithExpiry,
@@ -70,6 +71,7 @@ interface ShoppingListCategory {
 export default function InventoryPage() {
   const { data: session } = useSession()
   const { startLoading, stopLoading } = useAILoading()
+  const { error, warning, confirm } = useNotification()
   const [rawItems, setRawItems] = useState<RawInventoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [categories, setCategories] = useState<ShoppingListCategory[]>([])
@@ -227,9 +229,9 @@ export default function InventoryPage() {
       console.log('🟢 Settings saved:', data.settings)
       setSettings(data.settings)
       setShowSettingsModal(false)
-    } catch (error) {
-      console.error('❌ Error saving settings:', error)
-      alert('Failed to save settings')
+    } catch (err) {
+      console.error('❌ Error saving settings:', err)
+      error('Failed to save settings')
     } finally {
       setSavingSettings(false)
     }
@@ -350,7 +352,7 @@ export default function InventoryPage() {
     )
 
     if (!mergeResult.canMerge) {
-      alert(`Cannot merge: Different units (${existingItem.unit} vs ${newItem.unit}). Please convert manually or add as new item.`)
+      warning(`Cannot merge: Different units (${existingItem.unit} vs ${newItem.unit}). Please convert manually or add as new item.`)
       return
     }
 
@@ -392,9 +394,9 @@ export default function InventoryPage() {
       setDuplicateCheck(null)
       setShelfLifeSuggestion(null)
       setShowMergeOption(false)
-    } catch (error) {
-      console.error('❌ Error merging items:', error)
-      alert('Failed to merge items')
+    } catch (err) {
+      console.error('❌ Error merging items:', err)
+      error('Failed to merge items')
     }
   }
 
@@ -509,9 +511,9 @@ export default function InventoryPage() {
         }))
       )
       setPhotoSummary(data.summary || '')
-    } catch (error) {
-      console.error('❌ Error analyzing photo:', error)
-      alert(error instanceof Error ? error.message : 'Failed to analyze photo')
+    } catch (err) {
+      console.error('❌ Error analyzing photo:', err)
+      error(err instanceof Error ? err.message : 'Failed to analyze photo')
     } finally {
       setAnalyzingPhoto(false)
       stopLoading()
@@ -549,9 +551,9 @@ export default function InventoryPage() {
       setPhotoImages([])
       setExtractedItems([])
       setPhotoSummary('')
-    } catch (error) {
-      console.error('❌ Error importing items:', error)
-      alert(error instanceof Error ? error.message : 'Failed to import items')
+    } catch (err) {
+      console.error('❌ Error importing items:', err)
+      error(err instanceof Error ? err.message : 'Failed to import items')
     } finally {
       setImportingPhoto(false)
     }
@@ -613,16 +615,22 @@ export default function InventoryPage() {
       setDuplicateCheck(null)
       setShelfLifeSuggestion(null)
       setShowMergeOption(false)
-    } catch (error) {
-      console.error('❌ Error creating item:', error)
-      alert(error instanceof Error ? error.message : 'Failed to create item')
+    } catch (err) {
+      console.error('❌ Error creating item:', err)
+      error(err instanceof Error ? err.message : 'Failed to create item')
     } finally {
       setAddingItem(false)
     }
   }
 
   const handleDeleteItem = async (id: string, itemName: string) => {
-    if (!confirm(`Delete "${itemName}"? This cannot be undone.`)) return
+    const confirmed = await confirm({
+      title: 'Delete Item',
+      message: `Delete "${itemName}"? This cannot be undone.`,
+      confirmText: 'Delete',
+      confirmVariant: 'danger',
+    })
+    if (!confirmed) return
 
     try {
       console.log('🔷 Deleting item:', itemName)
@@ -639,9 +647,9 @@ export default function InventoryPage() {
         next.delete(id)
         return next
       })
-    } catch (error) {
-      console.error('❌ Error deleting item:', error)
-      alert('Failed to delete item')
+    } catch (err) {
+      console.error('❌ Error deleting item:', err)
+      error('Failed to delete item')
     }
   }
 
@@ -661,9 +669,9 @@ export default function InventoryPage() {
       const data = await response.json()
       console.log('🟢 Item updated:', data.item.isActive ? 'Active' : 'Inactive')
       setRawItems(rawItems.map(i => i.id === item.id ? data.item : i))
-    } catch (error) {
-      console.error('❌ Error updating item:', error)
-      alert('Failed to update item')
+    } catch (err) {
+      console.error('❌ Error updating item:', err)
+      error('Failed to update item')
     }
   }
 
@@ -708,9 +716,9 @@ export default function InventoryPage() {
       console.log('🟢 Updated item:', data.item.itemName)
       setRawItems(rawItems.map(i => i.id === editingItem.id ? data.item : i))
       setEditingItem(null)
-    } catch (error) {
-      console.error('❌ Error updating item:', error)
-      alert(error instanceof Error ? error.message : 'Failed to update item')
+    } catch (err) {
+      console.error('❌ Error updating item:', err)
+      error(err instanceof Error ? err.message : 'Failed to update item')
     } finally {
       setSavingEdit(false)
     }
@@ -774,7 +782,13 @@ export default function InventoryPage() {
 
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return
-    if (!confirm(`Delete ${selectedIds.size} selected items? This cannot be undone.`)) return
+    const confirmed = await confirm({
+      title: 'Delete Items',
+      message: `Delete ${selectedIds.size} selected items? This cannot be undone.`,
+      confirmText: 'Delete All',
+      confirmVariant: 'danger',
+    })
+    if (!confirmed) return
 
     try {
       console.log('🔷 Bulk deleting', selectedIds.size, 'items')
@@ -784,9 +798,9 @@ export default function InventoryPage() {
       console.log('🟢 Bulk delete complete')
       setRawItems(rawItems.filter(i => !selectedIds.has(i.id)))
       setSelectedIds(new Set())
-    } catch (error) {
-      console.error('❌ Error in bulk delete:', error)
-      alert('Failed to delete some items')
+    } catch (err) {
+      console.error('❌ Error in bulk delete:', err)
+      error('Failed to delete some items')
     }
   }
 
@@ -813,9 +827,9 @@ export default function InventoryPage() {
         return updated || i
       }))
       setSelectedIds(new Set())
-    } catch (error) {
-      console.error('❌ Error in bulk update:', error)
-      alert('Failed to update some items')
+    } catch (err) {
+      console.error('❌ Error in bulk update:', err)
+      error('Failed to update some items')
     }
   }
 

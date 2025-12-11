@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { AppLayout, PageContainer } from '@/components/layout'
 import { Button, Badge, Input, Modal } from '@/components/ui'
 import { useSession } from 'next-auth/react'
+import { useNotification } from '@/components/providers/NotificationProvider'
 import type {
   StapleFrequency,
   StapleDueStatus,
@@ -53,6 +54,7 @@ interface RawStaple {
 
 export default function StaplesPage() {
   const { data: session } = useSession()
+  const { success, error, warning, confirm } = useNotification()
   const [rawStaples, setRawStaples] = useState<RawStaple[]>([])
   const [loading, setLoading] = useState(true)
   const [shoppingListCategories, setShoppingListCategories] = useState<ShoppingListCategory[]>([])
@@ -189,16 +191,22 @@ export default function StaplesPage() {
         notes: '',
       })
       setShowAddForm(false)
-    } catch (error) {
-      console.error('❌ Error creating staple:', error)
-      alert(error instanceof Error ? error.message : 'Failed to create staple')
+    } catch (err) {
+      console.error('❌ Error creating staple:', err)
+      error(err instanceof Error ? err.message : 'Failed to create staple')
     } finally {
       setAddingStaple(false)
     }
   }
 
   const handleDeleteStaple = async (id: string, itemName: string) => {
-    if (!confirm(`Delete "${itemName}"? This cannot be undone.`)) return
+    const confirmed = await confirm({
+      title: 'Delete Staple',
+      message: `Delete "${itemName}"? This cannot be undone.`,
+      confirmText: 'Delete',
+      confirmVariant: 'danger',
+    })
+    if (!confirmed) return
 
     try {
       console.log('🔷 Deleting staple:', itemName)
@@ -210,9 +218,9 @@ export default function StaplesPage() {
 
       console.log('🟢 Staple deleted')
       setRawStaples(rawStaples.filter(s => s.id !== id))
-    } catch (error) {
-      console.error('❌ Error deleting staple:', error)
-      alert('Failed to delete staple')
+    } catch (err) {
+      console.error('❌ Error deleting staple:', err)
+      error('Failed to delete staple')
     }
   }
 
@@ -232,9 +240,9 @@ export default function StaplesPage() {
       const data = await response.json()
       console.log('🟢 Staple updated:', data.staple.isActive ? 'Active' : 'Inactive')
       setRawStaples(rawStaples.map(s => s.id === staple.id ? data.staple : s))
-    } catch (error) {
-      console.error('❌ Error updating staple:', error)
-      alert('Failed to update staple')
+    } catch (err) {
+      console.error('❌ Error updating staple:', err)
+      error('Failed to update staple')
     }
   }
 
@@ -277,9 +285,9 @@ export default function StaplesPage() {
       console.log('🟢 Updated staple:', data.staple.itemName)
       setRawStaples(rawStaples.map(s => s.id === editingStaple.id ? data.staple : s))
       setEditingStaple(null)
-    } catch (error) {
-      console.error('❌ Error updating staple:', error)
-      alert(error instanceof Error ? error.message : 'Failed to update staple')
+    } catch (err) {
+      console.error('❌ Error updating staple:', err)
+      error(err instanceof Error ? err.message : 'Failed to update staple')
     } finally {
       setSavingEdit(false)
     }
@@ -302,7 +310,7 @@ export default function StaplesPage() {
       const rows = parseCSV(content)
 
       if (rows.length === 0) {
-        alert('No data found in CSV file')
+        warning('No data found in CSV file')
         return
       }
 
@@ -311,9 +319,9 @@ export default function StaplesPage() {
       const summary = validateCSVData(rows, existingNames)
       console.log('🟢 CSV validation complete:', summary.validCount, 'valid,', summary.errorCount, 'errors')
       setCsvSummary(summary)
-    } catch (error) {
-      console.error('❌ Error parsing CSV:', error)
-      alert(error instanceof Error ? error.message : 'Failed to parse CSV file')
+    } catch (err) {
+      console.error('❌ Error parsing CSV:', err)
+      error(err instanceof Error ? err.message : 'Failed to parse CSV file')
     }
 
     // Reset file input
@@ -331,7 +339,7 @@ export default function StaplesPage() {
 
     const itemsToImport = getImportableItems(csvSummary)
     if (itemsToImport.length === 0) {
-      alert('No valid items to import')
+      warning('No valid items to import')
       return
     }
 
@@ -359,10 +367,10 @@ export default function StaplesPage() {
       setShowCSVImport(false)
       setCsvSummary(null)
       setCsvFileName('')
-      alert(`Successfully imported ${imported.length} staple${imported.length !== 1 ? 's' : ''}`)
-    } catch (error) {
-      console.error('❌ Error importing staples:', error)
-      alert('Failed to import staples')
+      success(`Successfully imported ${imported.length} staple${imported.length !== 1 ? 's' : ''}`)
+    } catch (err) {
+      console.error('❌ Error importing staples:', err)
+      error('Failed to import staples')
     } finally {
       setImportingCSV(false)
     }

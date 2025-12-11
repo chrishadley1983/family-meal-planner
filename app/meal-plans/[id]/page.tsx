@@ -8,6 +8,7 @@ import { AppLayout, PageContainer } from '@/components/layout'
 import { Button, Badge, Select, Modal } from '@/components/ui'
 import { useSession } from 'next-auth/react'
 import { useAILoading } from '@/components/providers/AILoadingProvider'
+import { useNotification } from '@/components/providers/NotificationProvider'
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useSortable } from '@dnd-kit/sortable'
@@ -279,6 +280,7 @@ export default function MealPlanDetailPage() {
   const router = useRouter()
   const { data: session } = useSession()
   const { startLoading, stopLoading } = useAILoading()
+  const { success, error, info, confirm } = useNotification()
   const mealPlanId = params.id as string
 
   const [mealPlan, setMealPlan] = useState<MealPlan | null>(null)
@@ -332,9 +334,9 @@ export default function MealPlanDetailPage() {
       if (data.mealPlan.customSchedule) {
         setWeekProfileSchedules(data.mealPlan.customSchedule)
       }
-    } catch (error) {
-      console.error('Error fetching meal plan:', error)
-      alert('Failed to load meal plan')
+    } catch (err) {
+      console.error('Error fetching meal plan:', err)
+      error('Failed to load meal plan')
       router.push('/meal-plans')
     } finally {
       setLoading(false)
@@ -468,14 +470,20 @@ export default function MealPlanDetailPage() {
           meals: prev.meals.map(m => m.id === mealId ? data.meal : m)
         }
       })
-    } catch (error) {
-      console.error('Error updating meal:', error)
-      alert('Failed to update meal')
+    } catch (err) {
+      console.error('Error updating meal:', err)
+      error('Failed to update meal')
     }
   }
 
   const handleMealDelete = async (mealId: string) => {
-    if (!confirm('Delete this meal?')) return
+    const confirmed = await confirm({
+      title: 'Delete Meal',
+      message: 'Delete this meal?',
+      confirmText: 'Delete',
+      confirmVariant: 'danger',
+    })
+    if (!confirmed) return
 
     try {
       const response = await fetch(`/api/meals/${mealId}`, {
@@ -492,9 +500,9 @@ export default function MealPlanDetailPage() {
           meals: prev.meals.filter(m => m.id !== mealId)
         }
       })
-    } catch (error) {
-      console.error('Error deleting meal:', error)
-      alert('Failed to delete meal')
+    } catch (err) {
+      console.error('Error deleting meal:', err)
+      error('Failed to delete meal')
     }
   }
 
@@ -545,7 +553,7 @@ export default function MealPlanDetailPage() {
         // Check if already cooked
         if (data.alreadyCooked) {
           setShowCookingModal(false)
-          alert('This meal has already been marked as cooked.')
+          info('This meal has already been marked as cooked.')
           return
         }
 
@@ -597,11 +605,11 @@ export default function MealPlanDetailPage() {
 
         setLoadingCookingPreview(false)
       }
-    } catch (error) {
-      console.error('❌ Error:', error)
+    } catch (err) {
+      console.error('❌ Error:', err)
       setShowCookingModal(false)
       setLoadingCookingPreview(false)
-      alert(error instanceof Error ? error.message : 'Failed to process cooking request')
+      error(err instanceof Error ? err.message : 'Failed to process cooking request')
     }
   }
 
@@ -649,7 +657,7 @@ export default function MealPlanDetailPage() {
       if (data.deduction) {
         const summary = data.deduction
         if (summary.notFound > 0 || summary.partiallyDeducted > 0) {
-          alert(
+          info(
             `Meal marked as cooked!\n\n` +
             `Deduction summary:\n` +
             `- ${summary.fullyDeducted} items fully deducted\n` +
@@ -659,9 +667,9 @@ export default function MealPlanDetailPage() {
         }
       }
       console.log('🟢 Meal marked as cooked')
-    } catch (error) {
-      console.error('❌ Error marking meal as cooked:', error)
-      alert(error instanceof Error ? error.message : 'Failed to mark meal as cooked')
+    } catch (err) {
+      console.error('❌ Error marking meal as cooked:', err)
+      error(err instanceof Error ? err.message : 'Failed to mark meal as cooked')
     } finally {
       setConfirmingCook(false)
     }
@@ -689,7 +697,12 @@ export default function MealPlanDetailPage() {
   const handleStatusChange = async (newStatus: string) => {
     if (!mealPlan) return
 
-    const confirmed = confirm(`Are you sure you want to ${newStatus === 'Finalized' ? 'finalize' : newStatus === 'Draft' ? 'reopen' : 'archive'} this meal plan?`)
+    const actionText = newStatus === 'Finalized' ? 'finalize' : newStatus === 'Draft' ? 'reopen' : 'archive'
+    const confirmed = await confirm({
+      title: `${actionText.charAt(0).toUpperCase() + actionText.slice(1)} Meal Plan`,
+      message: `Are you sure you want to ${actionText} this meal plan?`,
+      confirmText: actionText.charAt(0).toUpperCase() + actionText.slice(1),
+    })
     if (!confirmed) return
 
     setSaving(true)
@@ -703,18 +716,22 @@ export default function MealPlanDetailPage() {
       if (!response.ok) throw new Error('Failed to update status')
       const data = await response.json()
       setMealPlan(data.mealPlan)
-    } catch (error) {
-      console.error('Error updating status:', error)
-      alert('Failed to update status')
+    } catch (err) {
+      console.error('Error updating status:', err)
+      error('Failed to update status')
     } finally {
       setSaving(false)
     }
   }
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to permanently delete this meal plan? This cannot be undone.')) {
-      return
-    }
+    const confirmed = await confirm({
+      title: 'Delete Meal Plan',
+      message: 'Are you sure you want to permanently delete this meal plan? This cannot be undone.',
+      confirmText: 'Delete',
+      confirmVariant: 'danger',
+    })
+    if (!confirmed) return
 
     setSaving(true)
     try {
@@ -723,19 +740,22 @@ export default function MealPlanDetailPage() {
       })
 
       if (!response.ok) throw new Error('Failed to delete meal plan')
-      alert('Meal plan deleted successfully')
+      success('Meal plan deleted successfully')
       router.push('/meal-plans')
-    } catch (error) {
-      console.error('Error deleting meal plan:', error)
-      alert('Failed to delete meal plan')
+    } catch (err) {
+      console.error('Error deleting meal plan:', err)
+      error('Failed to delete meal plan')
       setSaving(false)
     }
   }
 
   const handleRegenerateWithAI = async () => {
-    if (!confirm('Regenerate this meal plan with AI? Locked meals will be preserved.')) {
-      return
-    }
+    const confirmed = await confirm({
+      title: 'Regenerate Meal Plan',
+      message: 'Regenerate this meal plan with AI? Locked meals will be preserved.',
+      confirmText: 'Regenerate',
+    })
+    if (!confirmed) return
 
     setRegenerating(true)
     startLoading('Regenerating your meal plan...')
@@ -754,10 +774,10 @@ export default function MealPlanDetailPage() {
       console.log('🟢 Meal plan regenerated successfully')
 
       setMealPlan(data.mealPlan)
-      alert(`Meal plan regenerated successfully!\n\n${data.summary || 'New meals generated.'}`)
-    } catch (error: any) {
-      console.error('❌ Error regenerating:', error)
-      alert(error.message || 'Failed to regenerate meal plan')
+      success(`Meal plan regenerated successfully! ${data.summary || 'New meals generated.'}`)
+    } catch (err: any) {
+      console.error('❌ Error regenerating:', err)
+      error(err.message || 'Failed to regenerate meal plan')
     } finally {
       setRegenerating(false)
       stopLoading()
@@ -781,9 +801,9 @@ export default function MealPlanDetailPage() {
       if (!response.ok) throw new Error('Failed to save schedule')
       setShowEditSchedule(false)
       fetchMealPlan()
-    } catch (error) {
-      console.error('Error saving schedule:', error)
-      alert('Failed to save schedule')
+    } catch (err) {
+      console.error('Error saving schedule:', err)
+      error('Failed to save schedule')
     } finally {
       setSaving(false)
     }
