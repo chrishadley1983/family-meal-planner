@@ -11,6 +11,7 @@ import { Button, Badge, Input, Select } from '@/components/ui'
 import { useSession } from 'next-auth/react'
 import { useAILoading } from '@/components/providers/AILoadingProvider'
 import { useNotification } from '@/components/providers/NotificationProvider'
+import { ChatMessage, IngredientModification } from '@/lib/types/nutritionist'
 
 interface RecipePageProps {
   params: Promise<{ id: string }>
@@ -69,6 +70,12 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
   const [macroAnalysis, setMacroAnalysis] = useState<MacroAnalysis | null>(null)
   const [nutritionistFeedback, setNutritionistFeedback] = useState<string>('')
   const [loadingAI, setLoadingAI] = useState(false)
+
+  // Interactive Nutritionist Chat state
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+  const [chatInput, setChatInput] = useState('')
+  const [suggestedPrompts, setSuggestedPrompts] = useState<string[]>([])
+  const [chatLoading, setChatLoading] = useState(false)
 
   // Undo history state
   const [history, setHistory] = useState<Array<{
@@ -152,6 +159,174 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
     }
   }
 
+  // Fetch initial suggested prompts when macro analysis is available
+  const fetchSuggestedPrompts = async (analysis: MacroAnalysis) => {
+    try {
+      const params = new URLSearchParams({
+        overallRating: analysis.overallRating,
+        protein: String(analysis.perServing.protein),
+        fat: String(analysis.perServing.fat),
+        carbs: String(analysis.perServing.carbs),
+        sodium: String(analysis.perServing.sodium),
+        fiber: String(analysis.perServing.fiber),
+      })
+      const response = await fetch(`/api/recipes/nutritionist-chat?${params}`)
+      if (response.ok) {
+        const data = await response.json()
+        setSuggestedPrompts(data.suggestedPrompts || [])
+      }
+    } catch (err) {
+      console.error('❌ Failed to fetch suggested prompts:', err)
+    }
+  }
+
+  // Send a message to the nutritionist chat
+  const sendChatMessage = async (message: string) => {
+    if (!message.trim() || !macroAnalysis) return
+
+    const userMessage: ChatMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: message.trim(),
+      timestamp: new Date(),
+    }
+
+    setChatMessages((prev: ChatMessage[]) => [...prev, userMessage])
+    setChatInput('')
+    setChatLoading(true)
+
+    try {
+      console.log('🗣️ Sending chat message:', message.substring(0, 50))
+      const response = await fetch('/api/recipes/nutritionist-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipe: {
+            recipeName,
+            servings,
+            mealType,
+            ingredients: ingredients.filter(i => i.ingredientName && i.unit),
+          },
+          macroAnalysis,
+          conversationHistory: chatMessages.map(m => ({
+            role: m.role,
+            content: m.content,
+          })),
+          userMessage: message.trim(),
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log('🟢 Chat response received:', {
+          hasModifications: !!data.ingredientModifications?.length,
+          suggestedPrompts: data.suggestedPrompts?.length,
+        })
+
+        const assistantMessage: ChatMessage = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: data.message,
+          timestamp: new Date(),
+        }
+        setChatMessages((prev: ChatMessage[]) => [...prev, assistantMessage])
+        setSuggestedPrompts(data.suggestedPrompts || [])
+
+        // Apply ingredient modifications if any
+        if (data.ingredientModifications && data.ingredientModifications.length > 0) {
+          applyIngredientModifications(data.ingredientModifications)
+        }
+      } else {
+        console.error('❌ Chat request failed')
+        const errorMessage: ChatMessage = {
+          id: `error-${Date.now()}`,
+          role: 'assistant',
+          content: "I'm having trouble responding right now. Please try again.",
+          timestamp: new Date(),
+        }
+        setChatMessages((prev: ChatMessage[]) => [...prev, errorMessage])
+      }
+    } catch (err) {
+      console.error('❌ Failed to send chat message:', err)
+      const errorMessage: ChatMessage = {
+        id: `error-${Date.now()}`,
+        role: 'assistant',
+        content: "Something went wrong. Please try again.",
+        timestamp: new Date(),
+      }
+      setChatMessages((prev: ChatMessage[]) => [...prev, errorMessage])
+    } finally {
+      setChatLoading(false)
+    }
+  }
+
+  // Apply ingredient modifications from the nutritionist
+  const applyIngredientModifications = (modifications: IngredientModification[]) => {
+    console.log('⚡ Applying ingredient modifications:', modifications)
+    saveToHistory() // Save current state for undo
+
+    let updatedIngredients = [...ingredients]
+
+    for (const mod of modifications) {
+      switch (mod.action) {
+        case 'add':
+          if (mod.newIngredient) {
+            updatedIngredients.push({
+              ingredientName: mod.newIngredient.name,
+              quantity: mod.newIngredient.quantity,
+              unit: mod.newIngredient.unit,
+              notes: mod.newIngredient.notes || '',
+            })
+            console.log('✅ Added ingredient:', mod.newIngredient.name)
+          }
+          break
+
+        case 'remove':
+          updatedIngredients = updatedIngredients.filter(
+            ing => ing.ingredientName.toLowerCase() !== mod.ingredientName.toLowerCase()
+          )
+          console.log('✅ Removed ingredient:', mod.ingredientName)
+          break
+
+        case 'replace':
+          if (mod.newIngredient) {
+            const index = updatedIngredients.findIndex(
+              ing => ing.ingredientName.toLowerCase() === mod.ingredientName.toLowerCase()
+            )
+            if (index !== -1) {
+              updatedIngredients[index] = {
+                ingredientName: mod.newIngredient.name,
+                quantity: mod.newIngredient.quantity,
+                unit: mod.newIngredient.unit,
+                notes: mod.newIngredient.notes || '',
+              }
+              console.log('✅ Replaced ingredient:', mod.ingredientName, '→', mod.newIngredient.name)
+            }
+          }
+          break
+
+        case 'adjust':
+          if (mod.newIngredient) {
+            const index = updatedIngredients.findIndex(
+              ing => ing.ingredientName.toLowerCase() === mod.ingredientName.toLowerCase()
+            )
+            if (index !== -1) {
+              updatedIngredients[index] = {
+                ...updatedIngredients[index],
+                quantity: mod.newIngredient.quantity,
+                unit: mod.newIngredient.unit || updatedIngredients[index].unit,
+              }
+              console.log('✅ Adjusted ingredient:', mod.ingredientName, 'to', mod.newIngredient.quantity, mod.newIngredient.unit)
+            }
+          }
+          break
+      }
+    }
+
+    setIngredients(updatedIngredients)
+    // Note: The existing useEffect will auto-trigger macro analysis refresh due to ingredients change
+  }
+
   useEffect(() => {
     fetchRecipe()
   }, [id])
@@ -181,6 +356,34 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
       return () => clearTimeout(timer)
     }
   }, [isEditing, recipeName, ingredients, servings, mealType])
+
+  // Initialize chat with nutritionist feedback when entering edit mode
+  useEffect(() => {
+    if (isEditing && nutritionistFeedback && chatMessages.length === 0) {
+      console.log('💬 Initializing nutritionist chat with initial feedback')
+      const initialMessage: ChatMessage = {
+        id: 'initial-feedback',
+        role: 'assistant',
+        content: nutritionistFeedback,
+        timestamp: new Date(),
+      }
+      setChatMessages([initialMessage])
+
+      // Fetch initial suggested prompts
+      if (macroAnalysis) {
+        fetchSuggestedPrompts(macroAnalysis)
+      }
+    }
+  }, [isEditing, nutritionistFeedback, macroAnalysis])
+
+  // Reset chat when exiting edit mode
+  useEffect(() => {
+    if (!isEditing) {
+      setChatMessages([])
+      setChatInput('')
+      setSuggestedPrompts([])
+    }
+  }, [isEditing])
 
   // Scale ingredients when servings change (if scaling is enabled)
   useEffect(() => {
@@ -939,7 +1142,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                   </div>
                 </div>
 
-                {/* Emilia's Nutritionist Feedback */}
+                {/* Emilia's Nutritionist Feedback - Interactive in Edit Mode */}
                 {nutritionistFeedback && (
                   <div className="bg-gradient-to-r from-green-900/20 to-blue-900/20 border border-green-800/50 rounded-lg p-6 mb-6">
                     <div className="flex items-start gap-4">
@@ -958,8 +1161,89 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
                           <h3 className="text-lg font-semibold text-white">Emilia&apos;s Nutritionist Tips</h3>
+                          {isEditing && (
+                            <span className="text-xs text-green-400 bg-green-900/30 px-2 py-0.5 rounded-full">
+                              Interactive
+                            </span>
+                          )}
                         </div>
-                        <p className="text-zinc-300 leading-relaxed">{nutritionistFeedback}</p>
+
+                        {/* View Mode - Static Feedback */}
+                        {!isEditing && (
+                          <p className="text-zinc-300 leading-relaxed">{nutritionistFeedback}</p>
+                        )}
+
+                        {/* Edit Mode - Interactive Chat */}
+                        {isEditing && (
+                          <div className="space-y-4">
+                            {/* Chat Messages */}
+                            <div className="space-y-3 max-h-64 overflow-y-auto">
+                              {chatMessages.map((msg) => (
+                                <div
+                                  key={msg.id}
+                                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                                >
+                                  <div
+                                    className={`max-w-[85%] rounded-lg px-4 py-2 ${
+                                      msg.role === 'user'
+                                        ? 'bg-purple-600 text-white'
+                                        : 'bg-zinc-700/50 text-zinc-200'
+                                    }`}
+                                  >
+                                    <p className="text-sm leading-relaxed">{msg.content}</p>
+                                  </div>
+                                </div>
+                              ))}
+                              {chatLoading && (
+                                <div className="flex justify-start">
+                                  <div className="bg-zinc-700/50 text-zinc-400 rounded-lg px-4 py-2">
+                                    <p className="text-sm">Emilia is typing...</p>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Suggested Prompts */}
+                            {suggestedPrompts.length > 0 && !chatLoading && (
+                              <div className="flex flex-wrap gap-2">
+                                {suggestedPrompts.map((prompt, index) => (
+                                  <button
+                                    key={index}
+                                    onClick={() => sendChatMessage(prompt)}
+                                    className="text-xs bg-zinc-700/50 hover:bg-zinc-600/50 text-zinc-300 px-3 py-1.5 rounded-full border border-zinc-600 transition-colors"
+                                  >
+                                    {prompt}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Chat Input */}
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                value={chatInput}
+                                onChange={(e) => setChatInput(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault()
+                                    sendChatMessage(chatInput)
+                                  }
+                                }}
+                                placeholder="Ask Emilia about nutrition..."
+                                className="flex-1 bg-zinc-800 border border-zinc-600 rounded-lg px-4 py-2 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-green-500"
+                                disabled={chatLoading}
+                              />
+                              <button
+                                onClick={() => sendChatMessage(chatInput)}
+                                disabled={chatLoading || !chatInput.trim()}
+                                className="bg-green-600 hover:bg-green-700 disabled:bg-zinc-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                              >
+                                Send
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

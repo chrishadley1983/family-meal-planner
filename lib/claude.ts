@@ -7,6 +7,12 @@ import {
   DEFAULT_SETTINGS
 } from './types/meal-plan-settings'
 import { buildMealPlanPrompt } from './meal-plan-prompt-builder'
+import {
+  NutritionistChatRequest,
+  NutritionistChatResponse,
+  IngredientModification,
+  SuggestedPromptsContext
+} from './types/nutritionist'
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY
@@ -1331,6 +1337,200 @@ Example tone: "Hi! This looks like a great choice - the protein content will rea
     return message.content[0].type === 'text' ? message.content[0].text : ''
   } catch (error) {
     console.error('Error getting nutritionist feedback with Claude:', error)
+    throw error
+  }
+}
+
+/**
+ * Generate context-aware suggested prompts based on nutritional analysis
+ */
+export function generateSuggestedPrompts(context: SuggestedPromptsContext): string[] {
+  const prompts: string[] = []
+
+  // Rating-based prompts
+  if (context.overallRating === 'red') {
+    prompts.push("What should I change to improve this?")
+    prompts.push("Why isn't this rated well?")
+  } else if (context.overallRating === 'yellow') {
+    prompts.push("What can I improve?")
+  }
+
+  // Protein-based prompts
+  if (context.macroTrackingEnabled && context.userProteinTarget) {
+    const proteinPercentage = (context.proteinPerServing / context.userProteinTarget) * 100
+    if (proteinPercentage < 25) {
+      prompts.push("How can I add more protein?")
+    }
+  } else if (context.proteinPerServing < 15) {
+    prompts.push("Can you suggest a protein boost?")
+  }
+
+  // Fat-based prompts
+  if (context.fatPerServing > 30) {
+    prompts.push("How can I reduce the fat?")
+  }
+
+  // Sodium-based prompts
+  if (context.sodiumPerServing > 800) {
+    prompts.push("How can I reduce the sodium?")
+  }
+
+  // Fiber-based prompts
+  if (context.fiberPerServing < 3) {
+    prompts.push("Can you add more fiber?")
+  }
+
+  // General prompts if we don't have specific ones
+  if (prompts.length === 0) {
+    prompts.push("Any suggestions to make this healthier?")
+  }
+
+  // Always add a general suggestion option
+  prompts.push("What vegetables would complement this?")
+
+  // Limit to 3 prompts
+  return prompts.slice(0, 3)
+}
+
+/**
+ * Interactive nutritionist chat - handles back-and-forth conversation with Emilia
+ */
+export async function interactWithNutritionist(
+  request: NutritionistChatRequest
+): Promise<NutritionistChatResponse> {
+  const { recipe, macroAnalysis, userProfile, conversationHistory, userMessage } = request
+
+  // Build the ingredients list for context
+  const ingredientsList = recipe.ingredients
+    .map(i => `- ${i.quantity} ${i.unit} ${i.ingredientName}${i.notes ? ` (${i.notes})` : ''}`)
+    .join('\n')
+
+  // Build conversation history for context
+  const historyText = conversationHistory
+    .map(msg => `${msg.role === 'user' ? 'User' : 'Emilia'}: ${msg.content}`)
+    .join('\n\n')
+
+  const systemPrompt = `You are Emilia, a friendly and knowledgeable nutritionist helping users improve their recipes. You have a warm, encouraging personality but stay focused on nutrition.
+
+IMPORTANT RULES:
+1. Stay focused on nutrition and recipe modifications. If asked about non-nutrition topics (weather, news, personal questions, etc.), politely redirect: "Ha! I'd love to chat about that, but I'm here to help make your meals as nutritious as possible! Is there anything about this recipe I can help with?"
+
+2. When suggesting ingredient changes, be specific about quantities and explain WHY the change helps.
+
+3. When the user agrees to a change (says things like "yes", "do it", "add it", "ok", "sounds good", "let's do it"), you MUST include the modification in your response.
+
+4. When the user partially agrees (e.g., "just change the yoghurt, not the oil"), only include the modifications they agreed to.
+
+5. When the user declines (says "no", "keep it", "never mind"), acknowledge gracefully and move on.
+
+6. Always consider the user's macro targets when making suggestions.
+
+RESPONSE FORMAT:
+You must respond with valid JSON in this exact format:
+{
+  "message": "Your conversational response to the user",
+  "suggestedPrompts": ["Follow-up question 1", "Follow-up question 2"],
+  "ingredientModifications": [
+    {
+      "action": "add|remove|replace|adjust",
+      "ingredientName": "existing ingredient name (for replace/remove/adjust)",
+      "newIngredient": {
+        "name": "new ingredient name",
+        "quantity": 100,
+        "unit": "g",
+        "notes": "optional notes"
+      },
+      "reason": "brief explanation"
+    }
+  ],
+  "modificationsPending": false
+}
+
+MODIFICATION ACTIONS:
+- "add": Add a new ingredient (only newIngredient is needed)
+- "remove": Remove an existing ingredient (only ingredientName is needed)
+- "replace": Replace ingredientName with newIngredient
+- "adjust": Change the quantity of ingredientName (use newIngredient with same name but different quantity)
+
+Only include "ingredientModifications" when the user has AGREED to changes. If you're proposing changes and waiting for confirmation, set "modificationsPending": true and leave ingredientModifications empty.
+
+SUGGESTED PROMPTS:
+Generate 2-3 relevant follow-up questions based on the current state of the recipe and conversation. These should help the user explore improvements.`
+
+  const userPrompt = `CURRENT RECIPE: ${recipe.recipeName}
+Servings: ${recipe.servings}
+Meal Type: ${recipe.mealType.join(', ') || 'Not specified'}
+
+INGREDIENTS:
+${ingredientsList}
+
+NUTRITIONAL ANALYSIS (per serving):
+- Calories: ${macroAnalysis.perServing.calories} kcal
+- Protein: ${macroAnalysis.perServing.protein}g
+- Carbs: ${macroAnalysis.perServing.carbs}g
+- Fat: ${macroAnalysis.perServing.fat}g
+- Fiber: ${macroAnalysis.perServing.fiber}g
+- Sugar: ${macroAnalysis.perServing.sugar}g
+- Sodium: ${macroAnalysis.perServing.sodium}mg
+- Overall Rating: ${macroAnalysis.overallRating}
+- Explanation: ${macroAnalysis.overallExplanation}
+
+USER PROFILE:
+Name: ${userProfile.profileName}
+${userProfile.macroTrackingEnabled ? `Daily Targets:
+- Calories: ${userProfile.dailyCalorieTarget || 'Not set'} kcal
+- Protein: ${userProfile.dailyProteinTarget || 'Not set'}g
+- Carbs: ${userProfile.dailyCarbsTarget || 'Not set'}g
+- Fat: ${userProfile.dailyFatTarget || 'Not set'}g` : 'Macro tracking not enabled'}
+
+${historyText ? `CONVERSATION HISTORY:\n${historyText}\n` : ''}
+USER'S NEW MESSAGE: ${userMessage}
+
+Respond as Emilia with helpful, friendly nutritional advice. Remember to output valid JSON only.`
+
+  try {
+    const response = await client.messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 1024,
+      messages: [{
+        role: 'user',
+        content: `${systemPrompt}\n\n${userPrompt}`
+      }]
+    })
+
+    const responseText = response.content[0].type === 'text' ? response.content[0].text : ''
+
+    // Parse the JSON response
+    try {
+      // Extract JSON from the response (handle potential markdown code blocks)
+      let jsonText = responseText
+      const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/)
+      if (jsonMatch) {
+        jsonText = jsonMatch[1].trim()
+      }
+
+      const parsed = JSON.parse(jsonText) as NutritionistChatResponse
+
+      // Ensure all required fields exist
+      return {
+        message: parsed.message || "I'm not sure how to respond to that. Can I help you with the recipe's nutrition?",
+        suggestedPrompts: parsed.suggestedPrompts || [],
+        ingredientModifications: parsed.ingredientModifications || undefined,
+        modificationsPending: parsed.modificationsPending || false
+      }
+    } catch (parseError) {
+      console.error('Failed to parse nutritionist response as JSON:', parseError)
+      console.error('Raw response:', responseText)
+
+      // Return the raw text as a message if JSON parsing fails
+      return {
+        message: responseText || "I'm having trouble understanding. Could you rephrase that?",
+        suggestedPrompts: ["What can I improve?", "Add more protein?"],
+        modificationsPending: false
+      }
+    }
+  } catch (error) {
+    console.error('Error in interactive nutritionist chat:', error)
     throw error
   }
 }

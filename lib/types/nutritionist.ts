@@ -1,0 +1,82 @@
+/**
+ * TypeScript interfaces for the interactive nutritionist chat feature
+ */
+
+export interface ChatMessage {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  timestamp: Date
+}
+
+export interface IngredientModification {
+  action: 'add' | 'remove' | 'replace' | 'adjust'
+  ingredientName: string // Existing ingredient name (for replace/remove/adjust)
+  newIngredient?: {
+    name: string
+    quantity: number
+    unit: string
+    notes?: string
+  }
+  reason: string
+}
+
+export interface NutritionistChatRequest {
+  recipe: {
+    recipeName: string
+    servings: number
+    mealType: string[]
+    ingredients: Array<{
+      ingredientName: string
+      quantity: number
+      unit: string
+      notes?: string
+    }>
+  }
+  macroAnalysis: {
+    perServing: {
+      calories: number
+      protein: number
+      carbs: number
+      fat: number
+      fiber: number
+      sugar: number
+      sodium: number
+    }
+    overallRating: 'green' | 'yellow' | 'red'
+    overallExplanation: string
+  }
+  userProfile: {
+    profileName: string
+    dailyCalorieTarget?: number | null
+    dailyProteinTarget?: number | null
+    dailyCarbsTarget?: number | null
+    dailyFatTarget?: number | null
+    macroTrackingEnabled: boolean
+  }
+  conversationHistory: Array<{
+    role: 'user' | 'assistant'
+    content: string
+  }>
+  userMessage: string
+}
+
+export interface NutritionistChatResponse {
+  message: string
+  suggestedPrompts: string[]
+  ingredientModifications?: IngredientModification[]
+  modificationsPending: boolean // Whether there are unapplied modifications awaiting confirmation
+}
+
+export interface SuggestedPromptsContext {
+  overallRating: 'green' | 'yellow' | 'red'
+  proteinPerServing: number
+  fatPerServing: number
+  carbsPerServing: number
+  sodiumPerServing: number
+  fiberPerServing: number
+  userProteinTarget?: number | null
+  userFatTarget?: number | null
+  userCarbsTarget?: number | null
+  macroTrackingEnabled: boolean
+}
