@@ -30,12 +30,14 @@ import type {
   InventorySortOptions,
   ExpiryStatus,
   StorageLocation,
+  InventorySettings,
 } from '@/lib/types/inventory'
 import {
   STORAGE_LOCATIONS,
   EXPIRY_STATUS_LABELS,
   EXPIRY_STATUS_COLORS,
   STORAGE_LOCATION_LABELS,
+  DEFAULT_INVENTORY_SETTINGS,
 } from '@/lib/types/inventory'
 
 // Raw item from API
@@ -145,6 +147,11 @@ export default function InventoryPage() {
   // Bulk selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
+  // Settings state
+  const [showSettingsModal, setShowSettingsModal] = useState(false)
+  const [settings, setSettings] = useState<Partial<InventorySettings>>(DEFAULT_INVENTORY_SETTINGS)
+  const [savingSettings, setSavingSettings] = useState(false)
+
   // Enrich items with expiry status
   const items = useMemo(() => {
     return rawItems.map(item => enrichInventoryItemWithExpiry({
@@ -179,7 +186,52 @@ export default function InventoryPage() {
   useEffect(() => {
     fetchItems()
     fetchCategories()
+    fetchSettings()
   }, [])
+
+  const fetchSettings = async () => {
+    try {
+      console.log('🔷 Fetching inventory settings...')
+      const response = await fetch('/api/inventory/settings')
+      const data = await response.json()
+      console.log('🟢 Settings fetched:', data.settings)
+      if (data.settings) {
+        setSettings(data.settings)
+      }
+    } catch (error) {
+      console.error('❌ Error fetching settings:', error)
+    }
+  }
+
+  const handleSaveSettings = async () => {
+    setSavingSettings(true)
+    try {
+      console.log('🔷 Saving inventory settings:', settings)
+      const response = await fetch('/api/inventory/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          skipInventoryCheck: settings.skipInventoryCheck,
+          smallQuantityThresholdGrams: settings.smallQuantityThresholdGrams,
+          smallQuantityThresholdMl: settings.smallQuantityThresholdMl,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to save settings')
+      }
+
+      const data = await response.json()
+      console.log('🟢 Settings saved:', data.settings)
+      setSettings(data.settings)
+      setShowSettingsModal(false)
+    } catch (error) {
+      console.error('❌ Error saving settings:', error)
+      alert('Failed to save settings')
+    } finally {
+      setSavingSettings(false)
+    }
+  }
 
   const fetchCategories = async () => {
     try {
@@ -782,6 +834,9 @@ export default function InventoryPage() {
         description="Track your food items and expiry dates"
         action={
           <div className="flex gap-2">
+            <Button onClick={() => setShowSettingsModal(true)} variant="secondary">
+              Settings
+            </Button>
             <Button onClick={() => setShowPhotoModal(true)} variant="secondary">
               Photo Import
             </Button>
@@ -1742,6 +1797,135 @@ export default function InventoryPage() {
                   {importingPhoto ? 'Importing...' : `Import ${extractedItems.filter(i => i.selected).length} Items`}
                 </Button>
               )}
+            </div>
+          </div>
+        </Modal>
+
+        {/* Inventory Settings Modal */}
+        <Modal
+          isOpen={showSettingsModal}
+          onClose={() => setShowSettingsModal(false)}
+          title="Inventory Settings"
+          maxWidth="md"
+        >
+          <div className="p-6 space-y-6">
+            {/* Skip Inventory Check Toggle */}
+            <div className="p-4 rounded-lg bg-zinc-800/50 border border-zinc-700">
+              <div className="flex items-start gap-3">
+                <div className="flex-1">
+                  <label htmlFor="skipInventoryCheck" className="text-white font-medium">
+                    Skip Inventory Check
+                  </label>
+                  <p className="text-sm text-zinc-400 mt-1">
+                    When enabled, shopping lists will not check your inventory for existing items.
+                    All recipe ingredients will be added to shopping lists without deductions.
+                  </p>
+                </div>
+                <div className="flex items-center">
+                  <button
+                    id="skipInventoryCheck"
+                    type="button"
+                    role="switch"
+                    aria-checked={settings.skipInventoryCheck}
+                    onClick={() => setSettings({ ...settings, skipInventoryCheck: !settings.skipInventoryCheck })}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-zinc-800 ${
+                      settings.skipInventoryCheck ? 'bg-purple-600' : 'bg-zinc-600'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        settings.skipInventoryCheck ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Small Quantity Thresholds */}
+            <div className="p-4 rounded-lg bg-zinc-800/50 border border-zinc-700">
+              <h3 className="text-white font-medium mb-2">Small Quantity Thresholds</h3>
+              <p className="text-sm text-zinc-400 mb-4">
+                Items with quantities below these thresholds will be flagged during cooking deduction,
+                allowing you to choose whether to remove them from inventory.
+              </p>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="thresholdGrams" className="block text-sm font-medium text-zinc-300 mb-1">
+                    Weight (grams)
+                  </label>
+                  <Input
+                    id="thresholdGrams"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={settings.smallQuantityThresholdGrams ?? DEFAULT_INVENTORY_SETTINGS.smallQuantityThresholdGrams}
+                    onChange={(e) => setSettings({
+                      ...settings,
+                      smallQuantityThresholdGrams: parseFloat(e.target.value) || 0
+                    })}
+                  />
+                  <p className="text-xs text-zinc-500 mt-1">
+                    Default: {DEFAULT_INVENTORY_SETTINGS.smallQuantityThresholdGrams}g
+                  </p>
+                </div>
+                <div>
+                  <label htmlFor="thresholdMl" className="block text-sm font-medium text-zinc-300 mb-1">
+                    Volume (ml)
+                  </label>
+                  <Input
+                    id="thresholdMl"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={settings.smallQuantityThresholdMl ?? DEFAULT_INVENTORY_SETTINGS.smallQuantityThresholdMl}
+                    onChange={(e) => setSettings({
+                      ...settings,
+                      smallQuantityThresholdMl: parseFloat(e.target.value) || 0
+                    })}
+                  />
+                  <p className="text-xs text-zinc-500 mt-1">
+                    Default: {DEFAULT_INVENTORY_SETTINGS.smallQuantityThresholdMl}ml
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Info about settings usage */}
+            <div className="p-3 rounded-lg bg-blue-900/20 border border-blue-600/50">
+              <div className="flex items-start gap-2">
+                <svg className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-sm text-blue-300">
+                  These settings affect how inventory is checked when importing meal plans to shopping lists
+                  and when marking meals as cooked.
+                </p>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end gap-3 pt-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  fetchSettings() // Reset to saved values
+                  setShowSettingsModal(false)
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveSettings}
+                variant="primary"
+                disabled={savingSettings}
+              >
+                {savingSettings ? 'Saving...' : 'Save Settings'}
+              </Button>
             </div>
           </div>
         </Modal>

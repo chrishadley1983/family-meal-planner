@@ -452,12 +452,43 @@ export async function GET(
       }
     }
 
-    // Enrich staples with due status and mark which are already imported
+    // Get user's inventory to check for existing items
+    const inventoryItems = await prisma.inventoryItem.findMany({
+      where: {
+        userId: session.user.id,
+        isActive: true,
+      },
+      select: {
+        itemName: true,
+        quantity: true,
+        unit: true,
+      },
+    })
+
+    // Helper to normalize item names for matching
+    const normalizeItemName = (name: string) => name.toLowerCase().trim()
+
+    // Enrich staples with due status, inventory info, and mark which are already imported
     const staplesWithStatus = staples.map((staple: Staple) => {
       const enriched = enrichStapleWithDueStatus(staple)
+      const normalizedStapleName = normalizeItemName(staple.itemName)
+
+      // Check if staple exists in inventory
+      const inventoryMatch = inventoryItems.find((inv: { itemName: string }) => {
+        const normalizedInvName = normalizeItemName(inv.itemName)
+        return (
+          normalizedInvName === normalizedStapleName ||
+          normalizedInvName.includes(normalizedStapleName) ||
+          normalizedStapleName.includes(normalizedInvName)
+        )
+      })
+
       return {
         ...enriched,
         alreadyImported: importedStapleIds.has(staple.id),
+        inInventory: !!inventoryMatch,
+        inventoryQuantity: inventoryMatch?.quantity || null,
+        inventoryUnit: inventoryMatch?.unit || null,
       }
     })
 
@@ -470,7 +501,12 @@ export async function GET(
       notDue: 4,
     }
 
-    type EnrichedStaple = StapleWithDueStatus & { alreadyImported: boolean }
+    type EnrichedStaple = StapleWithDueStatus & {
+      alreadyImported: boolean
+      inInventory: boolean
+      inventoryQuantity: number | null
+      inventoryUnit: string | null
+    }
 
     staplesWithStatus.sort((a: EnrichedStaple, b: EnrichedStaple) => {
       // First sort by due status

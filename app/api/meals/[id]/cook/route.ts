@@ -7,12 +7,15 @@ import {
   previewDeduction,
   performDeduction,
   getRecipeIngredientsForDeduction,
+  getInventorySettings,
 } from '@/lib/inventory/server'
+import { DEFAULT_INVENTORY_SETTINGS } from '@/lib/types/inventory'
 
 // Schema for marking meal as cooked
 const cookMealSchema = z.object({
   deductFromInventory: z.boolean().optional().default(true),
   allowPartialDeduction: z.boolean().optional().default(true),
+  itemsToRemove: z.array(z.string()).optional().default([]),
 })
 
 // GET /api/meals/[id]/cook - Preview deduction for a meal
@@ -82,8 +85,58 @@ export async function GET(
       })
     }
 
+    // Get inventory settings for small quantity threshold
+    const settings = await getInventorySettings(session.user.id)
+    const thresholdGrams = settings?.smallQuantityThresholdGrams ?? DEFAULT_INVENTORY_SETTINGS.smallQuantityThresholdGrams
+    const thresholdMl = settings?.smallQuantityThresholdMl ?? DEFAULT_INVENTORY_SETTINGS.smallQuantityThresholdMl
+
     // Preview deduction
     const preview = await previewDeduction(session.user.id, ingredients)
+
+    // Enrich preview items with small quantity info
+    const enrichedItems = preview.results.map(result => {
+      let isSmallQuantity = false
+      if (result.remainingInInventory !== null && result.remainingInInventory > 0) {
+        // Check if remaining quantity is below threshold based on unit
+        const unit = result.requestedUnit?.toLowerCase() || ''
+        const remaining = result.remainingInInventory
+
+        // Weight units
+        if (['g', 'gram', 'grams'].includes(unit)) {
+          isSmallQuantity = remaining <= thresholdGrams
+        } else if (['kg', 'kilogram', 'kilograms'].includes(unit)) {
+          isSmallQuantity = remaining * 1000 <= thresholdGrams
+        }
+        // Volume units
+        else if (['ml', 'milliliter', 'milliliters', 'millilitre', 'millilitres'].includes(unit)) {
+          isSmallQuantity = remaining <= thresholdMl
+        } else if (['l', 'liter', 'liters', 'litre', 'litres'].includes(unit)) {
+          isSmallQuantity = remaining * 1000 <= thresholdMl
+        }
+        // Count units - any value of 1 or less is considered small for count-based items
+        else if (['each', 'piece', 'pieces', 'unit', 'units'].includes(unit)) {
+          isSmallQuantity = remaining <= 1
+        }
+      } else if (result.remainingInInventory === 0) {
+        // Will be zero after deduction
+        isSmallQuantity = true
+      }
+
+      return {
+        ingredientName: result.ingredientName,
+        recipeQuantity: result.requestedQuantity,
+        recipeUnit: result.requestedUnit,
+        inventoryQuantity: result.remainingInInventory !== null
+          ? result.remainingInInventory + result.deductedQuantity
+          : null,
+        inventoryUnit: result.requestedUnit,
+        quantityAfter: result.remainingInInventory ?? 0,
+        inventoryItem: result.deductedFromId,
+        isInsufficient: result.status === 'partially_deducted',
+        isSmallQuantity,
+        status: result.status,
+      }
+    })
 
     return NextResponse.json({
       success: true,
@@ -96,7 +149,14 @@ export async function GET(
       },
       hasRecipe: true,
       hasIngredients: true,
-      preview,
+      preview: {
+        ...preview,
+        items: enrichedItems,
+        thresholds: {
+          grams: thresholdGrams,
+          ml: thresholdMl,
+        },
+      },
     })
   } catch (error) {
     console.error('❌ Error previewing meal deduction:', error)
@@ -168,6 +228,26 @@ export async function POST(
           notFound: deductionResult.notFound,
         })
       }
+    }
+
+    // Remove selected small quantity items from inventory
+    if (data.itemsToRemove && data.itemsToRemove.length > 0) {
+      console.log('🔷 Removing selected items from inventory:', data.itemsToRemove)
+      for (const itemId of data.itemsToRemove) {
+        // Verify the item belongs to the user before removing
+        const item = await prisma.inventoryItem.findUnique({
+          where: { id: itemId },
+          select: { userId: true },
+        })
+
+        if (item && item.userId === session.user.id) {
+          await prisma.inventoryItem.update({
+            where: { id: itemId },
+            data: { isActive: false },
+          })
+        }
+      }
+      console.log('🟢 Removed', data.itemsToRemove.length, 'items from inventory')
     }
 
     // Mark meal as cooked

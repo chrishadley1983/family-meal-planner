@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { formatDate, formatDateRange } from '@/lib/date-utils'
 import { AppLayout, PageContainer } from '@/components/layout'
-import { Button, Badge, Select } from '@/components/ui'
+import { Button, Badge, Select, Modal } from '@/components/ui'
 import { useSession } from 'next-auth/react'
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
@@ -57,6 +57,35 @@ interface Profile {
   dailyProteinTarget?: number | null
   dailyCarbsTarget?: number | null
   dailyFatTarget?: number | null
+}
+
+// Cooking deduction preview interfaces
+interface DeductionPreviewItem {
+  ingredientName: string
+  recipeQuantity: number
+  recipeUnit: string
+  inventoryQuantity: number
+  inventoryUnit: string
+  quantityAfter: number
+  status: 'full' | 'partial' | 'not_found'
+  isSmallQuantity?: boolean
+  inventoryItemId?: string | null
+}
+
+interface CookingPreview {
+  mealId: string
+  recipeName: string
+  scalingFactor: number
+  hasRecipe: boolean
+  hasIngredients: boolean
+  preview?: {
+    items: DeductionPreviewItem[]
+    summary: {
+      canFullyDeduct: number
+      canPartiallyDeduct: number
+      notInInventory: number
+    }
+  }
 }
 
 interface DailyMacros {
@@ -263,6 +292,13 @@ export default function MealPlanDetailPage() {
   const [currentDayIndex, setCurrentDayIndex] = useState(0) // Will be set based on weekStartDate
   const [touchStart, setTouchStart] = useState<number | null>(null)
   const [touchEnd, setTouchEnd] = useState<number | null>(null)
+
+  // Cooking modal state
+  const [showCookingModal, setShowCookingModal] = useState(false)
+  const [cookingPreview, setCookingPreview] = useState<CookingPreview | null>(null)
+  const [loadingCookingPreview, setLoadingCookingPreview] = useState(false)
+  const [confirmingCook, setConfirmingCook] = useState(false)
+  const [itemsToRemove, setItemsToRemove] = useState<Set<string>>(new Set())
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -492,55 +528,140 @@ export default function MealPlanDetailPage() {
         })
         console.log('🟢 Meal unmarked as cooked')
       } else {
-        // Mark as cooked and deduct from inventory
-        console.log('🔷 Marking meal as cooked:', mealId)
-        const response = await fetch(`/api/meals/${mealId}/cook`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            deductFromInventory: true,
-            allowPartialDeduction: true,
-          }),
-        })
+        // Show preview modal first
+        setLoadingCookingPreview(true)
+        setShowCookingModal(true)
 
-        if (!response.ok) {
-          const data = await response.json()
-          throw new Error(data.error || 'Failed to mark meal as cooked')
-        }
-
+        console.log('🔷 Fetching cooking preview for meal:', mealId)
+        const response = await fetch(`/api/meals/${mealId}/cook`)
         const data = await response.json()
 
-        // Update local state
-        setMealPlan(prev => {
-          if (!prev) return prev
-          return {
-            ...prev,
-            meals: prev.meals.map(m =>
-              m.id === mealId
-                ? { ...m, isCooked: true, cookedAt: data.cookedAt, inventoryDeducted: true }
-                : m
-            )
-          }
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to fetch cooking preview')
+        }
+
+        // Check if already cooked
+        if (data.alreadyCooked) {
+          setShowCookingModal(false)
+          alert('This meal has already been marked as cooked.')
+          return
+        }
+
+        // Check if no recipe
+        if (!data.hasRecipe) {
+          setShowCookingModal(false)
+          // Just mark as cooked without deduction
+          await confirmMarkCooked(mealId, false)
+          return
+        }
+
+        console.log('🟢 Cooking preview received:', data)
+
+        // Transform preview data for display
+        const meal = mealPlan?.meals.find(m => m.id === mealId)
+        const previewItems = data.preview?.items.map((item: any) => ({
+          ingredientName: item.ingredientName,
+          recipeQuantity: item.recipeQuantity,
+          recipeUnit: item.recipeUnit,
+          inventoryQuantity: item.inventoryQuantity || 0,
+          inventoryUnit: item.inventoryUnit || item.recipeUnit,
+          quantityAfter: item.quantityAfter || 0,
+          status: item.inventoryItem ? (item.isInsufficient ? 'partial' : 'full') : 'not_found',
+          isSmallQuantity: item.isSmallQuantity,
+          inventoryItemId: item.inventoryItem,
+        })) || []
+
+        // Initialize items to remove with small quantity items (pre-selected)
+        const smallQuantityItemIds = previewItems
+          .filter((item: any) => item.isSmallQuantity && item.inventoryItemId)
+          .map((item: any) => item.inventoryItemId)
+        setItemsToRemove(new Set(smallQuantityItemIds))
+
+        setCookingPreview({
+          mealId,
+          recipeName: data.meal?.recipeName || meal?.recipeName || 'Unknown',
+          scalingFactor: data.meal?.scalingFactor || 1,
+          hasRecipe: data.hasRecipe,
+          hasIngredients: data.hasIngredients,
+          preview: data.preview ? {
+            items: previewItems,
+            summary: {
+              canFullyDeduct: data.preview.items.filter((i: any) => i.inventoryItem && !i.isInsufficient).length,
+              canPartiallyDeduct: data.preview.items.filter((i: any) => i.inventoryItem && i.isInsufficient).length,
+              notInInventory: data.preview.items.filter((i: any) => !i.inventoryItem).length,
+            }
+          } : undefined,
         })
 
-        // Show deduction summary
-        if (data.deduction) {
-          const summary = data.deduction
-          if (summary.notFound > 0 || summary.partiallyDeducted > 0) {
-            alert(
-              `Meal marked as cooked!\n\n` +
-              `Deduction summary:\n` +
-              `- ${summary.fullyDeducted} items fully deducted\n` +
-              `- ${summary.partiallyDeducted} items partially deducted\n` +
-              `- ${summary.notFound} items not found in inventory`
-            )
-          }
-        }
-        console.log('🟢 Meal marked as cooked')
+        setLoadingCookingPreview(false)
       }
     } catch (error) {
-      console.error('❌ Error marking meal:', error)
-      alert(error instanceof Error ? error.message : 'Failed to update meal')
+      console.error('❌ Error:', error)
+      setShowCookingModal(false)
+      setLoadingCookingPreview(false)
+      alert(error instanceof Error ? error.message : 'Failed to process cooking request')
+    }
+  }
+
+  const confirmMarkCooked = async (mealId: string, deductFromInventory: boolean = true) => {
+    setConfirmingCook(true)
+    try {
+      const itemsToRemoveArray = Array.from(itemsToRemove)
+      console.log('🔷 Marking meal as cooked:', mealId, { deductFromInventory, itemsToRemove: itemsToRemoveArray })
+      const response = await fetch(`/api/meals/${mealId}/cook`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          deductFromInventory,
+          allowPartialDeduction: true,
+          itemsToRemove: itemsToRemoveArray,
+        }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to mark meal as cooked')
+      }
+
+      const data = await response.json()
+
+      // Update local state
+      setMealPlan(prev => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          meals: prev.meals.map(m =>
+            m.id === mealId
+              ? { ...m, isCooked: true, cookedAt: data.cookedAt, inventoryDeducted: data.deduction !== null }
+              : m
+          )
+        }
+      })
+
+      // Close modal and clear state
+      setShowCookingModal(false)
+      setCookingPreview(null)
+      setItemsToRemove(new Set())
+
+      // Show success message with deduction summary
+      if (data.deduction) {
+        const summary = data.deduction
+        if (summary.notFound > 0 || summary.partiallyDeducted > 0) {
+          alert(
+            `Meal marked as cooked!\n\n` +
+            `Deduction summary:\n` +
+            `- ${summary.fullyDeducted} items fully deducted\n` +
+            `- ${summary.partiallyDeducted} items partially deducted\n` +
+            `- ${summary.notFound} items not found in inventory`
+          )
+        }
+      }
+      console.log('🟢 Meal marked as cooked')
+    } catch (error) {
+      console.error('❌ Error marking meal as cooked:', error)
+      alert(error instanceof Error ? error.message : 'Failed to mark meal as cooked')
+    } finally {
+      setConfirmingCook(false)
     }
   }
 
@@ -1169,6 +1290,199 @@ export default function MealPlanDetailPage() {
             </div>
           </div>
         )}
+
+        {/* Cooking Preview Modal */}
+        <Modal
+          isOpen={showCookingModal}
+          onClose={() => {
+            setShowCookingModal(false)
+            setCookingPreview(null)
+            setLoadingCookingPreview(false)
+          }}
+          title="Mark as Cooked"
+          maxWidth="lg"
+        >
+          <div className="p-6">
+            {loadingCookingPreview ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400 mr-3"></div>
+                <span className="text-zinc-300">Loading deduction preview...</span>
+              </div>
+            ) : cookingPreview ? (
+              <div className="space-y-4">
+                {/* Recipe Info */}
+                <div className="p-3 rounded-lg bg-zinc-800/50 border border-zinc-700">
+                  <h3 className="text-white font-medium">{cookingPreview.recipeName}</h3>
+                  {cookingPreview.scalingFactor !== 1 && (
+                    <p className="text-sm text-zinc-400">
+                      Scaling: {cookingPreview.scalingFactor}x recipe
+                    </p>
+                  )}
+                </div>
+
+                {/* No Ingredients */}
+                {!cookingPreview.hasIngredients && (
+                  <div className="p-4 rounded-lg bg-blue-900/20 border border-blue-600/50">
+                    <p className="text-blue-300">
+                      This recipe has no ingredients to deduct from inventory.
+                    </p>
+                  </div>
+                )}
+
+                {/* Deduction Preview */}
+                {cookingPreview.preview && cookingPreview.preview.items.length > 0 && (
+                  <>
+                    {/* Summary */}
+                    <div className="grid grid-cols-3 gap-3 text-center">
+                      <div className="p-3 rounded-lg bg-green-900/20 border border-green-600/50">
+                        <div className="text-2xl font-bold text-green-400">
+                          {cookingPreview.preview.summary.canFullyDeduct}
+                        </div>
+                        <div className="text-xs text-zinc-400">Will be deducted</div>
+                      </div>
+                      <div className="p-3 rounded-lg bg-yellow-900/20 border border-yellow-600/50">
+                        <div className="text-2xl font-bold text-yellow-400">
+                          {cookingPreview.preview.summary.canPartiallyDeduct}
+                        </div>
+                        <div className="text-xs text-zinc-400">Partial deduction</div>
+                      </div>
+                      <div className="p-3 rounded-lg bg-red-900/20 border border-red-600/50">
+                        <div className="text-2xl font-bold text-red-400">
+                          {cookingPreview.preview.summary.notInInventory}
+                        </div>
+                        <div className="text-xs text-zinc-400">Not in inventory</div>
+                      </div>
+                    </div>
+
+                    {/* Small quantity items explanation */}
+                    {cookingPreview.preview.items.some(i => i.isSmallQuantity && i.inventoryItemId) && (
+                      <div className="p-3 rounded-lg bg-yellow-900/20 border border-yellow-600/50 text-sm">
+                        <p className="text-yellow-300 font-medium mb-1">Low Quantity Items Detected</p>
+                        <p className="text-zinc-400">
+                          Some items will have very small remaining quantities after cooking.
+                          Check the boxes below to remove them from inventory completely.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Detailed Item List */}
+                    <div className="max-h-64 overflow-y-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-zinc-800/50 sticky top-0">
+                          <tr>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-zinc-400">Ingredient</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-zinc-400">Needed</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-zinc-400">In Stock</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-zinc-400">After</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-zinc-400">Status</th>
+                            <th className="px-3 py-2 text-center text-xs font-medium text-zinc-400">Remove?</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-700">
+                          {cookingPreview.preview.items.map((item, index) => (
+                            <tr key={index} className={
+                              item.status === 'not_found' ? 'bg-red-900/10' :
+                              item.status === 'partial' ? 'bg-yellow-900/10' :
+                              item.isSmallQuantity ? 'bg-yellow-900/5' : ''
+                            }>
+                              <td className="px-3 py-2 text-white">
+                                {item.ingredientName}
+                                {item.isSmallQuantity && (
+                                  <span className="ml-2 text-xs px-1.5 py-0.5 bg-yellow-600/30 text-yellow-400 rounded">
+                                    Low
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2 text-zinc-300">
+                                {item.recipeQuantity} {item.recipeUnit}
+                              </td>
+                              <td className="px-3 py-2 text-zinc-300">
+                                {item.status === 'not_found' ? (
+                                  <span className="text-red-400">—</span>
+                                ) : (
+                                  `${item.inventoryQuantity} ${item.inventoryUnit}`
+                                )}
+                              </td>
+                              <td className="px-3 py-2 text-zinc-300">
+                                {item.status === 'not_found' ? (
+                                  <span className="text-red-400">—</span>
+                                ) : (
+                                  <span className={item.isSmallQuantity ? 'text-yellow-400 font-medium' : ''}>
+                                    {item.quantityAfter} {item.inventoryUnit}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2">
+                                {item.status === 'full' && (
+                                  <Badge variant="success" size="sm">Will deduct</Badge>
+                                )}
+                                {item.status === 'partial' && (
+                                  <Badge variant="warning" size="sm">Partial</Badge>
+                                )}
+                                {item.status === 'not_found' && (
+                                  <Badge variant="error" size="sm">Not found</Badge>
+                                )}
+                              </td>
+                              <td className="px-3 py-2 text-center">
+                                {item.isSmallQuantity && item.inventoryItemId && (
+                                  <input
+                                    type="checkbox"
+                                    checked={itemsToRemove.has(item.inventoryItemId)}
+                                    onChange={(e) => {
+                                      const newSet = new Set(itemsToRemove)
+                                      if (e.target.checked) {
+                                        newSet.add(item.inventoryItemId!)
+                                      } else {
+                                        newSet.delete(item.inventoryItemId!)
+                                      }
+                                      setItemsToRemove(newSet)
+                                    }}
+                                    className="rounded border-zinc-600 bg-zinc-800 text-purple-500 focus:ring-purple-500"
+                                    title={`Remove ${item.ingredientName} from inventory after cooking`}
+                                  />
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
+
+                {/* Actions */}
+                <div className="flex justify-end gap-3 pt-4 border-t border-zinc-700">
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setShowCookingModal(false)
+                      setCookingPreview(null)
+                      setItemsToRemove(new Set())
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  {cookingPreview.preview && cookingPreview.preview.items.length > 0 && (
+                    <Button
+                      variant="secondary"
+                      onClick={() => confirmMarkCooked(cookingPreview.mealId, false)}
+                      disabled={confirmingCook}
+                    >
+                      Cook without deducting
+                    </Button>
+                  )}
+                  <Button
+                    variant="primary"
+                    onClick={() => confirmMarkCooked(cookingPreview.mealId, true)}
+                    disabled={confirmingCook}
+                  >
+                    {confirmingCook ? 'Processing...' : 'Confirm & Deduct'}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </Modal>
       </PageContainer>
     </AppLayout>
   )

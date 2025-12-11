@@ -69,6 +69,9 @@ interface Staple {
   dueStatus: StapleDueStatus
   daysUntilDue: number | null
   alreadyImported?: boolean
+  inInventory?: boolean
+  inventoryQuantity?: number | null
+  inventoryUnit?: string | null
 }
 
 interface MealPlanOption {
@@ -94,6 +97,16 @@ interface DuplicateGroup {
   }
   confidence?: 'HIGH' | 'MEDIUM' | 'LOW'
   reason?: string
+}
+
+interface ExcludedItem {
+  id: string
+  itemName: string
+  recipeQuantity: number
+  recipeUnit: string
+  inventoryQuantity: number
+  inventoryItemId: string | null
+  addedBackAt: string | null
 }
 
 export default function ShoppingListDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -132,6 +145,15 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
     count: number
     items: Array<{ itemName: string; inventoryQuantity: number }>
   } | null>(null)
+
+  // Excluded items section (persistent)
+  const [excludedItems, setExcludedItems] = useState<ExcludedItem[]>([])
+  const [excludedSectionExpanded, setExcludedSectionExpanded] = useState(false)
+  const [showAddBackModal, setShowAddBackModal] = useState(false)
+  const [addBackItem, setAddBackItem] = useState<ExcludedItem | null>(null)
+  const [addBackQuantity, setAddBackQuantity] = useState<string>('')
+  const [addBackMode, setAddBackMode] = useState<'full' | 'difference' | 'custom'>('full')
+  const [addingBack, setAddingBack] = useState(false)
 
   // Deduplication
   const [showDedupeModal, setShowDedupeModal] = useState(false)
@@ -181,7 +203,20 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
 
   useEffect(() => {
     fetchShoppingList()
+    fetchExcludedItems()
   }, [id])
+
+  const fetchExcludedItems = async () => {
+    try {
+      const response = await fetch(`/api/shopping-lists/${id}/excluded-items`)
+      if (response.ok) {
+        const data = await response.json()
+        setExcludedItems(data.excludedItems || [])
+      }
+    } catch (error) {
+      console.error('❌ Error fetching excluded items:', error)
+    }
+  }
 
   const fetchShoppingList = async () => {
     try {
@@ -404,12 +439,44 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
     }
   }
 
-  const handleAddItem = async () => {
+  const handleAddItem = async (skipInventoryCheck = false) => {
     if (!newItemName.trim() || !newItemQuantity || !newItemUnit.trim() || addingItem) return
 
     setAddingItem(true)
     try {
       console.log('🔷 Adding item:', newItemName)
+
+      // Check inventory for existing item (unless skipped)
+      if (!skipInventoryCheck) {
+        try {
+          const inventoryResponse = await fetch('/api/inventory')
+          if (inventoryResponse.ok) {
+            const inventoryData = await inventoryResponse.json()
+            const normalizedNewName = newItemName.trim().toLowerCase()
+            const matchingItem = inventoryData.items?.find((inv: { itemName: string; quantity: number; unit: string; isActive: boolean }) => {
+              if (!inv.isActive) return false
+              const normalizedInvName = inv.itemName.toLowerCase()
+              return (
+                normalizedInvName === normalizedNewName ||
+                normalizedInvName.includes(normalizedNewName) ||
+                normalizedNewName.includes(normalizedInvName)
+              )
+            })
+
+            if (matchingItem) {
+              const confirmAdd = confirm(
+                `"${matchingItem.itemName}" is in your inventory (${matchingItem.quantity} ${matchingItem.unit}). Add anyway?`
+              )
+              if (!confirmAdd) {
+                setAddingItem(false)
+                return
+              }
+            }
+          }
+        } catch (invError) {
+          console.warn('⚠️ Could not check inventory:', invError)
+        }
+      }
 
       // Get category suggestion from AI
       let category = 'Other'
@@ -468,6 +535,83 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
       await fetchShoppingList()
     } catch (error) {
       console.error('❌ Error deleting item:', error)
+    }
+  }
+
+  // Add back excluded item
+  const handleOpenAddBackModal = (item: ExcludedItem) => {
+    setAddBackItem(item)
+    setAddBackMode('full')
+    setAddBackQuantity(item.recipeQuantity.toString())
+    setShowAddBackModal(true)
+  }
+
+  const handleAddBackItem = async () => {
+    if (!addBackItem || addingBack) return
+
+    let quantity: number
+    if (addBackMode === 'full') {
+      quantity = addBackItem.recipeQuantity
+    } else if (addBackMode === 'difference') {
+      quantity = Math.max(0, addBackItem.recipeQuantity - addBackItem.inventoryQuantity)
+    } else {
+      quantity = parseFloat(addBackQuantity) || addBackItem.recipeQuantity
+    }
+
+    if (quantity <= 0) {
+      alert('Quantity must be greater than 0')
+      return
+    }
+
+    setAddingBack(true)
+    try {
+      console.log('🔷 Adding back excluded item:', addBackItem.itemName, 'qty:', quantity)
+      const response = await fetch(`/api/shopping-lists/${id}/excluded-items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          excludedItemId: addBackItem.id,
+          quantity,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to add item')
+      }
+
+      const data = await response.json()
+      setExcludedItems(data.excludedItems || [])
+      setShowAddBackModal(false)
+      setAddBackItem(null)
+      await fetchShoppingList()
+      console.log('🟢 Item added back to shopping list')
+    } catch (error) {
+      console.error('❌ Error adding back item:', error)
+      alert(error instanceof Error ? error.message : 'Failed to add item')
+    } finally {
+      setAddingBack(false)
+    }
+  }
+
+  const handleDismissExcludedItem = async (itemId: string) => {
+    // Mark item as added back with 0 quantity (effectively dismissing it)
+    try {
+      const response = await fetch(`/api/shopping-lists/${id}/excluded-items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          excludedItemId: itemId,
+          quantity: 0.001, // Tiny amount to mark as "dismissed"
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setExcludedItems(data.excludedItems || [])
+      }
+    } catch (error) {
+      console.error('❌ Error dismissing excluded item:', error)
     }
   }
 
@@ -1153,7 +1297,7 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
                 />
               </div>
               <button
-                onClick={handleAddItem}
+                onClick={() => handleAddItem()}
                 disabled={addingItem || !newItemName.trim() || !newItemQuantity || !newItemUnit.trim()}
                 className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
               >
@@ -1326,7 +1470,183 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
             </ul>
           </div>
         )}
+
+        {/* Excluded Items Section (items skipped due to inventory) */}
+        {excludedItems.length > 0 && (
+          <div className="mt-6 bg-gray-800 rounded-lg overflow-hidden">
+            <button
+              onClick={() => setExcludedSectionExpanded(!excludedSectionExpanded)}
+              className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-750 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <svg
+                  className={`w-4 h-4 text-gray-400 transition-transform ${excludedSectionExpanded ? 'rotate-90' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+                <span className="text-gray-400 font-medium">
+                  Excluded Items ({excludedItems.length})
+                </span>
+              </div>
+              <span className="text-xs text-gray-500">Already in inventory</span>
+            </button>
+
+            {excludedSectionExpanded && (
+              <div className="border-t border-gray-700">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-750">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-400 uppercase">Item</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-400 uppercase">Recipe Needed</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-400 uppercase">In Inventory</th>
+                        <th className="px-4 py-2 text-right text-xs font-medium text-gray-400 uppercase">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-700">
+                      {excludedItems.map((item) => (
+                        <tr key={item.id} className="hover:bg-gray-750">
+                          <td className="px-4 py-3 text-white">{item.itemName}</td>
+                          <td className="px-4 py-3 text-gray-400">
+                            {item.recipeQuantity} {item.recipeUnit}
+                          </td>
+                          <td className="px-4 py-3 text-green-400">
+                            {item.inventoryQuantity} {item.recipeUnit}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex justify-end gap-2">
+                              {shoppingList.status === 'Draft' && (
+                                <>
+                                  <button
+                                    onClick={() => handleOpenAddBackModal(item)}
+                                    className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                                  >
+                                    Add
+                                  </button>
+                                  <button
+                                    onClick={() => handleDismissExcludedItem(item.id)}
+                                    className="text-xs px-2 py-1 text-gray-400 hover:text-gray-300"
+                                    title="Dismiss"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Add Back Excluded Item Modal */}
+      {showAddBackModal && addBackItem && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6 border-b border-gray-700">
+              <h2 className="text-xl font-semibold text-white">Add {addBackItem.itemName}</h2>
+              <p className="text-sm text-gray-400 mt-1">Choose how much to add to shopping list</p>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="bg-gray-750 rounded-lg p-3 text-sm">
+                <div className="flex justify-between text-gray-400">
+                  <span>Recipe needs:</span>
+                  <span>{addBackItem.recipeQuantity} {addBackItem.recipeUnit}</span>
+                </div>
+                <div className="flex justify-between text-green-400 mt-1">
+                  <span>In inventory:</span>
+                  <span>{addBackItem.inventoryQuantity} {addBackItem.recipeUnit}</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    checked={addBackMode === 'full'}
+                    onChange={() => {
+                      setAddBackMode('full')
+                      setAddBackQuantity(addBackItem.recipeQuantity.toString())
+                    }}
+                    className="text-blue-500"
+                  />
+                  <span className="text-gray-300">
+                    Add full amount ({addBackItem.recipeQuantity} {addBackItem.recipeUnit})
+                  </span>
+                </label>
+
+                {addBackItem.inventoryQuantity < addBackItem.recipeQuantity && (
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      checked={addBackMode === 'difference'}
+                      onChange={() => {
+                        setAddBackMode('difference')
+                        setAddBackQuantity((addBackItem.recipeQuantity - addBackItem.inventoryQuantity).toString())
+                      }}
+                      className="text-blue-500"
+                    />
+                    <span className="text-gray-300">
+                      Add difference ({(addBackItem.recipeQuantity - addBackItem.inventoryQuantity).toFixed(1)} {addBackItem.recipeUnit})
+                    </span>
+                  </label>
+                )}
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    checked={addBackMode === 'custom'}
+                    onChange={() => setAddBackMode('custom')}
+                    className="text-blue-500"
+                  />
+                  <span className="text-gray-300">Custom amount:</span>
+                  <input
+                    type="number"
+                    value={addBackQuantity}
+                    onChange={(e) => {
+                      setAddBackQuantity(e.target.value)
+                      setAddBackMode('custom')
+                    }}
+                    className="w-20 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-white text-sm"
+                    min="0.1"
+                    step="0.1"
+                  />
+                  <span className="text-gray-400">{addBackItem.recipeUnit}</span>
+                </label>
+              </div>
+            </div>
+            <div className="px-6 py-4 bg-gray-750 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowAddBackModal(false)
+                  setAddBackItem(null)
+                }}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddBackItem}
+                disabled={addingBack}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              >
+                {addingBack ? 'Adding...' : 'Add to List'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Import Staples Modal */}
       {showStaplesModal && (
@@ -1460,6 +1780,14 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="text-white font-medium">{staple.itemName}</span>
                               {getDueStatusBadge(staple.dueStatus)}
+                              {staple.inInventory && (
+                                <span
+                                  className="px-1.5 py-0.5 text-xs rounded bg-green-900/50 text-green-300 border border-green-700"
+                                  title={`In inventory: ${staple.inventoryQuantity} ${staple.inventoryUnit}`}
+                                >
+                                  In Inventory
+                                </span>
+                              )}
                               {staple.alreadyImported && (
                                 <span className="text-yellow-500 text-xs">(imported)</span>
                               )}
