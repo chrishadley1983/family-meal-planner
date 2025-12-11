@@ -34,6 +34,9 @@ interface Meal {
   leftoverFromMealId?: string | null
   notes?: string | null
   recipe?: Recipe | null
+  isCooked?: boolean
+  cookedAt?: string | null
+  inventoryDeducted?: boolean
 }
 
 interface MealPlan {
@@ -94,7 +97,7 @@ const MEAL_TYPES = [
 // Meal type order for consistent display and sorting
 const MEAL_TYPE_ORDER = ['breakfast', 'lunch', 'afternoon-snack', 'dinner', 'dessert']
 
-function SortableMealCard({ meal, recipes, onUpdate, onDelete, onToggleLock, disabled }: any) {
+function SortableMealCard({ meal, recipes, onUpdate, onDelete, onToggleLock, onMarkCooked, disabled, isFinalizedPlan }: any) {
   const {
     attributes,
     listeners,
@@ -134,9 +137,14 @@ function SortableMealCard({ meal, recipes, onUpdate, onDelete, onToggleLock, dis
             >
               ⋮⋮
             </button>
-            <span className="font-medium text-sm text-zinc-300">
+            <span className={`font-medium text-sm ${meal.isCooked ? 'text-green-400' : 'text-zinc-300'}`}>
               {MEAL_TYPES.find(mt => mt.key === meal.mealType.toLowerCase())?.label || meal.mealType}
             </span>
+            {meal.isCooked && (
+              <span className="text-xs px-1.5 py-0.5 rounded bg-green-900/50 text-green-400">
+                Cooked
+              </span>
+            )}
           </div>
 
           {/* Recipe Name Display with Batch Cooking Indicator */}
@@ -196,6 +204,25 @@ function SortableMealCard({ meal, recipes, onUpdate, onDelete, onToggleLock, dis
         </div>
 
         <div className="flex gap-1 ml-2">
+          {/* Mark as Cooked button - only show for finalized plans with recipes */}
+          {isFinalizedPlan && meal.recipeId && !meal.isCooked && (
+            <button
+              onClick={() => onMarkCooked(meal.id)}
+              className="text-xs text-teal-400 hover:text-teal-300"
+              title="Mark as cooked and deduct from inventory"
+            >
+              🍳
+            </button>
+          )}
+          {isFinalizedPlan && meal.isCooked && (
+            <button
+              onClick={() => onMarkCooked(meal.id, true)}
+              className="text-xs text-green-400 hover:text-green-300"
+              title="Unmark as cooked"
+            >
+              ✓
+            </button>
+          )}
           <button
             onClick={() => onToggleLock(meal.id, !meal.isLocked)}
             disabled={disabled}
@@ -435,6 +462,86 @@ export default function MealPlanDetailPage() {
 
   const handleToggleLock = async (mealId: string, isLocked: boolean) => {
     await handleMealUpdate(mealId, { isLocked })
+  }
+
+  const handleMarkCooked = async (mealId: string, undo: boolean = false) => {
+    try {
+      if (undo) {
+        // Unmark as cooked
+        console.log('🔷 Unmarking meal as cooked:', mealId)
+        const response = await fetch(`/api/meals/${mealId}/cook`, {
+          method: 'DELETE',
+        })
+
+        if (!response.ok) {
+          const data = await response.json()
+          throw new Error(data.error || 'Failed to unmark meal')
+        }
+
+        // Update local state
+        setMealPlan(prev => {
+          if (!prev) return prev
+          return {
+            ...prev,
+            meals: prev.meals.map(m =>
+              m.id === mealId
+                ? { ...m, isCooked: false, cookedAt: null }
+                : m
+            )
+          }
+        })
+        console.log('🟢 Meal unmarked as cooked')
+      } else {
+        // Mark as cooked and deduct from inventory
+        console.log('🔷 Marking meal as cooked:', mealId)
+        const response = await fetch(`/api/meals/${mealId}/cook`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            deductFromInventory: true,
+            allowPartialDeduction: true,
+          }),
+        })
+
+        if (!response.ok) {
+          const data = await response.json()
+          throw new Error(data.error || 'Failed to mark meal as cooked')
+        }
+
+        const data = await response.json()
+
+        // Update local state
+        setMealPlan(prev => {
+          if (!prev) return prev
+          return {
+            ...prev,
+            meals: prev.meals.map(m =>
+              m.id === mealId
+                ? { ...m, isCooked: true, cookedAt: data.cookedAt, inventoryDeducted: true }
+                : m
+            )
+          }
+        })
+
+        // Show deduction summary
+        if (data.deduction) {
+          const summary = data.deduction
+          if (summary.notFound > 0 || summary.partiallyDeducted > 0) {
+            alert(
+              `Meal marked as cooked!\n\n` +
+              `Deduction summary:\n` +
+              `- ${summary.fullyDeducted} items fully deducted\n` +
+              `- ${summary.partiallyDeducted} items partially deducted\n` +
+              `- ${summary.notFound} items not found in inventory`
+            )
+          }
+        }
+        console.log('🟢 Meal marked as cooked')
+      }
+    } catch (error) {
+      console.error('❌ Error marking meal:', error)
+      alert(error instanceof Error ? error.message : 'Failed to update meal')
+    }
   }
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -945,7 +1052,9 @@ export default function MealPlanDetailPage() {
                               onUpdate={handleMealUpdate}
                               onDelete={handleMealDelete}
                               onToggleLock={handleToggleLock}
+                              onMarkCooked={handleMarkCooked}
                               disabled={!isEditable}
+                              isFinalizedPlan={mealPlan.status === 'Finalized'}
                             />
                           )
                         })

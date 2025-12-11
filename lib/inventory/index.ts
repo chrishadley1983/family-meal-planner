@@ -63,3 +63,11 @@ export {
   addBackExcludedItem,
 } from './inventory-check'
 export type { InventoryCheckResult } from './inventory-check'
+
+// Inventory Deduction (Meal Cooking Integration)
+export {
+  previewDeduction,
+  performDeduction,
+  getRecipeIngredientsForDeduction,
+} from './inventory-deduction'
+export type { DeductionItem, DeductionResult, DeductionSummary } from './inventory-deduction'
