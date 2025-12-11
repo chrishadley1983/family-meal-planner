@@ -1635,9 +1635,6 @@ export default function StaplesPage() {
             {/* Extracted items */}
             {extractedItems.length > 0 && (
               <div className="space-y-3">
-                {photoSummary && (
-                  <p className="text-sm text-green-400">{photoSummary}</p>
-                )}
                 <p className="text-sm font-medium text-zinc-300">
                   {extractedItems.length} items found - edit and select which to import:
                 </p>
@@ -1829,9 +1826,6 @@ export default function StaplesPage() {
             {/* Extracted items */}
             {urlExtractedItems.length > 0 && (
               <div className="space-y-3">
-                {urlSummary && (
-                  <p className="text-sm text-green-400">{urlSummary}</p>
-                )}
                 <p className="text-sm font-medium text-zinc-300">
                   {urlExtractedItems.length} items found - edit and select which to import:
                 </p>
