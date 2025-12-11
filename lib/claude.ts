@@ -960,35 +960,40 @@ Focus on identifying RECURRING STAPLES - items that households typically buy rep
 - Basic cooking ingredients
 - Snacks and beverages consumed regularly
 
+IMPORTANT - ITEM NAMING RULES:
+- Use GENERIC product names only, NOT brand names or country of origin
+- Example: "Semi-Skimmed Milk" NOT "Cowbelle British Semi-Skimmed Milk"
+- Example: "Hot Sauce" or "Pineapple Hot Sauce" NOT "Sauce Shop Burnt Pineapple Hot Sauce"
+- Example: "Cheddar Cheese" NOT "Cathedral City Mature Cheddar"
+- Focus on WHAT the product is, not WHO makes it
+
 For each item identified, provide:
-1. The name of the item (be specific)
+1. The GENERIC name of the item (no brands, no country)
 2. Suggested quantity per purchase
 3. Unit of measurement
 4. Category for shopping
-5. Suggested purchase frequency based on typical consumption
+5. Suggested purchase frequency
 
 Return ONLY a valid JSON object in this exact format:
 {
   "items": [
     {
-      "itemName": "string",
+      "itemName": "string (generic name only - no brands!)",
       "quantity": number,
       "unit": "string (e.g., 'each', 'litres', 'g', 'kg', 'pack')",
       "category": "string (Meat & Fish, Fresh Produce, Dairy & Eggs, Bakery, Chilled & Deli, Frozen, Cupboard Staples, Baking & Cooking Ingredients, Breakfast, Drinks, Snacks & Treats, Household, Other)",
-      "frequency": "daily" | "weekly" | "fortnightly" | "monthly" | "bimonthly" | "quarterly",
+      "frequency": "weekly" | "every_2_weeks" | "every_4_weeks" | "every_3_months",
       "confidence": "high" | "medium" | "low"
     }
   ],
   "summary": "Brief description of what was found"
 }
 
-Frequency guidelines:
-- "daily": Items consumed every day (bread, milk for daily use)
-- "weekly": Items purchased once a week (fresh produce, eggs)
-- "fortnightly": Items purchased every two weeks (cheese, bacon)
-- "monthly": Items purchased once a month (cleaning supplies, pantry items)
-- "bimonthly": Items purchased every 2 months (less common staples)
-- "quarterly": Items purchased every 3 months (long-lasting pantry items)`
+Frequency values (use EXACTLY these strings):
+- "weekly": Items purchased once a week (milk, bread, fresh produce)
+- "every_2_weeks": Items purchased every two weeks (eggs, cheese)
+- "every_4_weeks": Items purchased monthly (condiments, sauces, cleaning supplies)
+- "every_3_months": Items purchased quarterly (long-lasting pantry items)`
 
   try {
     console.log('🔷 Calling Claude API to analyze photo for staples...')
@@ -1070,8 +1075,13 @@ Focus on identifying RECURRING STAPLES - items that households typically buy rep
 - Basic cooking ingredients
 - Snacks and beverages consumed regularly
 
+IMPORTANT - ITEM NAMING RULES:
+- Use GENERIC product names only, NOT brand names or country of origin
+- Example: "Semi-Skimmed Milk" NOT "Tesco British Semi-Skimmed Milk"
+- Focus on WHAT the product is, not WHO makes it
+
 For each item identified, provide:
-1. The name of the item
+1. The GENERIC name of the item (no brands!)
 2. Suggested quantity per purchase
 3. Unit of measurement
 4. Category for shopping
@@ -1081,24 +1091,22 @@ Return ONLY a valid JSON object in this exact format:
 {
   "items": [
     {
-      "itemName": "string",
+      "itemName": "string (generic name only - no brands!)",
       "quantity": number,
       "unit": "string",
       "category": "string (Meat & Fish, Fresh Produce, Dairy & Eggs, Bakery, Chilled & Deli, Frozen, Cupboard Staples, Baking & Cooking Ingredients, Breakfast, Drinks, Snacks & Treats, Household, Other)",
-      "frequency": "daily" | "weekly" | "fortnightly" | "monthly" | "bimonthly" | "quarterly",
+      "frequency": "weekly" | "every_2_weeks" | "every_4_weeks" | "every_3_months",
       "confidence": "high" | "medium" | "low"
     }
   ],
   "summary": "Brief description of what was found on the page"
 }
 
-Frequency guidelines:
-- "daily": Items consumed every day
-- "weekly": Items purchased once a week
-- "fortnightly": Items purchased every two weeks
-- "monthly": Items purchased once a month
-- "bimonthly": Items purchased every 2 months
-- "quarterly": Items purchased every 3 months
+Frequency values (use EXACTLY these strings):
+- "weekly": Items purchased once a week (milk, bread, fresh produce)
+- "every_2_weeks": Items purchased every two weeks (eggs, cheese)
+- "every_4_weeks": Items purchased monthly (condiments, cleaning supplies)
+- "every_3_months": Items purchased quarterly (long-lasting pantry items)
 
 If no staple items can be identified, return:
 {

@@ -110,6 +110,9 @@ export function generateRecipeSVG(
   `.trim()
 
   // Convert SVG to base64 data URL
-  const base64 = Buffer.from(svg).toString('base64')
+  // Use btoa for browser compatibility (Buffer is Node.js only)
+  const base64 = typeof window !== 'undefined'
+    ? btoa(unescape(encodeURIComponent(svg)))
+    : Buffer.from(svg).toString('base64')
   return `data:image/svg+xml;base64,${base64}`
 }
