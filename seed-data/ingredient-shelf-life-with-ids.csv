@@ -1,641 +1,641 @@
-id,ingredientName,shelfLifeDays,defaultLocation,category
-cf785f76-4cb2-49de-82a5-23229b459910,Semi-skimmed milk,7,fridge,Dairy
-3f4778ac-c344-4e33-9715-8c635f5a5b34,Whole milk,7,fridge,Dairy
-daab35bf-1e94-437f-beb3-b34e4985dbea,Skimmed milk,7,fridge,Dairy
-6a001e02-7d38-4a79-9a96-6d7b05979e91,Oat milk,10,fridge,Dairy
-dcca9604-5c45-4dbf-b094-9dfdf4b0dac8,Almond milk,10,fridge,Dairy
-5938b096-d833-4226-b7db-10da3728bae4,Soya milk,10,fridge,Dairy
-ba3d7fc5-751b-4895-a234-d3876c20c2c6,Coconut milk,10,fridge,Dairy
-0740903d-b0a9-4278-9615-3f4ec01b03f2,Double cream,7,fridge,Dairy
-4dfee43b-9183-4e5e-ab56-1497041bfce7,Single cream,5,fridge,Dairy
-c9e58305-ebe4-4263-9cbb-37490eed32e8,Whipping cream,7,fridge,Dairy
-cf1a71d5-278b-4e08-83ac-c48092f75e93,Soured cream,14,fridge,Dairy
-c2785b95-bc62-43a4-bda0-7df88e5adaf7,Creme fraiche,14,fridge,Dairy
-866d03d2-3690-4eda-843f-0d862c59c5d0,Greek yoghurt,21,fridge,Dairy
-7ee67894-58e5-42a9-a549-b7e14b86eb18,Natural yoghurt,21,fridge,Dairy
-7819445d-44f5-43f6-beee-ccae1016173a,Flavoured yoghurt,14,fridge,Dairy
-7cab4abc-34d0-498a-9e77-8fc357a156d1,Cottage cheese,7,fridge,Dairy
-8f9baa46-a9c8-4c26-a461-691ba9c386a7,Cream cheese,14,fridge,Dairy
-169391f3-ac93-4e06-9771-3347d18f52ae,Cheddar cheese,42,fridge,Dairy
-079ae08d-685e-48a0-8546-b02cc0c620d2,Red Leicester,42,fridge,Dairy
-a50a1172-c517-43eb-80b5-948c9c8ec72b,Mature cheddar,56,fridge,Dairy
-1882efe9-71f8-4831-ab69-df8c0eb0de79,Mild cheddar,42,fridge,Dairy
-7541ad73-205d-482c-bff8-f95a04806e3c,Parmesan,90,fridge,Dairy
-28c1f491-cffe-457e-878e-2468f7bc6619,Mozzarella,7,fridge,Dairy
-50ade532-db88-404d-ba3c-fe1d91f57d9e,Feta cheese,30,fridge,Dairy
-549617a9-0c9c-4431-8f1e-675d9f1377c9,Brie,14,fridge,Dairy
-7ac48c11-3a2b-47fc-a6ab-a42a9a6437b1,Camembert,14,fridge,Dairy
-74d10de2-77ab-402c-96ba-08a7e13aa626,Stilton,21,fridge,Dairy
-d328c449-ed0a-4800-be76-72466684885c,Halloumi,30,fridge,Dairy
-7adc8569-161a-4db1-82e9-f2eb21ad7a2a,Goats cheese,14,fridge,Dairy
-de0ce826-fa63-40a1-b0bd-e7a5ef36d8ef,Mascarpone,7,fridge,Dairy
-524e9836-be08-41aa-a86d-35d80493d2a8,Ricotta,7,fridge,Dairy
-bef24c79-883b-4bbd-8b16-b1813b6748b3,Grated cheese,14,fridge,Dairy
-ec8af858-b57c-49f2-9a43-519133da330f,Cheese slices,21,fridge,Dairy
-be620424-9e8a-4fdb-adac-d446f72575eb,Butter,60,fridge,Dairy
-8d04e9a4-f265-4a3f-bd1b-ba968074d0f5,Unsalted butter,60,fridge,Dairy
-d2b44a4d-2413-41e6-914f-af4960c5e364,Salted butter,60,fridge,Dairy
-dae4c307-c089-47b4-aabc-455a13390d91,Spreadable butter,42,fridge,Dairy
-b26599a3-5c5d-466c-922d-f1ead27171c4,Margarine,90,fridge,Dairy
-8779f325-5bac-4f37-9c4f-64e6a698a76d,Large eggs,28,fridge,Dairy
-603a4b11-036d-4165-99a4-389388538edf,Medium eggs,28,fridge,Dairy
-b980a573-8bc0-4f9e-ab06-2bcb5b0101b3,Free range eggs,28,fridge,Dairy
-48a55207-aad9-474f-88cd-04469f91a6fd,Organic eggs,28,fridge,Dairy
-257ed570-1103-4620-9603-c2e4a94eada2,Quail eggs,21,fridge,Dairy
-a2197e40-d39d-4bac-a0be-d8cfa47b8fa9,Duck eggs,21,fridge,Dairy
-a61f14c9-3984-4a52-96c4-273ba5032d55,Chicken breast,3,fridge,Meat
-16663006-da56-4ddd-a881-64fe410d3f03,Chicken thighs,3,fridge,Meat
-1b2e463d-88c1-4180-94d3-0e4467b956c7,Chicken drumsticks,3,fridge,Meat
-520a7c1f-de2e-4129-a213-eea9247935b1,Chicken wings,3,fridge,Meat
-5009b3b8-b3b9-4d0e-9bbd-87fdba8ed1f3,Whole chicken,3,fridge,Meat
-a9dff576-7ae3-4612-bb1a-a5debcc30bc0,Chicken mince,2,fridge,Meat
-9a3c8e03-72ba-4150-be1e-abf06a120afe,Turkey breast,3,fridge,Meat
-d2985552-357d-46a6-85ca-e19112a3acbc,Turkey mince,2,fridge,Meat
-d57d883d-4734-4b00-acf7-25ea91312243,Beef mince,2,fridge,Meat
-7ce46ded-2f26-4aec-881b-900ee80501d0,Beef steak,3,fridge,Meat
-59f41379-1452-4fba-a25e-266c9fc6acad,Sirloin steak,3,fridge,Meat
-f9bb5a56-aebd-4d36-9f2c-12a6eb074e78,Ribeye steak,3,fridge,Meat
-b88151cc-15a2-425d-9f75-8088612320e0,Fillet steak,3,fridge,Meat
-7b64cf5f-1694-4bc6-bc31-1dcd7a0e0333,Rump steak,3,fridge,Meat
-0b2e281d-e1f0-4103-916a-fe113fd8e0fc,Beef joint,4,fridge,Meat
-1458842a-a7ba-4666-9e07-d843118fa734,Beef brisket,4,fridge,Meat
-ee44ae2d-de93-4a96-9f5b-be5ece8ccd4d,Stewing beef,3,fridge,Meat
-c2f1997e-247f-4044-896a-70943ce6402b,Lamb mince,2,fridge,Meat
-9335798e-4384-4e26-bb22-2456806e8382,Lamb chops,3,fridge,Meat
-55fd6c1f-6e7d-44a1-a762-fd0f6a882361,Lamb leg,4,fridge,Meat
-59a74972-5c57-4063-a24e-4cdab6cbde36,Lamb shoulder,4,fridge,Meat
-9b1d41dd-daf7-494e-bddc-2f6956f106e7,Lamb shanks,3,fridge,Meat
-fcb64216-d75a-49ca-9539-3e4e3512df0e,Pork chops,3,fridge,Meat
-60ff9b41-68ea-45f5-ab26-dbc9fdff5484,Pork loin,3,fridge,Meat
-584311da-d270-4c9b-ba6f-33b0abefe1a8,Pork belly,3,fridge,Meat
-5f56d064-7018-4a8d-b16c-273389dd66ae,Pork mince,2,fridge,Meat
-03a744a4-fab6-45a2-9abd-61e600ea9165,Pork tenderloin,3,fridge,Meat
-1401a314-6fa4-4a7b-9381-86b1370b8839,Pork shoulder,4,fridge,Meat
-ea04bceb-2941-458e-b750-20f2c738004e,Gammon joint,5,fridge,Meat
-78330ab6-4332-42b3-84e5-91959654000f,Gammon steaks,4,fridge,Meat
-10d65291-22e1-490a-82dc-80e375aafd5d,Bacon rashers,7,fridge,Meat
-a035993a-f0a4-4e7f-abe9-92927c3daf25,Streaky bacon,7,fridge,Meat
-189998e4-6b7d-4a0d-bf55-1fcb1c378140,Back bacon,7,fridge,Meat
-87ff93fc-d69b-45e5-915a-342295d1b47f,Smoked bacon,7,fridge,Meat
-9e5ad092-aeb9-4d85-8b7c-76ae7aa7a002,Pancetta,7,fridge,Meat
-f1c1e056-9e42-4c4f-bfde-043a2adcbc5f,Chorizo,21,fridge,Meat
-303f016d-0c83-4869-8d7f-0c1c828eb4ce,Salami,30,fridge,Meat
-2f42bbd5-684d-4cc8-b06d-340bc02f1e1b,Pepperoni,21,fridge,Meat
-206bcf28-bb7d-4443-96ea-c79355623df6,Ham slices,5,fridge,Meat
-a2d8a9d0-97c9-4924-a290-edccfb708c41,Cooked ham,5,fridge,Meat
-1e9e02e2-ad6a-4c2c-87c7-2a6f5cfccc8d,Parma ham,14,fridge,Meat
-12d4707b-840a-4f8c-b448-fdcbb0e19015,Prosciutto,14,fridge,Meat
-52378b5e-2210-4d7c-ba63-f88657078185,Sausages,4,fridge,Meat
-d691b05e-8076-45c5-8091-5d21cdac764a,Pork sausages,4,fridge,Meat
-4854a506-8039-435a-b2bd-7ed93beaf834,Cumberland sausages,4,fridge,Meat
-83b23d15-73b9-4a16-a623-8d481af456b8,Chipolatas,4,fridge,Meat
-49b5b600-d709-4814-8641-ce3bb45f568f,Chicken sausages,4,fridge,Meat
-3b76bad4-214a-4727-a501-dc6c9dd0742c,Beef sausages,4,fridge,Meat
-01f38f48-c87c-4958-a40e-ef0361831d8d,Venison,3,fridge,Meat
-2a0a145c-0a69-4cfd-8a5c-578fb61c2519,Duck breast,3,fridge,Meat
-4c372394-4d66-4c40-8f1a-f7cc731ec086,Liver,2,fridge,Meat
-ad139a03-44cc-41a0-a751-04cb29308d40,Kidney,2,fridge,Meat
-dd8e6e77-eadd-4f0b-bb6e-c4c7af877cf9,Black pudding,7,fridge,Meat
-b67dea6e-df81-4d0a-ba69-540c6c2b0582,White pudding,7,fridge,Meat
-503076b4-639f-45bd-a706-70eba60312bb,Haggis,5,fridge,Meat
-c2df0502-3d7a-4952-9d20-400e3c96596d,Fresh salmon,2,fridge,Fish
-2e5d6f54-b961-4285-846d-8eec160ec7d8,Salmon fillets,2,fridge,Fish
-de1854e2-22b8-48df-b292-8eeb59c4a349,Smoked salmon,14,fridge,Fish
-6eaf2931-1cea-40c2-aafd-1299dcff0c47,Fresh cod,2,fridge,Fish
-82f8caf3-8dfa-4d27-95f9-4f758f962923,Cod fillets,2,fridge,Fish
-081d69c9-ef45-480a-8cb2-7e8308ed1bfe,Fresh haddock,2,fridge,Fish
-f5eee954-7e79-49d2-a409-f5485bb3be1e,Smoked haddock,5,fridge,Fish
-7cc76b4f-48e1-4616-803f-c825175e688a,Sea bass,2,fridge,Fish
-8f53acd8-2aab-4f03-8fd0-26e5d30ab8db,Mackerel,2,fridge,Fish
-0c1b9ba2-0918-43c9-95a0-fd95c7703893,Smoked mackerel,7,fridge,Fish
-92c9c995-2b25-499f-8a36-577e3a61dfa1,Fresh trout,2,fridge,Fish
-de1a07d8-e1b7-47a9-8f6b-b79b74a2b90f,Rainbow trout,2,fridge,Fish
-e2eb92a8-cf21-4513-8170-2878819f8c6e,Tuna steak,2,fridge,Fish
-4d8fda86-4dca-46cd-9914-26401c499f23,Swordfish,2,fridge,Fish
-e261df72-fbae-4843-9ec9-7b2dec109f1a,Plaice,2,fridge,Fish
-ecba8cda-b491-4110-8cfe-b71f908e01dd,Sole,2,fridge,Fish
-f1d67efb-f05a-4c7c-824b-a38c17b5a559,Sardines,2,fridge,Fish
-e16fa4c1-fd09-444e-85f5-fe94d24b13e1,Anchovies,30,fridge,Fish
-d0cbdf4e-2dd1-4d6c-a28d-9b0be6112be0,Fresh prawns,2,fridge,Fish
-7e026fa0-abd3-49bb-aaca-78da81e4bb92,Cooked prawns,3,fridge,Fish
-1e604c3f-8c61-4985-b9d6-c135a4402f72,King prawns,2,fridge,Fish
-2804fd60-d966-47bb-842d-833edeeed90b,Tiger prawns,2,fridge,Fish
-6092285d-de65-492f-95dc-52ce24e15732,Crab meat,2,fridge,Fish
-81d65060-ba22-4401-83fd-be9558f67a80,Lobster,2,fridge,Fish
-8cf48029-2b02-4094-9fff-6ed5f6cd2170,Mussels,2,fridge,Fish
-9b35cd43-723a-4943-8bc6-b16bb5c55b9e,Clams,2,fridge,Fish
-6d703505-a168-4d40-bb88-498bccbe0188,Scallops,2,fridge,Fish
-9df248ca-c0f7-4e06-ac03-957c7a8329bd,Squid,2,fridge,Fish
-a9e67e16-6461-4b8f-a186-b0e968ae4f64,Calamari,2,fridge,Fish
-f892406b-571d-4a48-a5b3-dbbcba3af794,Octopus,2,fridge,Fish
-5d042afc-9a73-40fa-a2e4-4310c8cae676,Fish fingers,90,freezer,Fish
-a21db57a-67f0-4974-ba95-9fa3984b0349,Fish cakes,90,freezer,Fish
-9f5e36ed-2e7b-4c6a-9491-7ea8d63eb4d9,Battered fish,90,freezer,Fish
-5d516ca6-4158-4ad4-af00-746351e249e4,White bread,5,cupboard,Bakery
-927ad897-3fa6-4fba-9490-4a674ba540c4,Wholemeal bread,5,cupboard,Bakery
-77ccae75-4d0a-4395-acd3-ef6f22325e31,Seeded bread,5,cupboard,Bakery
-ed2722c3-31a4-4b50-abc9-0e418a4288c3,Sourdough,7,cupboard,Bakery
-09498645-d1b4-4d60-b2d7-e30b5a6fad1e,Ciabatta,3,cupboard,Bakery
-6c226b61-6c77-44d4-b389-a1f923ec6d24,Baguette,2,cupboard,Bakery
-65358ce5-c4c5-40f1-be1a-03c941f2f428,Brioche,5,cupboard,Bakery
-9e6b6e55-7ba3-4912-a3f4-dccdf5a50c77,Pitta bread,7,cupboard,Bakery
-86b7e4a0-4d27-4120-b37a-666d380ffffd,Naan bread,7,cupboard,Bakery
-9b235f39-8c97-4bd1-b121-6015d5655b99,Wraps,14,cupboard,Bakery
-205ad611-309c-4a78-9d03-db958d4e828d,Tortillas,21,cupboard,Bakery
-3cb0d5a5-c41e-4613-95de-d8e58eca1297,Crumpets,7,cupboard,Bakery
-a3161cf6-0db0-433c-8590-722697c7840b,English muffins,7,cupboard,Bakery
-606b8b31-484a-41fe-bfc2-9627dec70b2e,Bagels,5,cupboard,Bakery
-efea1808-7ead-45df-b200-0b99fc063c84,Croissants,3,cupboard,Bakery
-0e859b33-be6d-4d5a-91b5-5865370f38d1,Pain au chocolat,3,cupboard,Bakery
-e6d0f4be-b866-4487-8a27-64f0b9ad01f4,Danish pastry,3,cupboard,Bakery
-a54129ef-737b-4059-b3e5-53d3d3e50ee0,Scones,5,cupboard,Bakery
-463b1b4c-4f3e-444f-9979-5eb819c40ca0,Hot cross buns,5,cupboard,Bakery
-665908e2-4dd7-4325-b2b6-6707d43393cc,Teacakes,5,cupboard,Bakery
-4672d4d6-c2b2-465e-a7eb-e138d8579083,Fruit loaf,7,cupboard,Bakery
-da3b55ab-45e8-4fdb-a068-f15ee4230166,Banana bread,5,cupboard,Bakery
-b003a9f0-edef-49ca-bf7c-da0a1181a8f3,Breadsticks,180,cupboard,Bakery
-f20e7415-231d-4096-a32a-499cbd8cdf15,Crackers,180,cupboard,Bakery
-8722b440-542b-4051-b3b0-a5f672055bbe,Rice cakes,180,cupboard,Bakery
-28306a24-c6ec-431a-a525-6a72ea3ccb0b,Oatcakes,90,cupboard,Bakery
-cc1183bf-4e54-48d3-9754-83dca33ff434,Crispbreads,180,cupboard,Bakery
-61b04066-5d42-4116-bac1-adc32b68701a,Apples,14,fridge,Fruit
-522caaff-d6ed-4289-a89a-c1d20d732c3a,Bananas,7,cupboard,Fruit
-aebec7d1-0d02-4478-80d9-8d83fb169f4e,Oranges,21,fridge,Fruit
-3e0465de-f874-4fd6-8e83-4f0c9d145518,Satsumas,14,fridge,Fruit
-183ef9ff-888c-48d0-8ec8-c0feb9b57cbb,Clementines,14,fridge,Fruit
-6e29382f-b6fd-464e-99ef-a0b31e1fd566,Lemons,21,fridge,Fruit
-eba3f837-192c-4e05-9c70-44a21202c308,Limes,14,fridge,Fruit
-b7c624ce-c808-4ca4-aa03-4ff3c0f8c8ca,Grapefruit,21,fridge,Fruit
-e1019923-93d3-40d8-8757-948c177dd3ae,Pears,7,fridge,Fruit
-9e0d969a-ebc7-4fcf-bc99-5e649eaf4388,Grapes,7,fridge,Fruit
-60251a85-07cd-4996-8dac-626da02d1524,Strawberries,5,fridge,Fruit
-f71aa087-af32-4ec6-acdf-71329aadb45b,Raspberries,3,fridge,Fruit
-bf59408c-78d3-439a-98f8-8a7acbfe251a,Blueberries,7,fridge,Fruit
-24a0c806-8c0c-462e-bde6-8df7d70a5b44,Blackberries,3,fridge,Fruit
-31eb39a8-c28d-42cf-b744-6539241b1d0f,Cherries,5,fridge,Fruit
-8fb56fd8-765d-4f59-b99a-1b788db0811f,Plums,7,fridge,Fruit
-d4b9ae29-c441-4e8f-8139-f72595df16f7,Peaches,5,fridge,Fruit
-90ec04c3-91a8-42ab-920f-f242786a6be8,Nectarines,5,fridge,Fruit
-97d7e59b-bd6d-431b-b6b5-ae1be3956e43,Apricots,5,fridge,Fruit
-cd7fa576-9a18-4bb9-807e-bb5868335329,Mangoes,5,fridge,Fruit
-91546410-9e0f-45a2-aef1-6838c796d397,Pineapple,5,fridge,Fruit
-c1b9022c-9c11-47a5-9954-3118f22e8e36,Kiwi fruit,14,fridge,Fruit
-cd2f569f-9228-4658-89af-b494cd75730e,Melon,5,fridge,Fruit
-1de1d90a-e909-4414-bf5c-e69a721c3a14,Watermelon,7,fridge,Fruit
-a66b611f-9384-4c5d-acd3-789c346c96c7,Honeydew melon,7,fridge,Fruit
-337ed6d6-3485-44dc-b463-c0d1cddaf92c,Cantaloupe,5,fridge,Fruit
-75d85789-b9ea-4cc6-a0f7-f4b92f1595dc,Papaya,5,fridge,Fruit
-4863f551-54ec-43cc-b8f6-1ca6bebdfd28,Passion fruit,7,fridge,Fruit
-56680d3d-8ae1-49b0-a6c3-3ddac5d5a990,Pomegranate,14,fridge,Fruit
-15db70da-1c0d-4c38-b203-02c7bd8f8a62,Figs,3,fridge,Fruit
-3350f0dd-c58e-4e8a-b7d3-03185f332a92,Dates,30,cupboard,Fruit
-e5cd230c-d3f2-45bd-81c0-654af6396ef9,Dried apricots,180,cupboard,Fruit
-aca279f7-fe7a-4a29-9310-2f36618e051d,Raisins,365,cupboard,Fruit
-0400bfc8-5100-4853-bf61-9f692d9371f7,Sultanas,365,cupboard,Fruit
-9ae5ba8f-74c5-4f27-a471-bde5a9af5b31,Dried cranberries,180,cupboard,Fruit
-71acb07a-880a-47c8-9243-d828754360ce,Dried mango,180,cupboard,Fruit
-79d4dd14-80c5-431e-ab14-cc422a26a364,Prunes,180,cupboard,Fruit
-0e8d8480-a68d-485d-9c18-3efb7e0b4781,Potatoes,21,cupboard,Vegetables
-6ec5a281-7797-4376-9f81-4f9d4f1570d7,New potatoes,14,fridge,Vegetables
-26c07ed8-771e-4511-8cb0-4df0a8a76a80,Sweet potatoes,21,cupboard,Vegetables
-f59caeac-925e-4bfb-8eb2-b070b3dd734d,Carrots,21,fridge,Vegetables
-2d36aace-6974-4a55-b348-d4a21e6a6742,Parsnips,21,fridge,Vegetables
-d1cf7d33-167a-43bb-8119-e52fa0a0b414,Onions,30,cupboard,Vegetables
-aabc4621-a715-4ca7-a1b3-cb4cffbdc027,Red onions,30,cupboard,Vegetables
-ec719a2d-1593-4d53-be95-f246c67d4400,White onions,30,cupboard,Vegetables
-06738a65-04b9-4ec1-a206-a113192ee397,Spring onions,7,fridge,Vegetables
-047180af-84ba-4908-ba24-85ecdcd056bf,Shallots,30,cupboard,Vegetables
-0b081929-3653-4443-9fe8-bba5082b37c3,Garlic,30,cupboard,Vegetables
-f6db0618-b067-49c0-9a64-1bf85e912c14,Leeks,10,fridge,Vegetables
-ee7841f9-56c8-4a26-9442-dca63c650c31,Celery,14,fridge,Vegetables
-aa1b2371-2c96-447f-b243-f4798e0e8042,Broccoli,7,fridge,Vegetables
-fb5ad6b7-b99d-4fe4-b5fa-f123d588bf08,Cauliflower,7,fridge,Vegetables
-3a348beb-eab8-40cd-b46a-b9693195d422,Cabbage,14,fridge,Vegetables
-bc6bd7bc-ece1-413c-b42d-0ee9decc7312,Red cabbage,14,fridge,Vegetables
-ef3a3d6f-2218-4842-81b5-5bcd930e48af,Savoy cabbage,10,fridge,Vegetables
-3a42f738-6a4d-40eb-ae91-c5e218caa0e9,Brussels sprouts,7,fridge,Vegetables
-4429ca31-6282-4cf9-bb58-8d49ff06637b,Kale,7,fridge,Vegetables
-4c0b85ad-823e-4d69-a98d-48fc720d3d65,Spinach,5,fridge,Vegetables
-e37da28e-a624-481d-a919-896d9e320b38,Lettuce,7,fridge,Vegetables
-2b8be9eb-c5ce-42bd-9465-0a37e4a72257,Romaine lettuce,7,fridge,Vegetables
-ed5e5072-61cc-4b61-9884-f868deeba26c,Iceberg lettuce,10,fridge,Vegetables
-39e46b43-474e-41b6-82b9-6b7ab244a954,Rocket,5,fridge,Vegetables
-a8789b47-2afa-439a-bdc9-281b86374ed6,Watercress,3,fridge,Vegetables
-00d38e09-c61f-48a0-a911-974b0d035c70,Mixed salad leaves,5,fridge,Vegetables
-ec8f41f3-c637-40cf-84d8-b9bf0ea21e9b,Cucumber,7,fridge,Vegetables
-70067b9f-935f-4365-9b8d-c35149e93622,Tomatoes,7,fridge,Vegetables
-79c43467-0ca0-4e8a-ae95-552fa8345044,Cherry tomatoes,7,fridge,Vegetables
-4b463cce-ee78-4d92-8dd7-677abbe3ff84,Vine tomatoes,7,fridge,Vegetables
-7a41aae1-5496-41c8-b8d5-7563d22fcd24,Beef tomatoes,7,fridge,Vegetables
-a34ecd65-cf5a-4dd2-a998-c4b1d685c73c,Peppers,10,fridge,Vegetables
-ebf9f5a0-cd69-4393-9406-e09677dec050,Red peppers,10,fridge,Vegetables
-683c48cf-314c-4bc1-9898-b60fe08244bd,Yellow peppers,10,fridge,Vegetables
-f3e701ed-e02b-449b-87f9-91ee98a07c83,Green peppers,10,fridge,Vegetables
-f3279789-b48d-4d2e-a144-bd77673681cd,Chilli peppers,14,fridge,Vegetables
-a0c87d9b-5fd3-449b-bdec-bd8719ddc325,Jalapeños,14,fridge,Vegetables
-1391d76b-c477-4e92-b440-2c8ef83ad78c,Aubergine,7,fridge,Vegetables
-03635da9-6074-4b86-9559-55a138f4a0ca,Courgette,7,fridge,Vegetables
-22e69521-bab4-4de4-b09b-c35ae695b50f,Butternut squash,30,cupboard,Vegetables
-f4b9719e-a7e5-4fec-a71b-1d15e6000a96,Pumpkin,30,cupboard,Vegetables
-6f90ce8c-ff58-4e06-8b29-191a6789af12,Mushrooms,5,fridge,Vegetables
-cd9aca50-af82-4b26-9f21-321561940eb1,Chestnut mushrooms,5,fridge,Vegetables
-7d9bc1c1-2a90-42c0-bfc7-f9e5892b7abb,Button mushrooms,5,fridge,Vegetables
-3c1146f0-a59b-405e-821f-6035cc8be5f0,Portobello mushrooms,5,fridge,Vegetables
-1a543442-fe26-498d-8312-4b43468e66e6,Shiitake mushrooms,7,fridge,Vegetables
-7e2afda4-3baa-4fed-b3d5-013bc7a14f7e,Oyster mushrooms,5,fridge,Vegetables
-5fea54e3-a7e9-4ebc-92ba-7482773f1c4d,Asparagus,4,fridge,Vegetables
-958ea6d9-39cb-439c-9353-397a9e9d4a1e,Green beans,5,fridge,Vegetables
-76cecffe-f9a3-4319-bb3f-7bd9cf70fd77,Runner beans,5,fridge,Vegetables
-7c18fb05-4ae8-4a6f-bc55-f1b92faf2ba7,Broad beans,5,fridge,Vegetables
-4ad9d626-11d4-4d71-a5fb-63e4b0f95dab,Mangetout,5,fridge,Vegetables
-46e8d045-0c94-42b8-99b7-f685b0221b1e,Sugar snap peas,5,fridge,Vegetables
-8c222de5-bd31-48fa-9111-194c61cfd0cf,Peas,5,fridge,Vegetables
-88092add-22e3-40c7-9481-51f200a4b929,Sweetcorn,5,fridge,Vegetables
-76495fcc-14f3-40a0-8ee2-801bc123944f,Corn on the cob,5,fridge,Vegetables
-fc8c21db-f7e4-45e2-b909-4135b19a2f5d,Artichokes,7,fridge,Vegetables
-f4a20159-12e1-4b99-9c5a-6dba84f31f88,Beetroot,14,fridge,Vegetables
-73952fbc-18a9-4622-850b-b484f2b48811,Radishes,10,fridge,Vegetables
-7cdecd51-a83c-4023-86bd-37b5d54a6f73,Turnips,14,fridge,Vegetables
-6dbfa570-6674-47f7-bcea-fb60a50ca3bd,Swede,21,fridge,Vegetables
-f0f85109-f2b4-48c8-8fbd-42f1c793c651,Celeriac,14,fridge,Vegetables
-55f54a24-48f2-45c0-b560-b09757e5b049,Fennel,10,fridge,Vegetables
-a0f17316-205f-4144-a0c3-e0dd130fcc92,Pak choi,5,fridge,Vegetables
-b9108f62-9cf2-4fb4-819b-474cb19bcf25,Chard,5,fridge,Vegetables
-3dd72e51-1102-48e5-9864-55600996504e,Beansprouts,3,fridge,Vegetables
-b0243ea0-87d4-4fc6-bdb5-e7178b5a26c7,Avocado,5,fridge,Vegetables
-0dc34fc0-83aa-4a89-99c7-14fbc5ed9ae8,Fresh basil,7,fridge,Herbs
-70f63df2-ed06-4fc7-b02c-3515c8a3b8cd,Fresh parsley,10,fridge,Herbs
-3cb0c7f7-f414-44e9-858c-1532e023b892,Fresh coriander,7,fridge,Herbs
-c1204171-5c5a-4472-ab76-fc7c1bb01fcc,Fresh mint,7,fridge,Herbs
-ff3e9af4-2dc8-4968-9cef-738a34bfcc9b,Fresh rosemary,14,fridge,Herbs
-93f32cfb-5ed0-4871-9ca4-7af5434168ad,Fresh thyme,10,fridge,Herbs
-cd6fe84a-98fe-4d9b-b36a-a010489a80b6,Fresh sage,10,fridge,Herbs
-ecf7436a-4088-4dbb-b377-3077ed962965,Fresh dill,7,fridge,Herbs
-64582c22-3d9c-4743-a9ba-32ace200fedf,Fresh chives,7,fridge,Herbs
-82a46239-8803-456b-b3eb-f49c37f0da88,Fresh tarragon,7,fridge,Herbs
-eb443b79-f11d-40a1-81e7-d82acb9fe249,Fresh oregano,10,fridge,Herbs
-c2f7de1d-98d5-48e2-b5d4-c8f7a3645e7f,Fresh bay leaves,14,fridge,Herbs
-2bd10cae-5b48-4b3e-b838-6cd3557804b6,Ginger root,21,fridge,Herbs
-3e9875b9-ab5b-47f0-b796-cce6b8bf0814,Lemongrass,14,fridge,Herbs
-5f9a18ff-1d32-4396-97c6-b1177ad59e01,Dried basil,365,cupboard,Herbs
-9d524a16-de0d-4940-a13c-6ef13cfc68e6,Dried oregano,365,cupboard,Herbs
-c2283bcb-1359-490b-b0e1-a032ae828bfb,Dried thyme,365,cupboard,Herbs
-bdfea90e-3a4f-4e34-a043-3f551b24c642,Dried rosemary,365,cupboard,Herbs
-daa0ece0-c120-4eea-8443-f2e0198a89ca,Dried mixed herbs,365,cupboard,Herbs
-79444d59-289b-4c57-af44-47c985231e50,Dried parsley,365,cupboard,Herbs
-92ca84a5-87b1-41b7-8707-d61d8e687e24,Bay leaves,730,cupboard,Herbs
-8ecdb99e-f28f-4900-9a4b-88c2eff4609e,Cumin seeds,730,cupboard,Spices
-8bd87c27-ea39-4496-a840-57852c353d45,Coriander seeds,730,cupboard,Spices
-f7fb1e3b-456d-48fa-b0ca-662e908aba73,Fennel seeds,730,cupboard,Spices
-fb970d4d-ec60-4ab2-8396-1f26d1f4747f,Mustard seeds,730,cupboard,Spices
-83995d76-42b6-4efb-b253-a5f57def5d38,Caraway seeds,730,cupboard,Spices
-73aae20b-e197-4eb2-8c09-9fab85c5cba7,Cardamom pods,730,cupboard,Spices
-fc2504aa-4a23-4b9a-a88d-639a7774db0b,Cinnamon sticks,730,cupboard,Spices
-65521344-b8d1-45ad-b45d-514f9d3d47d4,Ground cinnamon,365,cupboard,Spices
-f194f34a-1821-4cf6-ac6a-5bd863e881e2,Ground cumin,365,cupboard,Spices
-10d384eb-03d2-4980-b1fd-00cf940c2aa3,Ground coriander,365,cupboard,Spices
-5da1928e-a048-4837-96be-7f61123e9bb1,Ground ginger,365,cupboard,Spices
-23b98a51-497d-4c1e-b270-49f6347fe673,Ground turmeric,365,cupboard,Spices
-fe26de5f-b628-426a-a7d4-744e5511f704,Paprika,365,cupboard,Spices
-f7d15170-eaf7-421d-ae0b-22442fcd20ad,Smoked paprika,365,cupboard,Spices
-231285ef-1fcc-4718-baf1-141f7a22cc39,Cayenne pepper,365,cupboard,Spices
-ac585019-bcdc-4927-9bce-10b150f8d8e8,Chilli powder,365,cupboard,Spices
-cdf3a2ce-06af-48e1-b635-2bb5223723be,Chilli flakes,365,cupboard,Spices
-a8319d9b-17d9-4968-8dee-873b2c16b968,Curry powder,365,cupboard,Spices
-b65d7912-10e0-4552-a8be-139103ac114f,Garam masala,365,cupboard,Spices
-dc5f116c-052c-4e26-9800-9f54e031d7fe,Chinese five spice,365,cupboard,Spices
-be9bc30b-9e33-437a-a93d-5b3105c5b98d,Mixed spice,365,cupboard,Spices
-bfad9978-d26c-403f-9989-0229d19b1f2c,Nutmeg,730,cupboard,Spices
-a2dd2517-624e-406e-a46a-f10f51123f82,Ground nutmeg,365,cupboard,Spices
-0cd00c5b-df90-4bb8-a3db-e47e977686cf,Cloves,730,cupboard,Spices
-f630c25e-4e73-4833-9902-60389ebcde93,Black pepper,730,cupboard,Spices
-73eacbca-ade4-43d4-9e7b-3929107ee90a,White pepper,730,cupboard,Spices
-c4c78200-f774-455f-b4f6-46c1fc2240b7,Sea salt,1095,cupboard,Spices
-1ba822e1-fcb3-4407-8eed-936b80194308,Table salt,1095,cupboard,Spices
-6f675899-2165-416c-8abb-6dbf5e038365,Rock salt,1095,cupboard,Spices
-6768ff64-b64f-417a-86ad-1de6e194bfd2,Vanilla extract,730,cupboard,Spices
-eec7ef55-72e1-4d39-9932-0376a17198f6,Vanilla pods,365,cupboard,Spices
-5a488614-eff2-4030-a333-e453ecc512c0,Spaghetti,730,cupboard,Pasta & Rice
-3e6aa06c-7d2c-4162-9db3-a1b64c0fcdd6,Penne,730,cupboard,Pasta & Rice
-3b2ca33f-d939-414a-b3b6-f017778539a4,Fusilli,730,cupboard,Pasta & Rice
-285744bd-e234-4f6c-9e07-e05a32cd0c1a,Tagliatelle,730,cupboard,Pasta & Rice
-9f1f0084-c4f6-4a5b-979e-3ca31e9c68c4,Linguine,730,cupboard,Pasta & Rice
-3a795e07-586c-4b93-acce-b45bb6b7c267,Rigatoni,730,cupboard,Pasta & Rice
-6970dd8a-c783-4f00-a56e-d4ebdb97d779,Farfalle,730,cupboard,Pasta & Rice
-20f1e3dd-f00e-4c0a-b9ea-596714bfe306,Macaroni,730,cupboard,Pasta & Rice
-42ae7ad5-fdd6-48ee-9d79-267e4dc731b0,Lasagne sheets,730,cupboard,Pasta & Rice
-fe2faa93-356c-441e-8532-4ed0ef040305,Cannelloni,730,cupboard,Pasta & Rice
-39854ad0-c357-44b0-acc5-e3357cb4ac49,Orzo,730,cupboard,Pasta & Rice
-c15ffc50-b7ce-4136-9178-f7f7ce42f067,Egg noodles,365,cupboard,Pasta & Rice
-c24e769e-9d6d-4bfc-96d1-cff9b54bb1c2,Rice noodles,730,cupboard,Pasta & Rice
-cf2efd0b-015a-41cc-8d59-8c68ea8899a7,Udon noodles,365,cupboard,Pasta & Rice
-090cb206-9da1-4df1-9101-8f08a5e7a85b,Ramen noodles,365,cupboard,Pasta & Rice
-2618d628-5fe8-4f86-99cf-d70621bb0b35,Fresh pasta,3,fridge,Pasta & Rice
-f05a8e9e-6f6b-405e-8859-3541f930884c,Fresh ravioli,3,fridge,Pasta & Rice
-d6ffab02-57c7-4d86-930c-0a91045fff69,Fresh tortellini,3,fridge,Pasta & Rice
-01cb603f-af1c-4061-8d8d-a1f47dd956be,White rice,730,cupboard,Pasta & Rice
-e05d43a3-1635-45c4-b54e-98b5bde753b4,Basmati rice,730,cupboard,Pasta & Rice
-d9ace958-f7d4-4a05-b6d5-30c71b06878e,Brown rice,365,cupboard,Pasta & Rice
-e14bbcba-98b0-45a8-b8de-c488c973ec6c,Jasmine rice,730,cupboard,Pasta & Rice
-8f76f21c-0ddf-4ed5-9778-3e4445a04260,Arborio rice,730,cupboard,Pasta & Rice
-b3058938-afc4-4fbf-94a1-6bdd8781e7d5,Wild rice,730,cupboard,Pasta & Rice
-5ea11bd2-c2ca-4dc6-a643-c008241710cb,Long grain rice,730,cupboard,Pasta & Rice
-8b617ef1-f29b-42d2-b848-7921aadc5c48,Risotto rice,730,cupboard,Pasta & Rice
-858dd93d-ea39-4d29-ab15-11cc3df21d83,Microwave rice,365,cupboard,Pasta & Rice
-3bd3bfff-5095-4399-b71f-b257f4d049e5,Couscous,730,cupboard,Pasta & Rice
-d9e1593f-6506-477e-bb9a-d1f5a3584096,Bulgur wheat,365,cupboard,Pasta & Rice
-34a8c8b3-df60-4206-91c6-64a234e96c9c,Quinoa,730,cupboard,Pasta & Rice
-0f739639-95f9-46d3-8a8a-4695fe676dc8,Pearl barley,730,cupboard,Pasta & Rice
-18ee1c6c-94c8-4db4-bef3-1fd8452aa23f,Polenta,365,cupboard,Pasta & Rice
-c989a22e-2bb4-4fe2-a9ed-06010dd2bc97,Plain flour,365,cupboard,Baking
-c4dea89e-5c4f-474c-ad6a-fe6c14a4b909,Self-raising flour,365,cupboard,Baking
-61d20e2f-9114-4d75-bc3a-4b473251fc7f,Strong bread flour,365,cupboard,Baking
-795d6177-0cba-420f-9537-463da368c173,Wholemeal flour,180,cupboard,Baking
-56b4a223-e90d-4342-b967-ac3d4df4132d,Cornflour,730,cupboard,Baking
-64baaac9-e800-4130-8a3d-0907ffcfb937,Rice flour,365,cupboard,Baking
-d77963d3-bd31-42be-aa08-ee9451a5ba8c,Almond flour,180,cupboard,Baking
-bfb0709f-a0df-41d6-8dc7-ba3427bdeda7,Coconut flour,180,cupboard,Baking
-b03dfbe9-a59c-43ca-8548-884399363fe7,Caster sugar,730,cupboard,Baking
-f7ac0885-d81f-4f3f-89c5-5dafe258b453,Granulated sugar,730,cupboard,Baking
-1a4f7765-7520-4289-acbe-d7ca2ceba9c7,Icing sugar,730,cupboard,Baking
-d150fb50-1735-488c-b5a7-ee2039785fe0,Brown sugar,730,cupboard,Baking
-7d84034e-a4a1-4036-816b-4a7b50c34095,Demerara sugar,730,cupboard,Baking
-89b4a283-e02e-4fa6-a907-ca0245d239f8,Muscovado sugar,730,cupboard,Baking
-0b952896-8699-44a4-b25b-4ac1c77afd1e,Honey,730,cupboard,Baking
-0de427d4-7386-4163-8c8e-83c49902f064,Golden syrup,730,cupboard,Baking
-fa2daec6-3c12-4b36-8b94-fac733f3bb09,Maple syrup,365,cupboard,Baking
-840fc018-9783-4b5c-b2a1-dd0e053e6328,Treacle,730,cupboard,Baking
-dc977d2e-fddd-4083-a2cd-cdb91bf3cd75,Baking powder,365,cupboard,Baking
-5de14e08-8cf8-42bf-bb60-f6e884a6c771,Bicarbonate of soda,730,cupboard,Baking
-510ae91e-8f4c-4c48-a194-33dec8ca0cf3,Dried yeast,365,cupboard,Baking
-f7695405-7e83-4dba-9bc1-98a0a11ad804,Fresh yeast,14,fridge,Baking
-4678c3f4-ad76-4f3d-9438-8c3bd19f6a07,Cocoa powder,730,cupboard,Baking
-b6bdc663-a568-458a-8acf-83899b025b80,Dark chocolate,365,cupboard,Baking
-43e07b46-730f-4512-86a7-f0f670fd1e80,Milk chocolate,365,cupboard,Baking
-a82172af-89bb-4f1f-b73b-2b8ba8d7212f,White chocolate,365,cupboard,Baking
-2bd80244-99b5-4929-8074-50fe6d9161b0,Chocolate chips,365,cupboard,Baking
-80e16ed1-6b88-4ae1-8729-beec778a2443,Desiccated coconut,180,cupboard,Baking
-856088e9-dbf7-4083-8557-3abce512ccb4,Flaked almonds,180,cupboard,Baking
-f04b8bfd-c6d2-45d0-8bf9-04a5894f9d63,Ground almonds,180,cupboard,Baking
-9884f514-f9ac-4201-a953-ae852cdc2189,Mixed nuts,180,cupboard,Baking
-8d3a064b-9312-4c0e-a37e-6972fcde0eea,Walnuts,180,cupboard,Baking
-3a43b67f-4793-4eed-abf0-a75cfa072f35,Pecans,180,cupboard,Baking
-081b9ba2-f3eb-42c8-9c4d-cfe9d1aeff65,Hazelnuts,180,cupboard,Baking
-260add26-0522-42c5-9410-ffbafd30456f,Cashews,180,cupboard,Baking
-25767dec-b904-4268-9c39-ffb6c3246fca,Pistachios,180,cupboard,Baking
-38bdee6f-8d6c-4852-9513-6453c68d9544,Pine nuts,90,cupboard,Baking
-b54c7871-253e-4db7-a58d-e81d2df31d07,Sunflower seeds,180,cupboard,Baking
-1199d0c0-206a-4676-a7f9-b38c9714419b,Pumpkin seeds,180,cupboard,Baking
-d3d48f66-9e24-4f2a-8352-1d0f2c0e1073,Sesame seeds,365,cupboard,Baking
-475148f9-e888-44a5-875a-8e4e4733be93,Chia seeds,365,cupboard,Baking
-b0809d8f-a101-4202-9713-44671bc31991,Flaxseeds,180,cupboard,Baking
-a342cd11-a118-4e87-aa62-6b1bac92e616,Poppy seeds,365,cupboard,Baking
-aa2f0426-ec07-4102-934a-248e1f9ff74f,Tinned tomatoes,730,cupboard,Tinned Goods
-1552ed2f-e98c-45cd-8aa3-1e8830769ba6,Chopped tomatoes,730,cupboard,Tinned Goods
-8a9fdbad-f837-48f8-bc93-5aecd216b145,Tomato passata,730,cupboard,Tinned Goods
-821de551-5fe0-4d14-8ddf-0eb1f6aad9a5,Tomato puree,365,cupboard,Tinned Goods
-62c0440f-263b-4bf7-adfa-60b7426c5afa,Sun-dried tomatoes,365,cupboard,Tinned Goods
-e9d6d002-e939-46db-bbe9-07e7112a8f06,Tinned sweetcorn,730,cupboard,Tinned Goods
-e757f6b1-1735-4777-86d0-f6a3d9397888,Tinned peas,730,cupboard,Tinned Goods
-8bb67d0e-44c9-4e90-92d7-377a1b36217a,Tinned carrots,730,cupboard,Tinned Goods
-12b86636-1dd4-4826-89cc-85f689895d1b,Tinned beans,730,cupboard,Tinned Goods
-8a86bdeb-3628-4da7-b5cd-3072027afeb3,Baked beans,730,cupboard,Tinned Goods
-eb8e9c14-e80d-44fc-837b-6b82a12196d8,Kidney beans,730,cupboard,Tinned Goods
-786682ce-5dba-4b6a-9dd6-a178b5f17b30,Black beans,730,cupboard,Tinned Goods
-28d2fb87-ce51-4fd5-a671-b0f82be9ecc8,Cannellini beans,730,cupboard,Tinned Goods
-5a1cdb91-fb83-4237-9407-e3cf3d94c15b,Butter beans,730,cupboard,Tinned Goods
-19eed07d-15a1-40a4-97dd-507e7172c7f2,Borlotti beans,730,cupboard,Tinned Goods
-d81e6402-a170-4b8e-8bd1-3bcd55bb9760,Chickpeas,730,cupboard,Tinned Goods
-3e787c55-0507-42c7-b348-371aafb04126,Lentils,730,cupboard,Tinned Goods
-ea87573b-f45a-4e82-ba97-95c56af52668,Red lentils,730,cupboard,Tinned Goods
-b302e464-651f-4561-bf97-f39f703f3df2,Green lentils,730,cupboard,Tinned Goods
-dfd4d833-5ba5-471f-8c3f-c86c2b02dfc5,Puy lentils,730,cupboard,Tinned Goods
-97f2ae48-ea20-4d4f-8377-08983f0f8ac2,Split peas,730,cupboard,Tinned Goods
-bc86672a-6e01-463d-bf04-43b674f3e245,Tinned tuna,1095,cupboard,Tinned Goods
-7dd399c6-473f-4625-a441-f8aa78e7f029,Tinned salmon,1095,cupboard,Tinned Goods
-3b614280-deff-46cc-9225-6faab17372e8,Tinned sardines,1095,cupboard,Tinned Goods
-2ea6ab81-fa1d-4d48-a89c-a9160fb7fe7a,Tinned mackerel,1095,cupboard,Tinned Goods
-81f9ebf0-13fd-49c0-a10f-be63bba1200d,Tinned anchovies,730,cupboard,Tinned Goods
-04155fe5-121f-40b8-b825-212f719b17e6,Tinned crab,730,cupboard,Tinned Goods
-13531e77-0f1a-40df-8ea7-1924f9365854,Tinned soup,730,cupboard,Tinned Goods
-69afcab4-01a9-49af-a0a0-9ad218a20300,Tinned fruit,730,cupboard,Tinned Goods
-a8ec995e-d149-4849-b28e-b5e659f5a469,Tinned peaches,730,cupboard,Tinned Goods
-503b89f2-524c-4e1b-91e6-a53a2bab9c96,Tinned pineapple,730,cupboard,Tinned Goods
-aecc04c1-8136-4b10-bf36-0bb205096500,Tinned pears,730,cupboard,Tinned Goods
-6f4d1e73-a5be-4a08-8b70-9af61d92e6fa,Tinned mandarin,730,cupboard,Tinned Goods
-653aeb47-ba4d-4895-9aa5-9bfcf0625ff4,Coconut milk,730,cupboard,Tinned Goods
-befaf0cd-bc55-4a69-999b-cfef8dd29c8a,Coconut cream,730,cupboard,Tinned Goods
-acfa3428-7424-4348-b748-eec3ae12e121,Condensed milk,730,cupboard,Tinned Goods
-c47e1af3-3701-400a-b41c-0c0d3e332cb3,Evaporated milk,730,cupboard,Tinned Goods
-19b0db14-c88e-4f8f-9669-af708c14e407,Olive oil,730,cupboard,Oils & Condiments
-6a86e83e-4961-49cb-aa7f-26dc4cc36e98,Extra virgin olive oil,365,cupboard,Oils & Condiments
-6abe0a87-99b0-499d-8c69-99aca0e54377,Vegetable oil,730,cupboard,Oils & Condiments
-99eae914-4764-44b1-938e-f76bf05114e3,Sunflower oil,730,cupboard,Oils & Condiments
-30c16074-b27e-4295-ad40-6c28491b253f,Rapeseed oil,730,cupboard,Oils & Condiments
-a0baa555-4ff0-40a1-a1fa-cbbeb9888ecb,Coconut oil,730,cupboard,Oils & Condiments
-fcd30cd1-ac2d-471b-a1c1-1724aedf5b0e,Sesame oil,365,cupboard,Oils & Condiments
-0d1c22a2-edf6-4944-89d3-b5a86331ef52,Groundnut oil,730,cupboard,Oils & Condiments
-562a7ced-abf2-49a9-b4d9-e0ab533c73e5,Balsamic vinegar,1095,cupboard,Oils & Condiments
-c2e06cb2-8f95-40e3-8257-25a9a8406fbb,Red wine vinegar,730,cupboard,Oils & Condiments
-d5665dc8-7804-49af-a52c-01658c5b6297,White wine vinegar,730,cupboard,Oils & Condiments
-d0f31e07-350e-400f-baf8-055f800787d8,Cider vinegar,730,cupboard,Oils & Condiments
-4e49a46b-5217-4612-be12-9198374430e8,Rice vinegar,730,cupboard,Oils & Condiments
-2ec27726-3201-4593-908c-5bb1cb828a04,Malt vinegar,730,cupboard,Oils & Condiments
-7dcaf38e-2f30-47d5-bcd3-e275821f2527,Ketchup,365,cupboard,Oils & Condiments
-5c9021c8-bac1-453f-a28e-67c9b09bbbbd,Brown sauce,365,cupboard,Oils & Condiments
-7aa8a49e-327f-4a1a-967f-7f351882c926,Mayonnaise,90,fridge,Oils & Condiments
-fec30990-8416-4a7c-8c0d-64c0609ee7fe,Salad cream,90,fridge,Oils & Condiments
-c003e1c0-b4e8-4216-9b5f-719156c12ef3,Mustard,365,cupboard,Oils & Condiments
-47dbb48e-851f-4ddb-997b-b433dafbc2be,English mustard,365,cupboard,Oils & Condiments
-7ce5ceac-c938-437e-8d69-1fe79147c7e6,Dijon mustard,365,cupboard,Oils & Condiments
-11eef038-9a3f-4fde-8ac3-5e1aacbbbd03,Wholegrain mustard,365,cupboard,Oils & Condiments
-1e8ba4c4-e7fb-48a1-86b4-14feaec5806a,Horseradish sauce,90,fridge,Oils & Condiments
-7a2833d1-b6d6-47f5-8062-16bd5dab0374,Mint sauce,365,cupboard,Oils & Condiments
-ab8da7d9-b323-4cd7-ab70-689178fabfe3,Cranberry sauce,365,cupboard,Oils & Condiments
-80fa7a60-0a9b-443d-948c-4f1b206ece37,Worcestershire sauce,730,cupboard,Oils & Condiments
-5fc8b0d2-0806-4ec5-80cc-b45cdad28405,Soy sauce,730,cupboard,Oils & Condiments
-8189ee66-94c8-4ed1-855c-3298b9f214c0,Fish sauce,730,cupboard,Oils & Condiments
-f1f1a4d0-af20-4a5e-a3b3-df9b229f0290,Oyster sauce,365,cupboard,Oils & Condiments
-694a83bc-d542-4457-9737-6e3ca29537ee,Hoisin sauce,365,cupboard,Oils & Condiments
-11ff758f-10cc-4353-871e-6731ea775317,Sweet chilli sauce,365,cupboard,Oils & Condiments
-ec82b2ae-2e46-43a2-b1bd-d32d97899984,Sriracha,365,cupboard,Oils & Condiments
-90305d54-30dc-4bcb-844d-f71c36151b31,Tabasco,1095,cupboard,Oils & Condiments
-76cba956-6945-4a9f-a1fd-6233ec8c612c,Pesto,7,fridge,Oils & Condiments
-899907b5-b5ec-47b9-a810-12957adbcfa0,Red pesto,7,fridge,Oils & Condiments
-371b19c2-d4e8-426b-b120-17f6ac0e4aaf,Tahini,180,cupboard,Oils & Condiments
-283a21bf-2feb-40c0-8d50-3e48ef04b26a,Peanut butter,180,cupboard,Oils & Condiments
-d1f9f57f-b093-462e-ba19-aa9da30d9643,Almond butter,180,cupboard,Oils & Condiments
-c078f489-1beb-4c25-9f01-b978f7dee0b4,Marmite,730,cupboard,Oils & Condiments
-8de4257e-cad5-4990-b5d2-828cdad83e02,Jam,365,cupboard,Oils & Condiments
-f12027df-d6e7-43fd-b61d-1e357a2bb02f,Strawberry jam,365,cupboard,Oils & Condiments
-1543117a-e0d7-4f9c-a6e3-21b726227af9,Raspberry jam,365,cupboard,Oils & Condiments
-7b867bd0-0aa8-4fdf-936f-fcb2d15473a5,Marmalade,365,cupboard,Oils & Condiments
-09577606-e0a7-47ee-9dc1-239f9af7af84,Lemon curd,90,fridge,Oils & Condiments
-94dd8cb6-c19f-4dd7-bd28-8d63fca8db1d,Nutella,365,cupboard,Oils & Condiments
-72bb8556-63b0-43ed-bafd-832723f7e7c4,Capers,365,fridge,Oils & Condiments
-0e1f39a2-3dd9-4451-988a-4cbfb86e8745,Olives,365,fridge,Oils & Condiments
-705b7a3f-78c7-4534-b4c4-676d7d8e417d,Gherkins,365,fridge,Oils & Condiments
-f12b1863-2d5c-4e51-8195-4f4e767d6d14,Pickled onions,365,cupboard,Oils & Condiments
-f4f1c311-c734-47eb-a9e3-db5d77bf8fd6,Chutney,365,cupboard,Oils & Condiments
-34926c20-286a-42c1-9395-a9e1fb0eb0ff,Mango chutney,365,cupboard,Oils & Condiments
-3a7e11e1-084a-4f3e-9fae-cf3bd9c63e83,Pickle,365,cupboard,Oils & Condiments
-20ba1e1e-8a18-484a-87b1-4e975b4be637,Cornflakes,365,cupboard,Cereals
-b0b529f9-5b76-491e-a1c5-62a929198504,Bran flakes,365,cupboard,Cereals
-b59cf7ad-0d4b-4563-b081-8e8d6ab66b31,Weetabix,365,cupboard,Cereals
-a459c013-9690-4d08-a7f6-2abfdda093de,Shredded wheat,365,cupboard,Cereals
-e3767fc0-0099-44a8-9c03-47dfe72a740d,Porridge oats,365,cupboard,Cereals
-c87cc72d-117c-41a2-8731-27eea4f3fcde,Muesli,180,cupboard,Cereals
-a6795d03-0da8-4454-b128-785878e8c1b7,Granola,180,cupboard,Cereals
-03e08f0e-46be-4454-9bd5-3dd4572572f2,Rice Krispies,365,cupboard,Cereals
-364f17e3-6d40-4443-9488-ba1a12093b6d,Coco Pops,365,cupboard,Cereals
-752bdb53-8aee-4815-a8d9-0e2e5338e7a2,Cheerios,365,cupboard,Cereals
-fc760af0-6584-4034-b3b2-7c0f00339bb2,Special K,365,cupboard,Cereals
-147c4cef-79fc-4090-9b7b-7a16866c396b,Shreddies,365,cupboard,Cereals
-4606489e-0941-4b23-94fd-46b55aa47937,Frosties,365,cupboard,Cereals
-4a7717b8-c63a-4122-b922-b2b2a15621f8,Fruit and Fibre,365,cupboard,Cereals
-14f1f1ca-7aba-4144-947a-43e60bc89653,All Bran,365,cupboard,Cereals
-b6b45600-47a6-41e4-b1a1-61d1ca0d817e,Crisps,90,cupboard,Snacks
-7a0e5370-a0b4-47ff-b029-96f7d3d43595,Ready salted crisps,90,cupboard,Snacks
-c98b2438-fcb7-4484-a24b-72aac74592d0,Salt and vinegar crisps,90,cupboard,Snacks
-57d0772e-fe6a-4283-a49d-084f68ac2b4b,Cheese and onion crisps,90,cupboard,Snacks
-9139b6b4-8276-4829-888d-bbd0998a860a,Prawn cocktail crisps,90,cupboard,Snacks
-c6e2ed1d-0b91-4937-9172-2b92f69b4d1b,Tortilla chips,90,cupboard,Snacks
-bdf82923-e969-46e5-8d69-dbddbf08e3cf,Popcorn,90,cupboard,Snacks
-b2ac60e8-f432-4915-ba2d-368aa87ac43c,Pretzels,180,cupboard,Snacks
-21d22496-26b0-47bc-b580-c081b37a4e1b,Nuts,180,cupboard,Snacks
-313c67cb-41aa-4008-9520-758eb18f8ab2,Trail mix,180,cupboard,Snacks
-0a04a5eb-5a0b-4a29-a42e-551a1c546981,Digestive biscuits,180,cupboard,Snacks
-635637fb-d65a-4166-b574-f14871b27414,Rich tea biscuits,180,cupboard,Snacks
-ce87c5e9-4a7c-4577-9b7e-2ade605396bb,Chocolate digestives,180,cupboard,Snacks
-43ace880-d1ba-4f3b-a17a-196133361528,Hobnobs,180,cupboard,Snacks
-5faa1b49-8251-4d7f-9d5d-047e741550e2,Custard creams,180,cupboard,Snacks
-114e99f5-4152-42a7-b50a-456276311580,Bourbon biscuits,180,cupboard,Snacks
-76cf5d76-d7b9-4d56-a2ad-ee556e76933a,Shortbread,180,cupboard,Snacks
-1028427b-547f-4ed7-addf-db51248115d5,Jaffa Cakes,180,cupboard,Snacks
-75218491-d29c-4c33-9ae2-3d8a48c7b5e3,Cereal bars,180,cupboard,Snacks
-0cb24318-80a3-444d-ab80-73069388953d,Flapjacks,14,cupboard,Snacks
-c3cd2f8d-9dfc-4380-b565-9fbcc8cb618c,Chocolate bar,365,cupboard,Snacks
-8857a376-7bd9-4d4f-825d-2dc2692deb2d,Fruit pastilles,365,cupboard,Snacks
-a315d4a2-1235-42b0-aa9f-166d1464051e,Wine gums,365,cupboard,Snacks
-8c6b9d58-08a9-4861-901d-1c4c547666ec,Jelly babies,365,cupboard,Snacks
-9fbd7a35-e889-43e6-85f2-64c466c5574f,Haribo,365,cupboard,Snacks
-c70c86b0-1997-4be2-a55a-dc1eaf91299f,Orange juice,7,fridge,Beverages
-0372ad8d-245f-49bc-bcd6-caf7ea225e0b,Apple juice,7,fridge,Beverages
-3e3831db-2404-4095-bd6e-aca388f2d86f,Cranberry juice,14,fridge,Beverages
-ad71dba5-c6de-4b53-9dfa-b129272d88be,Grape juice,7,fridge,Beverages
-e8f240fc-9567-4397-8764-a19368a694a1,Pineapple juice,7,fridge,Beverages
-bce7e919-a886-4a71-bd4b-6ff9cb2b0205,Tomato juice,7,fridge,Beverages
-26b0c723-675b-4414-8259-f423ee35a6cd,Smoothie,3,fridge,Beverages
-2eb6dd66-6a8d-456d-bf4a-df1fe893040b,Long life orange juice,365,cupboard,Beverages
-49b4e88a-61f9-47a1-b7a6-b3a25e2dbf9b,Long life apple juice,365,cupboard,Beverages
-6c84ba71-11fc-400d-a8d0-25285911d265,Squash,365,cupboard,Beverages
-f7688252-ed07-47cc-8b4a-a09d5fc36e74,Cordial,365,cupboard,Beverages
-391607b6-ef91-4117-b59c-07476d6bccc6,Lemonade,7,fridge,Beverages
-3c691e57-14b2-47dc-bd6d-3dbcf2ad87d3,Cola,7,fridge,Beverages
-918c135b-56ac-4dbd-87ea-b426968ad673,Sparkling water,365,cupboard,Beverages
-e5bccd05-9dff-4599-bca5-252aa58ce9bf,Tonic water,365,cupboard,Beverages
-12d53906-97df-4b4b-be47-eea042c3b90f,Tea bags,730,cupboard,Beverages
-2e99764d-885e-49e9-84f2-774061486dfd,Loose leaf tea,365,cupboard,Beverages
-86c675da-0864-4117-9b78-e802f183c039,Green tea,730,cupboard,Beverages
-05fd12d0-b832-4b54-9c64-cd1e570f356e,Herbal tea,730,cupboard,Beverages
-7318252f-ebb0-4a8f-96a1-2982ff40922f,Ground coffee,90,cupboard,Beverages
-fd622ed8-691a-4b3f-962e-bf4e8edf4684,Instant coffee,730,cupboard,Beverages
-31ab137f-dc55-4e7f-a316-78be91672ee4,Coffee beans,90,cupboard,Beverages
-8c1f1279-0697-4c0c-a8c9-c87f4d726b91,Hot chocolate,365,cupboard,Beverages
-08e30c31-fca0-44c7-ad62-6b1aa65d742f,Frozen peas,365,freezer,Frozen
-4b3020dd-e48d-4580-b426-39bcb4d47a83,Frozen sweetcorn,365,freezer,Frozen
-8c6ce6bb-9a73-4c11-b3c2-e6e1a894ef89,Frozen mixed vegetables,365,freezer,Frozen
-8eab5d29-f77d-4a43-9b0f-56c212fdd6b3,Frozen spinach,365,freezer,Frozen
-7bb18e85-ae08-4868-b718-4e8ef29dbcac,Frozen broccoli,365,freezer,Frozen
-1de6cd26-f2af-4bbf-95f9-06fb042bdef7,Frozen chips,365,freezer,Frozen
-fe3fbd31-17f3-473f-832d-91d5c5556f26,Frozen roast potatoes,365,freezer,Frozen
-b2713c10-eba8-4cbb-84e4-3bbab5d6f6d9,Frozen berries,365,freezer,Frozen
-55ab76a6-ef2b-4e65-bb52-a41527d60d93,Frozen strawberries,365,freezer,Frozen
-24460b7e-fc06-4daf-9989-6f5cceec2d4f,Frozen raspberries,365,freezer,Frozen
-ba0373b1-b587-4578-a438-6d6687cb0d2b,Frozen blueberries,365,freezer,Frozen
-d21b6d38-0f3b-4202-898f-180b8cde065f,Frozen mango,365,freezer,Frozen
-5e36aebb-9226-49fe-829c-2648b280af98,Frozen prawns,180,freezer,Frozen
-5f5860b8-d0f6-4eb0-8783-b1943e294674,Frozen fish fillets,180,freezer,Frozen
-07a6ca1b-8e21-4679-8796-41e918ba6c6f,Frozen salmon,180,freezer,Frozen
-71672f1c-2e83-4796-a092-ce21a8aa552b,Frozen cod,180,freezer,Frozen
-835e642d-3a6a-41e7-8e3a-954e149964a0,Frozen chicken breasts,270,freezer,Frozen
-e3bcf7fa-fe57-42c7-8bd2-e0996c5c77d8,Frozen chicken portions,270,freezer,Frozen
-4fa942f0-d817-4a86-8ce9-7dc937f6cd62,Frozen mince,120,freezer,Frozen
-15bb2a3e-574b-4a0a-89ad-70dff879ec04,Frozen sausages,120,freezer,Frozen
-d30950b4-d691-4d6e-a04d-5462fffd5650,Frozen burgers,120,freezer,Frozen
-8c134523-cacf-4f9a-a324-3de88d559322,Frozen pizza,180,freezer,Frozen
-36dbb67a-1c0a-4dcb-a72b-c7ee7c96961e,Frozen ready meals,180,freezer,Frozen
-aa4725c4-2aad-40bb-877b-735e788deba7,Frozen lasagne,180,freezer,Frozen
-cc4d53ab-2ae5-4df9-8252-6fd99a7dd6f8,Frozen pie,180,freezer,Frozen
-b5a6d0bb-87fe-47e7-a167-dde4f93a56fb,Frozen pastry,180,freezer,Frozen
-dd725e49-1faa-4f02-87a8-64174a1db560,Puff pastry,180,freezer,Frozen
-3a5cef8a-5a29-44bd-b047-fdedea868035,Shortcrust pastry,180,freezer,Frozen
-052aaf1c-c33e-4801-b3d9-ef5374aef763,Filo pastry,180,freezer,Frozen
-aeb0bbf8-040e-4bfc-983d-71f5452aeb39,Ice cream,180,freezer,Frozen
-836fdf91-ecf1-49ed-9d64-c8187afd7992,Vanilla ice cream,180,freezer,Frozen
-5d44785f-b947-4e2e-84d9-9fa39b3dd69f,Chocolate ice cream,180,freezer,Frozen
-f1d64253-1dfb-4dad-a777-94a6ed1556ba,Ice lollies,365,freezer,Frozen
-9dfb338c-282c-4bf4-83b4-d8cadd681e57,Frozen yorkshire puddings,180,freezer,Frozen
-5fd80881-b1bc-45af-8277-1e6752c5ff6a,Frozen bread,90,freezer,Frozen
-1a4b43d2-c0a7-4f31-a1ca-54828a219712,Frozen garlic bread,180,freezer,Frozen
-6d9f9128-8dfc-4c47-b7bb-0cc6a0b737d9,Hummus,14,fridge,Deli
-95bd29f2-5b38-46f8-9821-004b53060487,Tzatziki,7,fridge,Deli
-a9ca78ed-fb69-4fd9-a2aa-2d5bac2a3ef8,Guacamole,5,fridge,Deli
-dc3fd388-39fe-4bc7-a604-381e874c593c,Taramasalata,14,fridge,Deli
-6108d984-b0e0-4221-b318-0f3ac764eb35,Coleslaw,7,fridge,Deli
-bb3cfc8c-467e-4164-95ec-210a9ed1b430,Potato salad,5,fridge,Deli
-0390bc14-e64e-4050-8dff-79dab1fe1d8e,Pasta salad,3,fridge,Deli
-bd2649e7-a5ee-4d04-9220-f3e357b760ae,Scotch egg,7,fridge,Deli
-84527cd5-cbea-4a67-9451-ef5aa18c0d9a,Pork pie,7,fridge,Deli
-97b50904-7310-4ede-b828-506ae8f18ddc,Sausage roll,3,fridge,Deli
-04101a56-3dc0-4d0f-8cdf-13c0d48d5035,Quiche,5,fridge,Deli
-9d858006-af82-4add-9a1b-8c81fa405976,Coronation chicken,3,fridge,Deli
-ed84624c-b31b-4500-8632-1d7bf52bc151,Egg mayonnaise,3,fridge,Deli
-2944bdd7-9077-402f-94c5-75ea0d18a5fc,Tuna mayo,3,fridge,Deli
-006f55a0-4201-4a7c-aa9d-2238dc7f79ec,Sandwich filler,5,fridge,Deli
-3cb02bc2-d941-48bc-81d4-0df1c156ff44,Tofu,7,fridge,Vegetarian
-c8ab21dc-0ac7-46e4-a6b9-a6a66b908481,Tempeh,7,fridge,Vegetarian
-40481bad-2566-4c85-a0c3-44e1300ef90e,Quorn mince,5,fridge,Vegetarian
-abe03903-2cef-4c3e-8311-8e8bba28035e,Quorn pieces,5,fridge,Vegetarian
-37d5ed8e-3542-403d-bc6c-2396d465ecf7,Vegetarian sausages,7,fridge,Vegetarian
-defe2a81-ef79-409f-a890-1ddcbbba59af,Veggie burgers,7,fridge,Vegetarian
-3ecd04fb-68fe-433e-8129-250b27f1746f,Falafel,5,fridge,Vegetarian
-f36cbf4d-0981-4545-9d0d-d7e172ce6e29,Paneer,14,fridge,Vegetarian
-06f934e4-50b3-41d4-a719-cb6d478214e7,Vegetable stock cubes,730,cupboard,Stock & Gravy
-687f8670-f3d2-4a0d-b3a5-da4d84f97f9a,Chicken stock cubes,730,cupboard,Stock & Gravy
-876edaab-fab2-4f6c-b158-4e2865b20f78,Beef stock cubes,730,cupboard,Stock & Gravy
-0da00cc3-3ca9-4ff0-9400-9c0470f60429,Fish stock cubes,730,cupboard,Stock & Gravy
-fb8d018c-67ce-4b66-8e18-3ff9e536468a,Vegetable stock pot,365,cupboard,Stock & Gravy
-cc90ea10-6cd1-4ed8-96fd-cf0213c41312,Chicken stock pot,365,cupboard,Stock & Gravy
-0e952e3d-1c28-4728-8601-1cee6e11aab5,Beef stock pot,365,cupboard,Stock & Gravy
-b4d23e28-ce48-4e6c-a3ac-00598dfba169,Fresh stock,5,fridge,Stock & Gravy
-adffbc47-1b32-4afc-a87e-a1687586198f,Gravy granules,365,cupboard,Stock & Gravy
-122d3759-f2fc-48e0-9706-ee2c7c9a3d86,Instant gravy,365,cupboard,Stock & Gravy
-c1817248-c7ed-41cb-9a40-c15f3986f9ca,White sauce mix,365,cupboard,Stock & Gravy
-5302100b-2a05-4943-9e61-bb644fb3ac6b,Cheese sauce mix,365,cupboard,Stock & Gravy
-eb385c38-1d0e-4122-bbcf-ec139c47ffea,Curry paste,365,cupboard,World Foods
-e50576ab-af4d-4b24-ae2b-68bf95c3a8c1,Tikka masala paste,365,cupboard,World Foods
-d2ea58fc-d984-49ee-8a01-872a4e66e134,Korma paste,365,cupboard,World Foods
-ac0dbbaf-4e69-47bd-b33d-86ee913ec706,Madras paste,365,cupboard,World Foods
-a6a5772d-ddfa-440b-bcbf-5403fe9bda01,Thai green curry paste,365,cupboard,World Foods
-7a365c21-2fd0-4b80-a2c6-ada580ff9319,Thai red curry paste,365,cupboard,World Foods
-8a2acda4-6b5b-4ae1-a863-9efafe3d4e50,Miso paste,365,fridge,World Foods
-ef7345aa-6dfa-45d9-85ca-09560d4d8b42,Teriyaki sauce,365,cupboard,World Foods
-bf6505fa-e247-478a-8943-3f4cc27d83a0,Satay sauce,365,cupboard,World Foods
-2a3cb74b-b3c5-4148-a146-cc1268bcaedd,Curry sauce,365,cupboard,World Foods
-19f1a38c-ae92-4a85-ab8b-adbe55f3084f,Stir fry sauce,365,cupboard,World Foods
-3d9f45e8-c159-4c4a-8b72-82c37733c38e,Pad thai sauce,365,cupboard,World Foods
-46650988-89be-41f0-90c8-af309a86da05,Harissa paste,365,cupboard,World Foods
-ce762136-5eee-4f85-b503-58c8b32d7378,Chipotle paste,365,cupboard,World Foods
-869d2fea-1084-4f57-b3ae-cacc1fb8edf1,Refried beans,730,cupboard,World Foods
-4bd5bc96-e1bf-4aa3-8571-f6bf4e913e06,Salsa,14,fridge,World Foods
-2facb061-5ea8-4cf6-be76-999b95c0b34d,Taco shells,365,cupboard,World Foods
-c98efbd0-9aba-481c-9004-078cd1b4944a,Fajita kit,365,cupboard,World Foods
-d30b60b0-1a3e-46de-8c41-3c895ff30535,Spring roll wrappers,7,fridge,World Foods
-0b437c85-73e1-49b5-af45-8987d94637f5,Wonton wrappers,7,fridge,World Foods
-ae0f97b0-3745-430a-9b08-38c5ce0cf224,Baby formula,30,cupboard,Baby
-cf8e5a96-c65f-4753-80cb-baf4577bb7b8,Baby food jars,365,cupboard,Baby
-f4e556b0-0448-4d4c-bb85-af78aec2604d,Baby rice,365,cupboard,Baby
-59d67b66-ccda-4585-b3b5-d33339472341,Baby rusks,365,cupboard,Baby
-21ac61fd-9668-4014-bca8-7e8cdef2799d,Baby puree pouches,365,cupboard,Baby
-18f8e896-3002-4966-958b-4ec534727e12,Follow-on milk,30,cupboard,Baby
+id,ingredientName,shelfLifeDays,defaultLocation,category,createdAt,updatedAt
+cbab15dd-8422-40ef-add5-6db23224138d,Semi-skimmed milk,7,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+109d002e-eb7c-46e6-8a68-21de79809db7,Whole milk,7,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+351e440f-a94c-446c-9099-c83b39b36857,Skimmed milk,7,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+5c74cc2e-7537-4714-b763-2cd80e206d04,Oat milk,10,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+862bbb5a-1cba-4e66-93d1-28b45e7de744,Almond milk,10,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+1e77b1fc-e007-4268-9e90-d677f997df10,Soya milk,10,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+c5aac60d-f20c-4c86-a9de-8983112217dd,Coconut milk,10,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+fac58503-cf54-4178-8e8f-bc7b79522392,Double cream,7,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+bb426391-79a0-43c6-afa8-c761d8c025b0,Single cream,5,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+740b3201-b604-4c93-8fd4-aa5a048ec65a,Whipping cream,7,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+29d10ffe-75a0-4203-9e97-f8debfa4ff05,Soured cream,14,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+e2837926-5749-4488-b608-95fe762a468b,Creme fraiche,14,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+b51cc62f-dee5-4967-9a36-46bb88667653,Greek yoghurt,21,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+42eaab11-b209-45b2-b966-3ac8a7a8e0cd,Natural yoghurt,21,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+eb111209-98ed-488d-859d-6a2256972132,Flavoured yoghurt,14,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+497d2d51-dd45-4311-b7ba-5cd468d123fb,Cottage cheese,7,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+7634ee38-0ac5-4491-b753-6d5b91876d35,Cream cheese,14,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+3ba4cff5-0e7b-46ac-9799-5ecd2f8e6e7e,Cheddar cheese,42,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+d2aa6b18-fff0-4bfa-89f3-57a19d0517b4,Red Leicester,42,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+86f46f33-91a0-4191-8024-1a7d6bda6cfb,Mature cheddar,56,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+5bca91ea-bb93-4b79-b261-9c9bfb9e62fe,Mild cheddar,42,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+c108c8ea-2b76-422b-882f-9f1f110c20f2,Parmesan,90,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+12f1c7e8-0824-4cfa-a3c8-4aea695abe8c,Mozzarella,7,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+1b39464f-ee86-4bd7-aacb-520edaf4abd1,Feta cheese,30,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+951a2dfa-d217-4b94-a29b-83958593fe0c,Brie,14,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+92261287-bbde-4017-ad7d-b881ab34d66e,Camembert,14,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+c5634dcd-3371-4959-9346-bdaae852c355,Stilton,21,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+8effa419-78d2-444d-be24-6d3f3b066414,Halloumi,30,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+715c2fec-53fb-48ab-b3b2-51796880d083,Goats cheese,14,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+499bde40-411f-4b94-9b5d-4ec6c4ed6c6c,Mascarpone,7,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+7e63f152-3ffb-4878-bbf9-d854b09a70cc,Ricotta,7,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+b8dca904-9240-483c-aa8a-9e2a0d6394dd,Grated cheese,14,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+073da456-0d6f-4358-84e3-b521ac295e24,Cheese slices,21,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+5a3fc3f0-5e29-4408-91cf-e89f980b19cd,Butter,60,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+d06c2dee-2a0e-4798-ad98-845f24ed17b0,Unsalted butter,60,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+0ee56467-c8a4-4987-ae84-d6823af6ae9b,Salted butter,60,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+3838a6d6-eb03-4115-bbfd-5559709aa2e3,Spreadable butter,42,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+761f06b3-c046-4b46-b276-b90aaa79f058,Margarine,90,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+474eb78f-98b0-4f05-82ea-4c8b581a8c85,Large eggs,28,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+15a8a985-c90e-4227-97e1-dcbb58b9262d,Medium eggs,28,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+93e3e811-1153-4ce2-9b04-801167641455,Free range eggs,28,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+4683ae1c-d4e4-4b11-a921-89ceb46d809e,Organic eggs,28,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+0313e68b-8414-4b8b-9309-51aa05a949fa,Quail eggs,21,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+be77c0fa-0e3d-4295-a8d4-1e15b93692f1,Duck eggs,21,fridge,Dairy,2025-12-11 13:55:13,2025-12-11 13:55:13
+85dd8628-64d4-4056-999e-682340ff1c6e,Chicken breast,3,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+d3aefb9e-a4e4-4b1d-b49b-26e3f45c2933,Chicken thighs,3,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+e7cb46d5-ccc2-4fb6-92cb-d3e516976e0e,Chicken drumsticks,3,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+8f82645b-b62a-4674-801f-0ed165134992,Chicken wings,3,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+98c9cd0c-5be6-47de-8f18-eb33833068fd,Whole chicken,3,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+16c21d6b-abaa-4af9-a606-c5430bbff3cc,Chicken mince,2,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+3abea5dd-717b-4e50-a456-f8bca1ac155e,Turkey breast,3,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+690d3453-d42c-4222-948c-f7d6e4d7fc92,Turkey mince,2,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+2d57c75f-9f30-4cf3-a620-192974fa469c,Beef mince,2,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+23377365-e4d6-44ef-b69b-5826259e07ea,Beef steak,3,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+a5355837-5180-444b-be65-98ea34c01e2d,Sirloin steak,3,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+2fd7e010-c1ee-405f-be12-a4915d68ab27,Ribeye steak,3,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+6f9fba05-8df6-46d4-bd4d-32babbc35823,Fillet steak,3,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+3f74429a-7ca8-40ba-95ca-b6c15f3f238a,Rump steak,3,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+9a2af06a-0f72-460e-898b-cc1ebc656535,Beef joint,4,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+b1c07a38-073a-4801-b99e-2df9207302a5,Beef brisket,4,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+970080d6-ef10-4f89-9a28-3a5857cd1df2,Stewing beef,3,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+6652dfbf-6b80-4e72-b435-32e462354994,Lamb mince,2,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+7262f2bd-cdfe-4cd3-b795-2fc3cb69fe98,Lamb chops,3,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+aacc1509-8b3f-4987-bc6d-b29507bdaff2,Lamb leg,4,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+28f2111f-3fa8-4500-84a4-317a43d5549b,Lamb shoulder,4,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+11a2339c-1306-4309-8995-30714a85df39,Lamb shanks,3,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+f1405fb7-1e55-410b-838c-03a7432caeaf,Pork chops,3,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+35f62fa0-9a25-4948-bd3b-f3bc48550a2e,Pork loin,3,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+f500fc87-365d-47a0-9fb9-ce72ab3ee208,Pork belly,3,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+656890be-e9c0-47a0-8e9d-457c6ce6a497,Pork mince,2,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+e7380133-2087-43bd-8e60-fd2c9fe6758e,Pork tenderloin,3,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+46ac88c9-b6ae-41b3-a819-5f9b7d556a96,Pork shoulder,4,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+aaa56bd3-18d9-421d-b629-108cc312a05d,Gammon joint,5,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+75761c98-a928-443b-8939-f93e4e6e451e,Gammon steaks,4,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+299073eb-0bb3-408e-8494-a9872a6c073c,Bacon rashers,7,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+5947803d-7e67-4878-90c4-7e932fba20d4,Streaky bacon,7,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+ecad20ba-6447-4fb2-a2d2-d2c15691119a,Back bacon,7,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+fef555b9-20fe-411d-a439-5e4c70ed6317,Smoked bacon,7,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+16a45434-80ab-4194-b20e-26b05c54a4d4,Pancetta,7,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+d9c0ea4a-c183-437f-b3b5-d72e85a705a9,Chorizo,21,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+dbf0d39e-ba0e-423d-b813-30fe041a334d,Salami,30,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+7e46eb33-30b5-4b0e-81ca-39bd1b6b8c99,Pepperoni,21,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+36ae70ca-dc27-4f5f-a378-22c02008dd20,Ham slices,5,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+83f02268-43a6-4b6d-9b1b-32820fe39f05,Cooked ham,5,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+f7557834-1afe-48b5-bb6f-e1c781bd7954,Parma ham,14,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+5524462a-f841-4475-bc5e-ad0c1882f442,Prosciutto,14,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+5e8afdd0-54aa-44da-b20f-9b5095dbeb2f,Sausages,4,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+f72ca92a-60f6-4069-b114-573b118e66f7,Pork sausages,4,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+9f4f3345-5ed4-4989-8898-49fbc609ec58,Cumberland sausages,4,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+61a349b7-afdf-4759-8f4e-0c1465cb16b8,Chipolatas,4,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+e0b36dd6-dc2a-4d31-aff6-82f60564cb35,Chicken sausages,4,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+8783f5b5-88de-4bbe-906a-fee397488377,Beef sausages,4,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+639253d3-bbc7-4af4-9cc8-08398adc0184,Venison,3,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+1dce203f-c326-4369-877c-4317a2839fe1,Duck breast,3,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+eccc8239-53c2-4f6b-ab10-dde6c5e32d56,Liver,2,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+ae328782-11ce-4079-b88b-24f9f9f51a2f,Kidney,2,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+d350db7f-3224-4a40-8ff0-1c15a4425e88,Black pudding,7,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+760ec3b2-e86a-4840-8d74-42c91471c536,White pudding,7,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+3b252e3b-c3eb-407e-a1be-61a4cd6afc76,Haggis,5,fridge,Meat,2025-12-11 13:55:13,2025-12-11 13:55:13
+cbce7ece-1012-49f8-99d9-8e8e229ac43e,Fresh salmon,2,fridge,Fish,2025-12-11 13:55:13,2025-12-11 13:55:13
+a224005d-c8c1-463a-b145-387480e07891,Salmon fillets,2,fridge,Fish,2025-12-11 13:55:13,2025-12-11 13:55:13
+2d4d3113-dafc-4197-b213-a6a28b7bb7c8,Smoked salmon,14,fridge,Fish,2025-12-11 13:55:13,2025-12-11 13:55:13
+5b7d1e9b-390a-4be8-bd91-bf5010a65185,Fresh cod,2,fridge,Fish,2025-12-11 13:55:13,2025-12-11 13:55:13
+50d21f9b-eb1f-4982-8f83-144348890498,Cod fillets,2,fridge,Fish,2025-12-11 13:55:13,2025-12-11 13:55:13
+d8ff2888-ed8e-49fc-9de3-422e269703b9,Fresh haddock,2,fridge,Fish,2025-12-11 13:55:13,2025-12-11 13:55:13
+d31ee51b-eb7f-4ea3-825a-9419f51bd74f,Smoked haddock,5,fridge,Fish,2025-12-11 13:55:13,2025-12-11 13:55:13
+f1b7a8ef-0402-49be-95de-b064fcf3edd1,Sea bass,2,fridge,Fish,2025-12-11 13:55:13,2025-12-11 13:55:13
+909f2419-d02c-4b55-9f3c-c8ca3c20f31e,Mackerel,2,fridge,Fish,2025-12-11 13:55:13,2025-12-11 13:55:13
+e14fc815-c9e4-4cc0-987d-90cbc327c23b,Smoked mackerel,7,fridge,Fish,2025-12-11 13:55:13,2025-12-11 13:55:13
+af4f241a-9720-45e1-86c6-9e44a99e9d02,Fresh trout,2,fridge,Fish,2025-12-11 13:55:13,2025-12-11 13:55:13
+376601f2-7f14-47af-9922-e267821a7c5c,Rainbow trout,2,fridge,Fish,2025-12-11 13:55:13,2025-12-11 13:55:13
+e485a363-e1db-4989-9778-fcc17022d1c9,Tuna steak,2,fridge,Fish,2025-12-11 13:55:13,2025-12-11 13:55:13
+db7917bc-3534-479c-8ed8-d2ab5786923f,Swordfish,2,fridge,Fish,2025-12-11 13:55:13,2025-12-11 13:55:13
+7014cd5c-743e-439c-b559-bcf09de1d040,Plaice,2,fridge,Fish,2025-12-11 13:55:13,2025-12-11 13:55:13
+22ee7dea-359b-4687-9ff0-012f4616f46d,Sole,2,fridge,Fish,2025-12-11 13:55:13,2025-12-11 13:55:13
+cec7f75a-7c9c-44e7-8ca4-4884a76cb032,Sardines,2,fridge,Fish,2025-12-11 13:55:13,2025-12-11 13:55:13
+e1cb8d02-6348-4098-9533-d25d23f03cfd,Anchovies,30,fridge,Fish,2025-12-11 13:55:13,2025-12-11 13:55:13
+ae2c56ba-4513-4f32-9c77-d3a63f2917d5,Fresh prawns,2,fridge,Fish,2025-12-11 13:55:13,2025-12-11 13:55:13
+53f3da64-c0fe-4db7-b4af-6d5f90a26b37,Cooked prawns,3,fridge,Fish,2025-12-11 13:55:13,2025-12-11 13:55:13
+b2748b59-96c9-4a3c-bf20-3f7d3129ec13,King prawns,2,fridge,Fish,2025-12-11 13:55:13,2025-12-11 13:55:13
+c0138feb-3cb9-4767-8706-e0f1fe3399b6,Tiger prawns,2,fridge,Fish,2025-12-11 13:55:13,2025-12-11 13:55:13
+74425231-51ea-4c65-b4de-71e1834be8e1,Crab meat,2,fridge,Fish,2025-12-11 13:55:13,2025-12-11 13:55:13
+635749a2-0174-413a-a588-edd97691e5b2,Lobster,2,fridge,Fish,2025-12-11 13:55:13,2025-12-11 13:55:13
+fe44f56a-f540-401c-948c-c7b41684c886,Mussels,2,fridge,Fish,2025-12-11 13:55:13,2025-12-11 13:55:13
+63ed5f28-c3a9-4050-9e14-6a349a008379,Clams,2,fridge,Fish,2025-12-11 13:55:13,2025-12-11 13:55:13
+2a8a9561-89a5-4db9-9f8b-13ffcedd8362,Scallops,2,fridge,Fish,2025-12-11 13:55:13,2025-12-11 13:55:13
+b315126c-b522-45ea-a4db-165b6aef7017,Squid,2,fridge,Fish,2025-12-11 13:55:13,2025-12-11 13:55:13
+32837093-acb6-47bb-92fa-0cccd0664281,Calamari,2,fridge,Fish,2025-12-11 13:55:13,2025-12-11 13:55:13
+ddeb368c-5fcb-4abf-810c-b3d58c970ca5,Octopus,2,fridge,Fish,2025-12-11 13:55:13,2025-12-11 13:55:13
+9de036c4-6157-4c54-a23b-924b2aece1fc,Fish fingers,90,freezer,Fish,2025-12-11 13:55:13,2025-12-11 13:55:13
+218d4701-50ca-44f7-8c18-10b64828d58e,Fish cakes,90,freezer,Fish,2025-12-11 13:55:13,2025-12-11 13:55:13
+79f19d4b-2798-442a-b335-38df2f197a3e,Battered fish,90,freezer,Fish,2025-12-11 13:55:13,2025-12-11 13:55:13
+ffca07cf-4fff-44e2-a8c9-4daa3257123a,White bread,5,cupboard,Bakery,2025-12-11 13:55:13,2025-12-11 13:55:13
+f736e47a-4061-4722-8cdb-05e173969be9,Wholemeal bread,5,cupboard,Bakery,2025-12-11 13:55:13,2025-12-11 13:55:13
+d4becf46-69ac-434b-8f23-aa70153365a1,Seeded bread,5,cupboard,Bakery,2025-12-11 13:55:13,2025-12-11 13:55:13
+75693640-67e4-44c6-b692-441a16577096,Sourdough,7,cupboard,Bakery,2025-12-11 13:55:13,2025-12-11 13:55:13
+8ece8e07-8ed1-44c9-801f-b93e8ccde559,Ciabatta,3,cupboard,Bakery,2025-12-11 13:55:13,2025-12-11 13:55:13
+849b1e50-ce80-4742-a03f-98735117237b,Baguette,2,cupboard,Bakery,2025-12-11 13:55:13,2025-12-11 13:55:13
+adff3a13-4297-4ee0-8d44-34d7e365af82,Brioche,5,cupboard,Bakery,2025-12-11 13:55:13,2025-12-11 13:55:13
+2f309730-1014-42bc-8441-b1020f4412b1,Pitta bread,7,cupboard,Bakery,2025-12-11 13:55:13,2025-12-11 13:55:13
+bb9c3ba7-b9e0-4d25-94dd-b225bc0478cc,Naan bread,7,cupboard,Bakery,2025-12-11 13:55:13,2025-12-11 13:55:13
+efc8a7e6-ad0b-4862-a89d-408c7d059837,Wraps,14,cupboard,Bakery,2025-12-11 13:55:13,2025-12-11 13:55:13
+b5fde2c0-ac34-4918-853a-ad7b1841a939,Tortillas,21,cupboard,Bakery,2025-12-11 13:55:13,2025-12-11 13:55:13
+57739b0d-1cba-4f98-a674-45555499e7fd,Crumpets,7,cupboard,Bakery,2025-12-11 13:55:13,2025-12-11 13:55:13
+85367fc8-c603-4432-be75-118c47c81810,English muffins,7,cupboard,Bakery,2025-12-11 13:55:13,2025-12-11 13:55:13
+166c1373-8ae7-43eb-9f3e-99b38dc767b9,Bagels,5,cupboard,Bakery,2025-12-11 13:55:13,2025-12-11 13:55:13
+4ebf16fe-edcc-42a7-9bb5-47dd821c8b72,Croissants,3,cupboard,Bakery,2025-12-11 13:55:13,2025-12-11 13:55:13
+a42ebc77-0d48-46a2-ad4d-30b6939d2f4f,Pain au chocolat,3,cupboard,Bakery,2025-12-11 13:55:13,2025-12-11 13:55:13
+ab256792-c7a0-4c17-b76a-55f25d7423ad,Danish pastry,3,cupboard,Bakery,2025-12-11 13:55:13,2025-12-11 13:55:13
+f822125b-f921-47f7-95c3-3ea5dc4782dc,Scones,5,cupboard,Bakery,2025-12-11 13:55:13,2025-12-11 13:55:13
+682bf46c-1925-4877-82ef-d9311ace739a,Hot cross buns,5,cupboard,Bakery,2025-12-11 13:55:13,2025-12-11 13:55:13
+94650c18-e01c-4bc2-a67d-001a8e57994b,Teacakes,5,cupboard,Bakery,2025-12-11 13:55:13,2025-12-11 13:55:13
+c24f8fe1-446f-4d3f-bcf0-b7119f6bbae5,Fruit loaf,7,cupboard,Bakery,2025-12-11 13:55:13,2025-12-11 13:55:13
+4271ced7-b945-4796-8180-d9cdbd2077bc,Banana bread,5,cupboard,Bakery,2025-12-11 13:55:13,2025-12-11 13:55:13
+80ca7bde-a75f-4867-817f-781675f0d8da,Breadsticks,180,cupboard,Bakery,2025-12-11 13:55:13,2025-12-11 13:55:13
+423c2eb4-b2b6-41e2-8550-e68d65545c1d,Crackers,180,cupboard,Bakery,2025-12-11 13:55:13,2025-12-11 13:55:13
+b15ec941-1341-4ed2-b789-361fef9b3c86,Rice cakes,180,cupboard,Bakery,2025-12-11 13:55:13,2025-12-11 13:55:13
+10f1d2a5-c071-4b3a-baf8-ec7c693d303c,Oatcakes,90,cupboard,Bakery,2025-12-11 13:55:13,2025-12-11 13:55:13
+af83f6ff-1086-4553-a438-c225b12559fe,Crispbreads,180,cupboard,Bakery,2025-12-11 13:55:13,2025-12-11 13:55:13
+3b2a82d2-f46a-4b0f-ad50-53602e0017da,Apples,14,fridge,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+8275355e-4664-4d55-9b34-bddfd827e813,Bananas,7,cupboard,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+f0eeda47-5481-4010-bb68-17afd27c27f6,Oranges,21,fridge,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+aa319905-6c92-43fd-8a03-88998e420c77,Satsumas,14,fridge,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+010688d4-b369-461e-84b2-6d587938727d,Clementines,14,fridge,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+becef5e8-cd61-4bde-a40d-fe6654642ddd,Lemons,21,fridge,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+10f9282c-862a-4472-8b95-5f392057ecf3,Limes,14,fridge,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+b5ab3979-f5e3-4e24-bb0c-f21898a794fc,Grapefruit,21,fridge,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+f463045a-ac49-4e19-8834-2db317c8d711,Pears,7,fridge,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+46a08078-3b2a-4920-a9ca-7b803bc60d28,Grapes,7,fridge,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+a86179f8-321d-4175-b9c1-693ae0d50c77,Strawberries,5,fridge,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+13fedad6-9c9e-46da-bfff-ddb6896474a8,Raspberries,3,fridge,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+a8ad03c7-42e3-4567-b45c-7790b8eb650e,Blueberries,7,fridge,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+6bb73ad3-f740-4249-a266-8e022f4d28dd,Blackberries,3,fridge,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+48e9afd4-3092-4783-88d9-a8c0fa50e446,Cherries,5,fridge,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+132b0212-3f2a-45c5-82e9-f31f1343e689,Plums,7,fridge,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+5de40275-968d-4f19-88fb-917c44ed7d4b,Peaches,5,fridge,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+25619f5c-7ed9-4cd6-b42f-3faf29576818,Nectarines,5,fridge,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+9c8f077d-eded-4f29-af9b-cd55c3cc53be,Apricots,5,fridge,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+9f21e3e1-568d-4299-9e4c-c608b814c19f,Mangoes,5,fridge,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+f7591364-c47e-4639-a6a0-a4d9d0ac64df,Pineapple,5,fridge,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+2200bc3d-2696-4b16-89ce-dd38b9329ec4,Kiwi fruit,14,fridge,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+1b3e8d35-df58-4c54-9675-7b5e71555244,Melon,5,fridge,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+72b87cf5-637c-4648-b8b2-ec7453008a77,Watermelon,7,fridge,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+8989c946-144f-44f8-92f4-1b70ebfa8927,Honeydew melon,7,fridge,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+a116d041-fa92-4a87-a3d7-df1f4552a062,Cantaloupe,5,fridge,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+0b964728-0056-463d-90d3-2e218a15e75f,Papaya,5,fridge,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+7b5cf912-c57b-4a60-adb6-13e59cb3edf2,Passion fruit,7,fridge,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+3631c9cc-b9c9-4f93-b919-caa321d8d616,Pomegranate,14,fridge,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+d21aa62f-e672-404a-bb54-aaffdcc17a84,Figs,3,fridge,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+06233f4c-1aca-4c24-a268-42e36bcac154,Dates,30,cupboard,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+8c9d02d4-cb3b-4a4b-bfef-b5ac7abe5b50,Dried apricots,180,cupboard,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+157f5c8c-178a-474c-aaaa-78723f7d0287,Raisins,365,cupboard,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+2eff6dff-48ae-4cca-a2e4-90e1bdfcc034,Sultanas,365,cupboard,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+b7f987a9-b33a-48a5-8ec5-61b4466caac0,Dried cranberries,180,cupboard,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+52e96077-a457-4236-8b6a-88e597184ece,Dried mango,180,cupboard,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+0cfe2c4a-576b-4699-a239-0bcfee0c7833,Prunes,180,cupboard,Fruit,2025-12-11 13:55:13,2025-12-11 13:55:13
+b77621c9-754a-4f99-96ca-5e1de6d1c591,Potatoes,21,cupboard,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+a496f39c-3929-4c60-b308-c8ab6b8803da,New potatoes,14,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+83624c34-67c6-46b3-84a7-d36c42a44321,Sweet potatoes,21,cupboard,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+90cea2ee-43e2-487e-9ba1-87818b494d50,Carrots,21,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+52d53bc1-726e-4df1-bbd4-b055f05e0897,Parsnips,21,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+e45d463d-2311-4f1b-8118-56f1aa2eaeb7,Onions,30,cupboard,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+33e3c905-8bf6-4c39-9447-c5824b305894,Red onions,30,cupboard,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+1e9134c3-548f-464d-8dfb-971a4cc49117,White onions,30,cupboard,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+3be61b4c-66ed-4406-b3ac-ff198e4b1f77,Spring onions,7,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+568858e3-220f-4b14-9ce2-55c87fbd159b,Shallots,30,cupboard,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+248ffb85-3bd6-48c0-b4dc-7821c47ab262,Garlic,30,cupboard,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+083da10e-6f1d-4c8b-962b-c6c28655fc0d,Leeks,10,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+716ee215-ec56-4233-babe-d13860ac0e8c,Celery,14,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+2ae09709-de15-47b6-b694-4a92bd182201,Broccoli,7,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+b656a056-059d-45cf-94c9-d879efe41594,Cauliflower,7,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+00efd2ec-69b5-4b9c-8db2-47c2dc320058,Cabbage,14,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+79ac9af2-7c8c-49d8-91d4-39469f29ef7b,Red cabbage,14,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+e5b31ea5-0191-4ff0-b5a1-ee1594120b11,Savoy cabbage,10,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+1c881554-c53e-490d-946b-547d24eb4459,Brussels sprouts,7,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+99037f3b-106d-4044-8c5b-076ccfd5c5bf,Kale,7,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+97de9357-f219-4c2a-b1f2-1712ccb48a9d,Spinach,5,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+97d249f5-db72-4e3b-bc95-4e87a9d3e30d,Lettuce,7,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+d97ceb48-bf3f-4b3f-b4c4-0c3b11cdb94b,Romaine lettuce,7,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+f9cd32fc-637d-48c7-be7c-bbdcfd6c0204,Iceberg lettuce,10,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+087358a3-6849-4615-9929-31209c887cef,Rocket,5,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+824ab75c-e580-406e-8bb0-2937c18af249,Watercress,3,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+e98abd74-e2ee-4e8e-9f21-ec5d8bcbe312,Mixed salad leaves,5,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+9d812d77-c612-4e30-9d3f-ace2bad13e60,Cucumber,7,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+b6578726-e374-47dc-8e09-21170abe0bc5,Tomatoes,7,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+7f5a4cde-4e77-4470-a182-df9c95dc357e,Cherry tomatoes,7,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+ec84edb5-5ed4-4a98-ad52-ff635407f774,Vine tomatoes,7,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+729db4b3-ac90-417a-93d6-eda578b505c8,Beef tomatoes,7,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+bd3bcd94-aefa-45ad-9fd3-4c2f67c9472b,Peppers,10,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+57a3c774-de7c-419d-b4f6-ec84fc7e528f,Red peppers,10,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+d8ed191e-115f-4676-9915-5b658202ba5f,Yellow peppers,10,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+2c4d563c-157d-46b3-982e-80e39c8ac0bf,Green peppers,10,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+8b40800e-4a1e-48fe-8193-191fed88e4db,Chilli peppers,14,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+98e260f6-ac41-4e70-838e-27fb4ca1a199,Jalapeños,14,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+23274217-1d1a-475a-916a-4dd1d96d4537,Aubergine,7,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+ea009725-de6d-4067-9d9b-b384b0e9e746,Courgette,7,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+27c8ed6f-605c-414a-9aac-c2fac68258b7,Butternut squash,30,cupboard,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+483145f9-f1f8-46f2-9a32-7a6b2b2791d1,Pumpkin,30,cupboard,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+42669d8e-ff44-47b7-9ea0-3352064de820,Mushrooms,5,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+318be7cd-32a1-47cd-9564-c80945f8e507,Chestnut mushrooms,5,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+74d489e0-56a8-43cc-b83f-b6ace5de1129,Button mushrooms,5,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+83325701-05a0-42aa-beaa-cfd521123334,Portobello mushrooms,5,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+793332b1-cab7-4ecb-b358-d7b447f85ea4,Shiitake mushrooms,7,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+eb978ce4-8010-4e44-8eb5-af5d45aa52c3,Oyster mushrooms,5,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+dfd0b150-3d03-4977-a92e-31a351c6758f,Asparagus,4,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+a433306d-72b1-44ac-bd5c-c75a5e93e3a8,Green beans,5,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+d44cc5ce-69ea-4060-bcc4-078d4fa40e4e,Runner beans,5,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+9a12cb3e-4f6c-4865-916c-1275da16b47a,Broad beans,5,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+c8cdbcac-3022-4735-bdc6-4405a7a79dd7,Mangetout,5,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+4a198c40-ea33-4da9-b186-c56a3ac03d92,Sugar snap peas,5,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+34f72a0f-1227-4395-aafe-cd0bde3cc36f,Peas,5,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+7e624753-45ca-42b1-8061-a39ed43345f4,Sweetcorn,5,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+a982eafa-0532-4adc-84cc-884d0ea24363,Corn on the cob,5,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+0070b7b8-9202-48db-889f-2eec32ec80c5,Artichokes,7,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+819b863d-876d-4b7f-8072-7fabe2132257,Beetroot,14,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+72b70413-c7bf-4e24-82f4-2983c639756a,Radishes,10,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+1a040578-997d-4ffd-b81f-5cb2ecc32ad2,Turnips,14,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+116795da-a1dc-4a1b-a731-063a90ad8dbc,Swede,21,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+4a25f9be-90fa-4c6d-b622-91ff803c1c45,Celeriac,14,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+aa67434c-4267-442f-b1c6-f3bb08dc25e7,Fennel,10,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+f39f2241-4110-4f04-a3aa-8f27340cb392,Pak choi,5,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+6bed14ca-c330-44fd-99ee-61c19df9edf3,Chard,5,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+0f08770e-e04e-4beb-ad7c-8eb926447ca4,Beansprouts,3,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+f4cd6036-9ab9-4a09-bc1a-8949fc066d85,Avocado,5,fridge,Vegetables,2025-12-11 13:55:13,2025-12-11 13:55:13
+d5c806f5-af68-4842-85d4-8190ae854d81,Fresh basil,7,fridge,Herbs,2025-12-11 13:55:13,2025-12-11 13:55:13
+8cc40cb0-25a5-4aa4-bbb8-a3986f9446de,Fresh parsley,10,fridge,Herbs,2025-12-11 13:55:13,2025-12-11 13:55:13
+76bd377a-6d47-4e4d-bbf1-6ae9b44ce8f3,Fresh coriander,7,fridge,Herbs,2025-12-11 13:55:13,2025-12-11 13:55:13
+e438a800-12c6-491b-9de6-d2785efb6944,Fresh mint,7,fridge,Herbs,2025-12-11 13:55:13,2025-12-11 13:55:13
+347350c8-85c5-4cea-b908-3b1423e4035a,Fresh rosemary,14,fridge,Herbs,2025-12-11 13:55:13,2025-12-11 13:55:13
+9fc12db7-d828-4404-ba97-486b2b344da1,Fresh thyme,10,fridge,Herbs,2025-12-11 13:55:13,2025-12-11 13:55:13
+3333c5c3-45e7-42e2-a65a-eb2ce05e007b,Fresh sage,10,fridge,Herbs,2025-12-11 13:55:13,2025-12-11 13:55:13
+bf68fee0-dbe4-4980-b83b-0249f67da49c,Fresh dill,7,fridge,Herbs,2025-12-11 13:55:13,2025-12-11 13:55:13
+ca98fbcb-5c7e-4704-9882-e682d9935e4a,Fresh chives,7,fridge,Herbs,2025-12-11 13:55:13,2025-12-11 13:55:13
+14747284-2be1-492e-9740-e4937c625540,Fresh tarragon,7,fridge,Herbs,2025-12-11 13:55:13,2025-12-11 13:55:13
+8d2886ba-1f29-4a5e-979f-68c3de070699,Fresh oregano,10,fridge,Herbs,2025-12-11 13:55:13,2025-12-11 13:55:13
+d53d08f4-c842-4eba-939c-68f4cb15d7b8,Fresh bay leaves,14,fridge,Herbs,2025-12-11 13:55:13,2025-12-11 13:55:13
+3b10c8b5-e19b-4bfe-a021-d34df373318c,Ginger root,21,fridge,Herbs,2025-12-11 13:55:13,2025-12-11 13:55:13
+79aba9ca-d88d-4e9c-8619-4ded017f6f70,Lemongrass,14,fridge,Herbs,2025-12-11 13:55:13,2025-12-11 13:55:13
+ee89d581-020e-44fc-835e-908dd17a2459,Dried basil,365,cupboard,Herbs,2025-12-11 13:55:13,2025-12-11 13:55:13
+b52baf8f-3261-493f-a775-e1d73d1a1a25,Dried oregano,365,cupboard,Herbs,2025-12-11 13:55:13,2025-12-11 13:55:13
+482eb6a1-fb92-460a-8bb9-6b2200362a1e,Dried thyme,365,cupboard,Herbs,2025-12-11 13:55:13,2025-12-11 13:55:13
+3fe963da-111f-410b-b43a-21d365d2210e,Dried rosemary,365,cupboard,Herbs,2025-12-11 13:55:13,2025-12-11 13:55:13
+4373bb87-a729-4b61-8dc1-d8a60d9c8acd,Dried mixed herbs,365,cupboard,Herbs,2025-12-11 13:55:13,2025-12-11 13:55:13
+76a8df55-5d83-4995-b6cc-a18fca5a91d6,Dried parsley,365,cupboard,Herbs,2025-12-11 13:55:13,2025-12-11 13:55:13
+3218484e-6b09-4576-8461-dc4c8189b998,Bay leaves,730,cupboard,Herbs,2025-12-11 13:55:13,2025-12-11 13:55:13
+63f73d11-9e70-4a9b-b64e-295995bc8e82,Cumin seeds,730,cupboard,Spices,2025-12-11 13:55:13,2025-12-11 13:55:13
+e2a70d33-ce04-488c-a0aa-88eb132419ff,Coriander seeds,730,cupboard,Spices,2025-12-11 13:55:13,2025-12-11 13:55:13
+a22282f0-dfc0-4abe-896f-42866c31023e,Fennel seeds,730,cupboard,Spices,2025-12-11 13:55:13,2025-12-11 13:55:13
+5a3b09a0-83f0-44c8-b52d-95af5d6a626b,Mustard seeds,730,cupboard,Spices,2025-12-11 13:55:13,2025-12-11 13:55:13
+3704bf5f-b2c7-495e-91c1-5a62471c44a7,Caraway seeds,730,cupboard,Spices,2025-12-11 13:55:13,2025-12-11 13:55:13
+e15e48e4-3c29-4df0-859e-2d100536a2e5,Cardamom pods,730,cupboard,Spices,2025-12-11 13:55:13,2025-12-11 13:55:13
+efac3643-e4ec-455c-81a3-a552147aa6e5,Cinnamon sticks,730,cupboard,Spices,2025-12-11 13:55:13,2025-12-11 13:55:13
+c208ca8c-58d4-493b-babf-316318622bfd,Ground cinnamon,365,cupboard,Spices,2025-12-11 13:55:13,2025-12-11 13:55:13
+79f815a3-0534-4f74-9b8d-fd8745510ca5,Ground cumin,365,cupboard,Spices,2025-12-11 13:55:13,2025-12-11 13:55:13
+3aa1e91d-846a-446d-9a95-a0c9e9c691e0,Ground coriander,365,cupboard,Spices,2025-12-11 13:55:13,2025-12-11 13:55:13
+247b4036-7d83-4fd2-a17a-1fca0c6d69f3,Ground ginger,365,cupboard,Spices,2025-12-11 13:55:13,2025-12-11 13:55:13
+761d3513-b0c4-4cdb-89bc-7a8c98fb0a38,Ground turmeric,365,cupboard,Spices,2025-12-11 13:55:13,2025-12-11 13:55:13
+0c6f3316-d18c-4d40-8bf8-7a67553ffa96,Paprika,365,cupboard,Spices,2025-12-11 13:55:13,2025-12-11 13:55:13
+14dfbd7b-f9c3-4b63-bcab-f55c4ec4d346,Smoked paprika,365,cupboard,Spices,2025-12-11 13:55:13,2025-12-11 13:55:13
+a5d1bcff-e20c-4612-ad23-d77724c36a9b,Cayenne pepper,365,cupboard,Spices,2025-12-11 13:55:13,2025-12-11 13:55:13
+cedb1c34-e937-4aeb-b57a-757f3ad9592e,Chilli powder,365,cupboard,Spices,2025-12-11 13:55:13,2025-12-11 13:55:13
+b30ad09c-4abd-469b-b9b2-36924500ec5a,Chilli flakes,365,cupboard,Spices,2025-12-11 13:55:13,2025-12-11 13:55:13
+fcf1d75e-f5dd-4a78-b06b-dae90903862c,Curry powder,365,cupboard,Spices,2025-12-11 13:55:13,2025-12-11 13:55:13
+3c9c86b5-ca31-4acf-99fc-c69ebc053619,Garam masala,365,cupboard,Spices,2025-12-11 13:55:13,2025-12-11 13:55:13
+0d1f6ee7-dc8d-4be9-8e74-ded1386692f3,Chinese five spice,365,cupboard,Spices,2025-12-11 13:55:13,2025-12-11 13:55:13
+c9b607c9-8193-4930-95e7-58cf1fe255d1,Mixed spice,365,cupboard,Spices,2025-12-11 13:55:13,2025-12-11 13:55:13
+daec8cb4-0af0-4423-89e5-12feb274ec30,Nutmeg,730,cupboard,Spices,2025-12-11 13:55:13,2025-12-11 13:55:13
+6bd4c966-f69e-4b6f-acf7-9982d6dfd739,Ground nutmeg,365,cupboard,Spices,2025-12-11 13:55:13,2025-12-11 13:55:13
+359336c3-ff67-4cdf-821c-c064c5026c3e,Cloves,730,cupboard,Spices,2025-12-11 13:55:13,2025-12-11 13:55:13
+2a24d376-b5cc-4291-806e-06719a22fb41,Black pepper,730,cupboard,Spices,2025-12-11 13:55:13,2025-12-11 13:55:13
+18b11605-5677-4e7d-b5f8-d8ea349d8ee3,White pepper,730,cupboard,Spices,2025-12-11 13:55:13,2025-12-11 13:55:13
+1c592272-c784-4691-80a0-613227a713f7,Sea salt,1095,cupboard,Spices,2025-12-11 13:55:13,2025-12-11 13:55:13
+41c56300-4f69-42ac-a25d-92cdcada8c2a,Table salt,1095,cupboard,Spices,2025-12-11 13:55:13,2025-12-11 13:55:13
+51bbdf71-d163-4af4-9571-05fbdf02fe06,Rock salt,1095,cupboard,Spices,2025-12-11 13:55:13,2025-12-11 13:55:13
+40f7a005-5186-4c18-bbd7-d967c1c6572d,Vanilla extract,730,cupboard,Spices,2025-12-11 13:55:13,2025-12-11 13:55:13
+811dc8ff-3c00-4da1-b5aa-6fb00cdd3857,Vanilla pods,365,cupboard,Spices,2025-12-11 13:55:13,2025-12-11 13:55:13
+6751ad32-a6c7-4f03-a6e8-be81c21d77df,Spaghetti,730,cupboard,Pasta & Rice,2025-12-11 13:55:13,2025-12-11 13:55:13
+89e5c752-3440-4a8f-90a9-1664a27b13b6,Penne,730,cupboard,Pasta & Rice,2025-12-11 13:55:13,2025-12-11 13:55:13
+8b713113-af57-4e07-9395-66b667c3ff7d,Fusilli,730,cupboard,Pasta & Rice,2025-12-11 13:55:13,2025-12-11 13:55:13
+446f8718-2e3d-47fa-a18a-1852180e0fef,Tagliatelle,730,cupboard,Pasta & Rice,2025-12-11 13:55:13,2025-12-11 13:55:13
+62fa602a-ee29-4e9d-ba2d-9c0d3eb34c58,Linguine,730,cupboard,Pasta & Rice,2025-12-11 13:55:13,2025-12-11 13:55:13
+7947cf21-01a7-43ab-8a84-05691ab857d3,Rigatoni,730,cupboard,Pasta & Rice,2025-12-11 13:55:13,2025-12-11 13:55:13
+0a0a199a-e792-420a-a345-7791cf4beff3,Farfalle,730,cupboard,Pasta & Rice,2025-12-11 13:55:13,2025-12-11 13:55:13
+10db9b8d-a395-4a88-adb6-c6dc76a36077,Macaroni,730,cupboard,Pasta & Rice,2025-12-11 13:55:13,2025-12-11 13:55:13
+b9ea4787-a254-4453-85a2-cd989337394c,Lasagne sheets,730,cupboard,Pasta & Rice,2025-12-11 13:55:13,2025-12-11 13:55:13
+e4483fb5-12a3-43ad-a625-70b669b79c82,Cannelloni,730,cupboard,Pasta & Rice,2025-12-11 13:55:13,2025-12-11 13:55:13
+fe57db13-6b8e-4175-b1e9-327efde95494,Orzo,730,cupboard,Pasta & Rice,2025-12-11 13:55:13,2025-12-11 13:55:13
+d31069c4-1ea2-4400-b5ae-111607fd3044,Egg noodles,365,cupboard,Pasta & Rice,2025-12-11 13:55:13,2025-12-11 13:55:13
+f29cfc47-089f-4663-a4de-e90de9cd83b3,Rice noodles,730,cupboard,Pasta & Rice,2025-12-11 13:55:13,2025-12-11 13:55:13
+f94be6e3-5722-469a-ae64-91c5d56c5ebc,Udon noodles,365,cupboard,Pasta & Rice,2025-12-11 13:55:13,2025-12-11 13:55:13
+6e1893fa-9c11-46fb-a168-cef92df7aa69,Ramen noodles,365,cupboard,Pasta & Rice,2025-12-11 13:55:13,2025-12-11 13:55:13
+0c0417e9-5231-4bdc-9488-0242bc293031,Fresh pasta,3,fridge,Pasta & Rice,2025-12-11 13:55:13,2025-12-11 13:55:13
+0d5d3f3e-fd1b-40cb-9a11-26302413563f,Fresh ravioli,3,fridge,Pasta & Rice,2025-12-11 13:55:13,2025-12-11 13:55:13
+c8d0fce4-f25a-4f71-8cb9-fb70601ad497,Fresh tortellini,3,fridge,Pasta & Rice,2025-12-11 13:55:13,2025-12-11 13:55:13
+b26188fc-9c42-4a07-956a-c9f9b488b821,White rice,730,cupboard,Pasta & Rice,2025-12-11 13:55:13,2025-12-11 13:55:13
+031c5d07-de6a-4dcf-bbe0-70b15182310f,Basmati rice,730,cupboard,Pasta & Rice,2025-12-11 13:55:13,2025-12-11 13:55:13
+8b4d9a85-e86f-4df2-b323-48e7744e2a5e,Brown rice,365,cupboard,Pasta & Rice,2025-12-11 13:55:13,2025-12-11 13:55:13
+61b88ded-9be8-406b-bbbe-ec7d7ba46786,Jasmine rice,730,cupboard,Pasta & Rice,2025-12-11 13:55:13,2025-12-11 13:55:13
+bd80a304-4a76-456f-bcda-f39112033f2c,Arborio rice,730,cupboard,Pasta & Rice,2025-12-11 13:55:13,2025-12-11 13:55:13
+c55e38c7-2690-4db7-98bb-fe789cd85855,Wild rice,730,cupboard,Pasta & Rice,2025-12-11 13:55:13,2025-12-11 13:55:13
+91c5d3ff-0ea2-497a-b1cf-c2f5bb6151ad,Long grain rice,730,cupboard,Pasta & Rice,2025-12-11 13:55:13,2025-12-11 13:55:13
+078019aa-fe69-4716-8f69-d08eea490a6b,Risotto rice,730,cupboard,Pasta & Rice,2025-12-11 13:55:13,2025-12-11 13:55:13
+104c32ab-3616-4689-8f51-b61fa2d20ff8,Microwave rice,365,cupboard,Pasta & Rice,2025-12-11 13:55:13,2025-12-11 13:55:13
+3e032ace-7152-454f-b94c-40d4fc7f196d,Couscous,730,cupboard,Pasta & Rice,2025-12-11 13:55:13,2025-12-11 13:55:13
+d4cfb35a-2247-4aea-8449-44e2bd946a0a,Bulgur wheat,365,cupboard,Pasta & Rice,2025-12-11 13:55:13,2025-12-11 13:55:13
+7b1c0432-5a81-4e2b-a4cc-1dd2770ffd85,Quinoa,730,cupboard,Pasta & Rice,2025-12-11 13:55:13,2025-12-11 13:55:13
+9f6b39bc-882f-4aa1-a5e6-806b91fa8742,Pearl barley,730,cupboard,Pasta & Rice,2025-12-11 13:55:13,2025-12-11 13:55:13
+e1e92439-f846-4fd1-b4c2-e193a2a504dd,Polenta,365,cupboard,Pasta & Rice,2025-12-11 13:55:13,2025-12-11 13:55:13
+1dba8e6f-af45-4391-97ec-6527bcc6353c,Plain flour,365,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+5cda1e12-880e-45fa-b364-17e1d69afe44,Self-raising flour,365,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+a8fcf650-f128-47fa-8d93-680a3ac7d59e,Strong bread flour,365,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+e54a30f1-5607-4345-93b8-c58a1701fd57,Wholemeal flour,180,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+69dc851c-d412-42d3-924b-6cb89274876e,Cornflour,730,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+8171d163-3a0d-4225-b974-13c2e3a5823e,Rice flour,365,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+710abae8-e68d-43b6-a350-57a4bf67827d,Almond flour,180,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+a26f5593-c02b-415f-a6bb-7eae5c751a67,Coconut flour,180,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+a95fdd0d-376f-4749-9a4b-ab583bb259a9,Caster sugar,730,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+121ab805-a52c-4a41-a3ac-badb1a02ab4d,Granulated sugar,730,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+3326de6e-ca65-41fa-b9bd-29f91e35098c,Icing sugar,730,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+040c888d-f4ea-4234-9607-d68f8f2c2186,Brown sugar,730,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+5866acac-a348-45b9-982f-b404fcca0fd7,Demerara sugar,730,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+a719ecc9-c7d2-41b1-b32c-4ac59259feaf,Muscovado sugar,730,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+ff375848-db62-414a-b8af-3410331cea8b,Honey,730,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+1f19e095-5f16-4e62-88e4-9d2577fff0d6,Golden syrup,730,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+f4c0c147-5abe-497f-af02-b290a2a5f531,Maple syrup,365,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+e10711ad-4fa2-458c-b577-cb700a871515,Treacle,730,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+f5d71b0d-3540-4f1b-a3ec-834d552496dc,Baking powder,365,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+ce435c13-c181-4229-a9a5-017c947ffccb,Bicarbonate of soda,730,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+84e35e17-f900-421d-b619-8342ec875329,Dried yeast,365,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+ea6712c5-27aa-4376-9df8-2c5153cd3cb3,Fresh yeast,14,fridge,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+4cee1b47-fa36-4c7b-9760-7f802cfe8633,Cocoa powder,730,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+ea0c961f-f640-407d-b998-bc1cf2e603af,Dark chocolate,365,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+ad06d241-a0a9-4357-8e82-b051f4a5482f,Milk chocolate,365,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+0f231f7d-b545-40da-ad2f-923beec24900,White chocolate,365,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+4368e71e-b09c-447e-b2c1-38212c58fd7a,Chocolate chips,365,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+4dd8d5ec-219d-45c0-b889-83c594292809,Desiccated coconut,180,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+fd93d0fc-3235-4064-a1a2-f1b13da10e5c,Flaked almonds,180,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+69c87122-52bc-4553-9be2-ee1bae2c5ef2,Ground almonds,180,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+28f0a4f4-b623-4783-9b09-5a053f6c8aad,Mixed nuts,180,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+57b786f4-0800-4017-b427-d3e44c219893,Walnuts,180,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+21e6d7cd-ee84-4a69-adfb-7b5908968467,Pecans,180,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+81d12aa1-01f8-4200-9847-eae670213b25,Hazelnuts,180,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+d89ef455-8b92-420c-b24b-89868b3d367b,Cashews,180,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+9cb6ae13-0cb7-4f17-ae57-d810c3f860c8,Pistachios,180,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+263293f8-6e05-40db-b63a-360d57076bde,Pine nuts,90,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+e78a27c0-d0da-4bad-91b8-1d0bf93f19c7,Sunflower seeds,180,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+b6f39e05-6da9-445e-85e8-f8d6d229d053,Pumpkin seeds,180,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+06131d79-b1d4-4365-9405-b0e6c1ea559d,Sesame seeds,365,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+e0b232cb-7d68-48dd-bae7-12a5d7cbafd4,Chia seeds,365,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+41997687-d8bc-4257-8e3c-8715b42c697e,Flaxseeds,180,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+3133305f-5964-4660-9cc7-04c8ad9834e5,Poppy seeds,365,cupboard,Baking,2025-12-11 13:55:13,2025-12-11 13:55:13
+1afaedef-0687-42ae-a760-0900369cc040,Tinned tomatoes,730,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+64a2ee7b-89b2-4d5e-9411-ab8f2018d548,Chopped tomatoes,730,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+b9ad7d53-f630-44a1-a030-d9099c17a973,Tomato passata,730,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+0dba22c4-03f3-4c57-927a-7a99daeb0c76,Tomato puree,365,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+fbfd9eb2-d771-4e1b-b930-a5f0ee93214e,Sun-dried tomatoes,365,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+7635db52-82c0-4d09-be98-ac674e819db3,Tinned sweetcorn,730,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+b0878cbd-4928-4eda-9388-56423c4e2d52,Tinned peas,730,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+2caf0f01-17a0-4537-bf20-08f04be02456,Tinned carrots,730,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+abe2f209-a1a5-4ee1-a19e-f0e3d148543f,Tinned beans,730,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+cb16fd54-1392-48ea-bdc9-ae15a642ad9c,Baked beans,730,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+1bb2fe91-8b6a-456e-9619-3b1132893cc0,Kidney beans,730,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+58a4827b-a168-4def-83c1-122292a2a8ca,Black beans,730,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+d415ca53-772d-420a-8c94-14d22a648533,Cannellini beans,730,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+629fba80-a312-4cb3-a512-7d78511d7f51,Butter beans,730,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+ceb70306-8938-4d88-bc16-7fc2c25c73ec,Borlotti beans,730,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+a19c9e63-9529-437a-92c2-d79c82d08046,Chickpeas,730,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+e217e6f6-300d-422f-8168-ebae6c806875,Lentils,730,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+21b73e29-bbb4-436e-869d-7c3907c82780,Red lentils,730,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+504b92f6-0271-42fa-884b-930cebad3146,Green lentils,730,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+15c454d3-c814-4270-9299-c268fb739994,Puy lentils,730,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+138d5682-92f6-45da-accd-d78d198c5cc6,Split peas,730,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+a18e62c1-3aa3-45cb-8a0e-1b1f71d77790,Tinned tuna,1095,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+0f017f45-496b-4c59-9303-96c40a90ec64,Tinned salmon,1095,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+e3805447-77f7-4c8a-9326-6bf7173410ec,Tinned sardines,1095,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+b71e37e2-36bc-406d-ad65-a483b1125a63,Tinned mackerel,1095,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+1afcb98f-8ee6-4a11-bebb-8e9f98e11d56,Tinned anchovies,730,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+e29da86a-27e8-4214-a388-e182d87a3d6e,Tinned crab,730,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+dc167f06-b901-4785-b728-647a6b325747,Tinned soup,730,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+973fc695-2b2a-4ca8-9df2-5c3a4129e359,Tinned fruit,730,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+a9ebe097-0401-4dad-9af3-409654867f43,Tinned peaches,730,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+6005a641-4ce1-4f63-a4dc-469dbefbac4e,Tinned pineapple,730,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+48ec5df4-c8d0-404d-a974-201ea8358b4b,Tinned pears,730,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+3935a728-b9ca-4555-b7eb-ed9d7a625992,Tinned mandarin,730,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+0f12cd8d-3511-41e2-9840-0221a73132ab,Coconut milk,730,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+5009f18f-2d56-4442-8e72-3f4f72cc8417,Coconut cream,730,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+efd0d76b-63fe-4847-81fc-f897262d66a0,Condensed milk,730,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+5084adc1-9fb9-4665-a999-04d35cf7b442,Evaporated milk,730,cupboard,Tinned Goods,2025-12-11 13:55:13,2025-12-11 13:55:13
+dcc4ef3c-d4b5-45c6-bfd3-275128a495aa,Olive oil,730,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+d71432e0-b20b-4259-9e42-23b85ef2892c,Extra virgin olive oil,365,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+f90f9b36-bbb3-4d25-9f4b-1e78387f158e,Vegetable oil,730,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+52862041-6fe3-44b8-a8c9-62121ac4f5a1,Sunflower oil,730,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+9a2562e3-07ac-4e56-8c9e-cda8ff24312e,Rapeseed oil,730,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+dc43e47e-c766-462d-b3e8-5116f8b25e74,Coconut oil,730,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+06ec4882-1a34-47d0-9dba-c75047da9709,Sesame oil,365,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+189940e3-ace1-4377-a7a1-fdb4032da5de,Groundnut oil,730,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+e151ea1a-4a57-43b8-b3a3-a2c23c6a12d7,Balsamic vinegar,1095,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+6d57ec40-58b1-460b-8a34-5c5cad019f10,Red wine vinegar,730,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+f9437f14-cf12-40d2-b5ce-6b01808e70a0,White wine vinegar,730,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+1d6f2683-55f1-4d39-bd2b-515825f7ac3e,Cider vinegar,730,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+2068e3c2-406c-4470-bbb6-d4a883ae4106,Rice vinegar,730,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+86afbb83-12aa-48b1-864b-0dcfe1561e00,Malt vinegar,730,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+5a825980-db71-4b7f-bdbb-2b01e98ece14,Ketchup,365,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+ab4dcd1a-ed96-43e9-97d6-a54b8fe1629d,Brown sauce,365,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+8e944ad6-e1f8-452d-b873-2650bdbc9f55,Mayonnaise,90,fridge,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+968d4b3a-9652-488a-832c-b3fb545fc926,Salad cream,90,fridge,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+ba3a1781-65ba-47b6-a688-4516a24c8b11,Mustard,365,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+1f72e7d9-cd42-4cda-85ec-5cd5b4b61438,English mustard,365,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+0790b7cf-2610-44ee-bbcf-c98f759a74b6,Dijon mustard,365,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+e4730f39-c2b1-4f5a-8b2a-446889bd1f13,Wholegrain mustard,365,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+e28e898e-421e-4ef9-bfb7-5f63ade75c87,Horseradish sauce,90,fridge,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+aeadfa3f-ef9b-496b-b6eb-78a613b324f6,Mint sauce,365,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+c25225d6-5d2f-4d0f-93b1-fa51b1aecfb3,Cranberry sauce,365,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+d6f1a6bc-d28c-49d8-9fc9-f5091f8aaeda,Worcestershire sauce,730,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+3c21ba35-dda8-4ba1-87f0-730d74ce3946,Soy sauce,730,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+8108f1ea-a1b8-429a-bca5-088dae3ee8a5,Fish sauce,730,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+3fe798d6-23d6-4e6b-9923-9f464ef7e82c,Oyster sauce,365,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+061ddedd-f50e-42e5-a0a2-5b1a4e7b2788,Hoisin sauce,365,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+feae7a8c-8bc5-42b1-95fe-08ddea5f4b8a,Sweet chilli sauce,365,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+9482979f-116a-44c2-874f-a6cd0a6fa64e,Sriracha,365,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+80c40371-bfcd-4559-a2cd-3848d7fcae5d,Tabasco,1095,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+d00fb314-fb6c-4f49-b567-499d9d9a838e,Pesto,7,fridge,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+073c9ae0-8a54-4e0d-b775-706d28c92817,Red pesto,7,fridge,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+1d69888f-45ed-434f-9c5a-c16f52a01b85,Tahini,180,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+3ecdbb86-bc1a-4a19-851d-587deb2fadd4,Peanut butter,180,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+91d65202-95c2-44cf-aaf3-2580eec116a1,Almond butter,180,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+6cb07725-fb6b-4d2e-96a8-a3f36a670586,Marmite,730,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+bf7bbb77-c496-4d47-a6bb-9c127b312fca,Jam,365,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+dd002861-19a6-4946-84a8-b12485a15b2e,Strawberry jam,365,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+225d9e88-6655-4114-b167-c5073a3afa1d,Raspberry jam,365,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+6fcef712-d500-4a25-9f11-b56cc1e80524,Marmalade,365,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+21c57958-be49-4bfc-b801-831e6dc71e8e,Lemon curd,90,fridge,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+a9d00705-8a0a-462e-bddf-16b5cec2f369,Nutella,365,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+52004b98-69eb-4afe-bebe-05726568cb20,Capers,365,fridge,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+6ea993c1-c5bb-4870-8027-d5f77048c9d4,Olives,365,fridge,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+a5ab76ac-ad63-49f4-8c4c-769253cc36fb,Gherkins,365,fridge,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+e0211f7f-cac2-4101-a028-799cf2e148a4,Pickled onions,365,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+33778b24-74a4-4ec5-a49a-edd0171f9a44,Chutney,365,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+b488d36c-9a12-46fb-9031-85f138b7f818,Mango chutney,365,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+c9f0f9a2-29af-4519-9571-4068fdd85c03,Pickle,365,cupboard,Oils & Condiments,2025-12-11 13:55:13,2025-12-11 13:55:13
+18536c09-4416-4e4c-8dd8-bcf3a16fd657,Cornflakes,365,cupboard,Cereals,2025-12-11 13:55:13,2025-12-11 13:55:13
+a142cff4-f735-4838-9913-50814d916ba9,Bran flakes,365,cupboard,Cereals,2025-12-11 13:55:13,2025-12-11 13:55:13
+064c08d7-a42a-4335-a3fa-39eec0826c97,Weetabix,365,cupboard,Cereals,2025-12-11 13:55:13,2025-12-11 13:55:13
+351f995a-b775-4863-9d43-726212cef84c,Shredded wheat,365,cupboard,Cereals,2025-12-11 13:55:13,2025-12-11 13:55:13
+add921c3-3fb0-40c1-8166-6c299ba768db,Porridge oats,365,cupboard,Cereals,2025-12-11 13:55:13,2025-12-11 13:55:13
+45dde4d0-4789-4994-9875-e29f174a19cc,Muesli,180,cupboard,Cereals,2025-12-11 13:55:13,2025-12-11 13:55:13
+67c4d828-3fc5-4556-a759-ef617037a587,Granola,180,cupboard,Cereals,2025-12-11 13:55:13,2025-12-11 13:55:13
+05c81b0c-f607-4d7d-96d9-05007cd5452d,Rice Krispies,365,cupboard,Cereals,2025-12-11 13:55:13,2025-12-11 13:55:13
+4b7f7a3f-1266-4de5-aac4-e51d7a8e9587,Coco Pops,365,cupboard,Cereals,2025-12-11 13:55:13,2025-12-11 13:55:13
+8e847e2d-9c95-40a5-9876-f078e04599b2,Cheerios,365,cupboard,Cereals,2025-12-11 13:55:13,2025-12-11 13:55:13
+8242f831-a49d-4c93-b63b-dd3b14f324ec,Special K,365,cupboard,Cereals,2025-12-11 13:55:13,2025-12-11 13:55:13
+87c5c05d-95ca-4348-992f-c826456881e4,Shreddies,365,cupboard,Cereals,2025-12-11 13:55:13,2025-12-11 13:55:13
+e9f19089-daa8-4c40-aa07-927936719a76,Frosties,365,cupboard,Cereals,2025-12-11 13:55:13,2025-12-11 13:55:13
+b93f1456-c2d0-4dac-91b7-6c4f2e96056f,Fruit and Fibre,365,cupboard,Cereals,2025-12-11 13:55:13,2025-12-11 13:55:13
+4ef68716-a8ef-465b-af88-ac0497d30e0c,All Bran,365,cupboard,Cereals,2025-12-11 13:55:13,2025-12-11 13:55:13
+5d699daf-bfd1-4f6a-820a-7c419bcbbdb0,Crisps,90,cupboard,Snacks,2025-12-11 13:55:13,2025-12-11 13:55:13
+edeb6198-3b49-419e-910a-fc2f2bff4985,Ready salted crisps,90,cupboard,Snacks,2025-12-11 13:55:13,2025-12-11 13:55:13
+241d1b0a-c176-4e38-9aed-64a0b00942c2,Salt and vinegar crisps,90,cupboard,Snacks,2025-12-11 13:55:13,2025-12-11 13:55:13
+4744c1be-e092-468d-a5a5-480683dabfac,Cheese and onion crisps,90,cupboard,Snacks,2025-12-11 13:55:13,2025-12-11 13:55:13
+9f758486-ca9d-43be-b0cc-9cd84fb4d18c,Prawn cocktail crisps,90,cupboard,Snacks,2025-12-11 13:55:13,2025-12-11 13:55:13
+98ce0163-e428-4f3c-8f6b-0180579ed627,Tortilla chips,90,cupboard,Snacks,2025-12-11 13:55:13,2025-12-11 13:55:13
+839e54ce-352f-484b-964a-f027bf888f93,Popcorn,90,cupboard,Snacks,2025-12-11 13:55:13,2025-12-11 13:55:13
+20fbcbbd-b89e-4dcc-bb59-d6bf1ccdcc84,Pretzels,180,cupboard,Snacks,2025-12-11 13:55:13,2025-12-11 13:55:13
+093ab7f3-e4a6-4316-a187-9c02982e7ba6,Nuts,180,cupboard,Snacks,2025-12-11 13:55:13,2025-12-11 13:55:13
+82cf0e68-d44a-47dd-a9f8-ed84e176cec0,Trail mix,180,cupboard,Snacks,2025-12-11 13:55:13,2025-12-11 13:55:13
+574bcd6a-9970-46e7-9ff1-db109cf90b81,Digestive biscuits,180,cupboard,Snacks,2025-12-11 13:55:13,2025-12-11 13:55:13
+04fb5eba-695c-4d69-9529-ed6aaec7dabf,Rich tea biscuits,180,cupboard,Snacks,2025-12-11 13:55:13,2025-12-11 13:55:13
+8e1b4cd9-44e4-4d56-96e8-b4f6066a0395,Chocolate digestives,180,cupboard,Snacks,2025-12-11 13:55:13,2025-12-11 13:55:13
+bab9612e-7e46-46ec-b32e-a9fb02e8e412,Hobnobs,180,cupboard,Snacks,2025-12-11 13:55:13,2025-12-11 13:55:13
+dfb2a326-ae97-4130-bf3d-dd8ff4a5362e,Custard creams,180,cupboard,Snacks,2025-12-11 13:55:13,2025-12-11 13:55:13
+c5d0af7f-24b5-4ca2-a136-3bdb0d20801b,Bourbon biscuits,180,cupboard,Snacks,2025-12-11 13:55:13,2025-12-11 13:55:13
+7c1a0fca-fa8c-42ba-a09e-a630d4a5b7c0,Shortbread,180,cupboard,Snacks,2025-12-11 13:55:13,2025-12-11 13:55:13
+e0d02460-dce8-4b18-855c-bbc786503d02,Jaffa Cakes,180,cupboard,Snacks,2025-12-11 13:55:13,2025-12-11 13:55:13
+ff17ffc3-28c1-4ad4-8f06-6b6e5065eaf2,Cereal bars,180,cupboard,Snacks,2025-12-11 13:55:13,2025-12-11 13:55:13
+10c4c943-3f6b-44dc-91f6-667a91a6ca0b,Flapjacks,14,cupboard,Snacks,2025-12-11 13:55:13,2025-12-11 13:55:13
+7adb7f89-3b18-4a07-8a42-a38223c83b85,Chocolate bar,365,cupboard,Snacks,2025-12-11 13:55:13,2025-12-11 13:55:13
+2f50aafb-ae09-4566-a686-e0ce8cb86185,Fruit pastilles,365,cupboard,Snacks,2025-12-11 13:55:13,2025-12-11 13:55:13
+800590b0-d1d7-47f7-8032-a4497ab888e1,Wine gums,365,cupboard,Snacks,2025-12-11 13:55:13,2025-12-11 13:55:13
+fac3b926-bec3-40e5-9bf6-540ce30791c9,Jelly babies,365,cupboard,Snacks,2025-12-11 13:55:13,2025-12-11 13:55:13
+4b842800-4c1a-48ac-840b-55682becc2b1,Haribo,365,cupboard,Snacks,2025-12-11 13:55:13,2025-12-11 13:55:13
+0df35243-8813-4478-bd75-7517dd555049,Orange juice,7,fridge,Beverages,2025-12-11 13:55:13,2025-12-11 13:55:13
+f90a7cea-cb22-4fcf-a671-1a2932fd8d0e,Apple juice,7,fridge,Beverages,2025-12-11 13:55:13,2025-12-11 13:55:13
+2c7856ec-a919-4b7c-a853-197c97100f12,Cranberry juice,14,fridge,Beverages,2025-12-11 13:55:13,2025-12-11 13:55:13
+c0451104-d4ec-45c7-ba50-0858a16ad189,Grape juice,7,fridge,Beverages,2025-12-11 13:55:13,2025-12-11 13:55:13
+fc9e7fa0-cdd3-44bd-aa29-31da4dc55865,Pineapple juice,7,fridge,Beverages,2025-12-11 13:55:13,2025-12-11 13:55:13
+2033e5c3-bf1a-4d3a-8845-7a44349e3f62,Tomato juice,7,fridge,Beverages,2025-12-11 13:55:13,2025-12-11 13:55:13
+66da578b-f5d1-4e0d-83e4-942be6c5091c,Smoothie,3,fridge,Beverages,2025-12-11 13:55:13,2025-12-11 13:55:13
+6b0355db-6297-4019-82e4-a35bed6c5618,Long life orange juice,365,cupboard,Beverages,2025-12-11 13:55:13,2025-12-11 13:55:13
+2d4b783b-ed7c-4574-9df8-e02ca97ffdc5,Long life apple juice,365,cupboard,Beverages,2025-12-11 13:55:13,2025-12-11 13:55:13
+59fc384a-6324-4809-995a-11ba5978e5f6,Squash,365,cupboard,Beverages,2025-12-11 13:55:13,2025-12-11 13:55:13
+a31e60cf-ea73-46cb-bd96-c4874d80c5ac,Cordial,365,cupboard,Beverages,2025-12-11 13:55:13,2025-12-11 13:55:13
+aa32d75f-ef6d-4951-aa8c-c5e132a31135,Lemonade,7,fridge,Beverages,2025-12-11 13:55:13,2025-12-11 13:55:13
+ae665204-2454-48cf-b3de-698c2b150de4,Cola,7,fridge,Beverages,2025-12-11 13:55:13,2025-12-11 13:55:13
+38f32cb5-8d6a-42af-b34c-faeeb0b9053c,Sparkling water,365,cupboard,Beverages,2025-12-11 13:55:13,2025-12-11 13:55:13
+1aaceeaa-ea8c-4388-adc1-111cd36d20aa,Tonic water,365,cupboard,Beverages,2025-12-11 13:55:13,2025-12-11 13:55:13
+27eb499b-abd3-46ce-8176-948997b6fd66,Tea bags,730,cupboard,Beverages,2025-12-11 13:55:13,2025-12-11 13:55:13
+1c9fd31e-b96a-466c-ba59-65e752172fa6,Loose leaf tea,365,cupboard,Beverages,2025-12-11 13:55:13,2025-12-11 13:55:13
+0386a2ab-d9a3-4331-86a0-6b3d01ba25b2,Green tea,730,cupboard,Beverages,2025-12-11 13:55:13,2025-12-11 13:55:13
+e191ddac-f3ea-463b-8b86-799591f6f923,Herbal tea,730,cupboard,Beverages,2025-12-11 13:55:13,2025-12-11 13:55:13
+bc79288f-14d3-4ac9-a7bc-6d6d6e8a0eee,Ground coffee,90,cupboard,Beverages,2025-12-11 13:55:13,2025-12-11 13:55:13
+7015ea32-c9ff-45d2-9db4-a71bbcfe2c1e,Instant coffee,730,cupboard,Beverages,2025-12-11 13:55:13,2025-12-11 13:55:13
+cf97b438-8aee-4564-86ac-e5a3c50d2104,Coffee beans,90,cupboard,Beverages,2025-12-11 13:55:13,2025-12-11 13:55:13
+45a145d6-32e3-42c3-84e2-290c12673cd8,Hot chocolate,365,cupboard,Beverages,2025-12-11 13:55:13,2025-12-11 13:55:13
+cadeff39-b967-4358-8bf3-0d33133a997d,Frozen peas,365,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+94448898-b520-4a37-ab2a-2dee25b0b89a,Frozen sweetcorn,365,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+3a855384-3fbd-428c-8a64-957c5f86a321,Frozen mixed vegetables,365,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+48e59a69-a00c-4899-ab91-e26a79cce13c,Frozen spinach,365,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+ef13cc3f-e9e1-4868-8ad8-bb603a8bddfa,Frozen broccoli,365,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+ca59d7f9-cb87-4d37-a27b-d13156d04a94,Frozen chips,365,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+b4502815-690b-433d-b358-23763b9b2430,Frozen roast potatoes,365,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+c1ceb647-d48c-461f-933f-7e13786203b5,Frozen berries,365,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+ca276568-1560-4db9-928c-4cb1726dadfd,Frozen strawberries,365,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+21f084e0-4c08-4c29-9f20-6d922d6319f0,Frozen raspberries,365,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+4fb69410-1f65-442f-94a9-1c99af1d530f,Frozen blueberries,365,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+7500d491-2641-4a10-85aa-7eca4be84799,Frozen mango,365,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+0a9820e6-ed94-474c-91cb-4e5cb68420c0,Frozen prawns,180,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+f8f70252-34dd-42ed-a81e-c8011014073f,Frozen fish fillets,180,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+c2edc49b-fc8b-4a1d-806a-131b66383339,Frozen salmon,180,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+eac7dedb-b7d4-4fed-a035-403ad17416f5,Frozen cod,180,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+2b2c7632-9a2e-499e-a244-2d64689a01c6,Frozen chicken breasts,270,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+ee0ea257-2f88-4e91-bcd5-2a876b257245,Frozen chicken portions,270,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+11235717-31f9-4398-bc58-9a56d4a45f19,Frozen mince,120,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+7b0820ba-4d4e-4f96-a29c-e4e5bf7aa034,Frozen sausages,120,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+256a887c-5506-4c73-b524-5595caed7f7c,Frozen burgers,120,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+f8abcd13-00fe-4431-8554-0f219c0485bd,Frozen pizza,180,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+52c9a370-6dea-4ec2-9733-cd38d73ee9af,Frozen ready meals,180,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+11532cf9-10c5-4583-a8a3-40c3ca3af154,Frozen lasagne,180,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+eef67155-7556-4b50-bff0-3d3f6be1795b,Frozen pie,180,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+e8f58e88-14da-4856-820d-c1c3e927138f,Frozen pastry,180,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+c4068848-e16c-45e1-b62a-c273b7b31736,Puff pastry,180,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+47f45282-2072-4dd5-8bf7-417314881fa3,Shortcrust pastry,180,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+2c02442f-9597-4bf4-9818-623a81685ead,Filo pastry,180,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+91c0a732-54c3-4921-9d1a-64408ae72aed,Ice cream,180,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+fc1ed621-c738-4d05-8221-abbed3f12dfe,Vanilla ice cream,180,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+d825f5db-d71a-48c2-bbc9-6b3db43d05fc,Chocolate ice cream,180,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+603ea280-33ca-493e-b952-886ab91f3c4a,Ice lollies,365,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+4acfad32-8734-484e-a719-c57ccde1d92b,Frozen yorkshire puddings,180,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+64ec1bee-46e5-469c-8431-a5013975d59d,Frozen bread,90,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+1333387f-2020-4547-97d9-90faaf11adf6,Frozen garlic bread,180,freezer,Frozen,2025-12-11 13:55:13,2025-12-11 13:55:13
+e962a323-f1eb-47a0-80fe-a22fb438a3c0,Hummus,14,fridge,Deli,2025-12-11 13:55:13,2025-12-11 13:55:13
+b3c28b3a-42ff-4b4c-b3d1-91f13f092022,Tzatziki,7,fridge,Deli,2025-12-11 13:55:13,2025-12-11 13:55:13
+13a0e015-0c90-45f1-8d2d-73c37fc4e84c,Guacamole,5,fridge,Deli,2025-12-11 13:55:13,2025-12-11 13:55:13
+0731bb84-060e-42ba-870d-ac97c1930dfe,Taramasalata,14,fridge,Deli,2025-12-11 13:55:13,2025-12-11 13:55:13
+a3b0428d-a59e-4236-92b4-62ccea1e7cfb,Coleslaw,7,fridge,Deli,2025-12-11 13:55:13,2025-12-11 13:55:13
+bba6c764-a9a6-4433-b86d-6d6666ff7e63,Potato salad,5,fridge,Deli,2025-12-11 13:55:13,2025-12-11 13:55:13
+caa8eeb6-ebb9-4a99-af4f-dd15fc4bdc8e,Pasta salad,3,fridge,Deli,2025-12-11 13:55:13,2025-12-11 13:55:13
+00920fa8-1ba0-4ff3-bb75-5c4fb4a71d99,Scotch egg,7,fridge,Deli,2025-12-11 13:55:13,2025-12-11 13:55:13
+eee7d021-3a24-4893-91ce-72db8e9fade9,Pork pie,7,fridge,Deli,2025-12-11 13:55:13,2025-12-11 13:55:13
+3f57c56e-672e-4177-9199-eea9383bcdf1,Sausage roll,3,fridge,Deli,2025-12-11 13:55:13,2025-12-11 13:55:13
+01e5b2f8-9827-4104-9b95-5269175bbc53,Quiche,5,fridge,Deli,2025-12-11 13:55:13,2025-12-11 13:55:13
+0a231318-fa82-4a74-9163-a02f2bd8d57e,Coronation chicken,3,fridge,Deli,2025-12-11 13:55:13,2025-12-11 13:55:13
+43a0cb43-15c0-4392-9b81-bcf0ba83e2a1,Egg mayonnaise,3,fridge,Deli,2025-12-11 13:55:13,2025-12-11 13:55:13
+36c376b4-971a-48de-9825-767cbb855228,Tuna mayo,3,fridge,Deli,2025-12-11 13:55:13,2025-12-11 13:55:13
+b515926f-6833-4fc4-8345-623d193de597,Sandwich filler,5,fridge,Deli,2025-12-11 13:55:13,2025-12-11 13:55:13
+7a4d6fe7-d1f5-4636-91ba-7bd8b23f7afb,Tofu,7,fridge,Vegetarian,2025-12-11 13:55:13,2025-12-11 13:55:13
+399c2464-8dba-48d9-b661-35c06360401e,Tempeh,7,fridge,Vegetarian,2025-12-11 13:55:13,2025-12-11 13:55:13
+d93ab123-de51-4cd5-acc4-54399b7df05c,Quorn mince,5,fridge,Vegetarian,2025-12-11 13:55:13,2025-12-11 13:55:13
+d0956943-fcf2-43c1-a630-47e3d8879185,Quorn pieces,5,fridge,Vegetarian,2025-12-11 13:55:13,2025-12-11 13:55:13
+6bfc9cde-c717-4be6-adf2-8a933f96bcde,Vegetarian sausages,7,fridge,Vegetarian,2025-12-11 13:55:13,2025-12-11 13:55:13
+822e8e96-de66-4afc-a3cd-cf50d1db73f7,Veggie burgers,7,fridge,Vegetarian,2025-12-11 13:55:13,2025-12-11 13:55:13
+8f984e08-8f97-4785-97b3-f448b4383983,Falafel,5,fridge,Vegetarian,2025-12-11 13:55:13,2025-12-11 13:55:13
+bcacc485-e3b5-467b-84a6-14e9bfb86cc3,Paneer,14,fridge,Vegetarian,2025-12-11 13:55:13,2025-12-11 13:55:13
+c4da76de-6450-44b4-8ad7-a27374e096d4,Vegetable stock cubes,730,cupboard,Stock & Gravy,2025-12-11 13:55:13,2025-12-11 13:55:13
+bcd13dbf-a5e8-4df7-89b7-ab917531d366,Chicken stock cubes,730,cupboard,Stock & Gravy,2025-12-11 13:55:13,2025-12-11 13:55:13
+94493870-2bfa-46ae-9f6c-70618a5cfe6e,Beef stock cubes,730,cupboard,Stock & Gravy,2025-12-11 13:55:13,2025-12-11 13:55:13
+f5582ee1-ec1c-4849-b3a5-a94df5c713a8,Fish stock cubes,730,cupboard,Stock & Gravy,2025-12-11 13:55:13,2025-12-11 13:55:13
+d0f5179c-3a7f-432b-8c29-11ec2fafb1b6,Vegetable stock pot,365,cupboard,Stock & Gravy,2025-12-11 13:55:13,2025-12-11 13:55:13
+54a806cc-a658-4e7d-bff3-8a7d4be787d6,Chicken stock pot,365,cupboard,Stock & Gravy,2025-12-11 13:55:13,2025-12-11 13:55:13
+53abd775-b45b-4f76-b675-2faca67812d5,Beef stock pot,365,cupboard,Stock & Gravy,2025-12-11 13:55:13,2025-12-11 13:55:13
+7b2f0088-fbcc-4ac2-bf65-2eefa344d125,Fresh stock,5,fridge,Stock & Gravy,2025-12-11 13:55:13,2025-12-11 13:55:13
+c34ae99a-1451-4bfb-94f2-f394b40dfeca,Gravy granules,365,cupboard,Stock & Gravy,2025-12-11 13:55:13,2025-12-11 13:55:13
+0d06fa4b-b9b2-4914-b688-b9380fa4e82c,Instant gravy,365,cupboard,Stock & Gravy,2025-12-11 13:55:13,2025-12-11 13:55:13
+54ff9afd-cd0d-4a17-991f-b4f6503c1803,White sauce mix,365,cupboard,Stock & Gravy,2025-12-11 13:55:13,2025-12-11 13:55:13
+a972bcbf-7171-4fcc-8e95-a507f88ad6cb,Cheese sauce mix,365,cupboard,Stock & Gravy,2025-12-11 13:55:13,2025-12-11 13:55:13
+3b72b3ec-0b2b-46c9-a557-86a290b37570,Curry paste,365,cupboard,World Foods,2025-12-11 13:55:13,2025-12-11 13:55:13
+39235b9c-2f79-462b-be2c-0c844b3f080e,Tikka masala paste,365,cupboard,World Foods,2025-12-11 13:55:13,2025-12-11 13:55:13
+4813609f-41ae-4cad-b014-03ff003894dc,Korma paste,365,cupboard,World Foods,2025-12-11 13:55:13,2025-12-11 13:55:13
+fe0b0011-1a59-44fd-80cd-06ab9646b629,Madras paste,365,cupboard,World Foods,2025-12-11 13:55:13,2025-12-11 13:55:13
+383b4673-0272-4fd0-9317-0b78d397d1ed,Thai green curry paste,365,cupboard,World Foods,2025-12-11 13:55:13,2025-12-11 13:55:13
+1e805085-7470-42c3-8068-14b0c03c4b53,Thai red curry paste,365,cupboard,World Foods,2025-12-11 13:55:13,2025-12-11 13:55:13
+d5bb8470-24ca-4b5f-bff8-d333f6faa5df,Miso paste,365,fridge,World Foods,2025-12-11 13:55:13,2025-12-11 13:55:13
+1d6e8413-4e5f-40e8-aec6-1f56a2ce3ec3,Teriyaki sauce,365,cupboard,World Foods,2025-12-11 13:55:13,2025-12-11 13:55:13
+fec6392c-0778-45d6-a933-4e31c3134555,Satay sauce,365,cupboard,World Foods,2025-12-11 13:55:13,2025-12-11 13:55:13
+33655fc8-b961-4a87-a615-94052a6d17f6,Curry sauce,365,cupboard,World Foods,2025-12-11 13:55:13,2025-12-11 13:55:13
+4c2a5f6d-a25d-4459-89ce-9e6d2da1a73b,Stir fry sauce,365,cupboard,World Foods,2025-12-11 13:55:13,2025-12-11 13:55:13
+3dc7627f-9517-4f53-af82-e3d475af33a9,Pad thai sauce,365,cupboard,World Foods,2025-12-11 13:55:13,2025-12-11 13:55:13
+03cc701d-d182-4ce3-8f13-715458d9a80c,Harissa paste,365,cupboard,World Foods,2025-12-11 13:55:13,2025-12-11 13:55:13
+11070500-322f-47cd-8607-9ab837cef91d,Chipotle paste,365,cupboard,World Foods,2025-12-11 13:55:13,2025-12-11 13:55:13
+4d215ee6-2e28-44e1-b4ec-25b89cab95fa,Refried beans,730,cupboard,World Foods,2025-12-11 13:55:13,2025-12-11 13:55:13
+84227f1e-aa53-41c4-97c1-d2d0c52aea2e,Salsa,14,fridge,World Foods,2025-12-11 13:55:13,2025-12-11 13:55:13
+1b1fca45-7f81-4aa5-8e41-14a3b2497063,Taco shells,365,cupboard,World Foods,2025-12-11 13:55:13,2025-12-11 13:55:13
+8232911e-e291-41c1-8a90-b24ac6198258,Fajita kit,365,cupboard,World Foods,2025-12-11 13:55:13,2025-12-11 13:55:13
+e0410082-8132-4011-9aeb-a4f529001e75,Spring roll wrappers,7,fridge,World Foods,2025-12-11 13:55:13,2025-12-11 13:55:13
+1799579c-e1ad-44e7-8e86-ab9c2e54433f,Wonton wrappers,7,fridge,World Foods,2025-12-11 13:55:13,2025-12-11 13:55:13
+f0264291-c5db-498d-9fdc-6e1937edf406,Baby formula,30,cupboard,Baby,2025-12-11 13:55:13,2025-12-11 13:55:13
+9ac43a70-42b9-488d-9a86-d95215ec1ecf,Baby food jars,365,cupboard,Baby,2025-12-11 13:55:13,2025-12-11 13:55:13
+c2127f99-edff-48fe-8a59-a0af12f16f71,Baby rice,365,cupboard,Baby,2025-12-11 13:55:13,2025-12-11 13:55:13
+739da301-6135-48dd-bf8d-a3538bfede86,Baby rusks,365,cupboard,Baby,2025-12-11 13:55:13,2025-12-11 13:55:13
+a6754337-b105-4729-ae9d-50353e2662c0,Baby puree pouches,365,cupboard,Baby,2025-12-11 13:55:13,2025-12-11 13:55:13
+0151de7e-99a1-4f90-970e-c9ac980a7174,Follow-on milk,30,cupboard,Baby,2025-12-11 13:55:13,2025-12-11 13:55:13
