@@ -586,9 +586,33 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
   }
 
   const getIngredientRating = (ingredientName: string) => {
-    return macroAnalysis?.ingredientRatings?.find(
-      r => r.ingredientName.toLowerCase() === ingredientName.toLowerCase()
+    if (!macroAnalysis?.ingredientRatings) return undefined
+
+    const searchName = ingredientName.toLowerCase().trim()
+
+    // First try exact match
+    let match = macroAnalysis.ingredientRatings.find(
+      r => r.ingredientName.toLowerCase().trim() === searchName
     )
+    if (match) return match
+
+    // Then try partial match (ingredient contains or is contained by rating name)
+    match = macroAnalysis.ingredientRatings.find(r => {
+      const ratingName = r.ingredientName.toLowerCase().trim()
+      return searchName.includes(ratingName) || ratingName.includes(searchName)
+    })
+    if (match) return match
+
+    // Try matching main ingredient word (e.g., "grilled chicken" -> "chicken")
+    const mainWords = searchName.split(/\s+/).filter(w => w.length > 3)
+    for (const word of mainWords) {
+      match = macroAnalysis.ingredientRatings.find(r =>
+        r.ingredientName.toLowerCase().includes(word)
+      )
+      if (match) return match
+    }
+
+    return undefined
   }
 
   const handleSaveEdit = async () => {
