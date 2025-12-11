@@ -26,6 +26,7 @@ model User {
   staples                Staple[]
   settings               AppSettings?
   mealPlanSettings       MealPlanSettings?
+  inventorySettings      InventorySettings?
   recipeHistory          RecipeUsageHistory[]
 
   @@map("users")
@@ -273,27 +274,89 @@ model StapleImport {
   @@map("staple_imports")
 }
 
+// Storage location enum for inventory items
+enum StorageLocation {
+  fridge
+  freezer
+  cupboard
+  pantry
+}
+
 model InventoryItem {
-  id                  String    @id @default(uuid())
+  id                  String           @id @default(uuid())
   userId              String
   itemName            String
   quantity            Float
   unit                String
   category            String
-  location            String
+  location            StorageLocation?
+  purchaseDate        DateTime         @default(now())
   expiryDate          DateTime?
-  autoPopulatedExpiry Boolean   @default(false)
-  dateAdded           DateTime  @default(now())
-  addedBy             String    @default("Manual")
+  expiryIsEstimated   Boolean          @default(false)
+  isActive            Boolean          @default(true)
+  addedBy             String           @default("manual") // manual, csv, photo, shopping_list
   notes               String?
-  isUsedInPlannedMeal Boolean   @default(false)
-  updatedAt           DateTime  @updatedAt
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  user         User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exclusions   ShoppingListExcludedItem[]
+
+  @@index([userId])
+  @@index([userId, isActive])
+  @@index([expiryDate])
+  @@map("inventory_items")
+}
+
+// Reference table for ingredient shelf life data
+model IngredientShelfLife {
+  id                   String           @id @default(uuid())
+  ingredientName       String           @unique
+  shelfLifeDays        Int
+  defaultLocation      StorageLocation?
+  category             String?
+  notes                String?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  @@index([ingredientName])
+  @@map("ingredient_shelf_life")
+}
+
+// User settings for inventory management
+model InventorySettings {
+  id                          String   @id @default(uuid())
+  userId                      String   @unique
+  skipInventoryCheck          Boolean  @default(false)
+  smallQuantityThresholdGrams Float    @default(5)
+  smallQuantityThresholdMl    Float    @default(5)
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
-  @@index([expiryDate])
-  @@map("inventory_items")
+  @@map("inventory_settings")
+}
+
+// Tracks items excluded from shopping list due to inventory
+model ShoppingListExcludedItem {
+  id                String    @id @default(uuid())
+  shoppingListId    String
+  itemName          String
+  recipeQuantity    Float
+  recipeUnit        String
+  inventoryQuantity Float
+  inventoryItemId   String?
+  excludedAt        DateTime  @default(now())
+  addedBackAt       DateTime?
+  addedBackQuantity Float?
+
+  shoppingList  ShoppingList   @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+
+  @@index([shoppingListId])
+  @@index([inventoryItemId])
+  @@map("shopping_list_excluded_items")
 }
 
 model ShoppingList {
@@ -309,11 +372,12 @@ model ShoppingList {
   finalizedAt   DateTime?
   archivedAt    DateTime?
 
-  user          User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
   items         ShoppingListItem[]
   mealPlans     ShoppingListMealPlan[]
   stapleImports StapleImport[]
   shareLinks    ShoppingListShareLink[]
+  excludedItems ShoppingListExcludedItem[]
 
   @@index([userId])
   @@index([status])
