@@ -145,6 +145,7 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
     count: number
     items: Array<{ itemName: string; inventoryQuantity: number }>
   } | null>(null)
+  const [notificationExpanded, setNotificationExpanded] = useState(false)
 
   // Excluded items section (persistent)
   const [excludedItems, setExcludedItems] = useState<ExcludedItem[]>([])
@@ -723,11 +724,12 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
             const excludedData = await excludedResponse.json()
             setExcludedItemsNotification({
               count: data.excludedFromInventory,
-              items: excludedData.excludedItems?.slice(0, 5).map((item: { itemName: string; inventoryQuantity: number }) => ({
+              items: excludedData.excludedItems?.map((item: { itemName: string; inventoryQuantity: number }) => ({
                 itemName: item.itemName,
                 inventoryQuantity: item.inventoryQuantity,
               })) || [],
             })
+            setNotificationExpanded(false) // Reset expansion state for new notification
           }
         } catch (excludedError) {
           console.warn('⚠️ Could not fetch excluded items details:', excludedError)
@@ -1240,11 +1242,24 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
                 </p>
                 {excludedItemsNotification.items.length > 0 && (
                   <ul className="text-sm text-blue-300/70 mt-2 space-y-0.5">
-                    {excludedItemsNotification.items.map((item, idx) => (
+                    {(notificationExpanded
+                      ? excludedItemsNotification.items
+                      : excludedItemsNotification.items.slice(0, 5)
+                    ).map((item, idx) => (
                       <li key={idx}>• {item.itemName} ({item.inventoryQuantity} in stock)</li>
                     ))}
-                    {excludedItemsNotification.count > 5 && (
-                      <li className="text-blue-400/60">...and {excludedItemsNotification.count - 5} more</li>
+                    {excludedItemsNotification.items.length > 5 && (
+                      <li>
+                        <button
+                          onClick={() => setNotificationExpanded(!notificationExpanded)}
+                          className="text-blue-400 hover:text-blue-300 hover:underline cursor-pointer"
+                        >
+                          {notificationExpanded
+                            ? '▲ show less'
+                            : `...and ${excludedItemsNotification.items.length - 5} more ▼`
+                          }
+                        </button>
+                      </li>
                     )}
                   </ul>
                 )}
