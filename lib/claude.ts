@@ -469,7 +469,7 @@ Return ONLY the JSON object, no other text.`
 
   try {
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-5-20250514',
+      model: 'claude-haiku-4-5-20241022',
       max_tokens: 4096,
       messages: [{
         role: 'user',
