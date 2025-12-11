@@ -8,6 +8,11 @@ import { lookupCategory, preprocessForAI, validateCategory, normalizeForLookup }
 import { normalizeAndRound } from '@/lib/measurements'
 import { SourceDetail } from '@/lib/types/shopping-list'
 import Anthropic from '@anthropic-ai/sdk'
+import {
+  checkInventoryForItems,
+  getInventorySettings,
+  recordExcludedItems,
+} from '@/lib/inventory'
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -15,6 +20,7 @@ const client = new Anthropic({
 
 const importMealPlanSchema = z.object({
   mealPlanId: z.string().min(1, 'Meal plan ID is required'),
+  checkInventory: z.boolean().optional().default(true),
 })
 
 // Helper to verify shopping list ownership
@@ -182,6 +188,65 @@ export async function POST(
       })
     }
 
+    // Check inventory for items (if enabled)
+    let excludedFromInventory: Array<{
+      itemName: string
+      recipeQuantity: number
+      recipeUnit: string
+      inventoryQuantity: number
+      inventoryItemId: string | null
+    }> = []
+
+    if (data.checkInventory) {
+      // Check user settings
+      const settings = await getInventorySettings(session.user.id)
+
+      if (!settings.skipInventoryCheck) {
+        console.log('🔷 Checking inventory for existing items...')
+
+        // Prepare items for inventory check
+        const itemsToCheck = Array.from(ingredientMap.entries()).map(([key, value]) => {
+          const [ingredientName] = key.split('|')
+          return {
+            itemName: ingredientName,
+            quantity: value.quantity,
+            unit: value.unit,
+          }
+        })
+
+        // Check inventory
+        const inventoryResults = await checkInventoryForItems(session.user.id, itemsToCheck)
+
+        // Filter out items that are available in sufficient quantity
+        const availableItems = inventoryResults.filter(r => r.isAvailable && r.isSufficientQuantity)
+
+        if (availableItems.length > 0) {
+          console.log(`🟢 Found ${availableItems.length} items already in inventory`)
+
+          // Remove available items from ingredientMap
+          for (const item of availableItems) {
+            const keyToRemove = Array.from(ingredientMap.keys()).find(key => {
+              const [name] = key.split('|')
+              return name.toLowerCase() === item.itemName.toLowerCase()
+            })
+            if (keyToRemove) {
+              const data = ingredientMap.get(keyToRemove)!
+              excludedFromInventory.push({
+                itemName: item.itemName,
+                recipeQuantity: data.quantity,
+                recipeUnit: data.unit,
+                inventoryQuantity: item.availableQuantity,
+                inventoryItemId: item.inventoryItemId,
+              })
+              ingredientMap.delete(keyToRemove)
+            }
+          }
+
+          console.log(`🔄 Excluded ${excludedFromInventory.length} items found in inventory`)
+        }
+      }
+    }
+
     // Get current max display order
     const maxOrder = await prisma.shoppingListItem.findFirst({
       where: { shoppingListId },
@@ -226,6 +291,12 @@ export async function POST(
         },
       })
       console.log(`🔗 Linked meal plan ${data.mealPlanId} to shopping list ${shoppingListId}`)
+    }
+
+    // Record excluded items (items found in inventory)
+    if (excludedFromInventory.length > 0) {
+      await recordExcludedItems(shoppingListId, excludedFromInventory)
+      console.log(`📝 Recorded ${excludedFromInventory.length} excluded items from inventory`)
     }
 
     // Fetch the created items to return
@@ -678,12 +749,17 @@ Respond with ONLY valid JSON: {"quantity": <number>, "unit": "<unit>", "itemName
       ? ` (${totalDeleted} duplicates combined)`
       : ''
 
+    const inventoryMessage = excludedFromInventory.length > 0
+      ? ` (${excludedFromInventory.length} items already in inventory)`
+      : ''
+
     return NextResponse.json({
-      message: `Successfully imported ${result.count} ingredient${result.count !== 1 ? 's' : ''} from ${mealsProcessed} meal${mealsProcessed !== 1 ? 's' : ''}${dedupeMessage}`,
+      message: `Successfully imported ${result.count} ingredient${result.count !== 1 ? 's' : ''} from ${mealsProcessed} meal${mealsProcessed !== 1 ? 's' : ''}${dedupeMessage}${inventoryMessage}`,
       importedCount: result.count,
       mealsProcessed,
       leftoverMealsSkipped,
       duplicatesRemoved: totalDeleted,
+      excludedFromInventory: excludedFromInventory.length,
       finalItemCount: finalItems.length,
       items: finalItems,
     })

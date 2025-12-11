@@ -53,3 +53,13 @@ export {
   suggestMergedQuantity,
 } from './duplicate-detection'
 export type { DuplicateCheckResult } from './duplicate-detection'
+
+// Inventory Check (Shopping List Integration)
+export {
+  checkInventoryForItems,
+  getInventorySettings,
+  recordExcludedItems,
+  getExcludedItems,
+  addBackExcludedItem,
+} from './inventory-check'
+export type { InventoryCheckResult } from './inventory-check'
