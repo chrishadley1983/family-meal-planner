@@ -725,6 +725,101 @@ Consider: calories per serving vs daily target, macro ratios, ingredient health 
   }
 }
 
+export async function analyzeInventoryPhoto(images: string[]) {
+  const imageCount = images.length
+  const prompt = `You are a grocery and food inventory recognition assistant. Analyze ${imageCount === 1 ? 'this image' : `these ${imageCount} images`} and identify all food items visible.
+
+${imageCount > 1 ? 'Note: Multiple images are provided. Extract items from all images.' : ''}
+
+The image${imageCount > 1 ? 's' : ''} may contain:
+- A photo of groceries (shopping bags, items on counter, etc.)
+- A photo of refrigerator/freezer/pantry contents
+- A receipt or shopping list (extract the items)
+- Food packaging with product names
+
+For each item identified, provide:
+1. The name of the item (be specific, e.g., "Semi-skimmed Milk" not just "Milk")
+2. Estimated quantity if visible (e.g., 2 bottles, 500g pack)
+3. Unit of measurement (e.g., "each", "g", "ml", "litres")
+4. Suggested category (Meat & Fish, Fresh Produce, Dairy & Eggs, Bakery, Chilled & Deli, Frozen, Cupboard Staples, Baking & Cooking Ingredients, Breakfast, Drinks, Snacks & Treats, Household, Other)
+5. Suggested storage location (fridge, freezer, cupboard, pantry)
+
+Return ONLY a valid JSON object in this exact format:
+{
+  "items": [
+    {
+      "itemName": "string (be specific)",
+      "quantity": number (default 1 if unsure),
+      "unit": "string (e.g., 'each', 'g', 'kg', 'ml', 'litres', 'pack')",
+      "category": "string (from categories above)",
+      "location": "fridge" | "freezer" | "cupboard" | "pantry",
+      "confidence": "high" | "medium" | "low"
+    }
+  ],
+  "summary": "Brief description of what was found (e.g., '12 items identified from grocery shopping')"
+}
+
+Important:
+- Include ALL visible food items
+- Be as specific as possible with item names
+- Use metric units (g, ml, litres) where appropriate
+- Don't include non-food items (cleaning products, etc.) unless they're explicitly household category
+- Set confidence to "low" if item is partially obscured or unclear`
+
+  try {
+    console.log('🔷 Calling Claude API to analyze inventory photo...')
+
+    // Build content array with all images followed by the prompt
+    const content: any[] = []
+
+    // Add all images to content
+    for (const imageData of images) {
+      content.push({
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: imageData.startsWith('data:image/png') ? 'image/png' :
+                     imageData.startsWith('data:image/jpeg') ? 'image/jpeg' :
+                     imageData.startsWith('data:image/jpg') ? 'image/jpeg' : 'image/jpeg',
+          data: imageData.replace(/^data:image\/\w+;base64,/, '')
+        }
+      })
+    }
+
+    // Add text prompt after images
+    content.push({
+      type: 'text',
+      text: prompt
+    })
+
+    const message = await client.messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 4096,
+      messages: [{
+        role: 'user',
+        content
+      }]
+    })
+
+    const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
+    console.log('🟢 Claude response received, length:', responseText.length)
+
+    // Extract JSON from response
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      throw new Error('No valid JSON found in Claude response')
+    }
+
+    const result = JSON.parse(jsonMatch[0])
+    console.log('🟢 Inventory items extracted:', result.items?.length || 0)
+
+    return result
+  } catch (error) {
+    console.error('❌ Error analyzing inventory photo with Claude:', error)
+    throw error
+  }
+}
+
 export async function getNutritionistFeedbackForRecipe(params: {
   recipe: {
     recipeName: string

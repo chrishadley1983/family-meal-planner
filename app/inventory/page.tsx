@@ -126,6 +126,22 @@ export default function InventoryPage() {
     errors: string[]
   } | null>(null)
 
+  // Photo import state
+  const [showPhotoModal, setShowPhotoModal] = useState(false)
+  const [photoImages, setPhotoImages] = useState<string[]>([])
+  const [analyzingPhoto, setAnalyzingPhoto] = useState(false)
+  const [extractedItems, setExtractedItems] = useState<Array<{
+    itemName: string
+    quantity: number
+    unit: string
+    category?: string
+    location?: string
+    confidence?: string
+    selected: boolean
+  }>>([])
+  const [photoSummary, setPhotoSummary] = useState('')
+  const [importingPhoto, setImportingPhoto] = useState(false)
+
   // Bulk selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
@@ -382,6 +398,123 @@ export default function InventoryPage() {
       setImportResult(null)
     }
     reader.readAsText(file)
+  }
+
+  // Handle photo file upload
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files) return
+
+    const readFile = (file: File): Promise<string> => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = (event) => {
+          resolve(event.target?.result as string)
+        }
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+    }
+
+    Promise.all(Array.from(files).map(readFile)).then(images => {
+      setPhotoImages(prev => [...prev, ...images])
+      setExtractedItems([])
+      setPhotoSummary('')
+    })
+  }
+
+  // Analyze photos with AI
+  const handleAnalyzePhoto = async () => {
+    if (photoImages.length === 0 || analyzingPhoto) return
+
+    setAnalyzingPhoto(true)
+    setExtractedItems([])
+    setPhotoSummary('')
+
+    try {
+      console.log('🔷 Analyzing', photoImages.length, 'photo(s)...')
+      const response = await fetch('/api/inventory/photo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ images: photoImages }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Analysis failed')
+      }
+
+      const data = await response.json()
+      console.log('🟢 Extracted', data.items?.length || 0, 'items')
+
+      setExtractedItems(
+        (data.items || []).map((item: any) => ({
+          ...item,
+          selected: true,
+        }))
+      )
+      setPhotoSummary(data.summary || '')
+    } catch (error) {
+      console.error('❌ Error analyzing photo:', error)
+      alert(error instanceof Error ? error.message : 'Failed to analyze photo')
+    } finally {
+      setAnalyzingPhoto(false)
+    }
+  }
+
+  // Import extracted items from photo
+  const handleImportPhotoItems = async () => {
+    const selectedItems = extractedItems.filter(i => i.selected)
+    if (selectedItems.length === 0 || importingPhoto) return
+
+    setImportingPhoto(true)
+
+    try {
+      console.log('🔷 Importing', selectedItems.length, 'items from photo...')
+      const response = await fetch('/api/inventory/photo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: selectedItems,
+          options: { autoExpiry: true },
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Import failed')
+      }
+
+      const data = await response.json()
+      console.log('🟢 Imported', data.imported, 'items')
+
+      setRawItems(data.items)
+      setShowPhotoModal(false)
+      setPhotoImages([])
+      setExtractedItems([])
+      setPhotoSummary('')
+    } catch (error) {
+      console.error('❌ Error importing items:', error)
+      alert(error instanceof Error ? error.message : 'Failed to import items')
+    } finally {
+      setImportingPhoto(false)
+    }
+  }
+
+  // Toggle item selection in photo import
+  const togglePhotoItemSelection = (index: number) => {
+    setExtractedItems(prev =>
+      prev.map((item, i) =>
+        i === index ? { ...item, selected: !item.selected } : item
+      )
+    )
+  }
+
+  // Remove a photo
+  const removePhoto = (index: number) => {
+    setPhotoImages(prev => prev.filter((_, i) => i !== index))
+    setExtractedItems([])
+    setPhotoSummary('')
   }
 
   const handleAddItem = async (e: React.FormEvent) => {
@@ -649,8 +782,11 @@ export default function InventoryPage() {
         description="Track your food items and expiry dates"
         action={
           <div className="flex gap-2">
+            <Button onClick={() => setShowPhotoModal(true)} variant="secondary">
+              Photo Import
+            </Button>
             <Button onClick={() => setShowImportModal(true)} variant="secondary">
-              Import CSV
+              CSV Import
             </Button>
             <Button onClick={() => setShowAddForm(true)} variant="primary">
               Add Item
@@ -1434,6 +1570,178 @@ export default function InventoryPage() {
               >
                 {importing ? 'Importing...' : 'Import Items'}
               </Button>
+            </div>
+          </div>
+        </Modal>
+
+        {/* Photo Import Modal */}
+        <Modal
+          isOpen={showPhotoModal}
+          onClose={() => {
+            setShowPhotoModal(false)
+            setPhotoImages([])
+            setExtractedItems([])
+            setPhotoSummary('')
+          }}
+          title="Import from Photo"
+          maxWidth="lg"
+        >
+          <div className="p-6 space-y-4">
+            {/* Instructions */}
+            <div className="p-3 rounded-lg bg-zinc-800/50 border border-zinc-700">
+              <p className="text-sm text-zinc-300 font-medium mb-2">Photo Recognition</p>
+              <p className="text-xs text-zinc-400">
+                Upload photos of your groceries, fridge contents, or receipts. Our AI will identify items and suggest inventory entries.
+              </p>
+            </div>
+
+            {/* Photo upload */}
+            <div>
+              <label className="block text-sm font-medium text-zinc-300 mb-2">
+                Upload Photos
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handlePhotoUpload}
+                className="block w-full text-sm text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-purple-600 file:text-white hover:file:bg-purple-700 cursor-pointer"
+              />
+            </div>
+
+            {/* Photo previews */}
+            {photoImages.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-zinc-300">
+                  {photoImages.length} photo{photoImages.length !== 1 ? 's' : ''} selected
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {photoImages.map((img, i) => (
+                    <div key={i} className="relative">
+                      <img
+                        src={img}
+                        alt={`Photo ${i + 1}`}
+                        className="w-24 h-24 object-cover rounded-lg border border-zinc-700"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removePhoto(i)}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center text-sm hover:bg-red-700"
+                      >
+                        x
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <Button
+                  onClick={handleAnalyzePhoto}
+                  variant="secondary"
+                  disabled={analyzingPhoto}
+                >
+                  {analyzingPhoto ? 'Analyzing...' : 'Analyze Photos'}
+                </Button>
+              </div>
+            )}
+
+            {/* Analyzing indicator */}
+            {analyzingPhoto && (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400 mr-3"></div>
+                <span className="text-zinc-300">AI is analyzing your photos...</span>
+              </div>
+            )}
+
+            {/* Extracted items */}
+            {extractedItems.length > 0 && (
+              <div className="space-y-3">
+                {photoSummary && (
+                  <p className="text-sm text-green-400">{photoSummary}</p>
+                )}
+                <p className="text-sm font-medium text-zinc-300">
+                  {extractedItems.length} items found - select which to import:
+                </p>
+                <div className="max-h-64 overflow-y-auto space-y-2">
+                  {extractedItems.map((item, i) => (
+                    <label
+                      key={i}
+                      className={`flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-colors ${
+                        item.selected
+                          ? 'bg-purple-900/30 border-purple-600/50'
+                          : 'bg-zinc-800/50 border-zinc-700'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={item.selected}
+                        onChange={() => togglePhotoItemSelection(i)}
+                        className="rounded border-zinc-600 bg-zinc-800 text-purple-500 focus:ring-purple-500"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-white font-medium">{item.itemName}</span>
+                        <span className="text-zinc-400 text-sm ml-2">
+                          {item.quantity} {item.unit}
+                        </span>
+                        {item.category && (
+                          <span className="text-zinc-500 text-xs ml-2">({item.category})</span>
+                        )}
+                      </div>
+                      {item.confidence && (
+                        <Badge
+                          variant={
+                            item.confidence === 'high' ? 'success' :
+                            item.confidence === 'medium' ? 'warning' : 'default'
+                          }
+                          size="sm"
+                        >
+                          {item.confidence}
+                        </Badge>
+                      )}
+                    </label>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2 text-sm text-zinc-400">
+                  <button
+                    type="button"
+                    onClick={() => setExtractedItems(prev => prev.map(i => ({ ...i, selected: true })))}
+                    className="text-purple-400 hover:text-purple-300"
+                  >
+                    Select all
+                  </button>
+                  <span>|</span>
+                  <button
+                    type="button"
+                    onClick={() => setExtractedItems(prev => prev.map(i => ({ ...i, selected: false })))}
+                    className="text-purple-400 hover:text-purple-300"
+                  >
+                    Deselect all
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex justify-end gap-3 pt-4">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setShowPhotoModal(false)
+                  setPhotoImages([])
+                  setExtractedItems([])
+                  setPhotoSummary('')
+                }}
+              >
+                Cancel
+              </Button>
+              {extractedItems.length > 0 && (
+                <Button
+                  onClick={handleImportPhotoItems}
+                  variant="primary"
+                  disabled={importingPhoto || extractedItems.filter(i => i.selected).length === 0}
+                >
+                  {importingPhoto ? 'Importing...' : `Import ${extractedItems.filter(i => i.selected).length} Items`}
+                </Button>
+              )}
             </div>
           </div>
         </Modal>
