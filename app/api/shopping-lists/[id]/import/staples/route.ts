@@ -3,9 +3,15 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
-import { convertToMetric } from '@/lib/unit-conversion'
+import { convertToMetric, DEFAULT_CATEGORIES, findDuplicates, combineQuantities } from '@/lib/unit-conversion'
+import { lookupCategory, preprocessForAI } from '@/lib/category-lookup'
 import type { Staple, StapleWithDueStatus, StapleDueStatus } from '@/lib/types/staples'
 import { enrichStapleWithDueStatus } from '@/lib/staples/calculations'
+import Anthropic from '@anthropic-ai/sdk'
+
+const client = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+})
 
 const importStaplesSchema = z.object({
   stapleIds: z.array(z.string()).min(1, 'At least one staple must be selected'),
@@ -129,10 +135,251 @@ export async function POST(
 
     console.log(`🟢 Imported ${result.count} staples to shopping list`)
 
+    // Auto-categorize items that don't have a category
+    type ShoppingListItem = typeof createdItems[0]
+    const uncategorizedItems = createdItems.filter((item: ShoppingListItem) => !item.category)
+    if (uncategorizedItems.length > 0) {
+      console.log(`🔷 Auto-categorizing ${uncategorizedItems.length} staple items...`)
+
+      try {
+        // Get the user's categories
+        let userCategories = await prisma.shoppingListCategory.findMany({
+          where: { userId: session.user.id },
+          orderBy: { displayOrder: 'asc' },
+        })
+
+        if (userCategories.length === 0) {
+          // Create default categories for this user
+          const defaultCats = DEFAULT_CATEGORIES.map((cat) => ({
+            userId: session.user.id,
+            name: cat.name,
+            displayOrder: cat.displayOrder,
+            isDefault: true,
+          }))
+          await prisma.shoppingListCategory.createMany({ data: defaultCats })
+          userCategories = await prisma.shoppingListCategory.findMany({
+            where: { userId: session.user.id },
+            orderBy: { displayOrder: 'asc' },
+          })
+        }
+
+        const categoryNames = userCategories.map((c: { name: string }) => c.name)
+
+        // PHASE 1: Try lookup table first for each item
+        const lookupResults: { item: typeof uncategorizedItems[0], category: string | null }[] = []
+        const needsAI: typeof uncategorizedItems = []
+
+        for (const item of uncategorizedItems) {
+          const lookupResult = lookupCategory(item.itemName)
+          if (lookupResult) {
+            const matchedCategory = categoryNames.find(
+              (cat: string) => cat.toLowerCase() === lookupResult.toLowerCase()
+            )
+            if (matchedCategory) {
+              lookupResults.push({ item, category: matchedCategory })
+              console.log(`📋 Lookup: "${item.itemName}" → ${matchedCategory}`)
+            } else {
+              needsAI.push(item)
+            }
+          } else {
+            needsAI.push(item)
+          }
+        }
+
+        // Update items that were resolved by lookup
+        if (lookupResults.length > 0) {
+          const lookupUpdates = lookupResults.map(({ item, category }) =>
+            prisma.shoppingListItem.update({
+              where: { id: item.id },
+              data: { category },
+            })
+          )
+          await Promise.all(lookupUpdates)
+          console.log(`🟢 Updated ${lookupResults.length} items from lookup table`)
+        }
+
+        // PHASE 2: Use AI for remaining items
+        if (needsAI.length > 0) {
+          console.log(`🔷 Using AI to categorize ${needsAI.length} staple items...`)
+
+          const processedItems = needsAI.map((item: ShoppingListItem) => ({
+            original: item.itemName,
+            processed: preprocessForAI(item.itemName),
+          }))
+
+          const categoryExamples: Record<string, string> = {
+            'Fresh Produce': 'Fresh fruit, vegetables, fresh herbs',
+            'Meat & Fish': 'Fresh and frozen meat, poultry, fish, seafood',
+            'Dairy & Eggs': 'Milk, cheese, yoghurt, cream, butter, eggs',
+            'Bakery': 'Bread, rolls, pastries, flatbreads',
+            'Chilled & Deli': 'Fresh ready meals, deli meats, fresh pasta, dips',
+            'Frozen': 'Frozen foods only',
+            'Cupboard Staples': 'Tinned goods, dried pasta, rice, noodles, stock, sauces',
+            'Baking & Cooking Ingredients': 'Flour, sugar, spices, seasonings, oils',
+            'Breakfast': 'Cereals, porridge, granola',
+            'Drinks': 'Beverages - juices, tea, coffee, soft drinks',
+            'Snacks & Treats': 'Crisps, nuts, chocolate, biscuits',
+            'Household': 'Non-food items for home',
+            'Other': 'Only for items that genuinely do not fit any other category',
+          }
+
+          const categoryDescriptions = categoryNames
+            .filter((name: string) => categoryExamples[name])
+            .map((name: string) => `- ${name}: ${categoryExamples[name]}`)
+            .join('\n')
+
+          const prompt = `Categorize these grocery items for a UK supermarket shopping list.
+
+AVAILABLE CATEGORIES:
+${categoryDescriptions}
+
+ITEMS TO CATEGORIZE:
+${processedItems.map((item: { original: string; processed: string }, i: number) => `${i + 1}. ${item.processed}`).join('\n')}
+
+Respond with ONLY valid JSON array: [{"index": 1, "category": "Category Name"}, ...]`
+
+          try {
+            const message = await client.messages.create({
+              model: 'claude-haiku-4-5',
+              max_tokens: 500,
+              messages: [{ role: 'user', content: prompt }],
+            })
+
+            const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
+            const jsonMatch = responseText.match(/\[[\s\S]*\]/)
+
+            if (jsonMatch) {
+              const categories = JSON.parse(jsonMatch[0]) as Array<{ index: number; category: string }>
+              const aiUpdates = categories
+                .filter(c => categoryNames.includes(c.category))
+                .map(c => {
+                  const item = needsAI[c.index - 1]
+                  if (item) {
+                    return prisma.shoppingListItem.update({
+                      where: { id: item.id },
+                      data: { category: c.category },
+                    })
+                  }
+                  return null
+                })
+                .filter(Boolean)
+
+              if (aiUpdates.length > 0) {
+                await Promise.all(aiUpdates)
+                console.log(`🟢 AI categorized ${aiUpdates.length} items`)
+              }
+            }
+          } catch (aiError) {
+            console.warn('⚠️ AI categorization failed:', aiError)
+          }
+        }
+      } catch (catError) {
+        console.warn('⚠️ Auto-categorization failed:', catError)
+      }
+    }
+
+    // Auto-deduplicate items
+    console.log('🔷 Auto-deduplicating items after staples import...')
+
+    const allItems = await prisma.shoppingListItem.findMany({
+      where: {
+        shoppingListId,
+        isPurchased: false,
+      },
+      orderBy: { itemName: 'asc' },
+    })
+
+    const duplicateGroups = findDuplicates(
+      allItems.map((item: ShoppingListItem) => ({
+        id: item.id,
+        itemName: item.itemName,
+        quantity: item.quantity,
+        unit: item.unit,
+        source: item.source || undefined,
+      }))
+    )
+
+    let totalCombined = 0
+    let totalDeleted = 0
+
+    if (duplicateGroups.length > 0) {
+      console.log(`🔷 Found ${duplicateGroups.length} duplicate groups, auto-combining...`)
+
+      for (const group of duplicateGroups) {
+        try {
+          const groupItems = await prisma.shoppingListItem.findMany({
+            where: { id: { in: group.items.map(i => i.id) } },
+          })
+
+          if (groupItems.length < 2) continue
+
+          let combinedQuantity = groupItems[0].quantity
+          let combinedUnit = groupItems[0].unit
+          let allCompatible = true
+
+          for (let i = 1; i < groupItems.length; i++) {
+            const combineResult = combineQuantities(
+              combinedQuantity,
+              combinedUnit,
+              groupItems[i].quantity,
+              groupItems[i].unit
+            )
+
+            if (combineResult) {
+              combinedQuantity = combineResult.quantity
+              combinedUnit = combineResult.unit
+            } else {
+              allCompatible = false
+              break
+            }
+          }
+
+          if (allCompatible) {
+            // Update the first item with combined quantity
+            const keepItem = groupItems[0]
+            const deleteIds = groupItems.slice(1).map((i: ShoppingListItem) => i.id)
+
+            // Combine source details
+            const combinedSourceDetails = groupItems.flatMap((item: ShoppingListItem) => {
+              const details = item.sourceDetails as Array<Record<string, unknown>> | null
+              return details || []
+            })
+
+            await prisma.shoppingListItem.update({
+              where: { id: keepItem.id },
+              data: {
+                quantity: combinedQuantity,
+                unit: combinedUnit,
+                sourceDetails: combinedSourceDetails,
+              },
+            })
+
+            await prisma.shoppingListItem.deleteMany({
+              where: { id: { in: deleteIds } },
+            })
+
+            totalCombined++
+            totalDeleted += deleteIds.length
+            console.log(`🟢 Combined "${group.normalizedName}": ${groupItems.length} items → 1 (${combinedQuantity} ${combinedUnit})`)
+          }
+        } catch (groupError) {
+          console.warn(`⚠️ Failed to combine group "${group.normalizedName}":`, groupError)
+        }
+      }
+    }
+
+    const dedupeMessage = totalDeleted > 0
+      ? `. Combined ${totalCombined} duplicate groups (removed ${totalDeleted} items).`
+      : ''
+
     return NextResponse.json({
-      message: `Successfully imported ${result.count} staple${result.count !== 1 ? 's' : ''}`,
+      message: `Successfully imported ${result.count} staple${result.count !== 1 ? 's' : ''}${dedupeMessage}`,
       importedCount: result.count,
       items: createdItems,
+      deduplication: {
+        groupsCombined: totalCombined,
+        itemsRemoved: totalDeleted,
+      },
     })
   } catch (error) {
     if (error instanceof z.ZodError) {
