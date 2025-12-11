@@ -14,7 +14,14 @@ import {
   formatDaysUntilExpiry,
   formatExpiryDate,
   getInventoryStats,
+  calculateExpiryFromShelfLife,
 } from '@/lib/inventory/expiry-calculations'
+import {
+  checkForDuplicates,
+  suggestMergedQuantity,
+  SHELF_LIFE_SEED_DATA,
+} from '@/lib/inventory'
+import type { DuplicateCheckResult, ShelfLifeSeedItem } from '@/lib/inventory'
 import type {
   InventoryItem,
   InventoryItemWithExpiry,
@@ -98,6 +105,11 @@ export default function InventoryPage() {
   })
   const [savingEdit, setSavingEdit] = useState(false)
 
+  // Duplicate detection state
+  const [duplicateCheck, setDuplicateCheck] = useState<DuplicateCheckResult | null>(null)
+  const [shelfLifeSuggestion, setShelfLifeSuggestion] = useState<ShelfLifeSeedItem | null>(null)
+  const [showMergeOption, setShowMergeOption] = useState(false)
+
   // Bulk selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
@@ -163,6 +175,143 @@ export default function InventoryPage() {
     }
   }
 
+  // Look up shelf life data for item name
+  const lookupShelfLife = (itemName: string): ShelfLifeSeedItem | null => {
+    if (!itemName || itemName.length < 2) return null
+
+    const normalizedInput = itemName.toLowerCase().trim()
+
+    // Try exact match first
+    const exactMatch = SHELF_LIFE_SEED_DATA.find(
+      item => item.ingredientName.toLowerCase() === normalizedInput
+    )
+    if (exactMatch) return exactMatch
+
+    // Try partial match (input contains reference or vice versa)
+    const partialMatch = SHELF_LIFE_SEED_DATA.find(item => {
+      const refLower = item.ingredientName.toLowerCase()
+      return normalizedInput.includes(refLower) || refLower.includes(normalizedInput)
+    })
+    if (partialMatch) return partialMatch
+
+    // Try word-based matching
+    const inputWords = normalizedInput.split(/\s+/).filter(w => w.length > 2)
+    const wordMatch = SHELF_LIFE_SEED_DATA.find(item => {
+      const refWords = item.ingredientName.toLowerCase().split(/\s+/)
+      return inputWords.some(iw => refWords.some(rw => rw.includes(iw) || iw.includes(rw)))
+    })
+
+    return wordMatch || null
+  }
+
+  // Handle item name change with duplicate detection and shelf life lookup
+  const handleItemNameChange = (value: string) => {
+    setNewItem({ ...newItem, itemName: value })
+
+    // Check for duplicates
+    if (value.length >= 2) {
+      const check = checkForDuplicates(value, items, {
+        category: newItem.category || undefined,
+        location: newItem.location || undefined,
+      })
+      setDuplicateCheck(check)
+      setShowMergeOption(check.isDuplicate && check.matchingItems.length > 0)
+      console.log('🔄 Duplicate check:', check.isDuplicate ? `Found ${check.matchingItems.length} match(es)` : 'No duplicates')
+    } else {
+      setDuplicateCheck(null)
+      setShowMergeOption(false)
+    }
+
+    // Look up shelf life
+    const shelfLife = lookupShelfLife(value)
+    setShelfLifeSuggestion(shelfLife)
+    if (shelfLife) {
+      console.log('🔄 Shelf life suggestion:', shelfLife.ingredientName, shelfLife.shelfLifeDays, 'days')
+    }
+  }
+
+  // Apply shelf life suggestion to form
+  const applyShelfLifeSuggestion = () => {
+    if (!shelfLifeSuggestion) return
+
+    const updates: Partial<typeof newItem> = {}
+
+    // Set category if not already set
+    if (!newItem.category && shelfLifeSuggestion.category) {
+      updates.category = shelfLifeSuggestion.category
+    }
+
+    // Set location if not already set
+    if (!newItem.location && shelfLifeSuggestion.defaultLocation) {
+      updates.location = shelfLifeSuggestion.defaultLocation
+    }
+
+    // Calculate and set expiry date
+    const expiryDate = calculateExpiryFromShelfLife(new Date(), shelfLifeSuggestion.shelfLifeDays)
+    updates.expiryDate = expiryDate.toISOString().split('T')[0]
+
+    setNewItem({ ...newItem, ...updates })
+    console.log('⚡ Applied shelf life suggestion:', updates)
+  }
+
+  // Handle merge with existing item
+  const handleMergeWithExisting = async (existingItem: InventoryItemWithExpiry) => {
+    const mergeResult = suggestMergedQuantity(
+      existingItem.quantity,
+      newItem.quantity,
+      existingItem.unit,
+      newItem.unit
+    )
+
+    if (!mergeResult.canMerge) {
+      alert(`Cannot merge: Different units (${existingItem.unit} vs ${newItem.unit}). Please convert manually or add as new item.`)
+      return
+    }
+
+    try {
+      console.log('🔷 Merging with existing item:', existingItem.itemName)
+      const response = await fetch(`/api/inventory?id=${existingItem.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          quantity: mergeResult.quantity,
+          // Update expiry date if new one is sooner (FIFO)
+          ...(newItem.expiryDate && (!existingItem.expiryDate ||
+            new Date(newItem.expiryDate) < existingItem.expiryDate) && {
+            expiryDate: newItem.expiryDate,
+          }),
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to merge items')
+      }
+
+      const data = await response.json()
+      console.log('🟢 Merged successfully. New quantity:', mergeResult.quantity)
+      setRawItems(rawItems.map(i => i.id === existingItem.id ? data.item : i))
+
+      // Reset form
+      setNewItem({
+        itemName: '',
+        quantity: 1,
+        unit: '',
+        category: '',
+        location: '',
+        expiryDate: '',
+        isActive: true,
+        notes: '',
+      })
+      setShowAddForm(false)
+      setDuplicateCheck(null)
+      setShelfLifeSuggestion(null)
+      setShowMergeOption(false)
+    } catch (error) {
+      console.error('❌ Error merging items:', error)
+      alert('Failed to merge items')
+    }
+  }
+
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault()
     if (addingItem) return
@@ -200,6 +349,9 @@ export default function InventoryPage() {
         notes: '',
       })
       setShowAddForm(false)
+      setDuplicateCheck(null)
+      setShelfLifeSuggestion(null)
+      setShowMergeOption(false)
     } catch (error) {
       console.error('❌ Error creating item:', error)
       alert(error instanceof Error ? error.message : 'Failed to create item')
@@ -712,13 +864,18 @@ export default function InventoryPage() {
         {/* Add Item Modal */}
         <Modal
           isOpen={showAddForm}
-          onClose={() => setShowAddForm(false)}
+          onClose={() => {
+            setShowAddForm(false)
+            setDuplicateCheck(null)
+            setShelfLifeSuggestion(null)
+            setShowMergeOption(false)
+          }}
           title="Add Inventory Item"
           maxWidth="md"
         >
           <form onSubmit={handleAddItem} className="p-6 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
+              <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-zinc-300 mb-1">
                   Item Name *
                 </label>
@@ -726,10 +883,84 @@ export default function InventoryPage() {
                   type="text"
                   required
                   value={newItem.itemName}
-                  onChange={(e) => setNewItem({ ...newItem, itemName: e.target.value })}
+                  onChange={(e) => handleItemNameChange(e.target.value)}
                   placeholder="e.g., Milk"
                 />
               </div>
+            </div>
+
+            {/* Duplicate Warning */}
+            {duplicateCheck?.isDuplicate && showMergeOption && (
+              <div className="p-3 rounded-lg bg-yellow-900/30 border border-yellow-600/50">
+                <div className="flex items-start gap-2">
+                  <svg className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <div className="flex-1">
+                    <p className="text-sm text-yellow-300 font-medium">
+                      Similar item{duplicateCheck.matchingItems.length > 1 ? 's' : ''} found in inventory
+                    </p>
+                    <div className="mt-2 space-y-2">
+                      {duplicateCheck.matchingItems.slice(0, 3).map(item => (
+                        <div key={item.id} className="flex items-center justify-between bg-zinc-800/50 p-2 rounded">
+                          <span className="text-sm text-zinc-200">
+                            {item.itemName} - {item.quantity} {item.unit}
+                            {item.location && ` (${STORAGE_LOCATION_LABELS[item.location]})`}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleMergeWithExisting(item)}
+                            className="text-xs px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded"
+                          >
+                            Merge (+{newItem.quantity})
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-zinc-400 mt-2">
+                      Or continue to add as a new item
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Shelf Life Suggestion */}
+            {shelfLifeSuggestion && !duplicateCheck?.isDuplicate && (
+              <div className="p-3 rounded-lg bg-blue-900/30 border border-blue-600/50">
+                <div className="flex items-start gap-2">
+                  <svg className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div className="flex-1">
+                    <p className="text-sm text-blue-300">
+                      Matched: <span className="font-medium">{shelfLifeSuggestion.ingredientName}</span>
+                    </p>
+                    <p className="text-xs text-zinc-400 mt-1">
+                      Typical shelf life: {shelfLifeSuggestion.shelfLifeDays} days
+                      {shelfLifeSuggestion.defaultLocation && (
+                        <> | Store in: {STORAGE_LOCATION_LABELS[shelfLifeSuggestion.defaultLocation]}</>
+                      )}
+                      {shelfLifeSuggestion.category && (
+                        <> | Category: {shelfLifeSuggestion.category}</>
+                      )}
+                    </p>
+                    {shelfLifeSuggestion.notes && (
+                      <p className="text-xs text-zinc-500 mt-1 italic">{shelfLifeSuggestion.notes}</p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={applyShelfLifeSuggestion}
+                      className="mt-2 text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded"
+                    >
+                      Apply Suggestions
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-1">
                   Category *
@@ -750,6 +981,21 @@ export default function InventoryPage() {
                       <option key={cat.name} value={cat.name}>{cat.name}</option>
                     ))
                   )}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-1">
+                  Location
+                </label>
+                <select
+                  value={newItem.location}
+                  onChange={(e) => setNewItem({ ...newItem, location: e.target.value as StorageLocation | '' })}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="">Select location...</option>
+                  {STORAGE_LOCATIONS.map(loc => (
+                    <option key={loc.value} value={loc.value}>{loc.label}</option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -783,21 +1029,6 @@ export default function InventoryPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-1">
-                  Location
-                </label>
-                <select
-                  value={newItem.location}
-                  onChange={(e) => setNewItem({ ...newItem, location: e.target.value as StorageLocation | '' })}
-                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="">Select location...</option>
-                  {STORAGE_LOCATIONS.map(loc => (
-                    <option key={loc.value} value={loc.value}>{loc.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-1">
                   Expiry Date
                 </label>
                 <Input
@@ -819,7 +1050,12 @@ export default function InventoryPage() {
               />
             </div>
             <div className="flex justify-end gap-3 pt-4">
-              <Button type="button" variant="secondary" onClick={() => setShowAddForm(false)}>
+              <Button type="button" variant="secondary" onClick={() => {
+                setShowAddForm(false)
+                setDuplicateCheck(null)
+                setShelfLifeSuggestion(null)
+                setShowMergeOption(false)
+              }}>
                 Cancel
               </Button>
               <Button type="submit" variant="primary" disabled={addingItem}>

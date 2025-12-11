@@ -45,3 +45,11 @@ export {
   getSeedDataCategoryCounts,
 } from './shelf-life-seed-data'
 export type { ShelfLifeSeedItem } from './shelf-life-seed-data'
+
+// Duplicate Detection
+export {
+  checkForDuplicates,
+  findBestMatchForMerge,
+  suggestMergedQuantity,
+} from './duplicate-detection'
+export type { DuplicateCheckResult } from './duplicate-detection'
