@@ -134,6 +134,13 @@ export default function StaplesPage() {
   const [urlSummary, setUrlSummary] = useState('')
   const [importingUrl, setImportingUrl] = useState(false)
 
+  // Import notification state
+  const [importNotification, setImportNotification] = useState<{
+    show: boolean
+    message: string
+    type: 'success' | 'error'
+  } | null>(null)
+
   // Enrich staples with due status
   const staples = useMemo(() => {
     return rawStaples.map(s => enrichStapleWithDueStatus({
@@ -224,10 +231,20 @@ export default function StaplesPage() {
   // Suggest frequency based on shelf life
   const suggestFrequencyFromShelfLife = (shelfLifeDays: number): StapleFrequency => {
     if (shelfLifeDays <= 7) return 'weekly'
-    if (shelfLifeDays <= 14) return 'fortnightly'
-    if (shelfLifeDays <= 30) return 'monthly'
-    if (shelfLifeDays <= 60) return 'bimonthly'
-    return 'quarterly'
+    if (shelfLifeDays <= 14) return 'every_2_weeks'
+    if (shelfLifeDays <= 60) return 'every_4_weeks'
+    return 'every_3_months'
+  }
+
+  // Format frequency for display
+  const formatFrequencyLabel = (freq: StapleFrequency | string | undefined): string => {
+    const labels: Record<string, string> = {
+      'weekly': 'Weekly',
+      'every_2_weeks': 'Every 2 weeks',
+      'every_4_weeks': 'Every 4 weeks',
+      'every_3_months': 'Every 3 months',
+    }
+    return labels[freq || 'weekly'] || freq || 'Weekly'
   }
 
   // Handle item name change with shelf life lookup
@@ -359,10 +376,10 @@ export default function StaplesPage() {
       setPhotoImages([])
       setExtractedItems([])
       setPhotoSummary('')
-      alert(`Successfully imported ${imported.length} staple${imported.length !== 1 ? 's' : ''}`)
+      showNotification(`Successfully imported ${imported.length} staple${imported.length !== 1 ? 's' : ''}`, 'success')
     } catch (error) {
       console.error('❌ Error importing staples:', error)
-      alert(error instanceof Error ? error.message : 'Failed to import staples')
+      showNotification(error instanceof Error ? error.message : 'Failed to import staples', 'error')
     } finally {
       setImportingPhoto(false)
     }
@@ -372,6 +389,15 @@ export default function StaplesPage() {
     setExtractedItems(prev =>
       prev.map((item, i) =>
         i === index ? { ...item, selected: !item.selected } : item
+      )
+    )
+  }
+
+  // Update an extracted photo item field
+  const updatePhotoItem = (index: number, field: string, value: any) => {
+    setExtractedItems(prev =>
+      prev.map((item, i) =>
+        i === index ? { ...item, [field]: value } : item
       )
     )
   }
@@ -459,10 +485,10 @@ export default function StaplesPage() {
       setImportUrl('')
       setUrlExtractedItems([])
       setUrlSummary('')
-      alert(`Successfully imported ${imported.length} staple${imported.length !== 1 ? 's' : ''}`)
+      showNotification(`Successfully imported ${imported.length} staple${imported.length !== 1 ? 's' : ''}`, 'success')
     } catch (error) {
       console.error('❌ Error importing staples:', error)
-      alert(error instanceof Error ? error.message : 'Failed to import staples')
+      showNotification(error instanceof Error ? error.message : 'Failed to import staples', 'error')
     } finally {
       setImportingUrl(false)
     }
@@ -474,6 +500,21 @@ export default function StaplesPage() {
         i === index ? { ...item, selected: !item.selected } : item
       )
     )
+  }
+
+  // Update an extracted URL item field
+  const updateUrlItem = (index: number, field: string, value: any) => {
+    setUrlExtractedItems(prev =>
+      prev.map((item, i) =>
+        i === index ? { ...item, [field]: value } : item
+      )
+    )
+  }
+
+  // Show notification with auto-dismiss
+  const showNotification = (message: string, type: 'success' | 'error') => {
+    setImportNotification({ show: true, message, type })
+    setTimeout(() => setImportNotification(null), 5000)
   }
 
   const handleAddStaple = async (e: React.FormEvent) => {
@@ -1598,48 +1639,92 @@ export default function StaplesPage() {
                   <p className="text-sm text-green-400">{photoSummary}</p>
                 )}
                 <p className="text-sm font-medium text-zinc-300">
-                  {extractedItems.length} items found - select which to import:
+                  {extractedItems.length} items found - edit and select which to import:
                 </p>
-                <div className="max-h-64 overflow-y-auto space-y-2">
+                <div className="max-h-80 overflow-y-auto space-y-3">
                   {extractedItems.map((item, i) => (
-                    <label
+                    <div
                       key={i}
-                      className={`flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-colors ${
+                      className={`p-3 rounded-lg border transition-colors ${
                         item.selected
                           ? 'bg-purple-900/30 border-purple-600/50'
                           : 'bg-zinc-800/50 border-zinc-700'
                       }`}
                     >
-                      <input
-                        type="checkbox"
-                        checked={item.selected}
-                        onChange={() => togglePhotoItemSelection(i)}
-                        className="rounded border-zinc-600 bg-zinc-800 text-purple-500 focus:ring-purple-500"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <span className="text-white font-medium">{item.itemName}</span>
-                        <span className="text-zinc-400 text-sm ml-2">
-                          {item.quantity} {item.unit}
-                        </span>
-                        {item.category && (
-                          <span className="text-zinc-500 text-xs ml-2">({item.category})</span>
-                        )}
-                        {item.frequency && (
-                          <span className="text-blue-400 text-xs ml-2">[{item.frequency}]</span>
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="checkbox"
+                          checked={item.selected}
+                          onChange={() => togglePhotoItemSelection(i)}
+                          className="mt-2 rounded border-zinc-600 bg-zinc-800 text-purple-500 focus:ring-purple-500"
+                        />
+                        <div className="flex-1 space-y-2">
+                          {/* Item name input */}
+                          <input
+                            type="text"
+                            value={item.itemName}
+                            onChange={(e) => updatePhotoItem(i, 'itemName', e.target.value)}
+                            className="w-full px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            placeholder="Item name"
+                          />
+                          <div className="flex gap-2 flex-wrap">
+                            {/* Quantity input */}
+                            <input
+                              type="number"
+                              value={item.quantity}
+                              onChange={(e) => updatePhotoItem(i, 'quantity', parseFloat(e.target.value) || 1)}
+                              className="w-20 px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                              min="0.01"
+                              step="0.01"
+                              placeholder="Qty"
+                            />
+                            {/* Unit select */}
+                            <select
+                              value={item.unit}
+                              onChange={(e) => updatePhotoItem(i, 'unit', e.target.value)}
+                              className="px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            >
+                              <option value="">Unit...</option>
+                              {COMMON_UNITS.map(unit => (
+                                <option key={unit.value} value={unit.value}>{unit.label}</option>
+                              ))}
+                            </select>
+                            {/* Frequency select */}
+                            <select
+                              value={item.frequency || 'weekly'}
+                              onChange={(e) => updatePhotoItem(i, 'frequency', e.target.value)}
+                              className="px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            >
+                              {STAPLE_FREQUENCIES.map(f => (
+                                <option key={f.value} value={f.value}>{f.label}</option>
+                              ))}
+                            </select>
+                            {/* Category select */}
+                            <select
+                              value={item.category || ''}
+                              onChange={(e) => updatePhotoItem(i, 'category', e.target.value)}
+                              className="px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            >
+                              <option value="">Category...</option>
+                              {shoppingListCategories.map(cat => (
+                                <option key={cat.id} value={cat.name}>{cat.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                        {item.confidence && (
+                          <Badge
+                            variant={
+                              item.confidence === 'high' ? 'success' :
+                              item.confidence === 'medium' ? 'warning' : 'default'
+                            }
+                            size="sm"
+                          >
+                            {item.confidence}
+                          </Badge>
                         )}
                       </div>
-                      {item.confidence && (
-                        <Badge
-                          variant={
-                            item.confidence === 'high' ? 'success' :
-                            item.confidence === 'medium' ? 'warning' : 'default'
-                          }
-                          size="sm"
-                        >
-                          {item.confidence}
-                        </Badge>
-                      )}
-                    </label>
+                    </div>
                   ))}
                 </div>
                 <div className="flex items-center gap-2 text-sm text-zinc-400">
@@ -1748,48 +1833,92 @@ export default function StaplesPage() {
                   <p className="text-sm text-green-400">{urlSummary}</p>
                 )}
                 <p className="text-sm font-medium text-zinc-300">
-                  {urlExtractedItems.length} items found - select which to import:
+                  {urlExtractedItems.length} items found - edit and select which to import:
                 </p>
-                <div className="max-h-64 overflow-y-auto space-y-2">
+                <div className="max-h-80 overflow-y-auto space-y-3">
                   {urlExtractedItems.map((item, i) => (
-                    <label
+                    <div
                       key={i}
-                      className={`flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-colors ${
+                      className={`p-3 rounded-lg border transition-colors ${
                         item.selected
                           ? 'bg-purple-900/30 border-purple-600/50'
                           : 'bg-zinc-800/50 border-zinc-700'
                       }`}
                     >
-                      <input
-                        type="checkbox"
-                        checked={item.selected}
-                        onChange={() => toggleUrlItemSelection(i)}
-                        className="rounded border-zinc-600 bg-zinc-800 text-purple-500 focus:ring-purple-500"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <span className="text-white font-medium">{item.itemName}</span>
-                        <span className="text-zinc-400 text-sm ml-2">
-                          {item.quantity} {item.unit}
-                        </span>
-                        {item.category && (
-                          <span className="text-zinc-500 text-xs ml-2">({item.category})</span>
-                        )}
-                        {item.frequency && (
-                          <span className="text-blue-400 text-xs ml-2">[{item.frequency}]</span>
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="checkbox"
+                          checked={item.selected}
+                          onChange={() => toggleUrlItemSelection(i)}
+                          className="mt-2 rounded border-zinc-600 bg-zinc-800 text-purple-500 focus:ring-purple-500"
+                        />
+                        <div className="flex-1 space-y-2">
+                          {/* Item name input */}
+                          <input
+                            type="text"
+                            value={item.itemName}
+                            onChange={(e) => updateUrlItem(i, 'itemName', e.target.value)}
+                            className="w-full px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            placeholder="Item name"
+                          />
+                          <div className="flex gap-2 flex-wrap">
+                            {/* Quantity input */}
+                            <input
+                              type="number"
+                              value={item.quantity}
+                              onChange={(e) => updateUrlItem(i, 'quantity', parseFloat(e.target.value) || 1)}
+                              className="w-20 px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                              min="0.01"
+                              step="0.01"
+                              placeholder="Qty"
+                            />
+                            {/* Unit select */}
+                            <select
+                              value={item.unit}
+                              onChange={(e) => updateUrlItem(i, 'unit', e.target.value)}
+                              className="px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            >
+                              <option value="">Unit...</option>
+                              {COMMON_UNITS.map(unit => (
+                                <option key={unit.value} value={unit.value}>{unit.label}</option>
+                              ))}
+                            </select>
+                            {/* Frequency select */}
+                            <select
+                              value={item.frequency || 'weekly'}
+                              onChange={(e) => updateUrlItem(i, 'frequency', e.target.value)}
+                              className="px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            >
+                              {STAPLE_FREQUENCIES.map(f => (
+                                <option key={f.value} value={f.value}>{f.label}</option>
+                              ))}
+                            </select>
+                            {/* Category select */}
+                            <select
+                              value={item.category || ''}
+                              onChange={(e) => updateUrlItem(i, 'category', e.target.value)}
+                              className="px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            >
+                              <option value="">Category...</option>
+                              {shoppingListCategories.map(cat => (
+                                <option key={cat.id} value={cat.name}>{cat.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                        {item.confidence && (
+                          <Badge
+                            variant={
+                              item.confidence === 'high' ? 'success' :
+                              item.confidence === 'medium' ? 'warning' : 'default'
+                            }
+                            size="sm"
+                          >
+                            {item.confidence}
+                          </Badge>
                         )}
                       </div>
-                      {item.confidence && (
-                        <Badge
-                          variant={
-                            item.confidence === 'high' ? 'success' :
-                            item.confidence === 'medium' ? 'warning' : 'default'
-                          }
-                          size="sm"
-                        >
-                          {item.confidence}
-                        </Badge>
-                      )}
-                    </label>
+                    </div>
                   ))}
                 </div>
                 <div className="flex items-center gap-2 text-sm text-zinc-400">
@@ -1838,6 +1967,38 @@ export default function StaplesPage() {
             </div>
           </div>
         </Modal>
+
+        {/* Import Notification Toast */}
+        {importNotification && (
+          <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 fade-in duration-300">
+            <div
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border ${
+                importNotification.type === 'success'
+                  ? 'bg-green-900/90 border-green-600/50 text-green-100'
+                  : 'bg-red-900/90 border-red-600/50 text-red-100'
+              }`}
+            >
+              {importNotification.type === 'success' ? (
+                <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              )}
+              <span className="font-medium">{importNotification.message}</span>
+              <button
+                onClick={() => setImportNotification(null)}
+                className="ml-2 text-current opacity-70 hover:opacity-100"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
       </PageContainer>
     </AppLayout>
   )
