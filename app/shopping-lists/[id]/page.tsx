@@ -145,7 +145,7 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
   const [checkInventoryOnImport, setCheckInventoryOnImport] = useState(true)
   const [excludedItemsNotification, setExcludedItemsNotification] = useState<{
     count: number
-    items: Array<{ itemName: string; inventoryQuantity: number }>
+    items: Array<{ itemName: string; inventoryQuantity: number; inventoryUnit: string }>
   } | null>(null)
   const [notificationExpanded, setNotificationExpanded] = useState(false)
 
@@ -733,9 +733,10 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
             const excludedData = await excludedResponse.json()
             setExcludedItemsNotification({
               count: data.excludedFromInventory,
-              items: excludedData.excludedItems?.map((item: { itemName: string; inventoryQuantity: number }) => ({
+              items: excludedData.excludedItems?.map((item: { itemName: string; inventoryQuantity: number; recipeUnit: string; inventoryItem?: { unit: string } }) => ({
                 itemName: item.itemName,
                 inventoryQuantity: item.inventoryQuantity,
+                inventoryUnit: item.inventoryItem?.unit || item.recipeUnit || '',
               })) || [],
             })
             setNotificationExpanded(false) // Reset expansion state for new notification
@@ -1255,7 +1256,7 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
                       ? excludedItemsNotification.items
                       : excludedItemsNotification.items.slice(0, 5)
                     ).map((item, idx) => (
-                      <li key={idx}>• {item.itemName} ({item.inventoryQuantity} in stock)</li>
+                      <li key={idx}>• {item.itemName} ({item.inventoryQuantity}{item.inventoryUnit ? ` ${item.inventoryUnit}` : ''} in stock)</li>
                     ))}
                     {excludedItemsNotification.items.length > 5 && (
                       <li>
