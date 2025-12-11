@@ -11,7 +11,7 @@ import { Button, Badge, Input, Select } from '@/components/ui'
 import { useSession } from 'next-auth/react'
 import { useAILoading } from '@/components/providers/AILoadingProvider'
 import { useNotification } from '@/components/providers/NotificationProvider'
-import { ChatMessage, IngredientModification } from '@/lib/types/nutritionist'
+import { ChatMessage, IngredientModification, InstructionModification } from '@/lib/types/nutritionist'
 
 interface RecipePageProps {
   params: Promise<{ id: string }>
@@ -206,6 +206,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
             servings,
             mealType,
             ingredients: ingredients.filter(i => i.ingredientName && i.unit),
+            instructions: instructions.filter(i => i.instruction),
           },
           macroAnalysis,
           conversationHistory: chatMessages.map(m => ({
@@ -219,7 +220,8 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
       if (response.ok) {
         const data = await response.json()
         console.log('🟢 Chat response received:', {
-          hasModifications: !!data.ingredientModifications?.length,
+          hasIngredientMods: !!data.ingredientModifications?.length,
+          hasInstructionMods: !!data.instructionModifications?.length,
           suggestedPrompts: data.suggestedPrompts?.length,
         })
 
@@ -235,6 +237,11 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
         // Apply ingredient modifications if any
         if (data.ingredientModifications && data.ingredientModifications.length > 0) {
           applyIngredientModifications(data.ingredientModifications)
+        }
+
+        // Apply instruction modifications if any
+        if (data.instructionModifications && data.instructionModifications.length > 0) {
+          applyInstructionModifications(data.instructionModifications)
         }
       } else {
         console.error('❌ Chat request failed')
@@ -325,6 +332,45 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
 
     setIngredients(updatedIngredients)
     // Note: The existing useEffect will auto-trigger macro analysis refresh due to ingredients change
+  }
+
+  // Apply instruction modifications from the nutritionist
+  const applyInstructionModifications = (modifications: InstructionModification[]) => {
+    console.log('⚡ Applying instruction modifications:', modifications)
+    saveToHistory() // Save current state for undo
+
+    let updatedInstructions = [...instructions]
+
+    for (const mod of modifications) {
+      switch (mod.action) {
+        case 'add':
+          // Add new instruction at the end
+          const newStepNumber = updatedInstructions.length + 1
+          updatedInstructions.push({
+            stepNumber: newStepNumber,
+            instruction: mod.instruction,
+          })
+          console.log('✅ Added instruction step:', newStepNumber)
+          break
+
+        case 'update':
+          if (mod.stepNumber !== undefined) {
+            const index = updatedInstructions.findIndex(
+              inst => inst.stepNumber === mod.stepNumber
+            )
+            if (index !== -1) {
+              updatedInstructions[index] = {
+                ...updatedInstructions[index],
+                instruction: mod.instruction,
+              }
+              console.log('✅ Updated instruction step:', mod.stepNumber)
+            }
+          }
+          break
+      }
+    }
+
+    setInstructions(updatedInstructions)
   }
 
   useEffect(() => {
@@ -710,7 +756,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                   <textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    rows={2}
+                    rows={4}
                     placeholder="Description..."
                     className="input w-full mt-2"
                   />
@@ -1230,7 +1276,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                                     sendChatMessage(chatInput)
                                   }
                                 }}
-                                placeholder="Ask Emilia about nutrition..."
+                                placeholder="Tweak this recipe (e.g. add protein, reduce fat)..."
                                 className="flex-1 bg-zinc-800 border border-zinc-600 rounded-lg px-4 py-2 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-green-500"
                                 disabled={chatLoading}
                               />

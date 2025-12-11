@@ -21,6 +21,13 @@ export interface IngredientModification {
   reason: string
 }
 
+export interface InstructionModification {
+  action: 'add' | 'update'
+  stepNumber?: number // For 'update' - which step to modify
+  instruction: string // The instruction text
+  reason: string
+}
+
 export interface NutritionistChatRequest {
   recipe: {
     recipeName: string
@@ -31,6 +38,10 @@ export interface NutritionistChatRequest {
       quantity: number
       unit: string
       notes?: string
+    }>
+    instructions: Array<{
+      stepNumber: number
+      instruction: string
     }>
   }
   macroAnalysis: {
@@ -65,6 +76,7 @@ export interface NutritionistChatResponse {
   message: string
   suggestedPrompts: string[]
   ingredientModifications?: IngredientModification[]
+  instructionModifications?: InstructionModification[]
   modificationsPending: boolean // Whether there are unapplied modifications awaiting confirmation
 }
 

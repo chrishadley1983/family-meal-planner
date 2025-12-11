@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
         servings: recipe.servings || 4,
         mealType: recipe.mealType || [],
         ingredients: recipe.ingredients || [],
+        instructions: recipe.instructions || [],
       },
       macroAnalysis: {
         perServing: {
@@ -108,7 +109,8 @@ export async function POST(request: NextRequest) {
     console.log('🟢 Nutritionist chat response:', {
       messagePreview: response.message.substring(0, 50) + '...',
       suggestedPrompts: response.suggestedPrompts.length,
-      hasModifications: !!response.ingredientModifications?.length,
+      hasIngredientMods: !!response.ingredientModifications?.length,
+      hasInstructionMods: !!response.instructionModifications?.length,
       modificationsPending: response.modificationsPending,
     })
 

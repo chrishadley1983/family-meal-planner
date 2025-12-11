@@ -11,6 +11,7 @@ import {
   NutritionistChatRequest,
   NutritionistChatResponse,
   IngredientModification,
+  InstructionModification,
   SuggestedPromptsContext
 } from './types/nutritionist'
 
@@ -1405,93 +1406,89 @@ export async function interactWithNutritionist(
     .map(i => `- ${i.quantity} ${i.unit} ${i.ingredientName}${i.notes ? ` (${i.notes})` : ''}`)
     .join('\n')
 
+  // Build the instructions list for context
+  const instructionsList = recipe.instructions
+    ?.map(i => `${i.stepNumber}. ${i.instruction}`)
+    .join('\n') || 'No instructions provided'
+
   // Build conversation history for context
   const historyText = conversationHistory
     .map(msg => `${msg.role === 'user' ? 'User' : 'Emilia'}: ${msg.content}`)
     .join('\n\n')
 
-  const systemPrompt = `You are Emilia, a friendly and knowledgeable nutritionist helping users improve their recipes. You have a warm, encouraging personality but stay focused on nutrition.
+  // Determine if this is a follow-up response (not the first message)
+  const isFollowUp = conversationHistory.length > 0
 
-IMPORTANT RULES:
-1. Stay focused on nutrition and recipe modifications. If asked about non-nutrition topics (weather, news, personal questions, etc.), politely redirect: "Ha! I'd love to chat about that, but I'm here to help make your meals as nutritious as possible! Is there anything about this recipe I can help with?"
+  const systemPrompt = `You are Emilia, a friendly nutritionist helping tweak THIS SPECIFIC RECIPE. Keep responses focused and concise.
 
-2. When suggesting ingredient changes, be specific about quantities and explain WHY the change helps.
+SCOPE - VERY IMPORTANT:
+- You can ONLY help with small nutritional tweaks to this recipe (add/remove/swap ingredients, adjust quantities)
+- You CANNOT help with: other recipes, general diet advice, meal planning, cooking techniques, or non-nutrition topics
+- If asked anything outside scope, say: "I'm just here to help fine-tune this recipe's nutrition! What would you like to adjust?"
 
-3. When the user agrees to a change (says things like "yes", "do it", "add it", "ok", "sounds good", "let's do it"), you MUST include the modification in your response.
+RESPONSE LENGTH:
+${isFollowUp ? '- Keep follow-up responses SHORT (1-2 sentences max). Be direct and friendly.' : '- First response can be 2-3 sentences with your initial assessment.'}
 
-4. When the user partially agrees (e.g., "just change the yoghurt, not the oil"), only include the modifications they agreed to.
+WHEN MODIFYING INGREDIENTS:
+- Always include instruction updates when adding new ingredients that need cooking steps
+- When replacing an ingredient, update any instructions that mention the old ingredient
 
-5. When the user declines (says "no", "keep it", "never mind"), acknowledge gracefully and move on.
-
-6. Always consider the user's macro targets when making suggestions.
-
-RESPONSE FORMAT:
-You must respond with valid JSON in this exact format:
+RESPONSE FORMAT (JSON only):
 {
-  "message": "Your conversational response to the user",
-  "suggestedPrompts": ["Follow-up question 1", "Follow-up question 2"],
+  "message": "Your brief, friendly response",
+  "suggestedPrompts": ["Short prompt 1", "Short prompt 2"],
   "ingredientModifications": [
     {
       "action": "add|remove|replace|adjust",
-      "ingredientName": "existing ingredient name (for replace/remove/adjust)",
-      "newIngredient": {
-        "name": "new ingredient name",
-        "quantity": 100,
-        "unit": "g",
-        "notes": "optional notes"
-      },
-      "reason": "brief explanation"
+      "ingredientName": "existing ingredient (for replace/remove/adjust)",
+      "newIngredient": { "name": "ingredient", "quantity": 100, "unit": "g", "notes": "" },
+      "reason": "brief reason"
+    }
+  ],
+  "instructionModifications": [
+    {
+      "action": "add|update",
+      "stepNumber": 3,
+      "instruction": "The instruction text",
+      "reason": "brief reason"
     }
   ],
   "modificationsPending": false
 }
 
-MODIFICATION ACTIONS:
-- "add": Add a new ingredient (only newIngredient is needed)
-- "remove": Remove an existing ingredient (only ingredientName is needed)
-- "replace": Replace ingredientName with newIngredient
-- "adjust": Change the quantity of ingredientName (use newIngredient with same name but different quantity)
+RULES:
+1. Only include modifications when user AGREES ("yes", "ok", "do it", "add it")
+2. If proposing changes, set modificationsPending: true, leave modifications empty
+3. For partial agreement, only include what they agreed to
+4. When adding ingredients, ADD a new instruction step explaining how to use it
+5. When replacing ingredients, UPDATE instructions that mention the old ingredient
+6. Consider user's macro targets when suggesting changes`
 
-Only include "ingredientModifications" when the user has AGREED to changes. If you're proposing changes and waiting for confirmation, set "modificationsPending": true and leave ingredientModifications empty.
-
-SUGGESTED PROMPTS:
-Generate 2-3 relevant follow-up questions based on the current state of the recipe and conversation. These should help the user explore improvements.`
-
-  const userPrompt = `CURRENT RECIPE: ${recipe.recipeName}
+  const userPrompt = `RECIPE: ${recipe.recipeName}
 Servings: ${recipe.servings}
-Meal Type: ${recipe.mealType.join(', ') || 'Not specified'}
 
 INGREDIENTS:
 ${ingredientsList}
 
-NUTRITIONAL ANALYSIS (per serving):
-- Calories: ${macroAnalysis.perServing.calories} kcal
-- Protein: ${macroAnalysis.perServing.protein}g
-- Carbs: ${macroAnalysis.perServing.carbs}g
-- Fat: ${macroAnalysis.perServing.fat}g
-- Fiber: ${macroAnalysis.perServing.fiber}g
-- Sugar: ${macroAnalysis.perServing.sugar}g
-- Sodium: ${macroAnalysis.perServing.sodium}mg
-- Overall Rating: ${macroAnalysis.overallRating}
-- Explanation: ${macroAnalysis.overallExplanation}
+CURRENT INSTRUCTIONS:
+${instructionsList}
 
-USER PROFILE:
-Name: ${userProfile.profileName}
-${userProfile.macroTrackingEnabled ? `Daily Targets:
-- Calories: ${userProfile.dailyCalorieTarget || 'Not set'} kcal
-- Protein: ${userProfile.dailyProteinTarget || 'Not set'}g
-- Carbs: ${userProfile.dailyCarbsTarget || 'Not set'}g
-- Fat: ${userProfile.dailyFatTarget || 'Not set'}g` : 'Macro tracking not enabled'}
+NUTRITION (per serving):
+Calories: ${Math.round(macroAnalysis.perServing.calories)} | Protein: ${Math.round(macroAnalysis.perServing.protein)}g | Carbs: ${Math.round(macroAnalysis.perServing.carbs)}g | Fat: ${Math.round(macroAnalysis.perServing.fat)}g
+Fiber: ${Math.round(macroAnalysis.perServing.fiber)}g | Sugar: ${Math.round(macroAnalysis.perServing.sugar)}g | Sodium: ${Math.round(macroAnalysis.perServing.sodium)}mg
+Rating: ${macroAnalysis.overallRating}
 
-${historyText ? `CONVERSATION HISTORY:\n${historyText}\n` : ''}
-USER'S NEW MESSAGE: ${userMessage}
+${userProfile.macroTrackingEnabled ? `USER TARGETS: ${userProfile.dailyCalorieTarget || '?'} kcal, ${userProfile.dailyProteinTarget || '?'}g protein, ${userProfile.dailyCarbsTarget || '?'}g carbs, ${userProfile.dailyFatTarget || '?'}g fat` : ''}
 
-Respond as Emilia with helpful, friendly nutritional advice. Remember to output valid JSON only.`
+${historyText ? `CONVERSATION:\n${historyText}\n` : ''}
+USER: ${userMessage}
+
+Respond as Emilia. ${isFollowUp ? 'Keep it SHORT (1-2 sentences).' : ''} JSON only.`
 
   try {
     const response = await client.messages.create({
       model: 'claude-haiku-4-5',
-      max_tokens: 1024,
+      max_tokens: 768,
       messages: [{
         role: 'user',
         content: `${systemPrompt}\n\n${userPrompt}`
@@ -1513,9 +1510,10 @@ Respond as Emilia with helpful, friendly nutritional advice. Remember to output 
 
       // Ensure all required fields exist
       return {
-        message: parsed.message || "I'm not sure how to respond to that. Can I help you with the recipe's nutrition?",
+        message: parsed.message || "How can I help tweak this recipe?",
         suggestedPrompts: parsed.suggestedPrompts || [],
         ingredientModifications: parsed.ingredientModifications || undefined,
+        instructionModifications: parsed.instructionModifications || undefined,
         modificationsPending: parsed.modificationsPending || false
       }
     } catch (parseError) {
@@ -1524,8 +1522,8 @@ Respond as Emilia with helpful, friendly nutritional advice. Remember to output 
 
       // Return the raw text as a message if JSON parsing fails
       return {
-        message: responseText || "I'm having trouble understanding. Could you rephrase that?",
-        suggestedPrompts: ["What can I improve?", "Add more protein?"],
+        message: responseText || "Could you rephrase that?",
+        suggestedPrompts: ["Add more protein?", "Reduce fat?"],
         modificationsPending: false
       }
     }
