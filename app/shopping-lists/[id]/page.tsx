@@ -136,6 +136,25 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
   // Export & Share
   const [showExportModal, setShowExportModal] = useState(false)
 
+  // Convert to Inventory
+  const [showConvertModal, setShowConvertModal] = useState(false)
+  const [convertPreview, setConvertPreview] = useState<Array<{
+    id: string
+    itemName: string
+    quantity: number
+    unit: string
+    category: string
+    location: string | null
+    shelfLifeDays: number | null
+    isPurchased: boolean
+    hasDuplicate: boolean
+    existingQuantity: number | null
+    existingUnit: string | null
+  }>>([])
+  const [selectedConvertItems, setSelectedConvertItems] = useState<Set<string>>(new Set())
+  const [converting, setConverting] = useState(false)
+  const [convertPurchasedOnly, setConvertPurchasedOnly] = useState(true)
+
   // Edit item modal
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingItem, setEditingItem] = useState<ShoppingListItem | null>(null)
@@ -691,6 +710,67 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
     }
   }
 
+  // Convert to Inventory
+  const handleOpenConvertModal = async () => {
+    try {
+      console.log('🔷 Fetching conversion preview')
+      const response = await fetch(`/api/shopping-lists/${id}/convert-to-inventory?purchasedOnly=${convertPurchasedOnly}`)
+      if (!response.ok) throw new Error('Failed to fetch preview')
+
+      const data = await response.json()
+      setConvertPreview(data.items || [])
+
+      // Pre-select all purchased items
+      const purchasedIds = new Set<string>(
+        data.items.filter((i: { isPurchased: boolean }) => i.isPurchased).map((i: { id: string }) => i.id)
+      )
+      setSelectedConvertItems(purchasedIds)
+      setShowConvertModal(true)
+      console.log('🟢 Loaded', data.items.length, 'items for conversion preview')
+    } catch (error) {
+      console.error('❌ Error fetching conversion preview:', error)
+      alert('Failed to load conversion preview')
+    }
+  }
+
+  const handleConvertToInventory = async () => {
+    if (selectedConvertItems.size === 0 || converting) return
+
+    setConverting(true)
+    try {
+      console.log('🔷 Converting', selectedConvertItems.size, 'items to inventory')
+      const response = await fetch(`/api/shopping-lists/${id}/convert-to-inventory`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          itemIds: Array.from(selectedConvertItems),
+          autoExpiry: true,
+          autoCategory: true,
+          autoLocation: true,
+          mergeWithExisting: true,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to convert items')
+      }
+
+      const data = await response.json()
+      console.log('🟢 Converted to inventory:', data)
+      setShowConvertModal(false)
+      await fetchShoppingList()
+
+      // Show success message
+      alert(`Successfully added to inventory:\n${data.created} new items created\n${data.merged} items merged with existing`)
+    } catch (error) {
+      console.error('❌ Error converting to inventory:', error)
+      alert(error instanceof Error ? error.message : 'Failed to convert items')
+    } finally {
+      setConverting(false)
+    }
+  }
+
   const getStatusBadgeClass = (status: string) => {
     switch (status) {
       case 'Draft':
@@ -850,6 +930,16 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
                 <>
                   {purchasedItems > 0 && (
                     <>
+                      <button
+                        onClick={handleOpenConvertModal}
+                        className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 text-sm flex items-center gap-2"
+                        title="Add purchased items to inventory"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                        </svg>
+                        Add to Inventory
+                      </button>
                       <button
                         onClick={handleUndoLastPurchased}
                         disabled={saving}
@@ -1620,6 +1710,176 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
               >
                 {savingEdit ? 'Saving...' : 'Save Changes'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Convert to Inventory Modal */}
+      {showConvertModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col">
+            <div className="p-6 border-b border-gray-700">
+              <h2 className="text-xl font-semibold text-white">Add to Inventory</h2>
+              <p className="text-sm text-gray-400 mt-1">
+                Convert purchased shopping list items to your inventory
+              </p>
+              <div className="flex items-center gap-4 mt-3">
+                <label className="flex items-center gap-2 text-sm text-gray-400 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={convertPurchasedOnly}
+                    onChange={(e) => {
+                      setConvertPurchasedOnly(e.target.checked)
+                      // Refetch preview with new filter
+                      fetch(`/api/shopping-lists/${id}/convert-to-inventory?purchasedOnly=${e.target.checked}`)
+                        .then(res => res.json())
+                        .then(data => {
+                          setConvertPreview(data.items || [])
+                          const purchasedIds = new Set<string>(
+                            data.items.filter((i: { isPurchased: boolean }) => i.isPurchased).map((i: { id: string }) => i.id)
+                          )
+                          setSelectedConvertItems(purchasedIds)
+                        })
+                        .catch(err => console.error('❌ Error refetching:', err))
+                    }}
+                    className="w-4 h-4 rounded"
+                  />
+                  Purchased only
+                </label>
+                <span className="text-xs text-gray-500">
+                  {convertPreview.filter(i => i.isPurchased).length} purchased / {convertPreview.length} total
+                </span>
+              </div>
+            </div>
+
+            <div className="p-4 flex-1 overflow-y-auto">
+              {convertPreview.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-400">No items eligible for conversion.</p>
+                  <p className="text-sm text-gray-500 mt-2">
+                    {convertPurchasedOnly
+                      ? 'Mark items as purchased to add them to inventory.'
+                      : 'All items have already been added to inventory.'}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {/* Selection controls */}
+                  <div className="flex justify-between items-center text-sm mb-3">
+                    <div className="flex gap-3 text-gray-400">
+                      <button
+                        onClick={() => setSelectedConvertItems(new Set(convertPreview.map(i => i.id)))}
+                        className="hover:text-white"
+                      >
+                        Select all
+                      </button>
+                      <button
+                        onClick={() => setSelectedConvertItems(new Set(
+                          convertPreview.filter(i => i.isPurchased).map(i => i.id)
+                        ))}
+                        className="hover:text-white"
+                      >
+                        Select purchased
+                      </button>
+                      <button
+                        onClick={() => setSelectedConvertItems(new Set())}
+                        className="hover:text-white"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                    <span className="text-gray-500">{selectedConvertItems.size} selected</span>
+                  </div>
+
+                  {/* Items list */}
+                  {convertPreview.map((item) => (
+                    <label
+                      key={item.id}
+                      className={`flex items-start gap-3 p-3 rounded border cursor-pointer ${
+                        selectedConvertItems.has(item.id)
+                          ? 'border-teal-500 bg-teal-900/20'
+                          : 'border-gray-700 hover:bg-gray-700'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedConvertItems.has(item.id)}
+                        onChange={(e) => {
+                          const newSet = new Set(selectedConvertItems)
+                          if (e.target.checked) {
+                            newSet.add(item.id)
+                          } else {
+                            newSet.delete(item.id)
+                          }
+                          setSelectedConvertItems(newSet)
+                        }}
+                        className="w-4 h-4 rounded flex-shrink-0 mt-0.5"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-white font-medium">{item.itemName}</span>
+                          {item.isPurchased && (
+                            <span className="px-1.5 py-0.5 text-xs rounded bg-green-900/50 text-green-400">
+                              Purchased
+                            </span>
+                          )}
+                          {item.hasDuplicate && (
+                            <span className="px-1.5 py-0.5 text-xs rounded bg-yellow-900/50 text-yellow-400">
+                              Will merge
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-sm text-gray-400 mt-1 flex flex-wrap gap-x-3 gap-y-1">
+                          <span>{item.quantity} {item.unit}</span>
+                          <span className="text-gray-500">→ {item.category}</span>
+                          {item.location && (
+                            <span className="text-gray-500">• {item.location}</span>
+                          )}
+                          {item.shelfLifeDays && (
+                            <span className="text-gray-500">• ~{item.shelfLifeDays} days shelf life</span>
+                          )}
+                        </div>
+                        {item.hasDuplicate && item.existingQuantity !== null && (
+                          <p className="text-xs text-yellow-400/80 mt-1">
+                            Existing: {item.existingQuantity} {item.existingUnit} (will be merged)
+                          </p>
+                        )}
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="px-6 py-4 bg-gray-750 border-t border-gray-700 flex justify-between items-center">
+              <div className="text-sm text-gray-400">
+                {selectedConvertItems.size > 0 && (
+                  <>
+                    {selectedConvertItems.size} item{selectedConvertItems.size !== 1 ? 's' : ''} will be added
+                    {convertPreview.filter(i => selectedConvertItems.has(i.id) && i.hasDuplicate).length > 0 && (
+                      <span className="text-yellow-400 ml-2">
+                        ({convertPreview.filter(i => selectedConvertItems.has(i.id) && i.hasDuplicate).length} will merge)
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowConvertModal(false)}
+                  className="px-4 py-2 text-gray-300 hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConvertToInventory}
+                  disabled={selectedConvertItems.size === 0 || converting}
+                  className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50"
+                >
+                  {converting ? 'Adding...' : `Add ${selectedConvertItems.size} to Inventory`}
+                </button>
+              </div>
             </div>
           </div>
         </div>
