@@ -127,11 +127,17 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
   const [mealPlanOptions, setMealPlanOptions] = useState<MealPlanOption[]>([])
   const [selectedMealPlan, setSelectedMealPlan] = useState<string>('')
   const [importing, setImporting] = useState(false)
+  const [checkInventoryOnImport, setCheckInventoryOnImport] = useState(true)
+  const [excludedItemsNotification, setExcludedItemsNotification] = useState<{
+    count: number
+    items: Array<{ itemName: string; inventoryQuantity: number }>
+  } | null>(null)
 
   // Deduplication
   const [showDedupeModal, setShowDedupeModal] = useState(false)
   const [duplicateGroups, setDuplicateGroups] = useState<DuplicateGroup[]>([])
-  const [deduping, setDeduping] = useState(false)
+  const [combiningGroups, setCombiningGroups] = useState<Set<string>>(new Set()) // Track which groups are being combined
+  const [combiningAll, setCombiningAll] = useState(false) // Track "Combine All" operation
 
   // Export & Share
   const [showExportModal, setShowExportModal] = useState(false)
@@ -539,12 +545,16 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
     if (!selectedMealPlan || importing) return
 
     setImporting(true)
+    setExcludedItemsNotification(null) // Clear previous notification
     try {
-      console.log('🔷 Importing from meal plan:', selectedMealPlan)
+      console.log('🔷 Importing from meal plan:', selectedMealPlan, 'checkInventory:', checkInventoryOnImport)
       const response = await fetch(`/api/shopping-lists/${id}/import/meal-plan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mealPlanId: selectedMealPlan }),
+        body: JSON.stringify({
+          mealPlanId: selectedMealPlan,
+          checkInventory: checkInventoryOnImport,
+        }),
       })
 
       if (!response.ok) {
@@ -555,13 +565,34 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
       const data = await response.json()
       console.log('🟢 Imported', data.importedCount, 'ingredients')
       console.log('🟢 Duplicates removed (server-side):', data.duplicatesRemoved || 0)
+      console.log('🟢 Excluded from inventory:', data.excludedFromInventory || 0)
       console.log('🟢 Final item count:', data.finalItemCount || data.importedCount)
       setShowMealPlanModal(false)
       await fetchShoppingList()
 
-      // Show success message with dedupe info if applicable (dedupe happens server-side)
-      if (data.duplicatesRemoved > 0) {
-        alert(`Imported ${data.importedCount} ingredients and combined ${data.duplicatesRemoved} duplicates.\nFinal count: ${data.finalItemCount} items.`)
+      // Show excluded items notification if any items were excluded due to inventory
+      if (data.excludedFromInventory > 0 && data.items) {
+        // Fetch the excluded items details
+        try {
+          const excludedResponse = await fetch(`/api/shopping-lists/${id}/excluded-items`)
+          if (excludedResponse.ok) {
+            const excludedData = await excludedResponse.json()
+            setExcludedItemsNotification({
+              count: data.excludedFromInventory,
+              items: excludedData.excludedItems?.slice(0, 5).map((item: { itemName: string; inventoryQuantity: number }) => ({
+                itemName: item.itemName,
+                inventoryQuantity: item.inventoryQuantity,
+              })) || [],
+            })
+          }
+        } catch (excludedError) {
+          console.warn('⚠️ Could not fetch excluded items details:', excludedError)
+          // Still show notification with count only
+          setExcludedItemsNotification({
+            count: data.excludedFromInventory,
+            items: [],
+          })
+        }
       }
     } catch (error) {
       console.error('❌ Error importing meal plan:', error)
@@ -589,16 +620,18 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
     }
   }
 
-  const handleDeduplicate = async (itemIds: string[], useAI: boolean = true) => {
-    if (deduping) return
+  const handleDeduplicate = async (itemIds: string[], useAI: boolean = true, groupKey: string) => {
+    // Check if this specific group is already being combined
+    if (combiningGroups.has(groupKey) || combiningAll) return
 
     // Capture the current total before combining
     const previousTotal = shoppingList?.items.length || 0
 
-    setDeduping(true)
+    // Add this group to the combining set
+    setCombiningGroups(prev => new Set(prev).add(groupKey))
     setLastCombineResult(null) // Clear previous result
     try {
-      console.log('🔷 Deduplicating items:', itemIds, 'useAI:', useAI)
+      console.log('🔷 Deduplicating items:', itemIds, 'useAI:', useAI, 'group:', groupKey)
       const response = await fetch(`/api/shopping-lists/${id}/deduplicate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -613,8 +646,8 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
       const result = await response.json()
       console.log('🟢 Items deduplicated:', result)
 
-      // Refresh duplicates list
-      const refreshResponse = await fetch(`/api/shopping-lists/${id}/deduplicate`)
+      // Refresh duplicates list (use AI matching to stay consistent)
+      const refreshResponse = await fetch(`/api/shopping-lists/${id}/deduplicate?useAI=true`)
       if (refreshResponse.ok) {
         const data = await refreshResponse.json()
         setDuplicateGroups(data.duplicateGroups || [])
@@ -642,18 +675,23 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
       console.error('❌ Error deduplicating:', error)
       alert(error instanceof Error ? error.message : 'Failed to deduplicate')
     } finally {
-      setDeduping(false)
+      // Remove this group from the combining set
+      setCombiningGroups(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(groupKey)
+        return newSet
+      })
     }
   }
 
   // Combine all duplicate groups at once
   const handleCombineAll = async () => {
-    if (deduping || duplicateGroups.length === 0) return
+    if (combiningAll || combiningGroups.size > 0 || duplicateGroups.length === 0) return
 
     const previousTotal = shoppingList?.items.length || 0
     const groupCount = duplicateGroups.length
 
-    setDeduping(true)
+    setCombiningAll(true)
     setLastCombineResult(null)
 
     let totalItemsCombined = 0
@@ -680,7 +718,7 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
       }
 
       // Refresh duplicates list (should be empty now)
-      const refreshResponse = await fetch(`/api/shopping-lists/${id}/deduplicate`)
+      const refreshResponse = await fetch(`/api/shopping-lists/${id}/deduplicate?useAI=true`)
       if (refreshResponse.ok) {
         const data = await refreshResponse.json()
         setDuplicateGroups(data.duplicateGroups || [])
@@ -706,7 +744,7 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
       console.error('❌ Error combining all:', error)
       alert(error instanceof Error ? error.message : 'Failed to combine all')
     } finally {
-      setDeduping(false)
+      setCombiningAll(false)
     }
   }
 
@@ -1039,6 +1077,43 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
             >
               Find Duplicates
             </button>
+          </div>
+        )}
+
+        {/* Excluded Items Notification (shown after meal plan import) */}
+        {excludedItemsNotification && (
+          <div className="bg-blue-900/30 border border-blue-600 rounded-lg p-4 mb-6">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div className="flex-1">
+                <p className="text-blue-300 font-medium">
+                  {excludedItemsNotification.count} item{excludedItemsNotification.count !== 1 ? 's' : ''} skipped
+                </p>
+                <p className="text-blue-300/80 text-sm mt-1">
+                  Already in your inventory - no need to buy:
+                </p>
+                {excludedItemsNotification.items.length > 0 && (
+                  <ul className="text-sm text-blue-300/70 mt-2 space-y-0.5">
+                    {excludedItemsNotification.items.map((item, idx) => (
+                      <li key={idx}>• {item.itemName} ({item.inventoryQuantity} in stock)</li>
+                    ))}
+                    {excludedItemsNotification.count > 5 && (
+                      <li className="text-blue-400/60">...and {excludedItemsNotification.count - 5} more</li>
+                    )}
+                  </ul>
+                )}
+              </div>
+              <button
+                onClick={() => setExcludedItemsNotification(null)}
+                className="text-blue-400 hover:text-blue-300"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
           </div>
         )}
 
@@ -1450,6 +1525,17 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
             <div className="p-6 border-b border-gray-700">
               <h2 className="text-xl font-semibold text-white">Import from Meal Plan</h2>
               <p className="text-sm text-gray-400 mt-1">Select a finalized meal plan to import ingredients</p>
+              {/* Inventory check toggle */}
+              <label className="flex items-center gap-2 mt-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={checkInventoryOnImport}
+                  onChange={(e) => setCheckInventoryOnImport(e.target.checked)}
+                  className="w-4 h-4 rounded text-orange-500"
+                />
+                <span className="text-sm text-gray-300">Skip items already in inventory</span>
+                <span className="text-xs text-gray-500">(recommended)</span>
+              </label>
             </div>
             <div className="p-4 flex-1 overflow-y-auto">
               {mealPlanOptions.length === 0 ? (
@@ -1575,15 +1661,15 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
                           )}
                         </div>
                         <button
-                          onClick={() => handleDeduplicate(group.items.map((i) => i.id), true)}
-                          disabled={deduping}
+                          onClick={() => handleDeduplicate(group.items.map((i) => i.id), true, group.normalizedName)}
+                          disabled={combiningGroups.has(group.normalizedName) || combiningAll}
                           className={`px-3 py-1 text-sm rounded-lg disabled:opacity-50 transition-colors ${
                             group.canCombine
                               ? 'bg-green-600 hover:bg-green-700 text-white'
                               : 'bg-purple-600 hover:bg-purple-700 text-white'
                           }`}
                         >
-                          {deduping ? 'Combining...' : (group.canCombine ? 'Combine' : 'AI Combine')}
+                          {combiningGroups.has(group.normalizedName) ? 'Combining...' : (group.canCombine ? 'Combine' : 'AI Combine')}
                         </button>
                       </div>
                       {/* Show reason for MEDIUM confidence items */}
@@ -1623,16 +1709,17 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
                 {duplicateGroups.length > 0 && (
                   <button
                     onClick={handleCombineAll}
-                    disabled={deduping}
+                    disabled={combiningAll || combiningGroups.size > 0}
                     className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
                   >
-                    {deduping ? 'Combining...' : 'Combine All'}
+                    {combiningAll ? 'Combining...' : 'Combine All'}
                   </button>
                 )}
                 <button
                   onClick={() => {
                     setShowDedupeModal(false)
                     setLastCombineResult(null)
+                    setCombiningGroups(new Set())
                   }}
                   className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
                 >
