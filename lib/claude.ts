@@ -938,6 +938,90 @@ Important:
 }
 
 /**
+ * Analyze URL to extract inventory items
+ */
+export async function analyzeInventoryUrl(url: string, htmlContent: string) {
+  console.log('🔷 Analyzing URL for inventory items:', url)
+
+  const visibleText = extractVisibleText(htmlContent).substring(0, 15000)
+
+  const prompt = `You are a grocery and food inventory recognition assistant. Analyze the following web content and extract all food items that could be added to a home inventory.
+
+URL: ${url}
+
+**PAGE CONTENT:**
+${htmlContent.substring(0, 15000)}
+
+**VISIBLE TEXT:**
+${visibleText}
+
+---
+
+Look for shopping lists, grocery orders, delivery receipts, or any content that mentions food items.
+
+IMPORTANT - ITEM NAMING RULES:
+- Use GENERIC product names only, NOT brand names or country of origin
+- Example: "Semi-Skimmed Milk" NOT "Tesco British Semi-Skimmed Milk"
+- Focus on WHAT the product is, not WHO makes it
+
+For each item identified, provide:
+1. The GENERIC name of the item (no brands!)
+2. Quantity if specified
+3. Unit of measurement
+4. Category for storage
+5. Suggested storage location
+
+Return ONLY a valid JSON object in this exact format:
+{
+  "items": [
+    {
+      "itemName": "string (generic name only - no brands!)",
+      "quantity": number,
+      "unit": "string (e.g., 'each', 'g', 'kg', 'ml', 'litres', 'pack')",
+      "category": "string (Meat & Fish, Fresh Produce, Dairy & Eggs, Bakery, Chilled & Deli, Frozen, Cupboard Staples, Baking & Cooking Ingredients, Breakfast, Drinks, Snacks & Treats, Household, Other)",
+      "location": "fridge" | "freezer" | "cupboard" | "pantry",
+      "confidence": "high" | "medium" | "low"
+    }
+  ],
+  "summary": "Brief description of what was found"
+}
+
+Important:
+- Extract ALL food items mentioned
+- Use metric units (g, ml, litres)
+- If unsure about quantity, default to 1
+- Set confidence to "low" if item details are unclear`
+
+  try {
+    const message = await client.messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 4096,
+      messages: [{
+        role: 'user',
+        content: prompt
+      }]
+    })
+
+    const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
+    console.log('🟢 Claude response received for URL analysis')
+
+    // Extract JSON from response
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      throw new Error('No valid JSON found in Claude response')
+    }
+
+    const result = JSON.parse(jsonMatch[0])
+    console.log('🟢 Inventory items extracted from URL:', result.items?.length || 0)
+
+    return result
+  } catch (error) {
+    console.error('❌ Error analyzing URL with Claude:', error)
+    throw error
+  }
+}
+
+/**
  * Analyze photos to extract recurring staple items
  */
 export async function analyzeStaplesPhoto(images: string[]) {

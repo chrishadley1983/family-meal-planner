@@ -144,6 +144,29 @@ export default function InventoryPage() {
   const [photoSummary, setPhotoSummary] = useState('')
   const [importingPhoto, setImportingPhoto] = useState(false)
 
+  // URL import state
+  const [showUrlModal, setShowUrlModal] = useState(false)
+  const [importUrl, setImportUrl] = useState('')
+  const [analyzingUrl, setAnalyzingUrl] = useState(false)
+  const [urlExtractedItems, setUrlExtractedItems] = useState<Array<{
+    itemName: string
+    quantity: number
+    unit: string
+    category?: string
+    location?: string
+    confidence?: string
+    selected: boolean
+  }>>([])
+  const [urlSummary, setUrlSummary] = useState('')
+  const [importingUrl, setImportingUrl] = useState(false)
+
+  // Import notification state
+  const [importNotification, setImportNotification] = useState<{
+    show: boolean
+    message: string
+    type: 'success' | 'error'
+  } | null>(null)
+
   // Bulk selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
@@ -508,7 +531,7 @@ export default function InventoryPage() {
       setPhotoSummary(data.summary || '')
     } catch (error) {
       console.error('❌ Error analyzing photo:', error)
-      alert(error instanceof Error ? error.message : 'Failed to analyze photo')
+      showNotification(error instanceof Error ? error.message : 'Failed to analyze photo', 'error')
     } finally {
       setAnalyzingPhoto(false)
     }
@@ -523,31 +546,41 @@ export default function InventoryPage() {
 
     try {
       console.log('🔷 Importing', selectedItems.length, 'items from photo...')
-      const response = await fetch('/api/inventory/photo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          items: selectedItems,
-          options: { autoExpiry: true },
-        }),
-      })
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Import failed')
+      // Import each item individually
+      const imported: RawInventoryItem[] = []
+      for (const item of selectedItems) {
+        const response = await fetch('/api/inventory', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            itemName: item.itemName,
+            quantity: item.quantity,
+            unit: item.unit,
+            category: item.category || 'Other',
+            location: item.location || null,
+            expiryDate: null,
+            isActive: true,
+            notes: null,
+          }),
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          imported.push(data.item)
+        }
       }
 
-      const data = await response.json()
-      console.log('🟢 Imported', data.imported, 'items')
-
-      setRawItems(data.items)
+      console.log('🟢 Imported', imported.length, 'items from photo')
+      setRawItems([...rawItems, ...imported])
       setShowPhotoModal(false)
       setPhotoImages([])
       setExtractedItems([])
       setPhotoSummary('')
+      showNotification(`Successfully imported ${imported.length} item${imported.length !== 1 ? 's' : ''}`, 'success')
     } catch (error) {
       console.error('❌ Error importing items:', error)
-      alert(error instanceof Error ? error.message : 'Failed to import items')
+      showNotification(error instanceof Error ? error.message : 'Failed to import items', 'error')
     } finally {
       setImportingPhoto(false)
     }
@@ -567,6 +600,125 @@ export default function InventoryPage() {
     setPhotoImages(prev => prev.filter((_, i) => i !== index))
     setExtractedItems([])
     setPhotoSummary('')
+  }
+
+  // Update an extracted photo item field
+  const updatePhotoItem = (index: number, field: string, value: any) => {
+    setExtractedItems(prev =>
+      prev.map((item, i) =>
+        i === index ? { ...item, [field]: value } : item
+      )
+    )
+  }
+
+  // URL import handlers
+  const handleAnalyzeUrl = async () => {
+    if (!importUrl.trim() || analyzingUrl) return
+
+    setAnalyzingUrl(true)
+    setUrlExtractedItems([])
+    setUrlSummary('')
+
+    try {
+      console.log('🔷 Analyzing URL for inventory items:', importUrl)
+      const response = await fetch('/api/inventory/url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: importUrl }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Analysis failed')
+      }
+
+      const data = await response.json()
+      console.log('🟢 Extracted', data.items?.length || 0, 'inventory items from URL')
+
+      setUrlExtractedItems(
+        (data.items || []).map((item: any) => ({
+          ...item,
+          selected: true,
+        }))
+      )
+      setUrlSummary(data.summary || '')
+    } catch (error) {
+      console.error('❌ Error analyzing URL:', error)
+      showNotification(error instanceof Error ? error.message : 'Failed to analyze URL', 'error')
+    } finally {
+      setAnalyzingUrl(false)
+    }
+  }
+
+  const handleImportUrlItems = async () => {
+    const selectedItems = urlExtractedItems.filter(i => i.selected)
+    if (selectedItems.length === 0 || importingUrl) return
+
+    setImportingUrl(true)
+
+    try {
+      console.log('🔷 Importing', selectedItems.length, 'items from URL...')
+
+      // Import each item
+      const imported: RawInventoryItem[] = []
+      for (const item of selectedItems) {
+        const response = await fetch('/api/inventory', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            itemName: item.itemName,
+            quantity: item.quantity,
+            unit: item.unit,
+            category: item.category || 'Other',
+            location: item.location || null,
+            expiryDate: null,
+            isActive: true,
+            notes: null,
+          }),
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          imported.push(data.item)
+        }
+      }
+
+      console.log('🟢 Imported', imported.length, 'items from URL')
+      setRawItems([...rawItems, ...imported])
+      setShowUrlModal(false)
+      setImportUrl('')
+      setUrlExtractedItems([])
+      setUrlSummary('')
+      showNotification(`Successfully imported ${imported.length} item${imported.length !== 1 ? 's' : ''}`, 'success')
+    } catch (error) {
+      console.error('❌ Error importing items:', error)
+      showNotification(error instanceof Error ? error.message : 'Failed to import items', 'error')
+    } finally {
+      setImportingUrl(false)
+    }
+  }
+
+  const toggleUrlItemSelection = (index: number) => {
+    setUrlExtractedItems(prev =>
+      prev.map((item, i) =>
+        i === index ? { ...item, selected: !item.selected } : item
+      )
+    )
+  }
+
+  // Update an extracted URL item field
+  const updateUrlItem = (index: number, field: string, value: any) => {
+    setUrlExtractedItems(prev =>
+      prev.map((item, i) =>
+        i === index ? { ...item, [field]: value } : item
+      )
+    )
+  }
+
+  // Show notification with auto-dismiss
+  const showNotification = (message: string, type: 'success' | 'error') => {
+    setImportNotification({ show: true, message, type })
+    setTimeout(() => setImportNotification(null), 5000)
   }
 
   const handleAddItem = async (e: React.FormEvent) => {
@@ -836,9 +988,6 @@ export default function InventoryPage() {
           <div className="flex gap-2">
             <Button onClick={() => setShowSettingsModal(true)} variant="secondary">
               Settings
-            </Button>
-            <Button onClick={() => setShowPhotoModal(true)} variant="secondary">
-              Photo Import
             </Button>
             <Button onClick={() => setShowImportModal(true)} variant="secondary">
               CSV Import
@@ -1140,6 +1289,38 @@ export default function InventoryPage() {
           maxWidth="md"
         >
           <form onSubmit={handleAddItem} className="p-6 space-y-4">
+            {/* Import buttons */}
+            <div className="flex gap-2 pb-2 border-b border-zinc-700">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setShowAddForm(false)
+                  setDuplicateCheck(null)
+                  setShelfLifeSuggestion(null)
+                  setShowMergeOption(false)
+                  setShowUrlModal(true)
+                }}
+              >
+                Import URL
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setShowAddForm(false)
+                  setDuplicateCheck(null)
+                  setShelfLifeSuggestion(null)
+                  setShowMergeOption(false)
+                  setShowPhotoModal(true)
+                }}
+              >
+                Import Photo
+              </Button>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-zinc-300 mb-1">
@@ -1709,49 +1890,100 @@ export default function InventoryPage() {
             {/* Extracted items */}
             {extractedItems.length > 0 && (
               <div className="space-y-3">
-                {photoSummary && (
-                  <p className="text-sm text-green-400">{photoSummary}</p>
-                )}
                 <p className="text-sm font-medium text-zinc-300">
-                  {extractedItems.length} items found - select which to import:
+                  {extractedItems.length} items found - edit and select which to import:
                 </p>
-                <div className="max-h-64 overflow-y-auto space-y-2">
+                <div className="max-h-80 overflow-y-auto space-y-3">
                   {extractedItems.map((item, i) => (
-                    <label
+                    <div
                       key={i}
-                      className={`flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-colors ${
+                      className={`p-3 rounded-lg border transition-colors ${
                         item.selected
                           ? 'bg-purple-900/30 border-purple-600/50'
                           : 'bg-zinc-800/50 border-zinc-700'
                       }`}
                     >
-                      <input
-                        type="checkbox"
-                        checked={item.selected}
-                        onChange={() => togglePhotoItemSelection(i)}
-                        className="rounded border-zinc-600 bg-zinc-800 text-purple-500 focus:ring-purple-500"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <span className="text-white font-medium">{item.itemName}</span>
-                        <span className="text-zinc-400 text-sm ml-2">
-                          {item.quantity} {item.unit}
-                        </span>
-                        {item.category && (
-                          <span className="text-zinc-500 text-xs ml-2">({item.category})</span>
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="checkbox"
+                          checked={item.selected}
+                          onChange={() => togglePhotoItemSelection(i)}
+                          className="mt-2 rounded border-zinc-600 bg-zinc-800 text-purple-500 focus:ring-purple-500"
+                        />
+                        <div className="flex-1 space-y-2">
+                          {/* Item name input */}
+                          <input
+                            type="text"
+                            value={item.itemName}
+                            onChange={(e) => updatePhotoItem(i, 'itemName', e.target.value)}
+                            className="w-full px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            placeholder="Item name"
+                          />
+                          <div className="flex gap-2 flex-wrap">
+                            {/* Quantity input */}
+                            <input
+                              type="number"
+                              value={item.quantity}
+                              onChange={(e) => updatePhotoItem(i, 'quantity', parseFloat(e.target.value) || 1)}
+                              className="w-20 px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                              min="0.01"
+                              step="0.01"
+                              placeholder="Qty"
+                            />
+                            {/* Unit select */}
+                            <select
+                              value={item.unit}
+                              onChange={(e) => updatePhotoItem(i, 'unit', e.target.value)}
+                              className="px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            >
+                              <option value="">Unit...</option>
+                              {COMMON_UNITS.map(unit => (
+                                <option key={unit.value} value={unit.value}>{unit.label}</option>
+                              ))}
+                            </select>
+                            {/* Category select */}
+                            <select
+                              value={item.category || ''}
+                              onChange={(e) => updatePhotoItem(i, 'category', e.target.value)}
+                              className="px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            >
+                              <option value="">Category...</option>
+                              {categories.length > 0 ? (
+                                categories.map(cat => (
+                                  <option key={cat.id} value={cat.name}>{cat.name}</option>
+                                ))
+                              ) : (
+                                DEFAULT_CATEGORIES.map(cat => (
+                                  <option key={cat.name} value={cat.name}>{cat.name}</option>
+                                ))
+                              )}
+                            </select>
+                            {/* Location select */}
+                            <select
+                              value={item.location || ''}
+                              onChange={(e) => updatePhotoItem(i, 'location', e.target.value)}
+                              className="px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            >
+                              <option value="">Location...</option>
+                              {STORAGE_LOCATIONS.map(loc => (
+                                <option key={loc.value} value={loc.value}>{loc.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                        {item.confidence && (
+                          <Badge
+                            variant={
+                              item.confidence === 'high' ? 'success' :
+                              item.confidence === 'medium' ? 'warning' : 'default'
+                            }
+                            size="sm"
+                          >
+                            {item.confidence}
+                          </Badge>
                         )}
                       </div>
-                      {item.confidence && (
-                        <Badge
-                          variant={
-                            item.confidence === 'high' ? 'success' :
-                            item.confidence === 'medium' ? 'warning' : 'default'
-                          }
-                          size="sm"
-                        >
-                          {item.confidence}
-                        </Badge>
-                      )}
-                    </label>
+                    </div>
                   ))}
                 </div>
                 <div className="flex items-center gap-2 text-sm text-zinc-400">
@@ -1929,6 +2161,243 @@ export default function InventoryPage() {
             </div>
           </div>
         </Modal>
+
+        {/* URL Import Modal */}
+        <Modal
+          isOpen={showUrlModal}
+          onClose={() => {
+            setShowUrlModal(false)
+            setImportUrl('')
+            setUrlExtractedItems([])
+            setUrlSummary('')
+          }}
+          title="Import from URL"
+          maxWidth="lg"
+        >
+          <div className="p-6 space-y-4">
+            {/* Instructions */}
+            <div className="p-3 rounded-lg bg-zinc-800/50 border border-zinc-700">
+              <p className="text-sm text-zinc-300 font-medium mb-2">URL Import</p>
+              <p className="text-xs text-zinc-400">
+                Paste a URL to a shopping list, grocery order, or any page with food items. Our AI will extract inventory items from the page content.
+              </p>
+            </div>
+
+            {/* URL input */}
+            <div>
+              <label className="block text-sm font-medium text-zinc-300 mb-2">
+                URL
+              </label>
+              <div className="flex gap-2">
+                <Input
+                  type="url"
+                  value={importUrl}
+                  onChange={(e) => {
+                    setImportUrl(e.target.value)
+                    setUrlExtractedItems([])
+                    setUrlSummary('')
+                  }}
+                  placeholder="https://example.com/shopping-list"
+                  className="flex-1"
+                />
+                <Button
+                  onClick={handleAnalyzeUrl}
+                  variant="secondary"
+                  disabled={!importUrl.trim() || analyzingUrl}
+                >
+                  {analyzingUrl ? 'Analyzing...' : 'Analyze'}
+                </Button>
+              </div>
+            </div>
+
+            {/* Analyzing indicator */}
+            {analyzingUrl && (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400 mr-3"></div>
+                <span className="text-zinc-300">AI is analyzing the URL...</span>
+              </div>
+            )}
+
+            {/* Extracted items */}
+            {urlExtractedItems.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-zinc-300">
+                  {urlExtractedItems.length} items found - edit and select which to import:
+                </p>
+                <div className="max-h-80 overflow-y-auto space-y-3">
+                  {urlExtractedItems.map((item, i) => (
+                    <div
+                      key={i}
+                      className={`p-3 rounded-lg border transition-colors ${
+                        item.selected
+                          ? 'bg-purple-900/30 border-purple-600/50'
+                          : 'bg-zinc-800/50 border-zinc-700'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="checkbox"
+                          checked={item.selected}
+                          onChange={() => toggleUrlItemSelection(i)}
+                          className="mt-2 rounded border-zinc-600 bg-zinc-800 text-purple-500 focus:ring-purple-500"
+                        />
+                        <div className="flex-1 space-y-2">
+                          {/* Item name input */}
+                          <input
+                            type="text"
+                            value={item.itemName}
+                            onChange={(e) => updateUrlItem(i, 'itemName', e.target.value)}
+                            className="w-full px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            placeholder="Item name"
+                          />
+                          <div className="flex gap-2 flex-wrap">
+                            {/* Quantity input */}
+                            <input
+                              type="number"
+                              value={item.quantity}
+                              onChange={(e) => updateUrlItem(i, 'quantity', parseFloat(e.target.value) || 1)}
+                              className="w-20 px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                              min="0.01"
+                              step="0.01"
+                              placeholder="Qty"
+                            />
+                            {/* Unit select */}
+                            <select
+                              value={item.unit}
+                              onChange={(e) => updateUrlItem(i, 'unit', e.target.value)}
+                              className="px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            >
+                              <option value="">Unit...</option>
+                              {COMMON_UNITS.map(unit => (
+                                <option key={unit.value} value={unit.value}>{unit.label}</option>
+                              ))}
+                            </select>
+                            {/* Category select */}
+                            <select
+                              value={item.category || ''}
+                              onChange={(e) => updateUrlItem(i, 'category', e.target.value)}
+                              className="px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            >
+                              <option value="">Category...</option>
+                              {categories.length > 0 ? (
+                                categories.map(cat => (
+                                  <option key={cat.id} value={cat.name}>{cat.name}</option>
+                                ))
+                              ) : (
+                                DEFAULT_CATEGORIES.map(cat => (
+                                  <option key={cat.name} value={cat.name}>{cat.name}</option>
+                                ))
+                              )}
+                            </select>
+                            {/* Location select */}
+                            <select
+                              value={item.location || ''}
+                              onChange={(e) => updateUrlItem(i, 'location', e.target.value)}
+                              className="px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            >
+                              <option value="">Location...</option>
+                              {STORAGE_LOCATIONS.map(loc => (
+                                <option key={loc.value} value={loc.value}>{loc.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                        {item.confidence && (
+                          <Badge
+                            variant={
+                              item.confidence === 'high' ? 'success' :
+                              item.confidence === 'medium' ? 'warning' : 'default'
+                            }
+                            size="sm"
+                          >
+                            {item.confidence}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2 text-sm text-zinc-400">
+                  <button
+                    type="button"
+                    onClick={() => setUrlExtractedItems(prev => prev.map(i => ({ ...i, selected: true })))}
+                    className="text-purple-400 hover:text-purple-300"
+                  >
+                    Select all
+                  </button>
+                  <span>|</span>
+                  <button
+                    type="button"
+                    onClick={() => setUrlExtractedItems(prev => prev.map(i => ({ ...i, selected: false })))}
+                    className="text-purple-400 hover:text-purple-300"
+                  >
+                    Deselect all
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex justify-end gap-3 pt-4">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setShowUrlModal(false)
+                  setImportUrl('')
+                  setUrlExtractedItems([])
+                  setUrlSummary('')
+                }}
+              >
+                Cancel
+              </Button>
+              {urlExtractedItems.length > 0 && (
+                <Button
+                  onClick={handleImportUrlItems}
+                  variant="primary"
+                  disabled={importingUrl || urlExtractedItems.filter(i => i.selected).length === 0}
+                >
+                  {importingUrl
+                    ? 'Importing...'
+                    : `Import ${urlExtractedItems.filter(i => i.selected).length} Item${urlExtractedItems.filter(i => i.selected).length !== 1 ? 's' : ''}`
+                  }
+                </Button>
+              )}
+            </div>
+          </div>
+        </Modal>
+
+        {/* Import Notification Toast */}
+        {importNotification && (
+          <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 fade-in duration-300">
+            <div
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border ${
+                importNotification.type === 'success'
+                  ? 'bg-green-900/90 border-green-600/50 text-green-100'
+                  : 'bg-red-900/90 border-red-600/50 text-red-100'
+              }`}
+            >
+              {importNotification.type === 'success' ? (
+                <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              )}
+              <span className="font-medium">{importNotification.message}</span>
+              <button
+                onClick={() => setImportNotification(null)}
+                className="ml-2 text-current opacity-70 hover:opacity-100"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
       </PageContainer>
     </AppLayout>
   )
