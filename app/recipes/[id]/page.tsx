@@ -880,63 +880,86 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
             {macroAnalysis && (
               <>
                 {/* Macro Breakdown */}
-                <div className="mb-6 p-4 bg-gradient-to-r from-purple-900/20 to-blue-900/20 rounded-lg border border-purple-800/30">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-bold text-white">Nutritional Analysis (per serving)</h3>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm font-medium text-zinc-300">Overall Rating:</span>
-                      <div className={`w-4 h-4 rounded-full ${getTrafficLightClass(macroAnalysis.overallRating)}`}></div>
+                <div className="card p-6 space-y-4 mb-6">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-medium text-white">Nutritional Analysis</h3>
+                    <button
+                      type="button"
+                      onClick={() => fetchAIAnalysis(isEditing ? { recipeName, servings, ingredients, mealType } : recipe)}
+                      disabled={loadingAI}
+                      className="px-3 py-1 bg-purple-600 text-white rounded-md text-sm hover:bg-purple-700 disabled:opacity-50"
+                    >
+                      {loadingAI ? 'Analyzing...' : 'Refresh'}
+                    </button>
+                  </div>
+
+                  {/* Overall Rating */}
+                  <div className="flex items-start gap-4 p-4 bg-zinc-800/50 rounded-lg border border-zinc-700">
+                    <div className={`w-8 h-8 rounded-full ${getTrafficLightClass(macroAnalysis.overallRating)} flex-shrink-0`} />
+                    <div className="flex-1">
+                      <p className="font-medium text-white">Overall Rating</p>
+                      <p className="text-sm text-zinc-400 mt-1">{macroAnalysis.overallExplanation}</p>
                     </div>
                   </div>
 
-                  <p className="text-sm text-zinc-300 mb-4 italic">{macroAnalysis.overallExplanation}</p>
+                  {/* Macro Summary - Colorful boxes */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-center p-3 bg-gradient-to-br from-orange-900/40 to-pink-900/40 rounded-lg border border-orange-700/50">
+                      <p className="text-2xl font-bold text-orange-400">{Math.round(macroAnalysis.perServing.calories)}</p>
+                      <p className="text-xs text-zinc-400 mt-1">Calories</p>
+                    </div>
+                    <div className="text-center p-3 bg-gradient-to-br from-green-900/40 to-emerald-900/40 rounded-lg border border-green-700/50">
+                      <p className="text-2xl font-bold text-green-400">{Math.round(macroAnalysis.perServing.protein)}g</p>
+                      <p className="text-xs text-zinc-400 mt-1">Protein</p>
+                    </div>
+                    <div className="text-center p-3 bg-gradient-to-br from-cyan-900/40 to-blue-900/40 rounded-lg border border-cyan-700/50">
+                      <p className="text-2xl font-bold text-cyan-400">{Math.round(macroAnalysis.perServing.carbs)}g</p>
+                      <p className="text-xs text-zinc-400 mt-1">Carbs</p>
+                    </div>
+                    <div className="text-center p-3 bg-gradient-to-br from-purple-900/40 to-pink-900/40 rounded-lg border border-purple-700/50">
+                      <p className="text-2xl font-bold text-purple-400">{Math.round(macroAnalysis.perServing.fat)}g</p>
+                      <p className="text-xs text-zinc-400 mt-1">Fat</p>
+                    </div>
+                  </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <div className="bg-zinc-800/50 p-3 rounded-md border border-zinc-700">
-                      <p className="text-xs text-zinc-400 mb-1">Calories</p>
-                      <p className="text-lg font-bold text-white">{macroAnalysis.perServing.calories}</p>
+                  {/* Secondary macros row */}
+                  <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div className="text-center">
+                      <p className="font-medium text-zinc-300">{Math.round(macroAnalysis.perServing.fiber)}g</p>
+                      <p className="text-xs text-zinc-500">Fiber</p>
                     </div>
-                    <div className="bg-zinc-800/50 p-3 rounded-md border border-zinc-700">
-                      <p className="text-xs text-zinc-400 mb-1">Protein</p>
-                      <p className="text-lg font-bold text-white">{macroAnalysis.perServing.protein}g</p>
+                    <div className="text-center">
+                      <p className="font-medium text-zinc-300">{Math.round(macroAnalysis.perServing.sugar)}g</p>
+                      <p className="text-xs text-zinc-500">Sugar</p>
                     </div>
-                    <div className="bg-zinc-800/50 p-3 rounded-md border border-zinc-700">
-                      <p className="text-xs text-zinc-400 mb-1">Carbs</p>
-                      <p className="text-lg font-bold text-white">{macroAnalysis.perServing.carbs}g</p>
-                    </div>
-                    <div className="bg-zinc-800/50 p-3 rounded-md border border-zinc-700">
-                      <p className="text-xs text-zinc-400 mb-1">Fat</p>
-                      <p className="text-lg font-bold text-white">{macroAnalysis.perServing.fat}g</p>
-                    </div>
-                    <div className="bg-zinc-800/50 p-3 rounded-md border border-zinc-700">
-                      <p className="text-xs text-zinc-400 mb-1">Fiber</p>
-                      <p className="text-lg font-bold text-white">{macroAnalysis.perServing.fiber}g</p>
-                    </div>
-                    <div className="bg-zinc-800/50 p-3 rounded-md border border-zinc-700">
-                      <p className="text-xs text-zinc-400 mb-1">Sugar</p>
-                      <p className="text-lg font-bold text-white">{macroAnalysis.perServing.sugar}g</p>
-                    </div>
-                    <div className="bg-zinc-800/50 p-3 rounded-md border border-zinc-700">
-                      <p className="text-xs text-zinc-400 mb-1">Sodium</p>
-                      <p className="text-lg font-bold text-white">{macroAnalysis.perServing.sodium}mg</p>
+                    <div className="text-center">
+                      <p className="font-medium text-zinc-300">{Math.round(macroAnalysis.perServing.sodium)}mg</p>
+                      <p className="text-xs text-zinc-500">Sodium</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Emilia's Nutritionist Feedback */}
                 {nutritionistFeedback && (
-                  <div className="mb-6 p-5 bg-gradient-to-r from-pink-900/20 to-purple-900/20 rounded-lg border border-pink-800/30">
-                    <div className="flex items-start space-x-4">
+                  <div className="bg-gradient-to-r from-green-900/20 to-blue-900/20 border border-green-800/50 rounded-lg p-6 mb-6">
+                    <div className="flex items-start gap-4">
+                      {/* Emilia Avatar */}
                       <div className="flex-shrink-0">
-                        <div className="w-[60px] h-[60px] rounded-full border-2 border-pink-500 bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center text-3xl">
-                          👩‍⚕️
-                        </div>
+                        <Image
+                          src="/sarah-nutritionist.png"
+                          alt="Emilia - Your AI Nutritionist"
+                          width={80}
+                          height={80}
+                          className="rounded-full border-4 border-zinc-700 shadow-md"
+                        />
                       </div>
+
+                      {/* Feedback Content */}
                       <div className="flex-1">
-                        <h3 className="font-bold text-white mb-2">Emilia&apos;s Nutritionist Feedback</h3>
-                        <div className="text-sm text-zinc-300 whitespace-pre-line">
-                          {nutritionistFeedback}
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="text-lg font-semibold text-white">Emilia&apos;s Nutritionist Tips</h3>
                         </div>
+                        <p className="text-zinc-300 leading-relaxed">{nutritionistFeedback}</p>
                       </div>
                     </div>
                   </div>
