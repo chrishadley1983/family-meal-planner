@@ -465,6 +465,31 @@ export default function InventoryPage() {
     }
   }
 
+  // Download sample CSV file
+  const handleDownloadSampleCSV = () => {
+    const sampleData = `Item Name,Quantity,Unit,Category,Location,Expiry Date,Notes
+Semi-Skimmed Milk,2,litres,Dairy & Eggs,fridge,2025-12-18,
+Free Range Eggs,12,each,Dairy & Eggs,fridge,2025-12-25,Large eggs
+Chicken Breast,500,g,Meat & Fish,fridge,2025-12-14,
+Minced Beef,400,g,Meat & Fish,freezer,2026-03-01,Frozen
+Wholemeal Bread,1,each,Bakery,cupboard,2025-12-16,
+Basmati Rice,1,kg,Grains & Pasta,cupboard,,Long grain
+Tinned Tomatoes,2,each,Canned & Jarred,cupboard,2027-06-01,
+Olive Oil,500,ml,Oils & Condiments,cupboard,,Extra virgin
+Cheddar Cheese,200,g,Dairy & Eggs,fridge,2025-12-28,Mature
+Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
+
+    const blob = new Blob([sampleData], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'inventory_sample.csv'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
   // Handle file upload for CSV
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -1698,6 +1723,15 @@ export default function InventoryPage() {
               <p className="text-xs text-zinc-500 mt-2">
                 Example: <code className="bg-zinc-700 px-1 rounded">Item,Quantity,Unit,Location</code>
               </p>
+              <button
+                onClick={handleDownloadSampleCSV}
+                className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-purple-300 bg-purple-900/30 border border-purple-700/50 rounded-lg hover:bg-purple-900/50 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Download Sample CSV
+              </button>
             </div>
 
             {/* File upload */}
