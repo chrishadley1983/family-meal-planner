@@ -164,18 +164,6 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
     }
   }, [recipe, isEditing, macroAnalysis])
 
-  // Auto-refresh AI analysis when editing ingredients
-  useEffect(() => {
-    if (isEditing && recipeName && ingredients.some(i => i.ingredientName && i.unit)) {
-      // Debounce the analysis fetch
-      const timer = setTimeout(() => {
-        console.log('🔄 Auto-refreshing AI analysis while editing')
-        fetchAIAnalysis({ recipeName, servings, ingredients, mealType })
-      }, 1500)
-      return () => clearTimeout(timer)
-    }
-  }, [isEditing, recipeName, ingredients, servings, mealType])
-
   // Scale ingredients when servings change (if scaling is enabled)
   useEffect(() => {
     if (scaleIngredients && baseServings > 0 && baseIngredients.length > 0) {
@@ -350,6 +338,8 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
         setRecipe(data.recipe)
         setIsEditing(false)
         fetchRecipe() // Refresh the data
+        // Refresh nutritional analysis with saved recipe data
+        fetchAIAnalysis(data.recipe)
       }
     } catch (err) {
       console.error('Failed to save recipe')
