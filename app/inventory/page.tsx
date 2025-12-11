@@ -110,6 +110,22 @@ export default function InventoryPage() {
   const [shelfLifeSuggestion, setShelfLifeSuggestion] = useState<ShelfLifeSeedItem | null>(null)
   const [showMergeOption, setShowMergeOption] = useState(false)
 
+  // CSV import state
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [csvText, setCsvText] = useState('')
+  const [importing, setImporting] = useState(false)
+  const [importOptions, setImportOptions] = useState({
+    skipDuplicates: true,
+    autoExpiry: true,
+    autoCategory: true,
+    autoLocation: true,
+  })
+  const [importResult, setImportResult] = useState<{
+    imported: number
+    skipped: number
+    errors: string[]
+  } | null>(null)
+
   // Bulk selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
@@ -310,6 +326,62 @@ export default function InventoryPage() {
       console.error('❌ Error merging items:', error)
       alert('Failed to merge items')
     }
+  }
+
+  // Handle CSV import
+  const handleImportCSV = async () => {
+    if (!csvText.trim() || importing) return
+
+    setImporting(true)
+    setImportResult(null)
+
+    try {
+      console.log('🔷 Importing CSV...')
+      const response = await fetch('/api/inventory/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/csv' },
+        body: csvText,
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Import failed')
+      }
+
+      const data = await response.json()
+      console.log('🟢 Import complete:', data.results)
+
+      setImportResult(data.results)
+      setRawItems(data.items)
+
+      // Clear CSV text on success
+      if (data.results.imported > 0) {
+        setCsvText('')
+      }
+    } catch (error) {
+      console.error('❌ Error importing CSV:', error)
+      setImportResult({
+        imported: 0,
+        skipped: 0,
+        errors: [error instanceof Error ? error.message : 'Import failed'],
+      })
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  // Handle file upload for CSV
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const text = event.target?.result as string
+      setCsvText(text)
+      setImportResult(null)
+    }
+    reader.readAsText(file)
   }
 
   const handleAddItem = async (e: React.FormEvent) => {
@@ -577,6 +649,9 @@ export default function InventoryPage() {
         description="Track your food items and expiry dates"
         action={
           <div className="flex gap-2">
+            <Button onClick={() => setShowImportModal(true)} variant="secondary">
+              Import CSV
+            </Button>
             <Button onClick={() => setShowAddForm(true)} variant="primary">
               Add Item
             </Button>
@@ -1194,6 +1269,173 @@ export default function InventoryPage() {
               </Button>
             </div>
           </form>
+        </Modal>
+
+        {/* Import CSV Modal */}
+        <Modal
+          isOpen={showImportModal}
+          onClose={() => {
+            setShowImportModal(false)
+            setImportResult(null)
+          }}
+          title="Import from CSV"
+          maxWidth="lg"
+        >
+          <div className="p-6 space-y-4">
+            {/* Instructions */}
+            <div className="p-3 rounded-lg bg-zinc-800/50 border border-zinc-700">
+              <p className="text-sm text-zinc-300 font-medium mb-2">CSV Format</p>
+              <p className="text-xs text-zinc-400 mb-2">
+                Your CSV should have these columns (headers are flexible):
+              </p>
+              <ul className="text-xs text-zinc-500 list-disc list-inside space-y-1">
+                <li><strong>Item Name</strong> - Required. The name of the item (e.g., &quot;Milk&quot;, &quot;Chicken Breast&quot;)</li>
+                <li><strong>Quantity</strong> - Optional. Defaults to 1</li>
+                <li><strong>Unit</strong> - Optional. Defaults to &quot;each&quot; (e.g., &quot;g&quot;, &quot;ml&quot;, &quot;kg&quot;)</li>
+                <li><strong>Category</strong> - Optional. Auto-detected from shelf life data</li>
+                <li><strong>Location</strong> - Optional. &quot;fridge&quot;, &quot;freezer&quot;, &quot;cupboard&quot;, or &quot;pantry&quot;</li>
+                <li><strong>Expiry Date</strong> - Optional. YYYY-MM-DD format, or auto-calculated</li>
+                <li><strong>Notes</strong> - Optional</li>
+              </ul>
+              <p className="text-xs text-zinc-500 mt-2">
+                Example: <code className="bg-zinc-700 px-1 rounded">Item,Quantity,Unit,Location</code>
+              </p>
+            </div>
+
+            {/* File upload */}
+            <div>
+              <label className="block text-sm font-medium text-zinc-300 mb-2">
+                Upload CSV File
+              </label>
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                onChange={handleFileUpload}
+                className="block w-full text-sm text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-purple-600 file:text-white hover:file:bg-purple-700 cursor-pointer"
+              />
+            </div>
+
+            {/* Or paste CSV */}
+            <div>
+              <label className="block text-sm font-medium text-zinc-300 mb-2">
+                Or Paste CSV Content
+              </label>
+              <textarea
+                value={csvText}
+                onChange={(e) => {
+                  setCsvText(e.target.value)
+                  setImportResult(null)
+                }}
+                placeholder="Item,Quantity,Unit,Category,Location&#10;Milk,2,litres,Dairy & Eggs,fridge&#10;Chicken Breast,500,g,Meat & Fish,fridge"
+                rows={8}
+                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+
+            {/* Import options */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-zinc-300">Import Options</p>
+              <label className="flex items-center gap-2 text-sm text-zinc-400">
+                <input
+                  type="checkbox"
+                  checked={importOptions.skipDuplicates}
+                  onChange={(e) => setImportOptions({ ...importOptions, skipDuplicates: e.target.checked })}
+                  className="rounded border-zinc-600 bg-zinc-800 text-purple-500 focus:ring-purple-500"
+                />
+                Skip duplicates (items with same name already in inventory)
+              </label>
+              <label className="flex items-center gap-2 text-sm text-zinc-400">
+                <input
+                  type="checkbox"
+                  checked={importOptions.autoExpiry}
+                  onChange={(e) => setImportOptions({ ...importOptions, autoExpiry: e.target.checked })}
+                  className="rounded border-zinc-600 bg-zinc-800 text-purple-500 focus:ring-purple-500"
+                />
+                Auto-calculate expiry dates from shelf life data
+              </label>
+              <label className="flex items-center gap-2 text-sm text-zinc-400">
+                <input
+                  type="checkbox"
+                  checked={importOptions.autoCategory}
+                  onChange={(e) => setImportOptions({ ...importOptions, autoCategory: e.target.checked })}
+                  className="rounded border-zinc-600 bg-zinc-800 text-purple-500 focus:ring-purple-500"
+                />
+                Auto-detect category from shelf life data
+              </label>
+              <label className="flex items-center gap-2 text-sm text-zinc-400">
+                <input
+                  type="checkbox"
+                  checked={importOptions.autoLocation}
+                  onChange={(e) => setImportOptions({ ...importOptions, autoLocation: e.target.checked })}
+                  className="rounded border-zinc-600 bg-zinc-800 text-purple-500 focus:ring-purple-500"
+                />
+                Auto-suggest storage location from shelf life data
+              </label>
+            </div>
+
+            {/* Import result */}
+            {importResult && (
+              <div className={`p-3 rounded-lg ${
+                importResult.errors.length > 0
+                  ? 'bg-red-900/30 border border-red-600/50'
+                  : 'bg-green-900/30 border border-green-600/50'
+              }`}>
+                <div className="flex items-start gap-2">
+                  {importResult.errors.length > 0 ? (
+                    <svg className="w-5 h-5 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  )}
+                  <div>
+                    <p className={`text-sm font-medium ${
+                      importResult.errors.length > 0 ? 'text-red-300' : 'text-green-300'
+                    }`}>
+                      {importResult.imported > 0
+                        ? `Successfully imported ${importResult.imported} item${importResult.imported !== 1 ? 's' : ''}`
+                        : 'No items imported'}
+                    </p>
+                    {importResult.skipped > 0 && (
+                      <p className="text-xs text-zinc-400 mt-1">
+                        {importResult.skipped} duplicate{importResult.skipped !== 1 ? 's' : ''} skipped
+                      </p>
+                    )}
+                    {importResult.errors.length > 0 && (
+                      <ul className="text-xs text-red-400 mt-1 list-disc list-inside">
+                        {importResult.errors.map((error, i) => (
+                          <li key={i}>{error}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex justify-end gap-3 pt-4">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setShowImportModal(false)
+                  setImportResult(null)
+                }}
+              >
+                {importResult && importResult.imported > 0 ? 'Done' : 'Cancel'}
+              </Button>
+              <Button
+                onClick={handleImportCSV}
+                variant="primary"
+                disabled={!csvText.trim() || importing}
+              >
+                {importing ? 'Importing...' : 'Import Items'}
+              </Button>
+            </div>
+          </div>
         </Modal>
       </PageContainer>
     </AppLayout>
