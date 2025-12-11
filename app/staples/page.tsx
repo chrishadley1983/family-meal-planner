@@ -27,6 +27,9 @@ import {
 import { parseCSV, generateCSVTemplate, downloadCSV } from '@/lib/staples/csv-parser'
 import { validateCSVData, getImportableItems, generateErrorReport } from '@/lib/staples/csv-validator'
 import { COMMON_UNITS } from '@/lib/unit-conversion'
+import { SHELF_LIFE_SEED_DATA } from '@/lib/inventory'
+import type { ShelfLifeSeedItem } from '@/lib/inventory'
+import { STORAGE_LOCATION_LABELS } from '@/lib/types/inventory'
 
 // Shopping list category from API
 interface ShoppingListCategory {
@@ -96,6 +99,41 @@ export default function StaplesPage() {
   const [importingCSV, setImportingCSV] = useState(false)
   const [csvFileName, setCsvFileName] = useState('')
 
+  // AI suggestion state
+  const [shelfLifeSuggestion, setShelfLifeSuggestion] = useState<ShelfLifeSeedItem | null>(null)
+
+  // Photo import state
+  const [showPhotoModal, setShowPhotoModal] = useState(false)
+  const [photoImages, setPhotoImages] = useState<string[]>([])
+  const [analyzingPhoto, setAnalyzingPhoto] = useState(false)
+  const [extractedItems, setExtractedItems] = useState<Array<{
+    itemName: string
+    quantity: number
+    unit: string
+    category?: string
+    frequency?: StapleFrequency
+    confidence?: string
+    selected: boolean
+  }>>([])
+  const [photoSummary, setPhotoSummary] = useState('')
+  const [importingPhoto, setImportingPhoto] = useState(false)
+
+  // URL import state
+  const [showUrlModal, setShowUrlModal] = useState(false)
+  const [importUrl, setImportUrl] = useState('')
+  const [analyzingUrl, setAnalyzingUrl] = useState(false)
+  const [urlExtractedItems, setUrlExtractedItems] = useState<Array<{
+    itemName: string
+    quantity: number
+    unit: string
+    category?: string
+    frequency?: StapleFrequency
+    confidence?: string
+    selected: boolean
+  }>>([])
+  const [urlSummary, setUrlSummary] = useState('')
+  const [importingUrl, setImportingUrl] = useState(false)
+
   // Enrich staples with due status
   const staples = useMemo(() => {
     return rawStaples.map(s => enrichStapleWithDueStatus({
@@ -154,6 +192,290 @@ export default function StaplesPage() {
     }
   }
 
+  // Look up shelf life data for item name
+  const lookupShelfLife = (itemName: string): ShelfLifeSeedItem | null => {
+    if (!itemName || itemName.length < 2) return null
+
+    const normalizedInput = itemName.toLowerCase().trim()
+
+    // Try exact match first
+    const exactMatch = SHELF_LIFE_SEED_DATA.find(
+      item => item.ingredientName.toLowerCase() === normalizedInput
+    )
+    if (exactMatch) return exactMatch
+
+    // Try partial match (input contains reference or vice versa)
+    const partialMatch = SHELF_LIFE_SEED_DATA.find(item => {
+      const refLower = item.ingredientName.toLowerCase()
+      return normalizedInput.includes(refLower) || refLower.includes(normalizedInput)
+    })
+    if (partialMatch) return partialMatch
+
+    // Try word-based matching
+    const inputWords = normalizedInput.split(/\s+/).filter(w => w.length > 2)
+    const wordMatch = SHELF_LIFE_SEED_DATA.find(item => {
+      const refWords = item.ingredientName.toLowerCase().split(/\s+/)
+      return inputWords.some(iw => refWords.some(rw => rw.includes(iw) || iw.includes(rw)))
+    })
+
+    return wordMatch || null
+  }
+
+  // Suggest frequency based on shelf life
+  const suggestFrequencyFromShelfLife = (shelfLifeDays: number): StapleFrequency => {
+    if (shelfLifeDays <= 7) return 'weekly'
+    if (shelfLifeDays <= 14) return 'fortnightly'
+    if (shelfLifeDays <= 30) return 'monthly'
+    if (shelfLifeDays <= 60) return 'bimonthly'
+    return 'quarterly'
+  }
+
+  // Handle item name change with shelf life lookup
+  const handleItemNameChange = (value: string) => {
+    setNewStaple({ ...newStaple, itemName: value })
+
+    // Look up shelf life
+    const shelfLife = lookupShelfLife(value)
+    setShelfLifeSuggestion(shelfLife)
+    if (shelfLife) {
+      console.log('🔄 Shelf life suggestion:', shelfLife.ingredientName, shelfLife.shelfLifeDays, 'days')
+    }
+  }
+
+  // Apply shelf life suggestion to form
+  const applyShelfLifeSuggestion = () => {
+    if (!shelfLifeSuggestion) return
+
+    const updates: Partial<typeof newStaple> = {}
+
+    // Set category if not already set
+    if (!newStaple.category && shelfLifeSuggestion.category) {
+      updates.category = shelfLifeSuggestion.category
+    }
+
+    // Set frequency based on shelf life
+    updates.frequency = suggestFrequencyFromShelfLife(shelfLifeSuggestion.shelfLifeDays)
+
+    setNewStaple({ ...newStaple, ...updates })
+    console.log('⚡ Applied shelf life suggestion:', updates)
+  }
+
+  // Photo import handlers
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files) return
+
+    const readFile = (file: File): Promise<string> => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = (event) => {
+          resolve(event.target?.result as string)
+        }
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+    }
+
+    Promise.all(Array.from(files).map(readFile)).then(images => {
+      setPhotoImages(prev => [...prev, ...images])
+      setExtractedItems([])
+      setPhotoSummary('')
+    })
+  }
+
+  const handleAnalyzePhoto = async () => {
+    if (photoImages.length === 0 || analyzingPhoto) return
+
+    setAnalyzingPhoto(true)
+    setExtractedItems([])
+    setPhotoSummary('')
+
+    try {
+      console.log('🔷 Analyzing', photoImages.length, 'photo(s) for staples...')
+      const response = await fetch('/api/staples/photo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ images: photoImages }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Analysis failed')
+      }
+
+      const data = await response.json()
+      console.log('🟢 Extracted', data.items?.length || 0, 'staple items')
+
+      setExtractedItems(
+        (data.items || []).map((item: any) => ({
+          ...item,
+          selected: true,
+        }))
+      )
+      setPhotoSummary(data.summary || '')
+    } catch (error) {
+      console.error('❌ Error analyzing photo:', error)
+      alert(error instanceof Error ? error.message : 'Failed to analyze photo')
+    } finally {
+      setAnalyzingPhoto(false)
+    }
+  }
+
+  const handleImportPhotoItems = async () => {
+    const selectedItems = extractedItems.filter(i => i.selected)
+    if (selectedItems.length === 0 || importingPhoto) return
+
+    setImportingPhoto(true)
+
+    try {
+      console.log('🔷 Importing', selectedItems.length, 'staples from photo...')
+
+      // Import each item
+      const imported: RawStaple[] = []
+      for (const item of selectedItems) {
+        const response = await fetch('/api/staples', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            itemName: item.itemName,
+            quantity: item.quantity,
+            unit: item.unit,
+            category: item.category || null,
+            frequency: item.frequency || 'weekly',
+            isActive: true,
+            notes: null,
+          }),
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          imported.push(data.staple)
+        }
+      }
+
+      console.log('🟢 Imported', imported.length, 'staples from photo')
+      setRawStaples([...rawStaples, ...imported])
+      setShowPhotoModal(false)
+      setPhotoImages([])
+      setExtractedItems([])
+      setPhotoSummary('')
+      alert(`Successfully imported ${imported.length} staple${imported.length !== 1 ? 's' : ''}`)
+    } catch (error) {
+      console.error('❌ Error importing staples:', error)
+      alert(error instanceof Error ? error.message : 'Failed to import staples')
+    } finally {
+      setImportingPhoto(false)
+    }
+  }
+
+  const togglePhotoItemSelection = (index: number) => {
+    setExtractedItems(prev =>
+      prev.map((item, i) =>
+        i === index ? { ...item, selected: !item.selected } : item
+      )
+    )
+  }
+
+  const removePhoto = (index: number) => {
+    setPhotoImages(prev => prev.filter((_, i) => i !== index))
+    setExtractedItems([])
+    setPhotoSummary('')
+  }
+
+  // URL import handlers
+  const handleAnalyzeUrl = async () => {
+    if (!importUrl.trim() || analyzingUrl) return
+
+    setAnalyzingUrl(true)
+    setUrlExtractedItems([])
+    setUrlSummary('')
+
+    try {
+      console.log('🔷 Analyzing URL for staples:', importUrl)
+      const response = await fetch('/api/staples/url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: importUrl }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Analysis failed')
+      }
+
+      const data = await response.json()
+      console.log('🟢 Extracted', data.items?.length || 0, 'staple items from URL')
+
+      setUrlExtractedItems(
+        (data.items || []).map((item: any) => ({
+          ...item,
+          selected: true,
+        }))
+      )
+      setUrlSummary(data.summary || '')
+    } catch (error) {
+      console.error('❌ Error analyzing URL:', error)
+      alert(error instanceof Error ? error.message : 'Failed to analyze URL')
+    } finally {
+      setAnalyzingUrl(false)
+    }
+  }
+
+  const handleImportUrlItems = async () => {
+    const selectedItems = urlExtractedItems.filter(i => i.selected)
+    if (selectedItems.length === 0 || importingUrl) return
+
+    setImportingUrl(true)
+
+    try {
+      console.log('🔷 Importing', selectedItems.length, 'staples from URL...')
+
+      // Import each item
+      const imported: RawStaple[] = []
+      for (const item of selectedItems) {
+        const response = await fetch('/api/staples', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            itemName: item.itemName,
+            quantity: item.quantity,
+            unit: item.unit,
+            category: item.category || null,
+            frequency: item.frequency || 'weekly',
+            isActive: true,
+            notes: null,
+          }),
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          imported.push(data.staple)
+        }
+      }
+
+      console.log('🟢 Imported', imported.length, 'staples from URL')
+      setRawStaples([...rawStaples, ...imported])
+      setShowUrlModal(false)
+      setImportUrl('')
+      setUrlExtractedItems([])
+      setUrlSummary('')
+      alert(`Successfully imported ${imported.length} staple${imported.length !== 1 ? 's' : ''}`)
+    } catch (error) {
+      console.error('❌ Error importing staples:', error)
+      alert(error instanceof Error ? error.message : 'Failed to import staples')
+    } finally {
+      setImportingUrl(false)
+    }
+  }
+
+  const toggleUrlItemSelection = (index: number) => {
+    setUrlExtractedItems(prev =>
+      prev.map((item, i) =>
+        i === index ? { ...item, selected: !item.selected } : item
+      )
+    )
+  }
+
   const handleAddStaple = async (e: React.FormEvent) => {
     e.preventDefault()
     if (addingStaple) return
@@ -188,6 +510,7 @@ export default function StaplesPage() {
         isActive: true,
         notes: '',
       })
+      setShelfLifeSuggestion(null)
       setShowAddForm(false)
     } catch (error) {
       console.error('❌ Error creating staple:', error)
@@ -699,11 +1022,42 @@ export default function StaplesPage() {
         {/* Add Staple Modal */}
         <Modal
           isOpen={showAddForm}
-          onClose={() => setShowAddForm(false)}
+          onClose={() => {
+            setShowAddForm(false)
+            setShelfLifeSuggestion(null)
+          }}
           title="Add New Staple"
           maxWidth="md"
         >
           <form onSubmit={handleAddStaple} className="p-6 space-y-4">
+            {/* Import buttons */}
+            <div className="flex gap-2 pb-2 border-b border-zinc-700">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setShowAddForm(false)
+                  setShelfLifeSuggestion(null)
+                  setShowUrlModal(true)
+                }}
+              >
+                Import URL
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setShowAddForm(false)
+                  setShelfLifeSuggestion(null)
+                  setShowPhotoModal(true)
+                }}
+              >
+                Import Photo
+              </Button>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-1">
@@ -713,7 +1067,7 @@ export default function StaplesPage() {
                   type="text"
                   required
                   value={newStaple.itemName}
-                  onChange={(e) => setNewStaple({ ...newStaple, itemName: e.target.value })}
+                  onChange={(e) => handleItemNameChange(e.target.value)}
                   placeholder="e.g., Milk"
                 />
               </div>
@@ -789,6 +1143,45 @@ export default function StaplesPage() {
                 </label>
               </div>
             </div>
+
+            {/* AI Suggestion Box */}
+            {shelfLifeSuggestion && (
+              <div className="p-3 rounded-lg bg-blue-900/30 border border-blue-600/50">
+                <div className="flex items-start gap-2">
+                  <svg className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div className="flex-1">
+                    <p className="text-sm text-blue-300">
+                      Matched: <span className="font-medium">{shelfLifeSuggestion.ingredientName}</span>
+                    </p>
+                    <p className="text-xs text-zinc-400 mt-1">
+                      Typical shelf life: {shelfLifeSuggestion.shelfLifeDays} days
+                      {shelfLifeSuggestion.defaultLocation && (
+                        <> | Store in: {STORAGE_LOCATION_LABELS[shelfLifeSuggestion.defaultLocation]}</>
+                      )}
+                      {shelfLifeSuggestion.category && (
+                        <> | Category: {shelfLifeSuggestion.category}</>
+                      )}
+                    </p>
+                    <p className="text-xs text-zinc-400 mt-1">
+                      Suggested frequency: {suggestFrequencyFromShelfLife(shelfLifeSuggestion.shelfLifeDays)}
+                    </p>
+                    {shelfLifeSuggestion.notes && (
+                      <p className="text-xs text-zinc-500 mt-1 italic">{shelfLifeSuggestion.notes}</p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={applyShelfLifeSuggestion}
+                      className="mt-2 text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded"
+                    >
+                      Apply Suggestions
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium text-zinc-300 mb-1">
                 Notes
@@ -1115,6 +1508,331 @@ export default function StaplesPage() {
                   : csvSummary
                   ? `Import ${csvSummary.validCount} Staple${csvSummary.validCount !== 1 ? 's' : ''}`
                   : 'Import'
+                }
+              </Button>
+            </div>
+          </div>
+        </Modal>
+
+        {/* Photo Import Modal */}
+        <Modal
+          isOpen={showPhotoModal}
+          onClose={() => {
+            setShowPhotoModal(false)
+            setPhotoImages([])
+            setExtractedItems([])
+            setPhotoSummary('')
+          }}
+          title="Import Staples from Photo"
+          maxWidth="lg"
+        >
+          <div className="p-6 space-y-4">
+            {/* Instructions */}
+            <div className="p-3 rounded-lg bg-zinc-800/50 border border-zinc-700">
+              <p className="text-sm text-zinc-300 font-medium mb-2">Photo Recognition</p>
+              <p className="text-xs text-zinc-400">
+                Upload photos of your shopping list, pantry, or receipts. Our AI will identify items and suggest staple entries with appropriate frequencies.
+              </p>
+            </div>
+
+            {/* Photo upload */}
+            <div>
+              <label className="block text-sm font-medium text-zinc-300 mb-2">
+                Upload Photos
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handlePhotoUpload}
+                className="block w-full text-sm text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-purple-600 file:text-white hover:file:bg-purple-700 cursor-pointer"
+              />
+            </div>
+
+            {/* Photo previews */}
+            {photoImages.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-zinc-300">
+                  {photoImages.length} photo{photoImages.length !== 1 ? 's' : ''} selected
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {photoImages.map((img, i) => (
+                    <div key={i} className="relative">
+                      <img
+                        src={img}
+                        alt={`Photo ${i + 1}`}
+                        className="w-24 h-24 object-cover rounded-lg border border-zinc-700"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removePhoto(i)}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center text-sm hover:bg-red-700"
+                      >
+                        x
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <Button
+                  onClick={handleAnalyzePhoto}
+                  variant="secondary"
+                  disabled={analyzingPhoto}
+                >
+                  {analyzingPhoto ? 'Analyzing...' : 'Analyze Photos'}
+                </Button>
+              </div>
+            )}
+
+            {/* Analyzing indicator */}
+            {analyzingPhoto && (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400 mr-3"></div>
+                <span className="text-zinc-300">AI is analyzing your photos...</span>
+              </div>
+            )}
+
+            {/* Extracted items */}
+            {extractedItems.length > 0 && (
+              <div className="space-y-3">
+                {photoSummary && (
+                  <p className="text-sm text-green-400">{photoSummary}</p>
+                )}
+                <p className="text-sm font-medium text-zinc-300">
+                  {extractedItems.length} items found - select which to import:
+                </p>
+                <div className="max-h-64 overflow-y-auto space-y-2">
+                  {extractedItems.map((item, i) => (
+                    <label
+                      key={i}
+                      className={`flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-colors ${
+                        item.selected
+                          ? 'bg-purple-900/30 border-purple-600/50'
+                          : 'bg-zinc-800/50 border-zinc-700'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={item.selected}
+                        onChange={() => togglePhotoItemSelection(i)}
+                        className="rounded border-zinc-600 bg-zinc-800 text-purple-500 focus:ring-purple-500"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-white font-medium">{item.itemName}</span>
+                        <span className="text-zinc-400 text-sm ml-2">
+                          {item.quantity} {item.unit}
+                        </span>
+                        {item.category && (
+                          <span className="text-zinc-500 text-xs ml-2">({item.category})</span>
+                        )}
+                        {item.frequency && (
+                          <span className="text-blue-400 text-xs ml-2">[{item.frequency}]</span>
+                        )}
+                      </div>
+                      {item.confidence && (
+                        <Badge
+                          variant={
+                            item.confidence === 'high' ? 'success' :
+                            item.confidence === 'medium' ? 'warning' : 'default'
+                          }
+                          size="sm"
+                        >
+                          {item.confidence}
+                        </Badge>
+                      )}
+                    </label>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2 text-sm text-zinc-400">
+                  <button
+                    type="button"
+                    onClick={() => setExtractedItems(prev => prev.map(i => ({ ...i, selected: true })))}
+                    className="text-purple-400 hover:text-purple-300"
+                  >
+                    Select all
+                  </button>
+                  <span>|</span>
+                  <button
+                    type="button"
+                    onClick={() => setExtractedItems(prev => prev.map(i => ({ ...i, selected: false })))}
+                    className="text-purple-400 hover:text-purple-300"
+                  >
+                    Deselect all
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex justify-end gap-3 pt-4">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShowPhotoModal(false)
+                  setPhotoImages([])
+                  setExtractedItems([])
+                  setPhotoSummary('')
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleImportPhotoItems}
+                disabled={extractedItems.filter(i => i.selected).length === 0 || importingPhoto}
+              >
+                {importingPhoto
+                  ? 'Importing...'
+                  : `Import ${extractedItems.filter(i => i.selected).length} Staple${extractedItems.filter(i => i.selected).length !== 1 ? 's' : ''}`
+                }
+              </Button>
+            </div>
+          </div>
+        </Modal>
+
+        {/* URL Import Modal */}
+        <Modal
+          isOpen={showUrlModal}
+          onClose={() => {
+            setShowUrlModal(false)
+            setImportUrl('')
+            setUrlExtractedItems([])
+            setUrlSummary('')
+          }}
+          title="Import Staples from URL"
+          maxWidth="lg"
+        >
+          <div className="p-6 space-y-4">
+            {/* Instructions */}
+            <div className="p-3 rounded-lg bg-zinc-800/50 border border-zinc-700">
+              <p className="text-sm text-zinc-300 font-medium mb-2">URL Import</p>
+              <p className="text-xs text-zinc-400">
+                Paste a URL to a shopping list, meal plan, or grocery list. Our AI will extract items and suggest staple entries with appropriate frequencies.
+              </p>
+            </div>
+
+            {/* URL input */}
+            <div>
+              <label className="block text-sm font-medium text-zinc-300 mb-2">
+                URL
+              </label>
+              <div className="flex gap-2">
+                <Input
+                  type="url"
+                  value={importUrl}
+                  onChange={(e) => setImportUrl(e.target.value)}
+                  placeholder="https://example.com/shopping-list"
+                  className="flex-1"
+                />
+                <Button
+                  onClick={handleAnalyzeUrl}
+                  variant="secondary"
+                  disabled={!importUrl.trim() || analyzingUrl}
+                >
+                  {analyzingUrl ? 'Analyzing...' : 'Analyze'}
+                </Button>
+              </div>
+            </div>
+
+            {/* Analyzing indicator */}
+            {analyzingUrl && (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400 mr-3"></div>
+                <span className="text-zinc-300">AI is analyzing the URL...</span>
+              </div>
+            )}
+
+            {/* Extracted items */}
+            {urlExtractedItems.length > 0 && (
+              <div className="space-y-3">
+                {urlSummary && (
+                  <p className="text-sm text-green-400">{urlSummary}</p>
+                )}
+                <p className="text-sm font-medium text-zinc-300">
+                  {urlExtractedItems.length} items found - select which to import:
+                </p>
+                <div className="max-h-64 overflow-y-auto space-y-2">
+                  {urlExtractedItems.map((item, i) => (
+                    <label
+                      key={i}
+                      className={`flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-colors ${
+                        item.selected
+                          ? 'bg-purple-900/30 border-purple-600/50'
+                          : 'bg-zinc-800/50 border-zinc-700'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={item.selected}
+                        onChange={() => toggleUrlItemSelection(i)}
+                        className="rounded border-zinc-600 bg-zinc-800 text-purple-500 focus:ring-purple-500"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-white font-medium">{item.itemName}</span>
+                        <span className="text-zinc-400 text-sm ml-2">
+                          {item.quantity} {item.unit}
+                        </span>
+                        {item.category && (
+                          <span className="text-zinc-500 text-xs ml-2">({item.category})</span>
+                        )}
+                        {item.frequency && (
+                          <span className="text-blue-400 text-xs ml-2">[{item.frequency}]</span>
+                        )}
+                      </div>
+                      {item.confidence && (
+                        <Badge
+                          variant={
+                            item.confidence === 'high' ? 'success' :
+                            item.confidence === 'medium' ? 'warning' : 'default'
+                          }
+                          size="sm"
+                        >
+                          {item.confidence}
+                        </Badge>
+                      )}
+                    </label>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2 text-sm text-zinc-400">
+                  <button
+                    type="button"
+                    onClick={() => setUrlExtractedItems(prev => prev.map(i => ({ ...i, selected: true })))}
+                    className="text-purple-400 hover:text-purple-300"
+                  >
+                    Select all
+                  </button>
+                  <span>|</span>
+                  <button
+                    type="button"
+                    onClick={() => setUrlExtractedItems(prev => prev.map(i => ({ ...i, selected: false })))}
+                    className="text-purple-400 hover:text-purple-300"
+                  >
+                    Deselect all
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex justify-end gap-3 pt-4">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShowUrlModal(false)
+                  setImportUrl('')
+                  setUrlExtractedItems([])
+                  setUrlSummary('')
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleImportUrlItems}
+                disabled={urlExtractedItems.filter(i => i.selected).length === 0 || importingUrl}
+              >
+                {importingUrl
+                  ? 'Importing...'
+                  : `Import ${urlExtractedItems.filter(i => i.selected).length} Staple${urlExtractedItems.filter(i => i.selected).length !== 1 ? 's' : ''}`
                 }
               </Button>
             </div>

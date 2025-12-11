@@ -937,6 +937,203 @@ Important:
   }
 }
 
+/**
+ * Analyze photos to extract recurring staple items
+ */
+export async function analyzeStaplesPhoto(images: string[]) {
+  const imageCount = images.length
+  const prompt = `You are a household staples and recurring purchase assistant. Analyze ${imageCount === 1 ? 'this image' : `these ${imageCount} images`} and identify items that are likely recurring household staples (items purchased regularly).
+
+${imageCount > 1 ? 'Note: Multiple images are provided. Extract items from all images.' : ''}
+
+The image${imageCount > 1 ? 's' : ''} may contain:
+- A photo of groceries or shopping items
+- A shopping list or grocery list
+- A receipt showing regular purchases
+- Pantry, fridge, or cupboard contents
+
+Focus on identifying RECURRING STAPLES - items that households typically buy repeatedly, such as:
+- Dairy (milk, eggs, butter, cheese)
+- Bread and bakery items
+- Fresh produce bought weekly
+- Cleaning and household supplies
+- Basic cooking ingredients
+- Snacks and beverages consumed regularly
+
+For each item identified, provide:
+1. The name of the item (be specific)
+2. Suggested quantity per purchase
+3. Unit of measurement
+4. Category for shopping
+5. Suggested purchase frequency based on typical consumption
+
+Return ONLY a valid JSON object in this exact format:
+{
+  "items": [
+    {
+      "itemName": "string",
+      "quantity": number,
+      "unit": "string (e.g., 'each', 'litres', 'g', 'kg', 'pack')",
+      "category": "string (Meat & Fish, Fresh Produce, Dairy & Eggs, Bakery, Chilled & Deli, Frozen, Cupboard Staples, Baking & Cooking Ingredients, Breakfast, Drinks, Snacks & Treats, Household, Other)",
+      "frequency": "daily" | "weekly" | "fortnightly" | "monthly" | "bimonthly" | "quarterly",
+      "confidence": "high" | "medium" | "low"
+    }
+  ],
+  "summary": "Brief description of what was found"
+}
+
+Frequency guidelines:
+- "daily": Items consumed every day (bread, milk for daily use)
+- "weekly": Items purchased once a week (fresh produce, eggs)
+- "fortnightly": Items purchased every two weeks (cheese, bacon)
+- "monthly": Items purchased once a month (cleaning supplies, pantry items)
+- "bimonthly": Items purchased every 2 months (less common staples)
+- "quarterly": Items purchased every 3 months (long-lasting pantry items)`
+
+  try {
+    console.log('🔷 Calling Claude API to analyze photo for staples...')
+
+    const content: any[] = []
+
+    for (const imageData of images) {
+      content.push({
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: imageData.startsWith('data:image/png') ? 'image/png' :
+                     imageData.startsWith('data:image/jpeg') ? 'image/jpeg' :
+                     imageData.startsWith('data:image/jpg') ? 'image/jpeg' : 'image/jpeg',
+          data: imageData.replace(/^data:image\/\w+;base64,/, '')
+        }
+      })
+    }
+
+    content.push({
+      type: 'text',
+      text: prompt
+    })
+
+    const message = await client.messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 4096,
+      messages: [{
+        role: 'user',
+        content
+      }]
+    })
+
+    const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
+    console.log('🟢 Claude response received, length:', responseText.length)
+
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      throw new Error('No valid JSON found in Claude response')
+    }
+
+    const result = JSON.parse(jsonMatch[0])
+    console.log('🟢 Staple items extracted:', result.items?.length || 0)
+
+    return result
+  } catch (error) {
+    console.error('❌ Error analyzing staples photo with Claude:', error)
+    throw error
+  }
+}
+
+/**
+ * Analyze URL content to extract recurring staple items
+ */
+export async function analyzeStaplesUrl(url: string, htmlContent: string) {
+  console.log('🔷 Analyzing URL for staples:', url)
+
+  const visibleText = extractVisibleText(htmlContent).substring(0, 15000)
+
+  const prompt = `You are a household staples and recurring purchase assistant. Analyze the following web content and extract items that would make good recurring household staples.
+
+URL: ${url}
+
+**PAGE CONTENT:**
+${htmlContent.substring(0, 15000)}
+
+**VISIBLE TEXT:**
+${visibleText}
+
+---
+
+Look for shopping lists, grocery lists, weekly meal plans, or any content that mentions items typically purchased repeatedly.
+
+Focus on identifying RECURRING STAPLES - items that households typically buy repeatedly, such as:
+- Dairy (milk, eggs, butter, cheese)
+- Bread and bakery items
+- Fresh produce bought weekly
+- Cleaning and household supplies
+- Basic cooking ingredients
+- Snacks and beverages consumed regularly
+
+For each item identified, provide:
+1. The name of the item
+2. Suggested quantity per purchase
+3. Unit of measurement
+4. Category for shopping
+5. Suggested purchase frequency
+
+Return ONLY a valid JSON object in this exact format:
+{
+  "items": [
+    {
+      "itemName": "string",
+      "quantity": number,
+      "unit": "string",
+      "category": "string (Meat & Fish, Fresh Produce, Dairy & Eggs, Bakery, Chilled & Deli, Frozen, Cupboard Staples, Baking & Cooking Ingredients, Breakfast, Drinks, Snacks & Treats, Household, Other)",
+      "frequency": "daily" | "weekly" | "fortnightly" | "monthly" | "bimonthly" | "quarterly",
+      "confidence": "high" | "medium" | "low"
+    }
+  ],
+  "summary": "Brief description of what was found on the page"
+}
+
+Frequency guidelines:
+- "daily": Items consumed every day
+- "weekly": Items purchased once a week
+- "fortnightly": Items purchased every two weeks
+- "monthly": Items purchased once a month
+- "bimonthly": Items purchased every 2 months
+- "quarterly": Items purchased every 3 months
+
+If no staple items can be identified, return:
+{
+  "items": [],
+  "summary": "No staple items could be identified from this page."
+}`
+
+  try {
+    const message = await client.messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 4096,
+      messages: [{
+        role: 'user',
+        content: prompt
+      }]
+    })
+
+    const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
+    console.log('🟢 Claude response received, length:', responseText.length)
+
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      throw new Error('No valid JSON found in Claude response')
+    }
+
+    const result = JSON.parse(jsonMatch[0])
+    console.log('🟢 Staple items extracted from URL:', result.items?.length || 0)
+
+    return result
+  } catch (error) {
+    console.error('❌ Error analyzing staples URL with Claude:', error)
+    throw error
+  }
+}
+
 export async function getNutritionistFeedbackForRecipe(params: {
   recipe: {
     recipeName: string
