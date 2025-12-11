@@ -64,16 +64,10 @@ export function AILoadingPopup({ isOpen, contextMessage }: AILoadingPopupProps) 
   useEffect(() => {
     if (isOpen) {
       setIsVisible(true)
-      document.body.style.overflow = 'hidden'
     } else {
-      document.body.style.overflow = 'unset'
       // Small delay before hiding for fade-out animation
       const timeout = setTimeout(() => setIsVisible(false), 150)
       return () => clearTimeout(timeout)
-    }
-
-    return () => {
-      document.body.style.overflow = 'unset'
     }
   }, [isOpen])
 
@@ -85,60 +79,45 @@ export function AILoadingPopup({ isOpen, contextMessage }: AILoadingPopupProps) 
         isOpen ? 'opacity-100' : 'opacity-0'
       }`}
     >
-      {/* Backdrop - blocks all interaction */}
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+      {/* Semi-transparent backdrop - allows screen to be visible */}
+      <div className="absolute inset-0 bg-black/40" />
 
-      {/* Loading content */}
-      <div className="relative z-10 flex flex-col items-center gap-6 p-8 max-w-md mx-4">
-        {/* Animated cooking pot icon */}
-        <div className="relative">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center shadow-lg shadow-orange-500/30">
+      {/* Compact loading card */}
+      <div className="relative z-10 bg-zinc-900/95 border border-zinc-700 rounded-xl shadow-2xl p-5 mx-4 min-w-[280px] max-w-[320px]">
+        <div className="flex flex-col items-center gap-3">
+          {/* Fork & Knife icon */}
+          <div className="text-purple-400">
             <svg
-              className="w-10 h-10 text-white"
-              fill="none"
+              className="w-10 h-10 animate-pulse"
               viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={1.5}
+              fill="currentColor"
             >
-              {/* Cooking pot icon */}
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
+              {/* Fork */}
+              <path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z" />
             </svg>
           </div>
 
-          {/* Steam animation */}
-          <div className="absolute -top-2 left-1/2 -translate-x-1/2 flex gap-1">
-            <div className="w-1.5 h-4 bg-white/40 rounded-full animate-steam-1" />
-            <div className="w-1.5 h-5 bg-white/30 rounded-full animate-steam-2" />
-            <div className="w-1.5 h-4 bg-white/40 rounded-full animate-steam-3" />
-          </div>
-        </div>
+          {/* Context message if provided */}
+          {contextMessage && (
+            <p className="text-zinc-200 font-medium text-sm text-center">
+              {contextMessage}
+            </p>
+          )}
 
-        {/* Context message if provided */}
-        {contextMessage && (
-          <p className="text-white font-medium text-lg text-center">
-            {contextMessage}
-          </p>
-        )}
-
-        {/* Rotating whimsical message */}
-        <div className="h-8 flex items-center">
+          {/* Rotating whimsical message */}
           <p
             key={messageIndex}
-            className="text-orange-300 text-center animate-fade-in-up"
+            className="text-purple-400 text-xs text-center animate-fade-in-up h-4"
           >
             {COOKING_MESSAGES[messageIndex]}
           </p>
-        </div>
 
-        {/* Loading dots */}
-        <div className="flex gap-1.5">
-          <div className="w-2 h-2 rounded-full bg-orange-400 animate-bounce-dot-1" />
-          <div className="w-2 h-2 rounded-full bg-orange-400 animate-bounce-dot-2" />
-          <div className="w-2 h-2 rounded-full bg-orange-400 animate-bounce-dot-3" />
+          {/* Loading dots */}
+          <div className="flex gap-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce-dot-1" />
+            <div className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce-dot-2" />
+            <div className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce-dot-3" />
+          </div>
         </div>
       </div>
     </div>
