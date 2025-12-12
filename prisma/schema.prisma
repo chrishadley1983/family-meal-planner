@@ -45,13 +45,13 @@ model User {
   lastLogin    DateTime?
   preferences  Json      @default("{}")
 
-  profiles               FamilyProfile[]
-  recipes                Recipe[]
-  mealPlans              MealPlan[]
-  shoppingLists          ShoppingList[]
-  shoppingListCategories ShoppingListCategory[]
-  inventory              InventoryItem[]
-  staples                Staple[]
+  profiles                  FamilyProfile[]
+  recipes                   Recipe[]
+  mealPlans                 MealPlan[]
+  shoppingLists             ShoppingList[]
+  shoppingListCategories    ShoppingListCategory[]
+  inventory                 InventoryItem[]
+  staples                   Staple[]
   settings                  AppSettings?
   mealPlanSettings          MealPlanSettings?
   inventorySettings         InventorySettings?
@@ -90,10 +90,10 @@ model FamilyProfile {
   goalType           String?  // 'lose', 'maintain', 'gain'
   goalTimeframeWeeks Int?
 
-  user                      User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  mealParticipations        MealParticipant[]
-  recipeCompatibility       RecipeProfileCompatibility[]
-  nutritionistConversations NutritionistConversation[]
+  user                         User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mealParticipations           MealParticipant[]
+  recipeCompatibility          RecipeProfileCompatibility[]
+  nutritionistConversations    NutritionistConversation[]
 
   @@unique([userId, profileName])
   @@index([userId])

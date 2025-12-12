@@ -18,6 +18,7 @@ const navItems = [
   { href: '/staples', label: 'Staples', icon: '📋' },
   { href: '/inventory', label: 'Inventory', icon: '📦' },
   { href: '/profiles', label: 'Profiles', icon: '👥' },
+  { href: '/nutritionist', label: 'Nutritionist', icon: '🥗' },
 ]
 
 export function Navigation({ userEmail }: NavigationProps) {
