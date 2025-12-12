@@ -580,3 +580,36 @@ model RecipeUsageHistory {
   @@index([userId, usedDate])
   @@map("recipe_usage_history")
 }
+
+// Nutritionist conversation storage
+model NutritionistConversation {
+  id        String   @id @default(uuid())
+  userId    String
+  profileId String?  // Optional - can be a general conversation
+  title     String?  // Auto-generated or user-set title
+  context   Json     @default("{}") // Recipe context, goals, etc.
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages NutritionistMessage[]
+
+  @@index([userId])
+  @@index([userId, isActive])
+  @@map("nutritionist_conversations")
+}
+
+model NutritionistMessage {
+  id             String   @id @default(uuid())
+  conversationId String
+  role           String   // 'user' or 'assistant'
+  content        String
+  metadata       Json     @default("{}") // Ingredient mods, suggestions, etc.
+  createdAt      DateTime @default(now())
+
+  conversation NutritionistConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([conversationId, createdAt])
+  @@map("nutritionist_messages")
+}
