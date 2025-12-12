@@ -350,6 +350,7 @@ model InventoryItem {
   isActive            Boolean          @default(true)
   addedBy             String           @default("manual") // manual, csv, photo, shopping_list
   notes               String?
+  isUsedInPlannedMeal Boolean          @default(false)
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
 

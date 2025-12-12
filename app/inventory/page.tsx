@@ -4,43 +4,36 @@ import { useEffect, useState, useMemo } from 'react'
 import { AppLayout, PageContainer } from '@/components/layout'
 import { Button, Badge, Input, Modal } from '@/components/ui'
 import { useSession } from 'next-auth/react'
-import { DEFAULT_CATEGORIES } from '@/lib/unit-conversion'
-import {
-  enrichInventoryItemWithExpiry,
-  filterInventoryItems,
-  sortByExpiryPriority,
-  sortInventoryItems,
-  getUniqueCategories,
-  formatDaysUntilExpiry,
-  formatExpiryDate,
-  getInventoryStats,
-  calculateExpiryFromShelfLife,
-} from '@/lib/inventory/expiry-calculations'
-import {
-  checkForDuplicates,
-  suggestMergedQuantity,
-  SHELF_LIFE_SEED_DATA,
-} from '@/lib/inventory'
-import type { DuplicateCheckResult, ShelfLifeSeedItem } from '@/lib/inventory'
 import type {
-  InventoryItem,
+  StorageLocation,
+  ExpiryStatus,
   InventoryItemWithExpiry,
   InventoryFilters,
   InventorySortField,
   InventorySortOptions,
-  ExpiryStatus,
-  StorageLocation,
-  InventorySettings,
+  InventoryStatistics,
+  CSVInventoryImportSummary,
 } from '@/lib/types/inventory'
+import { STORAGE_LOCATIONS } from '@/lib/types/inventory'
 import {
-  STORAGE_LOCATIONS,
-  EXPIRY_STATUS_LABELS,
-  EXPIRY_STATUS_COLORS,
-  STORAGE_LOCATION_LABELS,
-  DEFAULT_INVENTORY_SETTINGS,
-} from '@/lib/types/inventory'
+  enrichInventoryItemWithExpiry,
+  sortByExpiryStatusPriority,
+  sortInventoryItems,
+  filterInventoryItems,
+  calculateInventoryStatistics,
+  formatExpiryStatus,
+  formatDate,
+  formatDateISO,
+  getExpiryStatusColor,
+  getExpiryStatusLabel,
+  getLocationLabel,
+  getUniqueCategories,
+} from '@/lib/inventory/calculations'
+import { parseCSV, generateCSVTemplate, downloadCSV } from '@/lib/inventory/csv-parser'
+import { validateCSVData, getImportableItems, generateErrorReport } from '@/lib/inventory/csv-validator'
+import { COMMON_UNITS, DEFAULT_CATEGORIES } from '@/lib/unit-conversion'
 
-// Raw item from API
+// Raw inventory item from API
 interface RawInventoryItem {
   id: string
   userId: string
@@ -55,29 +48,27 @@ interface RawInventoryItem {
   isActive: boolean
   addedBy: string
   notes: string | null
+  isUsedInPlannedMeal: boolean
   createdAt: string
   updatedAt: string
-}
-
-// Shopping list category from API
-interface ShoppingListCategory {
-  id: string
-  name: string
-  displayOrder: number
 }
 
 export default function InventoryPage() {
   const { data: session } = useSession()
   const [rawItems, setRawItems] = useState<RawInventoryItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [categories, setCategories] = useState<ShoppingListCategory[]>([])
 
-  // Filters state
+  // Filter and sort state
   const [filters, setFilters] = useState<InventoryFilters>({})
   const [sortOptions, setSortOptions] = useState<InventorySortOptions>({
     field: 'expiryDate',
     order: 'asc',
   })
+  const [searchQuery, setSearchQuery] = useState('')
+
+  // Selection state for bulk actions
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [selectAll, setSelectAll] = useState(false)
 
   // Add form state
   const [showAddForm, setShowAddForm] = useState(false)
@@ -89,8 +80,8 @@ export default function InventoryPage() {
     category: '',
     location: '' as StorageLocation | '',
     expiryDate: '',
-    isActive: true,
     notes: '',
+    isActive: true,
   })
 
   // Edit form state
@@ -101,83 +92,46 @@ export default function InventoryPage() {
     unit: '',
     category: '',
     location: '' as StorageLocation | '',
+    purchaseDate: '',
     expiryDate: '',
-    isActive: true,
     notes: '',
+    isActive: true,
   })
   const [savingEdit, setSavingEdit] = useState(false)
 
-  // Duplicate detection state
-  const [duplicateCheck, setDuplicateCheck] = useState<DuplicateCheckResult | null>(null)
-  const [shelfLifeSuggestion, setShelfLifeSuggestion] = useState<ShelfLifeSeedItem | null>(null)
-  const [showMergeOption, setShowMergeOption] = useState(false)
+  // Bulk action modals
+  const [showBulkExpiryModal, setShowBulkExpiryModal] = useState(false)
+  const [bulkExpiryDate, setBulkExpiryDate] = useState('')
+  const [processingBulk, setProcessingBulk] = useState(false)
 
-  // CSV import state
-  const [showImportModal, setShowImportModal] = useState(false)
-  const [csvText, setCsvText] = useState('')
-  const [importing, setImporting] = useState(false)
-  const [importOptions, setImportOptions] = useState({
-    skipDuplicates: true,
-    autoExpiry: true,
-    autoCategory: true,
-    autoLocation: true,
-  })
-  const [importResult, setImportResult] = useState<{
-    imported: number
-    skipped: number
-    errors: string[]
-  } | null>(null)
+  // Duplicate detection modal
+  const [duplicateMatch, setDuplicateMatch] = useState<InventoryItemWithExpiry | null>(null)
+  const [pendingNewItem, setPendingNewItem] = useState<typeof newItem | null>(null)
 
-  // Photo import state
-  const [showPhotoModal, setShowPhotoModal] = useState(false)
-  const [photoImages, setPhotoImages] = useState<string[]>([])
+  // CSV Import state
+  const [showCSVImport, setShowCSVImport] = useState(false)
+  const [csvSummary, setCsvSummary] = useState<CSVInventoryImportSummary | null>(null)
+  const [importingCSV, setImportingCSV] = useState(false)
+  const [csvFileName, setCsvFileName] = useState('')
+
+  // Photo Import state
+  const [showPhotoImport, setShowPhotoImport] = useState(false)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [analyzingPhoto, setAnalyzingPhoto] = useState(false)
   const [extractedItems, setExtractedItems] = useState<Array<{
-    itemName: string
+    name: string
     quantity: number
     unit: string
-    category?: string
-    location?: string
+    suggestedCategory: string
+    suggestedLocation: string | null
     expiryDate?: string
-    shelfLifeDays?: number
-    confidence?: string
+    calculatedExpiry?: Date
+    expiryIsEstimated?: boolean
+    confidence: 'high' | 'medium' | 'low'
     selected: boolean
   }>>([])
-  const [photoSummary, setPhotoSummary] = useState('')
+  const [photoProcessingNotes, setPhotoProcessingNotes] = useState<string | null>(null)
   const [importingPhoto, setImportingPhoto] = useState(false)
-
-  // URL import state
-  const [showUrlModal, setShowUrlModal] = useState(false)
-  const [importUrl, setImportUrl] = useState('')
-  const [analyzingUrl, setAnalyzingUrl] = useState(false)
-  const [urlExtractedItems, setUrlExtractedItems] = useState<Array<{
-    itemName: string
-    quantity: number
-    unit: string
-    category?: string
-    location?: string
-    expiryDate?: string
-    shelfLifeDays?: number
-    confidence?: string
-    selected: boolean
-  }>>([])
-  const [urlSummary, setUrlSummary] = useState('')
-  const [importingUrl, setImportingUrl] = useState(false)
-
-  // Import notification state
-  const [importNotification, setImportNotification] = useState<{
-    show: boolean
-    message: string
-    type: 'success' | 'error'
-  } | null>(null)
-
-  // Bulk selection state
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-
-  // Settings state
-  const [showSettingsModal, setShowSettingsModal] = useState(false)
-  const [settings, setSettings] = useState<Partial<InventorySettings>>(DEFAULT_INVENTORY_SETTINGS)
-  const [savingSettings, setSavingSettings] = useState(false)
 
   // Enrich items with expiry status
   const items = useMemo(() => {
@@ -187,117 +141,58 @@ export default function InventoryPage() {
       expiryDate: item.expiryDate ? new Date(item.expiryDate) : null,
       createdAt: new Date(item.createdAt),
       updatedAt: new Date(item.updatedAt),
-    } as InventoryItem))
+    }))
   }, [rawItems])
 
   // Apply filters and sorting
   const filteredAndSortedItems = useMemo(() => {
-    let result = filterInventoryItems(items, filters)
+    // Apply search filter
+    let result = items
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase()
+      result = result.filter(item =>
+        item.itemName.toLowerCase().includes(query)
+      )
+    }
 
-    // Default sort: by expiry priority
+    // Apply other filters
+    result = filterInventoryItems(result, filters)
+
+    // Apply sorting - default to expiry status priority
     if (sortOptions.field === 'expiryDate' && sortOptions.order === 'asc') {
-      result = sortByExpiryPriority(result)
+      result = sortByExpiryStatusPriority(result)
     } else {
       result = sortInventoryItems(result, sortOptions)
     }
 
     return result
-  }, [items, filters, sortOptions])
+  }, [items, filters, sortOptions, searchQuery])
+
+  // Calculate statistics
+  const stats = useMemo(() => calculateInventoryStatistics(items), [items])
 
   // Get unique categories from items
-  const itemCategories = useMemo(() => getUniqueCategories(items), [items])
-
-  // Get stats
-  const stats = useMemo(() => getInventoryStats(items), [items])
-
-  // Available units for dropdown (from API)
-  const [availableUnits, setAvailableUnits] = useState<Record<string, Array<{
-    code: string
-    name: string
-    abbreviation: string
-  }>>>({})
+  const categories = useMemo(() => getUniqueCategories(items), [items])
 
   useEffect(() => {
     fetchItems()
-    fetchCategories()
-    fetchSettings()
-    // Fetch available units
-    const fetchUnits = async () => {
-      try {
-        const response = await fetch('/api/units?groupByCategory=true')
-        if (response.ok) {
-          const data = await response.json()
-          setAvailableUnits(data.units || {})
-        }
-      } catch (err) {
-        console.error('Failed to fetch units:', err)
-      }
-    }
-    fetchUnits()
   }, [])
 
-  const fetchSettings = async () => {
-    try {
-      console.log('🔷 Fetching inventory settings...')
-      const response = await fetch('/api/inventory/settings')
-      const data = await response.json()
-      console.log('🟢 Settings fetched:', data.settings)
-      if (data.settings) {
-        setSettings(data.settings)
-      }
-    } catch (error) {
-      console.error('❌ Error fetching settings:', error)
+  // Update selectAll when selection changes
+  useEffect(() => {
+    if (filteredAndSortedItems.length > 0 && selectedIds.size === filteredAndSortedItems.length) {
+      setSelectAll(true)
+    } else {
+      setSelectAll(false)
     }
-  }
-
-  const handleSaveSettings = async () => {
-    setSavingSettings(true)
-    try {
-      console.log('🔷 Saving inventory settings:', settings)
-      const response = await fetch('/api/inventory/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          skipInventoryCheck: settings.skipInventoryCheck,
-          smallQuantityThresholdGrams: settings.smallQuantityThresholdGrams,
-          smallQuantityThresholdMl: settings.smallQuantityThresholdMl,
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to save settings')
-      }
-
-      const data = await response.json()
-      console.log('🟢 Settings saved:', data.settings)
-      setSettings(data.settings)
-      setShowSettingsModal(false)
-    } catch (error) {
-      console.error('❌ Error saving settings:', error)
-      alert('Failed to save settings')
-    } finally {
-      setSavingSettings(false)
-    }
-  }
-
-  const fetchCategories = async () => {
-    try {
-      console.log('🔷 Fetching shopping list categories...')
-      const response = await fetch('/api/shopping-lists/categories')
-      const data = await response.json()
-      console.log('🟢 Categories fetched:', data.categories?.length || 0)
-      setCategories(data.categories || [])
-    } catch (error) {
-      console.error('❌ Error fetching categories:', error)
-    }
-  }
+  }, [selectedIds, filteredAndSortedItems])
 
   const fetchItems = async () => {
     try {
-      console.log('🔷 Fetching inventory items...')
+      console.log('🔷 Fetching inventory...')
       const response = await fetch('/api/inventory')
       const data = await response.json()
-      console.log('🟢 Items fetched:', data.items?.length || 0)
+      console.log('🟢 Inventory fetched:', data.items?.length || 0)
       setRawItems(data.items || [])
     } catch (error) {
       console.error('❌ Error fetching inventory:', error)
@@ -306,507 +201,41 @@ export default function InventoryPage() {
     }
   }
 
-  // Look up shelf life data for item name
-  const lookupShelfLife = (itemName: string): ShelfLifeSeedItem | null => {
-    if (!itemName || itemName.length < 2) return null
-
-    const normalizedInput = itemName.toLowerCase().trim()
-
-    // Try exact match first
-    const exactMatch = SHELF_LIFE_SEED_DATA.find(
-      item => item.ingredientName.toLowerCase() === normalizedInput
-    )
-    if (exactMatch) return exactMatch
-
-    // Try partial match (input contains reference or vice versa)
-    const partialMatch = SHELF_LIFE_SEED_DATA.find(item => {
-      const refLower = item.ingredientName.toLowerCase()
-      return normalizedInput.includes(refLower) || refLower.includes(normalizedInput)
-    })
-    if (partialMatch) return partialMatch
-
-    // Try word-based matching
-    const inputWords = normalizedInput.split(/\s+/).filter(w => w.length > 2)
-    const wordMatch = SHELF_LIFE_SEED_DATA.find(item => {
-      const refWords = item.ingredientName.toLowerCase().split(/\s+/)
-      return inputWords.some(iw => refWords.some(rw => rw.includes(iw) || iw.includes(rw)))
-    })
-
-    return wordMatch || null
-  }
-
-  // Handle item name change with duplicate detection and shelf life lookup
-  const handleItemNameChange = (value: string) => {
-    setNewItem({ ...newItem, itemName: value })
-
-    // Check for duplicates
-    if (value.length >= 2) {
-      const check = checkForDuplicates(value, items, {
-        category: newItem.category || undefined,
-        location: newItem.location || undefined,
-      })
-      setDuplicateCheck(check)
-      setShowMergeOption(check.isDuplicate && check.matchingItems.length > 0)
-      console.log('🔄 Duplicate check:', check.isDuplicate ? `Found ${check.matchingItems.length} match(es)` : 'No duplicates')
-    } else {
-      setDuplicateCheck(null)
-      setShowMergeOption(false)
-    }
-
-    // Look up shelf life
-    const shelfLife = lookupShelfLife(value)
-    setShelfLifeSuggestion(shelfLife)
-    if (shelfLife) {
-      console.log('🔄 Shelf life suggestion:', shelfLife.ingredientName, shelfLife.shelfLifeDays, 'days')
-    }
-  }
-
-  // Apply shelf life suggestion to form
-  const applyShelfLifeSuggestion = () => {
-    if (!shelfLifeSuggestion) return
-
-    const updates: Partial<typeof newItem> = {}
-
-    // Set category if not already set
-    if (!newItem.category && shelfLifeSuggestion.category) {
-      updates.category = shelfLifeSuggestion.category
-    }
-
-    // Set location if not already set
-    if (!newItem.location && shelfLifeSuggestion.defaultLocation) {
-      updates.location = shelfLifeSuggestion.defaultLocation
-    }
-
-    // Calculate and set expiry date
-    const expiryDate = calculateExpiryFromShelfLife(new Date(), shelfLifeSuggestion.shelfLifeDays)
-    updates.expiryDate = expiryDate.toISOString().split('T')[0]
-
-    setNewItem({ ...newItem, ...updates })
-    console.log('⚡ Applied shelf life suggestion:', updates)
-  }
-
-  // Handle merge with existing item
-  const handleMergeWithExisting = async (existingItem: InventoryItemWithExpiry) => {
-    const mergeResult = suggestMergedQuantity(
-      existingItem.quantity,
-      newItem.quantity,
-      existingItem.unit,
-      newItem.unit
-    )
-
-    if (!mergeResult.canMerge) {
-      alert(`Cannot merge: Different units (${existingItem.unit} vs ${newItem.unit}). Please convert manually or add as new item.`)
-      return
-    }
-
-    try {
-      console.log('🔷 Merging with existing item:', existingItem.itemName)
-      const response = await fetch(`/api/inventory?id=${existingItem.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          quantity: mergeResult.quantity,
-          // Update expiry date if new one is sooner (FIFO)
-          ...(newItem.expiryDate && (!existingItem.expiryDate ||
-            new Date(newItem.expiryDate) < existingItem.expiryDate) && {
-            expiryDate: newItem.expiryDate,
-          }),
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to merge items')
-      }
-
-      const data = await response.json()
-      console.log('🟢 Merged successfully. New quantity:', mergeResult.quantity)
-      setRawItems(rawItems.map(i => i.id === existingItem.id ? data.item : i))
-
-      // Reset form
-      setNewItem({
-        itemName: '',
-        quantity: 1,
-        unit: '',
-        category: '',
-        location: '',
-        expiryDate: '',
-        isActive: true,
-        notes: '',
-      })
-      setShowAddForm(false)
-      setDuplicateCheck(null)
-      setShelfLifeSuggestion(null)
-      setShowMergeOption(false)
-    } catch (error) {
-      console.error('❌ Error merging items:', error)
-      alert('Failed to merge items')
-    }
-  }
-
-  // Handle CSV import
-  const handleImportCSV = async () => {
-    if (!csvText.trim() || importing) return
-
-    setImporting(true)
-    setImportResult(null)
-
-    try {
-      console.log('🔷 Importing CSV...')
-      const response = await fetch('/api/inventory/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/csv' },
-        body: csvText,
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Import failed')
-      }
-
-      const data = await response.json()
-      console.log('🟢 Import complete:', data.results)
-
-      setImportResult(data.results)
-      setRawItems(data.items)
-
-      // Clear CSV text on success
-      if (data.results.imported > 0) {
-        setCsvText('')
-      }
-    } catch (error) {
-      console.error('❌ Error importing CSV:', error)
-      setImportResult({
-        imported: 0,
-        skipped: 0,
-        errors: [error instanceof Error ? error.message : 'Import failed'],
-      })
-    } finally {
-      setImporting(false)
-    }
-  }
-
-  // Download sample CSV file
-  const handleDownloadSampleCSV = () => {
-    const sampleData = `Item Name,Quantity,Unit,Category,Location,Expiry Date,Notes
-Semi-Skimmed Milk,2,litres,Dairy & Eggs,fridge,2025-12-18,
-Free Range Eggs,12,each,Dairy & Eggs,fridge,2025-12-25,Large eggs
-Chicken Breast,500,g,Meat & Fish,fridge,2025-12-14,
-Minced Beef,400,g,Meat & Fish,freezer,2026-03-01,Frozen
-Wholemeal Bread,1,each,Bakery,cupboard,2025-12-16,
-Basmati Rice,1,kg,Grains & Pasta,cupboard,,Long grain
-Tinned Tomatoes,2,each,Canned & Jarred,cupboard,2027-06-01,
-Olive Oil,500,ml,Oils & Condiments,cupboard,,Extra virgin
-Cheddar Cheese,200,g,Dairy & Eggs,fridge,2025-12-28,Mature
-Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
-
-    const blob = new Blob([sampleData], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = 'inventory_sample.csv'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-  }
-
-  // Handle file upload for CSV
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    const reader = new FileReader()
-    reader.onload = (event) => {
-      const text = event.target?.result as string
-      setCsvText(text)
-      setImportResult(null)
-    }
-    reader.readAsText(file)
-  }
-
-  // Handle photo file upload
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files) return
-
-    const readFile = (file: File): Promise<string> => {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = (event) => {
-          resolve(event.target?.result as string)
-        }
-        reader.onerror = reject
-        reader.readAsDataURL(file)
-      })
-    }
-
-    Promise.all(Array.from(files).map(readFile)).then(images => {
-      setPhotoImages(prev => [...prev, ...images])
-      setExtractedItems([])
-      setPhotoSummary('')
-    })
-  }
-
-  // Analyze photos with AI
-  const handleAnalyzePhoto = async () => {
-    if (photoImages.length === 0 || analyzingPhoto) return
-
-    setAnalyzingPhoto(true)
-    setExtractedItems([])
-    setPhotoSummary('')
-
-    try {
-      console.log('🔷 Analyzing', photoImages.length, 'photo(s)...')
-      const response = await fetch('/api/inventory/photo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ images: photoImages }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Analysis failed')
-      }
-
-      const data = await response.json()
-      console.log('🟢 Extracted', data.items?.length || 0, 'items')
-
-      // Calculate expiry dates from shelf life days
-      const today = new Date()
-      setExtractedItems(
-        (data.items || []).map((item: any) => {
-          let expiryDate = ''
-          if (item.shelfLifeDays) {
-            const expiry = new Date(today)
-            expiry.setDate(expiry.getDate() + item.shelfLifeDays)
-            expiryDate = expiry.toISOString().split('T')[0]
-          }
-          return {
-            ...item,
-            expiryDate,
-            selected: true,
-          }
-        })
-      )
-      setPhotoSummary(data.summary || '')
-    } catch (error) {
-      console.error('❌ Error analyzing photo:', error)
-      showNotification(error instanceof Error ? error.message : 'Failed to analyze photo', 'error')
-    } finally {
-      setAnalyzingPhoto(false)
-    }
-  }
-
-  // Import extracted items from photo
-  const handleImportPhotoItems = async () => {
-    const selectedItems = extractedItems.filter(i => i.selected)
-    if (selectedItems.length === 0 || importingPhoto) return
-
-    setImportingPhoto(true)
-
-    try {
-      console.log('🔷 Importing', selectedItems.length, 'items from photo...')
-
-      // Import each item individually
-      const imported: RawInventoryItem[] = []
-      for (const item of selectedItems) {
-        const response = await fetch('/api/inventory', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            itemName: item.itemName,
-            quantity: item.quantity,
-            unit: item.unit,
-            category: item.category || 'Other',
-            location: item.location || null,
-            expiryDate: item.expiryDate || null,
-            isActive: true,
-            notes: null,
-          }),
-        })
-
-        if (response.ok) {
-          const data = await response.json()
-          imported.push(data.item)
-        }
-      }
-
-      console.log('🟢 Imported', imported.length, 'items from photo')
-      setRawItems([...rawItems, ...imported])
-      setShowPhotoModal(false)
-      setPhotoImages([])
-      setExtractedItems([])
-      setPhotoSummary('')
-      showNotification(`Successfully imported ${imported.length} item${imported.length !== 1 ? 's' : ''}`, 'success')
-    } catch (error) {
-      console.error('❌ Error importing items:', error)
-      showNotification(error instanceof Error ? error.message : 'Failed to import items', 'error')
-    } finally {
-      setImportingPhoto(false)
-    }
-  }
-
-  // Toggle item selection in photo import
-  const togglePhotoItemSelection = (index: number) => {
-    setExtractedItems(prev =>
-      prev.map((item, i) =>
-        i === index ? { ...item, selected: !item.selected } : item
-      )
-    )
-  }
-
-  // Remove a photo
-  const removePhoto = (index: number) => {
-    setPhotoImages(prev => prev.filter((_, i) => i !== index))
-    setExtractedItems([])
-    setPhotoSummary('')
-  }
-
-  // Update an extracted photo item field
-  const updatePhotoItem = (index: number, field: string, value: any) => {
-    setExtractedItems(prev =>
-      prev.map((item, i) =>
-        i === index ? { ...item, [field]: value } : item
-      )
-    )
-  }
-
-  // URL import handlers
-  const handleAnalyzeUrl = async () => {
-    if (!importUrl.trim() || analyzingUrl) return
-
-    setAnalyzingUrl(true)
-    setUrlExtractedItems([])
-    setUrlSummary('')
-
-    try {
-      console.log('🔷 Analyzing URL for inventory items:', importUrl)
-      const response = await fetch('/api/inventory/url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: importUrl }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Analysis failed')
-      }
-
-      const data = await response.json()
-      console.log('🟢 Extracted', data.items?.length || 0, 'inventory items from URL')
-
-      // Calculate expiry dates from shelf life days
-      const today = new Date()
-      setUrlExtractedItems(
-        (data.items || []).map((item: any) => {
-          let expiryDate = ''
-          if (item.shelfLifeDays) {
-            const expiry = new Date(today)
-            expiry.setDate(expiry.getDate() + item.shelfLifeDays)
-            expiryDate = expiry.toISOString().split('T')[0]
-          }
-          return {
-            ...item,
-            expiryDate,
-            selected: true,
-          }
-        })
-      )
-      setUrlSummary(data.summary || '')
-    } catch (error) {
-      console.error('❌ Error analyzing URL:', error)
-      showNotification(error instanceof Error ? error.message : 'Failed to analyze URL', 'error')
-    } finally {
-      setAnalyzingUrl(false)
-    }
-  }
-
-  const handleImportUrlItems = async () => {
-    const selectedItems = urlExtractedItems.filter(i => i.selected)
-    if (selectedItems.length === 0 || importingUrl) return
-
-    setImportingUrl(true)
-
-    try {
-      console.log('🔷 Importing', selectedItems.length, 'items from URL...')
-
-      // Import each item
-      const imported: RawInventoryItem[] = []
-      for (const item of selectedItems) {
-        const response = await fetch('/api/inventory', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            itemName: item.itemName,
-            quantity: item.quantity,
-            unit: item.unit,
-            category: item.category || 'Other',
-            location: item.location || null,
-            expiryDate: item.expiryDate || null,
-            isActive: true,
-            notes: null,
-          }),
-        })
-
-        if (response.ok) {
-          const data = await response.json()
-          imported.push(data.item)
-        }
-      }
-
-      console.log('🟢 Imported', imported.length, 'items from URL')
-      setRawItems([...rawItems, ...imported])
-      setShowUrlModal(false)
-      setImportUrl('')
-      setUrlExtractedItems([])
-      setUrlSummary('')
-      showNotification(`Successfully imported ${imported.length} item${imported.length !== 1 ? 's' : ''}`, 'success')
-    } catch (error) {
-      console.error('❌ Error importing items:', error)
-      showNotification(error instanceof Error ? error.message : 'Failed to import items', 'error')
-    } finally {
-      setImportingUrl(false)
-    }
-  }
-
-  const toggleUrlItemSelection = (index: number) => {
-    setUrlExtractedItems(prev =>
-      prev.map((item, i) =>
-        i === index ? { ...item, selected: !item.selected } : item
-      )
-    )
-  }
-
-  // Update an extracted URL item field
-  const updateUrlItem = (index: number, field: string, value: any) => {
-    setUrlExtractedItems(prev =>
-      prev.map((item, i) =>
-        i === index ? { ...item, [field]: value } : item
-      )
-    )
-  }
-
-  // Show notification with auto-dismiss
-  const showNotification = (message: string, type: 'success' | 'error') => {
-    setImportNotification({ show: true, message, type })
-    setTimeout(() => setImportNotification(null), 5000)
+  // Check for duplicates before adding
+  const checkForDuplicates = (itemName: string): InventoryItemWithExpiry | null => {
+    const normalizedName = itemName.toLowerCase().trim()
+    return items.find(item =>
+      item.isActive && item.itemName.toLowerCase().trim() === normalizedName
+    ) || null
   }
 
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault()
     if (addingItem) return
 
+    // Check for duplicates
+    const duplicate = checkForDuplicates(newItem.itemName)
+    if (duplicate) {
+      setDuplicateMatch(duplicate)
+      setPendingNewItem(newItem)
+      return
+    }
+
+    await createItem(newItem)
+  }
+
+  const createItem = async (itemData: typeof newItem) => {
     setAddingItem(true)
     try {
-      console.log('🔷 Creating inventory item:', newItem.itemName)
+      console.log('🔷 Creating inventory item:', itemData.itemName)
       const response = await fetch('/api/inventory', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...newItem,
-          location: newItem.location || null,
-          expiryDate: newItem.expiryDate || null,
-          notes: newItem.notes || null,
+          ...itemData,
+          location: itemData.location || null,
+          expiryDate: itemData.expiryDate || null,
+          notes: itemData.notes || null,
         }),
       })
 
@@ -816,22 +245,9 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
       }
 
       const data = await response.json()
-      console.log('🟢 Created item:', data.item.itemName)
+      console.log('🟢 Created inventory item:', data.item.itemName)
       setRawItems([...rawItems, data.item])
-      setNewItem({
-        itemName: '',
-        quantity: 1,
-        unit: '',
-        category: '',
-        location: '',
-        expiryDate: '',
-        isActive: true,
-        notes: '',
-      })
-      setShowAddForm(false)
-      setDuplicateCheck(null)
-      setShelfLifeSuggestion(null)
-      setShowMergeOption(false)
+      resetAddForm()
     } catch (error) {
       console.error('❌ Error creating item:', error)
       alert(error instanceof Error ? error.message : 'Failed to create item')
@@ -840,11 +256,65 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
     }
   }
 
+  const handleMergeWithExisting = async () => {
+    if (!duplicateMatch || !pendingNewItem) return
+
+    // Add to existing quantity
+    const newQuantity = duplicateMatch.quantity + pendingNewItem.quantity
+
+    setAddingItem(true)
+    try {
+      console.log('🔷 Merging with existing item:', duplicateMatch.itemName)
+      const response = await fetch(`/api/inventory?id=${duplicateMatch.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quantity: newQuantity }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update item')
+      }
+
+      const data = await response.json()
+      console.log('🟢 Merged item, new quantity:', newQuantity)
+      setRawItems(rawItems.map(item => item.id === duplicateMatch.id ? data.item : item))
+      resetAddForm()
+      setDuplicateMatch(null)
+      setPendingNewItem(null)
+    } catch (error) {
+      console.error('❌ Error merging item:', error)
+      alert('Failed to merge items')
+    } finally {
+      setAddingItem(false)
+    }
+  }
+
+  const handleCreateNewAnyway = async () => {
+    if (!pendingNewItem) return
+    setDuplicateMatch(null)
+    await createItem(pendingNewItem)
+    setPendingNewItem(null)
+  }
+
+  const resetAddForm = () => {
+    setNewItem({
+      itemName: '',
+      quantity: 1,
+      unit: '',
+      category: '',
+      location: '',
+      expiryDate: '',
+      notes: '',
+      isActive: true,
+    })
+    setShowAddForm(false)
+  }
+
   const handleDeleteItem = async (id: string, itemName: string) => {
-    if (!confirm(`Delete "${itemName}"? This cannot be undone.`)) return
+    if (!confirm(`Remove "${itemName}" from inventory? This cannot be undone.`)) return
 
     try {
-      console.log('🔷 Deleting item:', itemName)
+      console.log('🔷 Deleting inventory item:', itemName)
       const response = await fetch(`/api/inventory?id=${id}`, { method: 'DELETE' })
 
       if (!response.ok) {
@@ -852,11 +322,11 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
       }
 
       console.log('🟢 Item deleted')
-      setRawItems(rawItems.filter(i => i.id !== id))
+      setRawItems(rawItems.filter(item => item.id !== id))
       setSelectedIds(prev => {
-        const next = new Set(prev)
-        next.delete(id)
-        return next
+        const newSet = new Set(prev)
+        newSet.delete(id)
+        return newSet
       })
     } catch (error) {
       console.error('❌ Error deleting item:', error)
@@ -894,9 +364,10 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
       unit: item.unit,
       category: item.category,
       location: item.location || '',
-      expiryDate: item.expiryDate ? item.expiryDate.toISOString().split('T')[0] : '',
-      isActive: item.isActive,
+      purchaseDate: formatDateISO(item.purchaseDate),
+      expiryDate: formatDateISO(item.expiryDate),
       notes: item.notes || '',
+      isActive: item.isActive,
     })
   }
 
@@ -906,7 +377,7 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
 
     setSavingEdit(true)
     try {
-      console.log('🔷 Updating item:', editFormData.itemName)
+      console.log('🔷 Updating inventory item:', editFormData.itemName)
       const response = await fetch(`/api/inventory?id=${editingItem.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -924,8 +395,8 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
       }
 
       const data = await response.json()
-      console.log('🟢 Updated item:', data.item.itemName)
-      setRawItems(rawItems.map(i => i.id === editingItem.id ? data.item : i))
+      console.log('🟢 Updated inventory item:', data.item.itemName)
+      setRawItems(rawItems.map(item => item.id === editingItem.id ? data.item : item))
       setEditingItem(null)
     } catch (error) {
       console.error('❌ Error updating item:', error)
@@ -935,6 +406,354 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
     }
   }
 
+  // Selection handlers
+  const handleSelectAll = () => {
+    if (selectAll) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(filteredAndSortedItems.map(item => item.id)))
+    }
+  }
+
+  const handleSelectItem = (id: string) => {
+    const newSet = new Set(selectedIds)
+    if (newSet.has(id)) {
+      newSet.delete(id)
+    } else {
+      newSet.add(id)
+    }
+    setSelectedIds(newSet)
+  }
+
+  // Bulk action handlers
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return
+    if (!confirm(`Delete ${selectedIds.size} selected item(s)? This cannot be undone.`)) return
+
+    setProcessingBulk(true)
+    try {
+      console.log('🔷 Bulk deleting', selectedIds.size, 'items')
+      const response = await fetch('/api/inventory?bulk=delete', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: Array.from(selectedIds) }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete items')
+      }
+
+      console.log('🟢 Bulk delete complete')
+      setRawItems(rawItems.filter(item => !selectedIds.has(item.id)))
+      setSelectedIds(new Set())
+    } catch (error) {
+      console.error('❌ Error in bulk delete:', error)
+      alert('Failed to delete some items')
+    } finally {
+      setProcessingBulk(false)
+    }
+  }
+
+  const handleBulkUpdateExpiry = async () => {
+    if (selectedIds.size === 0 || !bulkExpiryDate) return
+
+    setProcessingBulk(true)
+    try {
+      console.log('🔷 Bulk updating expiry for', selectedIds.size, 'items')
+      const response = await fetch('/api/inventory?bulk=update', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ids: Array.from(selectedIds),
+          expiryDate: bulkExpiryDate,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update items')
+      }
+
+      console.log('🟢 Bulk expiry update complete')
+      // Refresh to get updated items
+      await fetchItems()
+      setSelectedIds(new Set())
+      setShowBulkExpiryModal(false)
+      setBulkExpiryDate('')
+    } catch (error) {
+      console.error('❌ Error in bulk update:', error)
+      alert('Failed to update some items')
+    } finally {
+      setProcessingBulk(false)
+    }
+  }
+
+  const handleBulkMarkInactive = async () => {
+    if (selectedIds.size === 0) return
+
+    setProcessingBulk(true)
+    try {
+      console.log('🔷 Marking', selectedIds.size, 'items as inactive')
+      const response = await fetch('/api/inventory?bulk=update', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ids: Array.from(selectedIds),
+          isActive: false,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update items')
+      }
+
+      console.log('🟢 Bulk inactive update complete')
+      await fetchItems()
+      setSelectedIds(new Set())
+    } catch (error) {
+      console.error('❌ Error in bulk update:', error)
+      alert('Failed to update some items')
+    } finally {
+      setProcessingBulk(false)
+    }
+  }
+
+  // CSV Import handlers
+  const handleDownloadTemplate = () => {
+    const template = generateCSVTemplate()
+    downloadCSV(template, 'inventory-import-template.csv')
+  }
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setCsvFileName(file.name)
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const content = e.target?.result as string
+      try {
+        console.log('🔷 Parsing CSV file:', file.name)
+        const rows = parseCSV(content)
+        const existingNames = items.filter(i => i.isActive).map(i => i.itemName)
+        const summary = validateCSVData(rows, existingNames)
+        console.log('🟢 CSV validation complete:', {
+          total: summary.totalRows,
+          valid: summary.validCount,
+          warnings: summary.warningCount,
+          errors: summary.errorCount,
+        })
+        setCsvSummary(summary)
+      } catch (error) {
+        console.error('❌ Error parsing CSV:', error)
+        alert('Failed to parse CSV file. Please check the format.')
+      }
+    }
+    reader.readAsText(file)
+  }
+
+  const handleImportCSV = async () => {
+    if (!csvSummary) return
+
+    const itemsToImport = getImportableItems(csvSummary, true) // Include warnings
+    if (itemsToImport.length === 0) {
+      alert('No valid items to import')
+      return
+    }
+
+    setImportingCSV(true)
+    console.log('🔷 Importing', itemsToImport.length, 'items from CSV')
+
+    let successCount = 0
+    let errorCount = 0
+
+    for (const item of itemsToImport) {
+      try {
+        const response = await fetch('/api/inventory', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...item,
+            addedBy: 'CSV',
+          }),
+        })
+
+        if (response.ok) {
+          successCount++
+        } else {
+          errorCount++
+          console.error('❌ Failed to import:', item.itemName)
+        }
+      } catch (error) {
+        errorCount++
+        console.error('❌ Error importing item:', item.itemName, error)
+      }
+    }
+
+    console.log('🟢 CSV import complete:', { success: successCount, errors: errorCount })
+
+    // Refresh inventory
+    await fetchItems()
+
+    // Reset state
+    setShowCSVImport(false)
+    setCsvSummary(null)
+    setCsvFileName('')
+    setImportingCSV(false)
+
+    // Show result
+    if (errorCount === 0) {
+      alert(`Successfully imported ${successCount} items!`)
+    } else {
+      alert(`Imported ${successCount} items. ${errorCount} items failed to import.`)
+    }
+  }
+
+  const handleResetCSVImport = () => {
+    setCsvSummary(null)
+    setCsvFileName('')
+  }
+
+  // Photo Import handlers
+  const handlePhotoSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file (JPEG or PNG)')
+      return
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Image is too large. Please select an image under 10MB.')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string
+      setPhotoPreview(dataUrl)
+      setExtractedItems([])
+      setPhotoProcessingNotes(null)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleAnalyzePhoto = async () => {
+    if (!photoPreview) return
+
+    setAnalyzingPhoto(true)
+    setExtractedItems([])
+
+    try {
+      console.log('🔷 Sending photo for AI analysis...')
+      const response = await fetch('/api/inventory/import-photo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageData: photoPreview }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to analyze photo')
+      }
+
+      const data = await response.json()
+      console.log('🟢 AI extracted', data.items?.length || 0, 'items')
+
+      // Add selected flag to items (default to high/medium confidence)
+      setExtractedItems(
+        (data.items || []).map((item: any) => ({
+          ...item,
+          selected: item.confidence !== 'low',
+        }))
+      )
+      setPhotoProcessingNotes(data.processingNotes)
+    } catch (error) {
+      console.error('❌ Error analyzing photo:', error)
+      alert(error instanceof Error ? error.message : 'Failed to analyze photo')
+    } finally {
+      setAnalyzingPhoto(false)
+    }
+  }
+
+  const handleToggleExtractedItem = (index: number) => {
+    setExtractedItems(prev =>
+      prev.map((item, i) =>
+        i === index ? { ...item, selected: !item.selected } : item
+      )
+    )
+  }
+
+  const handleImportSelectedItems = async () => {
+    const selectedItems = extractedItems.filter(item => item.selected)
+    if (selectedItems.length === 0) {
+      alert('Please select at least one item to import')
+      return
+    }
+
+    setImportingPhoto(true)
+    console.log('🔷 Importing', selectedItems.length, 'items from photo')
+
+    let successCount = 0
+    let errorCount = 0
+
+    for (const item of selectedItems) {
+      try {
+        const response = await fetch('/api/inventory', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            itemName: item.name,
+            quantity: item.quantity,
+            unit: item.unit,
+            category: item.suggestedCategory,
+            location: item.suggestedLocation || null,
+            expiryDate: item.expiryDate || (item.calculatedExpiry ? new Date(item.calculatedExpiry).toISOString().split('T')[0] : null),
+            addedBy: 'Photo',
+          }),
+        })
+
+        if (response.ok) {
+          successCount++
+        } else {
+          errorCount++
+          console.error('❌ Failed to import:', item.name)
+        }
+      } catch (error) {
+        errorCount++
+        console.error('❌ Error importing item:', item.name, error)
+      }
+    }
+
+    console.log('🟢 Photo import complete:', { success: successCount, errors: errorCount })
+
+    // Refresh inventory
+    await fetchItems()
+
+    // Reset state
+    setShowPhotoImport(false)
+    setPhotoPreview(null)
+    setExtractedItems([])
+    setPhotoProcessingNotes(null)
+    setImportingPhoto(false)
+
+    // Show result
+    if (errorCount === 0) {
+      alert(`Successfully imported ${successCount} items!`)
+    } else {
+      alert(`Imported ${successCount} items. ${errorCount} items failed to import.`)
+    }
+  }
+
+  const handleResetPhotoImport = () => {
+    setPhotoPreview(null)
+    setExtractedItems([])
+    setPhotoProcessingNotes(null)
+  }
+
+  // Sort handlers
   const handleSortChange = (field: InventorySortField) => {
     if (sortOptions.field === field) {
       setSortOptions({
@@ -951,91 +770,14 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
     return sortOptions.order === 'asc' ? ' ↑' : ' ↓'
   }
 
-  const getExpiryStatusBadge = (status: ExpiryStatus, daysUntilExpiry: number | null, isEstimated: boolean) => {
-    const colors = EXPIRY_STATUS_COLORS[status]
-    const label = EXPIRY_STATUS_LABELS[status]
-
-    if (status === 'fresh' && daysUntilExpiry === null) {
-      return null
-    }
-
+  // Get expiry badge
+  const getExpiryBadge = (item: InventoryItemWithExpiry) => {
+    const colorClass = getExpiryStatusColor(item.expiryStatus)
     return (
-      <Badge
-        variant={status === 'expired' ? 'error' : status === 'expiring_soon' ? 'warning' : 'success'}
-        size="sm"
-      >
-        {label}
-        {isEstimated && ' (Est.)'}
-      </Badge>
+      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${colorClass}`}>
+        {getExpiryStatusLabel(item.expiryStatus)}
+      </span>
     )
-  }
-
-  // Bulk actions
-  const handleSelectAll = () => {
-    if (selectedIds.size === filteredAndSortedItems.length) {
-      setSelectedIds(new Set())
-    } else {
-      setSelectedIds(new Set(filteredAndSortedItems.map(i => i.id)))
-    }
-  }
-
-  const handleSelectItem = (id: string) => {
-    setSelectedIds(prev => {
-      const next = new Set(prev)
-      if (next.has(id)) {
-        next.delete(id)
-      } else {
-        next.add(id)
-      }
-      return next
-    })
-  }
-
-  const handleBulkDelete = async () => {
-    if (selectedIds.size === 0) return
-    if (!confirm(`Delete ${selectedIds.size} selected items? This cannot be undone.`)) return
-
-    try {
-      console.log('🔷 Bulk deleting', selectedIds.size, 'items')
-      for (const id of selectedIds) {
-        await fetch(`/api/inventory?id=${id}`, { method: 'DELETE' })
-      }
-      console.log('🟢 Bulk delete complete')
-      setRawItems(rawItems.filter(i => !selectedIds.has(i.id)))
-      setSelectedIds(new Set())
-    } catch (error) {
-      console.error('❌ Error in bulk delete:', error)
-      alert('Failed to delete some items')
-    }
-  }
-
-  const handleBulkMarkInactive = async () => {
-    if (selectedIds.size === 0) return
-
-    try {
-      console.log('🔷 Marking', selectedIds.size, 'items as inactive')
-      const updatedItems: RawInventoryItem[] = []
-      for (const id of selectedIds) {
-        const response = await fetch(`/api/inventory?id=${id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ isActive: false }),
-        })
-        if (response.ok) {
-          const data = await response.json()
-          updatedItems.push(data.item)
-        }
-      }
-      console.log('🟢 Bulk update complete')
-      setRawItems(rawItems.map(i => {
-        const updated = updatedItems.find(u => u.id === i.id)
-        return updated || i
-      }))
-      setSelectedIds(new Set())
-    } catch (error) {
-      console.error('❌ Error in bulk update:', error)
-      alert('Failed to update some items')
-    }
   }
 
   if (loading) {
@@ -1054,14 +796,14 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
     <AppLayout userEmail={session?.user?.email}>
       <PageContainer
         title="Inventory"
-        description="Track your food items and expiry dates"
+        description="Track your household food items and expiry dates"
         action={
           <div className="flex gap-2">
-            <Button onClick={() => setShowSettingsModal(true)} variant="secondary">
-              Settings
+            <Button onClick={() => setShowPhotoImport(true)} variant="secondary">
+              Scan Photo
             </Button>
-            <Button onClick={() => setShowImportModal(true)} variant="secondary">
-              CSV Import
+            <Button onClick={() => setShowCSVImport(true)} variant="secondary">
+              Import CSV
             </Button>
             <Button onClick={() => setShowAddForm(true)} variant="primary">
               Add Item
@@ -1069,9 +811,40 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
           </div>
         }
       >
+        {/* Summary Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="card p-4 text-center">
+            <div className="text-2xl font-bold text-white">{stats.totalItems}</div>
+            <div className="text-sm text-zinc-400">Total Items</div>
+          </div>
+          <div className="card p-4 text-center">
+            <div className="text-2xl font-bold text-green-400">{stats.activeItems}</div>
+            <div className="text-sm text-zinc-400">Active</div>
+          </div>
+          <div className="card p-4 text-center">
+            <div className="text-2xl font-bold text-amber-400">{stats.expiringSoonCount}</div>
+            <div className="text-sm text-zinc-400">Expiring Soon</div>
+          </div>
+          <div className="card p-4 text-center">
+            <div className="text-2xl font-bold text-red-400">{stats.expiredCount}</div>
+            <div className="text-sm text-zinc-400">Expired</div>
+          </div>
+        </div>
+
         {/* Filters */}
         <div className="card p-4 mb-6">
           <div className="flex flex-wrap items-center gap-4">
+            {/* Search */}
+            <div className="flex-1 min-w-[200px]">
+              <Input
+                type="text"
+                placeholder="Search items..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+
+            {/* Category filter */}
             <div className="flex items-center gap-2">
               <label className="text-sm font-medium text-zinc-300">Category:</label>
               <select
@@ -1080,12 +853,13 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
                 className="px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
               >
                 <option value="">All</option>
-                {itemCategories.map(cat => (
+                {categories.map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
               </select>
             </div>
 
+            {/* Location filter */}
             <div className="flex items-center gap-2">
               <label className="text-sm font-medium text-zinc-300">Location:</label>
               <select
@@ -1100,8 +874,9 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
               </select>
             </div>
 
+            {/* Expiry Status filter */}
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-zinc-300">Expiry:</label>
+              <label className="text-sm font-medium text-zinc-300">Status:</label>
               <select
                 value={filters.expiryStatus || ''}
                 onChange={(e) => setFilters({ ...filters, expiryStatus: e.target.value as ExpiryStatus || undefined })}
@@ -1109,13 +884,14 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
               >
                 <option value="">All</option>
                 <option value="expired">Expired</option>
-                <option value="expiring_soon">Expiring Soon</option>
+                <option value="expiringSoon">Expiring Soon</option>
                 <option value="fresh">Fresh</option>
               </select>
             </div>
 
+            {/* Active filter */}
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-zinc-300">Status:</label>
+              <label className="text-sm font-medium text-zinc-300">Active:</label>
               <select
                 value={filters.isActive === undefined ? '' : filters.isActive ? 'active' : 'inactive'}
                 onChange={(e) => {
@@ -1133,9 +909,13 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
               </select>
             </div>
 
-            {(filters.category || filters.location || filters.expiryStatus || filters.isActive !== undefined) && (
+            {/* Clear filters */}
+            {(filters.category || filters.location || filters.expiryStatus || filters.isActive !== undefined || searchQuery) && (
               <button
-                onClick={() => setFilters({})}
+                onClick={() => {
+                  setFilters({})
+                  setSearchQuery('')
+                }}
                 className="text-sm text-zinc-400 hover:text-white"
               >
                 Clear filters
@@ -1144,45 +924,37 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
           </div>
         </div>
 
-        {/* Summary Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="card p-4 text-center">
-            <div className="text-2xl font-bold text-white">{stats.total}</div>
-            <div className="text-sm text-zinc-400">Total Items</div>
-          </div>
-          <div className="card p-4 text-center">
-            <div className="text-2xl font-bold text-green-400">{stats.fresh}</div>
-            <div className="text-sm text-zinc-400">Fresh</div>
-          </div>
-          <div className="card p-4 text-center">
-            <div className="text-2xl font-bold text-yellow-400">{stats.expiringSoon}</div>
-            <div className="text-sm text-zinc-400">Expiring Soon</div>
-          </div>
-          <div className="card p-4 text-center">
-            <div className="text-2xl font-bold text-red-400">{stats.expired}</div>
-            <div className="text-sm text-zinc-400">Expired</div>
-          </div>
-        </div>
-
-        {/* Bulk Actions */}
+        {/* Bulk Actions Bar */}
         {selectedIds.size > 0 && (
-          <div className="card p-4 mb-6 bg-purple-900/20 border-purple-500/50">
-            <div className="flex items-center justify-between">
-              <span className="text-white">{selectedIds.size} item{selectedIds.size !== 1 ? 's' : ''} selected</span>
-              <div className="flex gap-2">
-                <Button onClick={handleBulkMarkInactive} variant="secondary" size="sm">
-                  Mark Inactive
-                </Button>
-                <Button onClick={handleBulkDelete} variant="danger" size="sm">
-                  Delete Selected
-                </Button>
-                <button
-                  onClick={() => setSelectedIds(new Set())}
-                  className="text-sm text-zinc-400 hover:text-white ml-2"
-                >
-                  Clear selection
-                </button>
-              </div>
+          <div className="card p-3 mb-4 flex items-center justify-between bg-purple-900/20 border-purple-500/30">
+            <span className="text-sm text-purple-300">
+              {selectedIds.size} item{selectedIds.size !== 1 ? 's' : ''} selected
+            </span>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setShowBulkExpiryModal(true)}
+                variant="secondary"
+                size="sm"
+                disabled={processingBulk}
+              >
+                Update Expiry
+              </Button>
+              <Button
+                onClick={handleBulkMarkInactive}
+                variant="secondary"
+                size="sm"
+                disabled={processingBulk}
+              >
+                Mark Inactive
+              </Button>
+              <Button
+                onClick={handleBulkDelete}
+                variant="danger"
+                size="sm"
+                disabled={processingBulk}
+              >
+                Delete
+              </Button>
             </div>
           </div>
         )}
@@ -1195,7 +967,7 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
             </svg>
             <h3 className="text-xl font-medium text-white mb-2">No items in inventory</h3>
             <p className="text-zinc-400 mb-6">
-              Track your food items to reduce waste and know what you have on hand.
+              Start tracking your food items to reduce waste and never run out of essentials.
             </p>
             <div className="flex justify-center gap-4">
               <Button onClick={() => setShowAddForm(true)} variant="primary">
@@ -1208,7 +980,10 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
             <h3 className="text-lg font-medium text-white mb-2">No items match your filters</h3>
             <p className="text-zinc-400 mb-4">Try adjusting your filter criteria</p>
             <button
-              onClick={() => setFilters({})}
+              onClick={() => {
+                setFilters({})
+                setSearchQuery('')
+              }}
               className="text-purple-400 hover:text-purple-300"
             >
               Clear all filters
@@ -1224,9 +999,9 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
                     <th className="px-4 py-3 text-left">
                       <input
                         type="checkbox"
-                        checked={selectedIds.size === filteredAndSortedItems.length && filteredAndSortedItems.length > 0}
+                        checked={selectAll}
                         onChange={handleSelectAll}
-                        className="rounded border-zinc-600 bg-zinc-800 text-purple-500 focus:ring-purple-500"
+                        className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-zinc-600 rounded"
                       />
                     </th>
                     <th
@@ -1235,8 +1010,11 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
                     >
                       Name{getSortIcon('itemName')}
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-zinc-300">
-                      Qty
+                    <th
+                      className="px-4 py-3 text-left text-sm font-medium text-zinc-300 cursor-pointer hover:text-white"
+                      onClick={() => handleSortChange('quantity')}
+                    >
+                      Qty{getSortIcon('quantity')}
                     </th>
                     <th
                       className="px-4 py-3 text-left text-sm font-medium text-zinc-300 cursor-pointer hover:text-white"
@@ -1244,8 +1022,17 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
                     >
                       Category{getSortIcon('category')}
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-zinc-300">
-                      Location
+                    <th
+                      className="px-4 py-3 text-left text-sm font-medium text-zinc-300 cursor-pointer hover:text-white"
+                      onClick={() => handleSortChange('location')}
+                    >
+                      Location{getSortIcon('location')}
+                    </th>
+                    <th
+                      className="px-4 py-3 text-left text-sm font-medium text-zinc-300 cursor-pointer hover:text-white"
+                      onClick={() => handleSortChange('purchaseDate')}
+                    >
+                      Added{getSortIcon('purchaseDate')}
                     </th>
                     <th
                       className="px-4 py-3 text-left text-sm font-medium text-zinc-300 cursor-pointer hover:text-white"
@@ -1256,6 +1043,9 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
                     <th className="px-4 py-3 text-left text-sm font-medium text-zinc-300">
                       Status
                     </th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-zinc-300">
+                      Active
+                    </th>
                     <th className="px-4 py-3 text-right text-sm font-medium text-zinc-300">
                       Actions
                     </th>
@@ -1265,9 +1055,11 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
                   {filteredAndSortedItems.map((item) => (
                     <tr
                       key={item.id}
-                      className={`hover:bg-zinc-800/30 ${!item.isActive ? 'opacity-50' : ''} ${
+                      className={`hover:bg-zinc-800/30 ${
+                        !item.isActive ? 'opacity-50' : ''
+                      } ${
                         item.expiryStatus === 'expired' ? 'bg-red-900/10' :
-                        item.expiryStatus === 'expiring_soon' ? 'bg-yellow-900/10' : ''
+                        item.expiryStatus === 'expiringSoon' ? 'bg-amber-900/10' : ''
                       }`}
                     >
                       <td className="px-4 py-3">
@@ -1275,13 +1067,12 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
                           type="checkbox"
                           checked={selectedIds.has(item.id)}
                           onChange={() => handleSelectItem(item.id)}
-                          className="rounded border-zinc-600 bg-zinc-800 text-purple-500 focus:ring-purple-500"
+                          className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-zinc-600 rounded"
                         />
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <span className="text-white font-medium">{item.itemName}</span>
-                          {getExpiryStatusBadge(item.expiryStatus, item.daysUntilExpiry, item.expiryIsEstimated)}
                         </div>
                         {item.notes && (
                           <p className="text-xs text-zinc-500 mt-0.5">{item.notes}</p>
@@ -1294,22 +1085,23 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
                         {item.category}
                       </td>
                       <td className="px-4 py-3 text-zinc-300">
-                        {item.location ? STORAGE_LOCATION_LABELS[item.location] : <span className="text-zinc-500">-</span>}
+                        {getLocationLabel(item.location) || <span className="text-zinc-500">-</span>}
+                      </td>
+                      <td className="px-4 py-3 text-zinc-300">
+                        {formatDate(item.purchaseDate)}
                       </td>
                       <td className="px-4 py-3 text-zinc-300">
                         <div className="flex flex-col">
-                          <span className={
-                            item.expiryStatus === 'expired' ? 'text-red-400' :
-                            item.expiryStatus === 'expiring_soon' ? 'text-yellow-400' : ''
-                          }>
-                            {formatExpiryDate(item.expiryDate, item.expiryIsEstimated)}
-                          </span>
-                          {item.daysUntilExpiry !== null && (
-                            <span className="text-xs text-zinc-500">
-                              {formatDaysUntilExpiry(item.daysUntilExpiry)}
-                            </span>
+                          <span>{formatDate(item.expiryDate)}</span>
+                          {item.expiryIsEstimated && item.expiryDate && (
+                            <span className="text-xs text-zinc-500 italic">estimated</span>
                           )}
                         </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        {item.expiryDate ? getExpiryBadge(item) : (
+                          <span className="text-zinc-500 text-sm">No expiry</span>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <button
@@ -1350,50 +1142,13 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
         {/* Add Item Modal */}
         <Modal
           isOpen={showAddForm}
-          onClose={() => {
-            setShowAddForm(false)
-            setDuplicateCheck(null)
-            setShelfLifeSuggestion(null)
-            setShowMergeOption(false)
-          }}
+          onClose={() => setShowAddForm(false)}
           title="Add Inventory Item"
           maxWidth="md"
         >
           <form onSubmit={handleAddItem} className="p-6 space-y-4">
-            {/* Import buttons */}
-            <div className="flex gap-2 pb-2 border-b border-zinc-700">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  setShowAddForm(false)
-                  setDuplicateCheck(null)
-                  setShelfLifeSuggestion(null)
-                  setShowMergeOption(false)
-                  setShowUrlModal(true)
-                }}
-              >
-                Import URL
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  setShowAddForm(false)
-                  setDuplicateCheck(null)
-                  setShelfLifeSuggestion(null)
-                  setShowMergeOption(false)
-                  setShowPhotoModal(true)
-                }}
-              >
-                Import Photo
-              </Button>
-            </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
+              <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-1">
                   Item Name *
                 </label>
@@ -1401,84 +1156,10 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
                   type="text"
                   required
                   value={newItem.itemName}
-                  onChange={(e) => handleItemNameChange(e.target.value)}
+                  onChange={(e) => setNewItem({ ...newItem, itemName: e.target.value })}
                   placeholder="e.g., Milk"
                 />
               </div>
-            </div>
-
-            {/* Duplicate Warning */}
-            {duplicateCheck?.isDuplicate && showMergeOption && (
-              <div className="p-3 rounded-lg bg-yellow-900/30 border border-yellow-600/50">
-                <div className="flex items-start gap-2">
-                  <svg className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                  <div className="flex-1">
-                    <p className="text-sm text-yellow-300 font-medium">
-                      Similar item{duplicateCheck.matchingItems.length > 1 ? 's' : ''} found in inventory
-                    </p>
-                    <div className="mt-2 space-y-2">
-                      {duplicateCheck.matchingItems.slice(0, 3).map(item => (
-                        <div key={item.id} className="flex items-center justify-between bg-zinc-800/50 p-2 rounded">
-                          <span className="text-sm text-zinc-200">
-                            {item.itemName} - {item.quantity} {item.unit}
-                            {item.location && ` (${STORAGE_LOCATION_LABELS[item.location]})`}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleMergeWithExisting(item)}
-                            className="text-xs px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded"
-                          >
-                            Merge (+{newItem.quantity})
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-xs text-zinc-400 mt-2">
-                      Or continue to add as a new item
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Shelf Life Suggestion */}
-            {shelfLifeSuggestion && !duplicateCheck?.isDuplicate && (
-              <div className="p-3 rounded-lg bg-blue-900/30 border border-blue-600/50">
-                <div className="flex items-start gap-2">
-                  <svg className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <div className="flex-1">
-                    <p className="text-sm text-blue-300">
-                      Matched: <span className="font-medium">{shelfLifeSuggestion.ingredientName}</span>
-                    </p>
-                    <p className="text-xs text-zinc-400 mt-1">
-                      Typical shelf life: {shelfLifeSuggestion.shelfLifeDays} days
-                      {shelfLifeSuggestion.defaultLocation && (
-                        <> | Store in: {STORAGE_LOCATION_LABELS[shelfLifeSuggestion.defaultLocation]}</>
-                      )}
-                      {shelfLifeSuggestion.category && (
-                        <> | Category: {shelfLifeSuggestion.category}</>
-                      )}
-                    </p>
-                    {shelfLifeSuggestion.notes && (
-                      <p className="text-xs text-zinc-500 mt-1 italic">{shelfLifeSuggestion.notes}</p>
-                    )}
-                    <button
-                      type="button"
-                      onClick={applyShelfLifeSuggestion}
-                      className="mt-2 text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded"
-                    >
-                      Apply Suggestions
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-1">
                   Category *
@@ -1490,29 +1171,8 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
                   <option value="">Select category...</option>
-                  {categories.length > 0 ? (
-                    categories.map(cat => (
-                      <option key={cat.id} value={cat.name}>{cat.name}</option>
-                    ))
-                  ) : (
-                    DEFAULT_CATEGORIES.map(cat => (
-                      <option key={cat.name} value={cat.name}>{cat.name}</option>
-                    ))
-                  )}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-1">
-                  Location
-                </label>
-                <select
-                  value={newItem.location}
-                  onChange={(e) => setNewItem({ ...newItem, location: e.target.value as StorageLocation | '' })}
-                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="">Select location...</option>
-                  {STORAGE_LOCATIONS.map(loc => (
-                    <option key={loc.value} value={loc.value}>{loc.label}</option>
+                  {DEFAULT_CATEGORIES.map(cat => (
+                    <option key={cat.name} value={cat.name}>{cat.name}</option>
                   ))}
                 </select>
               </div>
@@ -1540,14 +1200,23 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
                   <option value="">Select unit...</option>
-                  {Object.entries(availableUnits).map(([category, units]) => (
-                    <optgroup key={category} label={category.charAt(0).toUpperCase() + category.slice(1)}>
-                      {units.map((unit) => (
-                        <option key={unit.code} value={unit.abbreviation}>
-                          {unit.abbreviation} ({unit.name})
-                        </option>
-                      ))}
-                    </optgroup>
+                  {COMMON_UNITS.map(unit => (
+                    <option key={unit.value} value={unit.value}>{unit.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-1">
+                  Location
+                </label>
+                <select
+                  value={newItem.location}
+                  onChange={(e) => setNewItem({ ...newItem, location: e.target.value as StorageLocation | '' })}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="">Select location...</option>
+                  {STORAGE_LOCATIONS.map(loc => (
+                    <option key={loc.value} value={loc.value}>{loc.label}</option>
                   ))}
                 </select>
               </div>
@@ -1560,6 +1229,7 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
                   value={newItem.expiryDate}
                   onChange={(e) => setNewItem({ ...newItem, expiryDate: e.target.value })}
                 />
+                <p className="text-xs text-zinc-500 mt-1">Leave blank to auto-calculate</p>
               </div>
             </div>
             <div>
@@ -1573,16 +1243,31 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
                 placeholder="Optional notes..."
               />
             </div>
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="newItemActive"
+                checked={newItem.isActive}
+                onChange={(e) => setNewItem({ ...newItem, isActive: e.target.checked })}
+                className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-zinc-600 rounded"
+              />
+              <label htmlFor="newItemActive" className="ml-2 text-sm text-zinc-300">
+                Active (include in inventory checks)
+              </label>
+            </div>
             <div className="flex justify-end gap-3 pt-4">
-              <Button type="button" variant="secondary" onClick={() => {
-                setShowAddForm(false)
-                setDuplicateCheck(null)
-                setShelfLifeSuggestion(null)
-                setShowMergeOption(false)
-              }}>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setShowAddForm(false)}
+              >
                 Cancel
               </Button>
-              <Button type="submit" variant="primary" disabled={addingItem}>
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={addingItem}
+              >
                 {addingItem ? 'Adding...' : 'Add Item'}
               </Button>
             </div>
@@ -1620,15 +1305,9 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
                   <option value="">Select category...</option>
-                  {categories.length > 0 ? (
-                    categories.map(cat => (
-                      <option key={cat.id} value={cat.name}>{cat.name}</option>
-                    ))
-                  ) : (
-                    DEFAULT_CATEGORIES.map(cat => (
-                      <option key={cat.name} value={cat.name}>{cat.name}</option>
-                    ))
-                  )}
+                  {DEFAULT_CATEGORIES.map(cat => (
+                    <option key={cat.name} value={cat.name}>{cat.name}</option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -1655,14 +1334,8 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
                   <option value="">Select unit...</option>
-                  {Object.entries(availableUnits).map(([category, units]) => (
-                    <optgroup key={category} label={category.charAt(0).toUpperCase() + category.slice(1)}>
-                      {units.map((unit) => (
-                        <option key={unit.code} value={unit.abbreviation}>
-                          {unit.abbreviation} ({unit.name})
-                        </option>
-                      ))}
-                    </optgroup>
+                  {COMMON_UNITS.map(unit => (
+                    <option key={unit.value} value={unit.value}>{unit.label}</option>
                   ))}
                 </select>
               </div>
@@ -1683,6 +1356,16 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
               </div>
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-1">
+                  Purchase Date
+                </label>
+                <Input
+                  type="date"
+                  value={editFormData.purchaseDate}
+                  onChange={(e) => setEditFormData({ ...editFormData, purchaseDate: e.target.value })}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-zinc-300 mb-1">
                   Expiry Date
                 </label>
                 <Input
@@ -1690,6 +1373,11 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
                   value={editFormData.expiryDate}
                   onChange={(e) => setEditFormData({ ...editFormData, expiryDate: e.target.value })}
                 />
+                {editingItem?.expiryIsEstimated && (
+                  <p className="text-xs text-zinc-500 mt-1">
+                    Current expiry was auto-calculated. Setting a new date will mark it as user-set.
+                  </p>
+                )}
               </div>
             </div>
             <div>
@@ -1703,821 +1391,541 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
                 placeholder="Optional notes..."
               />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center">
               <input
                 type="checkbox"
-                id="editIsActive"
+                id="editItemActive"
                 checked={editFormData.isActive}
                 onChange={(e) => setEditFormData({ ...editFormData, isActive: e.target.checked })}
-                className="rounded border-zinc-600 bg-zinc-800 text-purple-500 focus:ring-purple-500"
+                className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-zinc-600 rounded"
               />
-              <label htmlFor="editIsActive" className="text-sm text-zinc-300">
-                Active (appears in inventory checks)
+              <label htmlFor="editItemActive" className="ml-2 text-sm text-zinc-300">
+                Active (include in inventory checks)
               </label>
             </div>
             <div className="flex justify-end gap-3 pt-4">
-              <Button type="button" variant="secondary" onClick={() => setEditingItem(null)}>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setEditingItem(null)}
+              >
                 Cancel
               </Button>
-              <Button type="submit" variant="primary" disabled={savingEdit}>
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={savingEdit}
+              >
                 {savingEdit ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>
           </form>
         </Modal>
 
-        {/* Import CSV Modal */}
+        {/* Duplicate Detection Modal */}
         <Modal
-          isOpen={showImportModal}
+          isOpen={!!duplicateMatch}
           onClose={() => {
-            setShowImportModal(false)
-            setImportResult(null)
+            setDuplicateMatch(null)
+            setPendingNewItem(null)
           }}
-          title="Import from CSV"
-          maxWidth="lg"
+          title="Item Already Exists"
+          maxWidth="sm"
         >
           <div className="p-6 space-y-4">
-            {/* Instructions */}
-            <div className="p-3 rounded-lg bg-zinc-800/50 border border-zinc-700">
-              <p className="text-sm text-zinc-300 font-medium mb-2">CSV Format</p>
-              <p className="text-xs text-zinc-400 mb-2">
-                Your CSV should have these columns (headers are flexible):
-              </p>
-              <ul className="text-xs text-zinc-500 list-disc list-inside space-y-1">
-                <li><strong>Item Name</strong> - Required. The name of the item (e.g., &quot;Milk&quot;, &quot;Chicken Breast&quot;)</li>
-                <li><strong>Quantity</strong> - Optional. Defaults to 1</li>
-                <li><strong>Unit</strong> - Optional. Defaults to &quot;each&quot; (e.g., &quot;g&quot;, &quot;ml&quot;, &quot;kg&quot;)</li>
-                <li><strong>Category</strong> - Optional. Auto-detected from shelf life data</li>
-                <li><strong>Location</strong> - Optional. &quot;fridge&quot;, &quot;freezer&quot;, &quot;cupboard&quot;, or &quot;pantry&quot;</li>
-                <li><strong>Expiry Date</strong> - Optional. YYYY-MM-DD format, or auto-calculated</li>
-                <li><strong>Notes</strong> - Optional</li>
-              </ul>
-              <p className="text-xs text-zinc-500 mt-2">
-                Example: <code className="bg-zinc-700 px-1 rounded">Item,Quantity,Unit,Location</code>
-              </p>
-              <button
-                onClick={handleDownloadSampleCSV}
-                className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-purple-300 bg-purple-900/30 border border-purple-700/50 rounded-lg hover:bg-purple-900/50 transition-colors"
+            <p className="text-zinc-300">
+              <strong className="text-white">{pendingNewItem?.itemName}</strong> already exists in your inventory with quantity{' '}
+              <strong className="text-white">{duplicateMatch?.quantity} {duplicateMatch?.unit}</strong>.
+            </p>
+            <p className="text-zinc-400 text-sm">What would you like to do?</p>
+            <div className="flex flex-col gap-2">
+              <Button
+                onClick={handleMergeWithExisting}
+                variant="primary"
+                disabled={addingItem}
+                className="w-full"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                Download Sample CSV
-              </button>
-            </div>
-
-            {/* File upload */}
-            <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-2">
-                Upload CSV File
-              </label>
-              <input
-                type="file"
-                accept=".csv,text/csv"
-                onChange={handleFileUpload}
-                className="block w-full text-sm text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-purple-600 file:text-white hover:file:bg-purple-700 cursor-pointer"
-              />
-            </div>
-
-            {/* Or paste CSV */}
-            <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-2">
-                Or Paste CSV Content
-              </label>
-              <textarea
-                value={csvText}
-                onChange={(e) => {
-                  setCsvText(e.target.value)
-                  setImportResult(null)
+                Add to existing (new total: {(duplicateMatch?.quantity || 0) + (pendingNewItem?.quantity || 0)} {duplicateMatch?.unit})
+              </Button>
+              <Button
+                onClick={handleCreateNewAnyway}
+                variant="secondary"
+                disabled={addingItem}
+                className="w-full"
+              >
+                Create new entry
+              </Button>
+              <Button
+                onClick={() => {
+                  setDuplicateMatch(null)
+                  setPendingNewItem(null)
                 }}
-                placeholder="Item,Quantity,Unit,Category,Location&#10;Milk,2,litres,Dairy & Eggs,fridge&#10;Chicken Breast,500,g,Meat & Fish,fridge"
-                rows={8}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-purple-500"
+                variant="ghost"
+                className="w-full"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </Modal>
+
+        {/* Bulk Expiry Update Modal */}
+        <Modal
+          isOpen={showBulkExpiryModal}
+          onClose={() => {
+            setShowBulkExpiryModal(false)
+            setBulkExpiryDate('')
+          }}
+          title="Update Expiry Date"
+          maxWidth="sm"
+        >
+          <div className="p-6 space-y-4">
+            <p className="text-zinc-300">
+              Set a new expiry date for {selectedIds.size} selected item{selectedIds.size !== 1 ? 's' : ''}.
+            </p>
+            <div>
+              <label className="block text-sm font-medium text-zinc-300 mb-1">
+                New Expiry Date
+              </label>
+              <Input
+                type="date"
+                value={bulkExpiryDate}
+                onChange={(e) => setBulkExpiryDate(e.target.value)}
               />
             </div>
+            <div className="flex justify-end gap-3 pt-4">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShowBulkExpiryModal(false)
+                  setBulkExpiryDate('')
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleBulkUpdateExpiry}
+                disabled={!bulkExpiryDate || processingBulk}
+              >
+                {processingBulk ? 'Updating...' : 'Update'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
 
-            {/* Import options */}
+        {/* CSV Import Modal */}
+        <Modal
+          isOpen={showCSVImport}
+          onClose={() => {
+            setShowCSVImport(false)
+            setCsvSummary(null)
+            setCsvFileName('')
+          }}
+          title="Import Inventory from CSV"
+          maxWidth="lg"
+        >
+          <div className="p-6 space-y-6">
+            {/* Step 1: Download Template */}
             <div className="space-y-2">
-              <p className="text-sm font-medium text-zinc-300">Import Options</p>
-              <label className="flex items-center gap-2 text-sm text-zinc-400">
-                <input
-                  type="checkbox"
-                  checked={importOptions.skipDuplicates}
-                  onChange={(e) => setImportOptions({ ...importOptions, skipDuplicates: e.target.checked })}
-                  className="rounded border-zinc-600 bg-zinc-800 text-purple-500 focus:ring-purple-500"
-                />
-                Skip duplicates (items with same name already in inventory)
-              </label>
-              <label className="flex items-center gap-2 text-sm text-zinc-400">
-                <input
-                  type="checkbox"
-                  checked={importOptions.autoExpiry}
-                  onChange={(e) => setImportOptions({ ...importOptions, autoExpiry: e.target.checked })}
-                  className="rounded border-zinc-600 bg-zinc-800 text-purple-500 focus:ring-purple-500"
-                />
-                Auto-calculate expiry dates from shelf life data
-              </label>
-              <label className="flex items-center gap-2 text-sm text-zinc-400">
-                <input
-                  type="checkbox"
-                  checked={importOptions.autoCategory}
-                  onChange={(e) => setImportOptions({ ...importOptions, autoCategory: e.target.checked })}
-                  className="rounded border-zinc-600 bg-zinc-800 text-purple-500 focus:ring-purple-500"
-                />
-                Auto-detect category from shelf life data
-              </label>
-              <label className="flex items-center gap-2 text-sm text-zinc-400">
-                <input
-                  type="checkbox"
-                  checked={importOptions.autoLocation}
-                  onChange={(e) => setImportOptions({ ...importOptions, autoLocation: e.target.checked })}
-                  className="rounded border-zinc-600 bg-zinc-800 text-purple-500 focus:ring-purple-500"
-                />
-                Auto-suggest storage location from shelf life data
-              </label>
+              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-600 text-xs">1</span>
+                Download Template
+              </h3>
+              <p className="text-sm text-zinc-400 ml-8">
+                Start with our template to ensure your data is formatted correctly.
+              </p>
+              <div className="ml-8">
+                <Button onClick={handleDownloadTemplate} variant="secondary" size="sm">
+                  Download CSV Template
+                </Button>
+              </div>
             </div>
 
-            {/* Import result */}
-            {importResult && (
-              <div className={`p-3 rounded-lg ${
-                importResult.errors.length > 0
-                  ? 'bg-red-900/30 border border-red-600/50'
-                  : 'bg-green-900/30 border border-green-600/50'
-              }`}>
-                <div className="flex items-start gap-2">
-                  {importResult.errors.length > 0 ? (
-                    <svg className="w-5 h-5 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+            {/* Step 2: Upload File */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-600 text-xs">2</span>
+                Upload Your File
+              </h3>
+              <p className="text-sm text-zinc-400 ml-8">
+                Upload your completed CSV file for validation.
+              </p>
+              <div className="ml-8">
+                <div className="flex items-center gap-3">
+                  <label className="cursor-pointer">
+                    <span className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white text-sm rounded-lg transition-colors">
+                      Choose File
+                    </span>
+                    <input
+                      type="file"
+                      accept=".csv"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                  </label>
+                  {csvFileName && (
+                    <span className="text-sm text-zinc-400">{csvFileName}</span>
                   )}
-                  <div>
-                    <p className={`text-sm font-medium ${
-                      importResult.errors.length > 0 ? 'text-red-300' : 'text-green-300'
-                    }`}>
-                      {importResult.imported > 0
-                        ? `Successfully imported ${importResult.imported} item${importResult.imported !== 1 ? 's' : ''}`
-                        : 'No items imported'}
-                    </p>
-                    {importResult.skipped > 0 && (
-                      <p className="text-xs text-zinc-400 mt-1">
-                        {importResult.skipped} duplicate{importResult.skipped !== 1 ? 's' : ''} skipped
-                      </p>
-                    )}
-                    {importResult.errors.length > 0 && (
-                      <ul className="text-xs text-red-400 mt-1 list-disc list-inside">
-                        {importResult.errors.map((error, i) => (
-                          <li key={i}>{error}</li>
-                        ))}
-                      </ul>
-                    )}
+                </div>
+              </div>
+            </div>
+
+            {/* Step 3: Preview & Import */}
+            {csvSummary && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-600 text-xs">3</span>
+                  Preview & Import
+                </h3>
+
+                {/* Summary Stats */}
+                <div className="ml-8 grid grid-cols-4 gap-3">
+                  <div className="bg-zinc-800/50 p-3 rounded-lg text-center">
+                    <div className="text-xl font-bold text-white">{csvSummary.totalRows}</div>
+                    <div className="text-xs text-zinc-400">Total Rows</div>
                   </div>
+                  <div className="bg-zinc-800/50 p-3 rounded-lg text-center">
+                    <div className="text-xl font-bold text-green-400">{csvSummary.validCount}</div>
+                    <div className="text-xs text-zinc-400">Valid</div>
+                  </div>
+                  <div className="bg-zinc-800/50 p-3 rounded-lg text-center">
+                    <div className="text-xl font-bold text-amber-400">{csvSummary.warningCount}</div>
+                    <div className="text-xs text-zinc-400">Warnings</div>
+                  </div>
+                  <div className="bg-zinc-800/50 p-3 rounded-lg text-center">
+                    <div className="text-xl font-bold text-red-400">{csvSummary.errorCount}</div>
+                    <div className="text-xs text-zinc-400">Errors</div>
+                  </div>
+                </div>
+
+                {/* Preview Table */}
+                <div className="ml-8 max-h-64 overflow-y-auto border border-zinc-700 rounded-lg">
+                  <table className="w-full text-sm">
+                    <thead className="bg-zinc-800 sticky top-0">
+                      <tr>
+                        <th className="px-3 py-2 text-left text-zinc-300">Row</th>
+                        <th className="px-3 py-2 text-left text-zinc-300">Status</th>
+                        <th className="px-3 py-2 text-left text-zinc-300">Name</th>
+                        <th className="px-3 py-2 text-left text-zinc-300">Qty</th>
+                        <th className="px-3 py-2 text-left text-zinc-300">Category</th>
+                        <th className="px-3 py-2 text-left text-zinc-300">Issues</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-700">
+                      {csvSummary.results.map((result) => (
+                        <tr
+                          key={result.row}
+                          className={
+                            result.status === 'error'
+                              ? 'bg-red-900/20'
+                              : result.status === 'warning'
+                              ? 'bg-amber-900/20'
+                              : ''
+                          }
+                        >
+                          <td className="px-3 py-2 text-zinc-400">{result.row}</td>
+                          <td className="px-3 py-2">
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                result.status === 'valid'
+                                  ? 'bg-green-900/50 text-green-400'
+                                  : result.status === 'warning'
+                                  ? 'bg-amber-900/50 text-amber-400'
+                                  : 'bg-red-900/50 text-red-400'
+                              }`}
+                            >
+                              {result.status}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-white">{result.data.name}</td>
+                          <td className="px-3 py-2 text-zinc-300">
+                            {result.data.quantity} {result.data.unit}
+                          </td>
+                          <td className="px-3 py-2 text-zinc-300">{result.data.category}</td>
+                          <td className="px-3 py-2">
+                            {result.errors.length > 0 && (
+                              <span className="text-red-400 text-xs">{result.errors.join(', ')}</span>
+                            )}
+                            {result.warnings.length > 0 && (
+                              <span className="text-amber-400 text-xs">{result.warnings.join(', ')}</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Import Info */}
+                <div className="ml-8 text-sm text-zinc-400">
+                  {csvSummary.validCount + csvSummary.warningCount > 0 ? (
+                    <p>
+                      {csvSummary.validCount + csvSummary.warningCount} item(s) will be imported.
+                      {csvSummary.warningCount > 0 && ' Items with warnings will use auto-calculated expiry dates.'}
+                      {csvSummary.errorCount > 0 && ` ${csvSummary.errorCount} item(s) with errors will be skipped.`}
+                    </p>
+                  ) : (
+                    <p className="text-red-400">No valid items to import. Please fix the errors and try again.</p>
+                  )}
                 </div>
               </div>
             )}
 
             {/* Actions */}
-            <div className="flex justify-end gap-3 pt-4">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => {
-                  setShowImportModal(false)
-                  setImportResult(null)
-                }}
-              >
-                {importResult && importResult.imported > 0 ? 'Done' : 'Cancel'}
-              </Button>
-              <Button
-                onClick={handleImportCSV}
-                variant="primary"
-                disabled={!csvText.trim() || importing}
-              >
-                {importing ? 'Importing...' : 'Import Items'}
-              </Button>
+            <div className="flex justify-between pt-4 border-t border-zinc-700">
+              <div>
+                {csvSummary && (
+                  <Button
+                    variant="ghost"
+                    onClick={handleResetCSVImport}
+                    disabled={importingCSV}
+                  >
+                    Reset
+                  </Button>
+                )}
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setShowCSVImport(false)
+                    setCsvSummary(null)
+                    setCsvFileName('')
+                  }}
+                  disabled={importingCSV}
+                >
+                  Cancel
+                </Button>
+                {csvSummary && csvSummary.validCount + csvSummary.warningCount > 0 && (
+                  <Button
+                    variant="primary"
+                    onClick={handleImportCSV}
+                    disabled={importingCSV}
+                  >
+                    {importingCSV
+                      ? 'Importing...'
+                      : `Import ${csvSummary.validCount + csvSummary.warningCount} Items`}
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </Modal>
 
         {/* Photo Import Modal */}
         <Modal
-          isOpen={showPhotoModal}
+          isOpen={showPhotoImport}
           onClose={() => {
-            setShowPhotoModal(false)
-            setPhotoImages([])
+            setShowPhotoImport(false)
+            setPhotoPreview(null)
             setExtractedItems([])
-            setPhotoSummary('')
+            setPhotoProcessingNotes(null)
           }}
-          title="Import from Photo"
+          title="Scan Groceries from Photo"
           maxWidth="lg"
-        >
-          <div className="p-6 space-y-4">
-            {/* Instructions */}
-            <div className="p-3 rounded-lg bg-zinc-800/50 border border-zinc-700">
-              <p className="text-sm text-zinc-300 font-medium mb-2">Photo Recognition</p>
-              <p className="text-xs text-zinc-400">
-                Upload photos of your groceries, fridge contents, or receipts. Our AI will identify items and suggest inventory entries.
-              </p>
-            </div>
-
-            {/* Photo upload */}
-            <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-2">
-                Upload Photos
-              </label>
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handlePhotoUpload}
-                className="block w-full text-sm text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-purple-600 file:text-white hover:file:bg-purple-700 cursor-pointer"
-              />
-            </div>
-
-            {/* Photo previews */}
-            {photoImages.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-zinc-300">
-                  {photoImages.length} photo{photoImages.length !== 1 ? 's' : ''} selected
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {photoImages.map((img, i) => (
-                    <div key={i} className="relative">
-                      <img
-                        src={img}
-                        alt={`Photo ${i + 1}`}
-                        className="w-24 h-24 object-cover rounded-lg border border-zinc-700"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removePhoto(i)}
-                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center text-sm hover:bg-red-700"
-                      >
-                        x
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <Button
-                  onClick={handleAnalyzePhoto}
-                  variant="secondary"
-                  disabled={analyzingPhoto}
-                >
-                  {analyzingPhoto ? 'Analyzing...' : 'Analyze Photos'}
-                </Button>
-              </div>
-            )}
-
-            {/* Analyzing indicator */}
-            {analyzingPhoto && (
-              <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400 mr-3"></div>
-                <span className="text-zinc-300">AI is analyzing your photos...</span>
-              </div>
-            )}
-
-            {/* Extracted items */}
-            {extractedItems.length > 0 && (
-              <div className="space-y-3">
-                <p className="text-sm font-medium text-zinc-300">
-                  {extractedItems.length} items found - edit and select which to import:
-                </p>
-                <div className="max-h-80 overflow-y-auto space-y-3">
-                  {extractedItems.map((item, i) => (
-                    <div
-                      key={i}
-                      className={`p-3 rounded-lg border transition-colors ${
-                        item.selected
-                          ? 'bg-purple-900/30 border-purple-600/50'
-                          : 'bg-zinc-800/50 border-zinc-700'
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <input
-                          type="checkbox"
-                          checked={item.selected}
-                          onChange={() => togglePhotoItemSelection(i)}
-                          className="mt-2 rounded border-zinc-600 bg-zinc-800 text-purple-500 focus:ring-purple-500"
-                        />
-                        <div className="flex-1 space-y-2">
-                          {/* Item name input */}
-                          <input
-                            type="text"
-                            value={item.itemName}
-                            onChange={(e) => updatePhotoItem(i, 'itemName', e.target.value)}
-                            className="w-full px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
-                            placeholder="Item name"
-                          />
-                          <div className="flex gap-2 flex-wrap">
-                            {/* Quantity input */}
-                            <input
-                              type="number"
-                              value={item.quantity}
-                              onChange={(e) => updatePhotoItem(i, 'quantity', parseFloat(e.target.value) || 1)}
-                              className="w-20 px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
-                              min="0.01"
-                              step="0.01"
-                              placeholder="Qty"
-                            />
-                            {/* Unit select */}
-                            <select
-                              value={item.unit}
-                              onChange={(e) => updatePhotoItem(i, 'unit', e.target.value)}
-                              className="px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
-                            >
-                              <option value="">Unit...</option>
-                              {Object.entries(availableUnits).map(([category, units]) => (
-                                <optgroup key={category} label={category.charAt(0).toUpperCase() + category.slice(1)}>
-                                  {units.map((unit) => (
-                                    <option key={unit.code} value={unit.abbreviation}>
-                                      {unit.abbreviation} ({unit.name})
-                                    </option>
-                                  ))}
-                                </optgroup>
-                              ))}
-                            </select>
-                            {/* Category select */}
-                            <select
-                              value={item.category || ''}
-                              onChange={(e) => updatePhotoItem(i, 'category', e.target.value)}
-                              className="px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
-                            >
-                              <option value="">Category...</option>
-                              {categories.length > 0 ? (
-                                categories.map(cat => (
-                                  <option key={cat.id} value={cat.name}>{cat.name}</option>
-                                ))
-                              ) : (
-                                DEFAULT_CATEGORIES.map(cat => (
-                                  <option key={cat.name} value={cat.name}>{cat.name}</option>
-                                ))
-                              )}
-                            </select>
-                            {/* Location select */}
-                            <select
-                              value={item.location || ''}
-                              onChange={(e) => updatePhotoItem(i, 'location', e.target.value)}
-                              className="px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
-                            >
-                              <option value="">Location...</option>
-                              {STORAGE_LOCATIONS.map(loc => (
-                                <option key={loc.value} value={loc.value}>{loc.label}</option>
-                              ))}
-                            </select>
-                            {/* Expiry date input */}
-                            <input
-                              type="date"
-                              value={item.expiryDate || ''}
-                              onChange={(e) => updatePhotoItem(i, 'expiryDate', e.target.value)}
-                              className="px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
-                              title="Expiry date"
-                            />
-                          </div>
-                        </div>
-                        {item.confidence && (
-                          <Badge
-                            variant={
-                              item.confidence === 'high' ? 'success' :
-                              item.confidence === 'medium' ? 'warning' : 'default'
-                            }
-                            size="sm"
-                          >
-                            {item.confidence}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex items-center gap-2 text-sm text-zinc-400">
-                  <button
-                    type="button"
-                    onClick={() => setExtractedItems(prev => prev.map(i => ({ ...i, selected: true })))}
-                    className="text-purple-400 hover:text-purple-300"
-                  >
-                    Select all
-                  </button>
-                  <span>|</span>
-                  <button
-                    type="button"
-                    onClick={() => setExtractedItems(prev => prev.map(i => ({ ...i, selected: false })))}
-                    className="text-purple-400 hover:text-purple-300"
-                  >
-                    Deselect all
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Actions */}
-            <div className="flex justify-end gap-3 pt-4">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => {
-                  setShowPhotoModal(false)
-                  setPhotoImages([])
-                  setExtractedItems([])
-                  setPhotoSummary('')
-                }}
-              >
-                Cancel
-              </Button>
-              {extractedItems.length > 0 && (
-                <Button
-                  onClick={handleImportPhotoItems}
-                  variant="primary"
-                  disabled={importingPhoto || extractedItems.filter(i => i.selected).length === 0}
-                >
-                  {importingPhoto ? 'Importing...' : `Import ${extractedItems.filter(i => i.selected).length} Items`}
-                </Button>
-              )}
-            </div>
-          </div>
-        </Modal>
-
-        {/* Inventory Settings Modal */}
-        <Modal
-          isOpen={showSettingsModal}
-          onClose={() => setShowSettingsModal(false)}
-          title="Inventory Settings"
-          maxWidth="md"
         >
           <div className="p-6 space-y-6">
-            {/* Skip Inventory Check Toggle */}
-            <div className="p-4 rounded-lg bg-zinc-800/50 border border-zinc-700">
-              <div className="flex items-start gap-3">
-                <div className="flex-1">
-                  <label htmlFor="skipInventoryCheck" className="text-white font-medium">
-                    Skip Inventory Check
-                  </label>
-                  <p className="text-sm text-zinc-400 mt-1">
-                    When enabled, shopping lists will not check your inventory for existing items.
-                    All recipe ingredients will be added to shopping lists without deductions.
-                  </p>
-                </div>
-                <div className="flex items-center">
-                  <button
-                    id="skipInventoryCheck"
-                    type="button"
-                    role="switch"
-                    aria-checked={settings.skipInventoryCheck}
-                    onClick={() => setSettings({ ...settings, skipInventoryCheck: !settings.skipInventoryCheck })}
-                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-zinc-800 ${
-                      settings.skipInventoryCheck ? 'bg-purple-600' : 'bg-zinc-600'
-                    }`}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                        settings.skipInventoryCheck ? 'translate-x-5' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Small Quantity Thresholds */}
-            <div className="p-4 rounded-lg bg-zinc-800/50 border border-zinc-700">
-              <h3 className="text-white font-medium mb-2">Small Quantity Thresholds</h3>
-              <p className="text-sm text-zinc-400 mb-4">
-                Items with quantities below these thresholds will be flagged during cooking deduction,
-                allowing you to choose whether to remove them from inventory.
+            {/* Step 1: Upload Photo */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-600 text-xs">1</span>
+                Upload Photo
+              </h3>
+              <p className="text-sm text-zinc-400 ml-8">
+                Take a photo of your groceries, fridge contents, or receipt.
               </p>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="thresholdGrams" className="block text-sm font-medium text-zinc-300 mb-1">
-                    Weight (grams)
-                  </label>
-                  <Input
-                    id="thresholdGrams"
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="1"
-                    value={settings.smallQuantityThresholdGrams ?? DEFAULT_INVENTORY_SETTINGS.smallQuantityThresholdGrams}
-                    onChange={(e) => setSettings({
-                      ...settings,
-                      smallQuantityThresholdGrams: parseFloat(e.target.value) || 0
-                    })}
+              <div className="ml-8 flex items-center gap-3">
+                <label className="cursor-pointer">
+                  <span className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white text-sm rounded-lg transition-colors inline-flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Choose Photo
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handlePhotoSelect}
+                    className="hidden"
                   />
-                  <p className="text-xs text-zinc-500 mt-1">
-                    Default: {DEFAULT_INVENTORY_SETTINGS.smallQuantityThresholdGrams}g
-                  </p>
-                </div>
-                <div>
-                  <label htmlFor="thresholdMl" className="block text-sm font-medium text-zinc-300 mb-1">
-                    Volume (ml)
-                  </label>
-                  <Input
-                    id="thresholdMl"
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="1"
-                    value={settings.smallQuantityThresholdMl ?? DEFAULT_INVENTORY_SETTINGS.smallQuantityThresholdMl}
-                    onChange={(e) => setSettings({
-                      ...settings,
-                      smallQuantityThresholdMl: parseFloat(e.target.value) || 0
-                    })}
-                  />
-                  <p className="text-xs text-zinc-500 mt-1">
-                    Default: {DEFAULT_INVENTORY_SETTINGS.smallQuantityThresholdMl}ml
-                  </p>
-                </div>
+                </label>
               </div>
             </div>
 
-            {/* Info about settings usage */}
-            <div className="p-3 rounded-lg bg-blue-900/20 border border-blue-600/50">
-              <div className="flex items-start gap-2">
-                <svg className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <p className="text-sm text-blue-300">
-                  These settings affect how inventory is checked when importing meal plans to shopping lists
-                  and when marking meals as cooked.
-                </p>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex justify-end gap-3 pt-2">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => {
-                  fetchSettings() // Reset to saved values
-                  setShowSettingsModal(false)
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleSaveSettings}
-                variant="primary"
-                disabled={savingSettings}
-              >
-                {savingSettings ? 'Saving...' : 'Save Settings'}
-              </Button>
-            </div>
-          </div>
-        </Modal>
-
-        {/* URL Import Modal */}
-        <Modal
-          isOpen={showUrlModal}
-          onClose={() => {
-            setShowUrlModal(false)
-            setImportUrl('')
-            setUrlExtractedItems([])
-            setUrlSummary('')
-          }}
-          title="Import from URL"
-          maxWidth="lg"
-        >
-          <div className="p-6 space-y-4">
-            {/* Instructions */}
-            <div className="p-3 rounded-lg bg-zinc-800/50 border border-zinc-700">
-              <p className="text-sm text-zinc-300 font-medium mb-2">URL Import</p>
-              <p className="text-xs text-zinc-400">
-                Paste a URL to a shopping list, grocery order, or any page with food items. Our AI will extract inventory items from the page content.
-              </p>
-            </div>
-
-            {/* URL input */}
-            <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-2">
-                URL
-              </label>
-              <div className="flex gap-2">
-                <Input
-                  type="url"
-                  value={importUrl}
-                  onChange={(e) => {
-                    setImportUrl(e.target.value)
-                    setUrlExtractedItems([])
-                    setUrlSummary('')
-                  }}
-                  placeholder="https://example.com/shopping-list"
-                  className="flex-1"
-                />
-                <Button
-                  onClick={handleAnalyzeUrl}
-                  variant="secondary"
-                  disabled={!importUrl.trim() || analyzingUrl}
-                >
-                  {analyzingUrl ? 'Analyzing...' : 'Analyze'}
-                </Button>
-              </div>
-            </div>
-
-            {/* Analyzing indicator */}
-            {analyzingUrl && (
-              <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400 mr-3"></div>
-                <span className="text-zinc-300">AI is analyzing the URL...</span>
-              </div>
-            )}
-
-            {/* Extracted items */}
-            {urlExtractedItems.length > 0 && (
+            {/* Photo Preview */}
+            {photoPreview && (
               <div className="space-y-3">
-                <p className="text-sm font-medium text-zinc-300">
-                  {urlExtractedItems.length} items found - edit and select which to import:
-                </p>
-                <div className="max-h-80 overflow-y-auto space-y-3">
-                  {urlExtractedItems.map((item, i) => (
-                    <div
-                      key={i}
-                      className={`p-3 rounded-lg border transition-colors ${
-                        item.selected
-                          ? 'bg-purple-900/30 border-purple-600/50'
-                          : 'bg-zinc-800/50 border-zinc-700'
-                      }`}
+                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-600 text-xs">2</span>
+                  Preview
+                </h3>
+                <div className="ml-8 flex items-start gap-4">
+                  <div className="relative">
+                    <img
+                      src={photoPreview}
+                      alt="Photo preview"
+                      className="max-w-xs max-h-48 rounded-lg border border-zinc-700 object-contain"
+                    />
+                    <button
+                      onClick={handleResetPhotoImport}
+                      className="absolute -top-2 -right-2 p-1 bg-zinc-800 hover:bg-zinc-700 rounded-full border border-zinc-600"
                     >
-                      <div className="flex items-start gap-3">
-                        <input
-                          type="checkbox"
-                          checked={item.selected}
-                          onChange={() => toggleUrlItemSelection(i)}
-                          className="mt-2 rounded border-zinc-600 bg-zinc-800 text-purple-500 focus:ring-purple-500"
-                        />
-                        <div className="flex-1 space-y-2">
-                          {/* Item name input */}
-                          <input
-                            type="text"
-                            value={item.itemName}
-                            onChange={(e) => updateUrlItem(i, 'itemName', e.target.value)}
-                            className="w-full px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
-                            placeholder="Item name"
-                          />
-                          <div className="flex gap-2 flex-wrap">
-                            {/* Quantity input */}
-                            <input
-                              type="number"
-                              value={item.quantity}
-                              onChange={(e) => updateUrlItem(i, 'quantity', parseFloat(e.target.value) || 1)}
-                              className="w-20 px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
-                              min="0.01"
-                              step="0.01"
-                              placeholder="Qty"
-                            />
-                            {/* Unit select */}
-                            <select
-                              value={item.unit}
-                              onChange={(e) => updateUrlItem(i, 'unit', e.target.value)}
-                              className="px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
-                            >
-                              <option value="">Unit...</option>
-                              {Object.entries(availableUnits).map(([category, units]) => (
-                                <optgroup key={category} label={category.charAt(0).toUpperCase() + category.slice(1)}>
-                                  {units.map((unit) => (
-                                    <option key={unit.code} value={unit.abbreviation}>
-                                      {unit.abbreviation} ({unit.name})
-                                    </option>
-                                  ))}
-                                </optgroup>
-                              ))}
-                            </select>
-                            {/* Category select */}
-                            <select
-                              value={item.category || ''}
-                              onChange={(e) => updateUrlItem(i, 'category', e.target.value)}
-                              className="px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
-                            >
-                              <option value="">Category...</option>
-                              {categories.length > 0 ? (
-                                categories.map(cat => (
-                                  <option key={cat.id} value={cat.name}>{cat.name}</option>
-                                ))
-                              ) : (
-                                DEFAULT_CATEGORIES.map(cat => (
-                                  <option key={cat.name} value={cat.name}>{cat.name}</option>
-                                ))
-                              )}
-                            </select>
-                            {/* Location select */}
-                            <select
-                              value={item.location || ''}
-                              onChange={(e) => updateUrlItem(i, 'location', e.target.value)}
-                              className="px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
-                            >
-                              <option value="">Location...</option>
-                              {STORAGE_LOCATIONS.map(loc => (
-                                <option key={loc.value} value={loc.value}>{loc.label}</option>
-                              ))}
-                            </select>
-                            {/* Expiry date input */}
-                            <input
-                              type="date"
-                              value={item.expiryDate || ''}
-                              onChange={(e) => updateUrlItem(i, 'expiryDate', e.target.value)}
-                              className="px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
-                              title="Expiry date"
-                            />
-                          </div>
-                        </div>
-                        {item.confidence && (
-                          <Badge
-                            variant={
-                              item.confidence === 'high' ? 'success' :
-                              item.confidence === 'medium' ? 'warning' : 'default'
-                            }
-                            size="sm"
-                          >
-                            {item.confidence}
-                          </Badge>
-                        )}
+                      <svg className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div className="flex-1">
+                    {!analyzingPhoto && extractedItems.length === 0 && (
+                      <Button onClick={handleAnalyzePhoto} variant="primary">
+                        Analyze Photo
+                      </Button>
+                    )}
+                    {analyzingPhoto && (
+                      <div className="flex items-center gap-3 text-zinc-400">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-400"></div>
+                        <span>Analyzing photo with AI...</span>
                       </div>
-                    </div>
-                  ))}
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-zinc-400">
-                  <button
-                    type="button"
-                    onClick={() => setUrlExtractedItems(prev => prev.map(i => ({ ...i, selected: true })))}
-                    className="text-purple-400 hover:text-purple-300"
-                  >
-                    Select all
-                  </button>
-                  <span>|</span>
-                  <button
-                    type="button"
-                    onClick={() => setUrlExtractedItems(prev => prev.map(i => ({ ...i, selected: false })))}
-                    className="text-purple-400 hover:text-purple-300"
-                  >
-                    Deselect all
-                  </button>
+              </div>
+            )}
+
+            {/* Extracted Items */}
+            {extractedItems.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-600 text-xs">3</span>
+                  Review & Import
+                </h3>
+
+                {photoProcessingNotes && (
+                  <div className="ml-8 p-3 bg-zinc-800/50 rounded-lg text-sm text-zinc-400">
+                    <strong className="text-zinc-300">AI Notes:</strong> {photoProcessingNotes}
+                  </div>
+                )}
+
+                <div className="ml-8 max-h-64 overflow-y-auto border border-zinc-700 rounded-lg">
+                  <table className="w-full text-sm">
+                    <thead className="bg-zinc-800 sticky top-0">
+                      <tr>
+                        <th className="px-3 py-2 text-left">
+                          <input
+                            type="checkbox"
+                            checked={extractedItems.every(i => i.selected)}
+                            onChange={() => {
+                              const allSelected = extractedItems.every(i => i.selected)
+                              setExtractedItems(prev =>
+                                prev.map(item => ({ ...item, selected: !allSelected }))
+                              )
+                            }}
+                            className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-zinc-600 rounded"
+                          />
+                        </th>
+                        <th className="px-3 py-2 text-left text-zinc-300">Item</th>
+                        <th className="px-3 py-2 text-left text-zinc-300">Qty</th>
+                        <th className="px-3 py-2 text-left text-zinc-300">Category</th>
+                        <th className="px-3 py-2 text-left text-zinc-300">Location</th>
+                        <th className="px-3 py-2 text-left text-zinc-300">Confidence</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-700">
+                      {extractedItems.map((item, index) => (
+                        <tr
+                          key={index}
+                          className={`${
+                            item.selected ? '' : 'opacity-50'
+                          } ${
+                            item.confidence === 'low' ? 'bg-amber-900/10' : ''
+                          }`}
+                        >
+                          <td className="px-3 py-2">
+                            <input
+                              type="checkbox"
+                              checked={item.selected}
+                              onChange={() => handleToggleExtractedItem(index)}
+                              className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-zinc-600 rounded"
+                            />
+                          </td>
+                          <td className="px-3 py-2 text-white">{item.name}</td>
+                          <td className="px-3 py-2 text-zinc-300">
+                            {item.quantity} {item.unit}
+                          </td>
+                          <td className="px-3 py-2 text-zinc-300">{item.suggestedCategory}</td>
+                          <td className="px-3 py-2 text-zinc-300">
+                            {item.suggestedLocation ? getLocationLabel(item.suggestedLocation as StorageLocation) : '-'}
+                          </td>
+                          <td className="px-3 py-2">
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                item.confidence === 'high'
+                                  ? 'bg-green-900/50 text-green-400'
+                                  : item.confidence === 'medium'
+                                  ? 'bg-amber-900/50 text-amber-400'
+                                  : 'bg-red-900/50 text-red-400'
+                              }`}
+                            >
+                              {item.confidence}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="ml-8 text-sm text-zinc-400">
+                  {extractedItems.filter(i => i.selected).length} of {extractedItems.length} items selected for import.
+                  Items with low confidence are deselected by default.
                 </div>
               </div>
             )}
 
             {/* Actions */}
-            <div className="flex justify-end gap-3 pt-4">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => {
-                  setShowUrlModal(false)
-                  setImportUrl('')
-                  setUrlExtractedItems([])
-                  setUrlSummary('')
-                }}
-              >
-                Cancel
-              </Button>
-              {urlExtractedItems.length > 0 && (
+            <div className="flex justify-between pt-4 border-t border-zinc-700">
+              <div>
+                {(photoPreview || extractedItems.length > 0) && (
+                  <Button
+                    variant="ghost"
+                    onClick={handleResetPhotoImport}
+                    disabled={analyzingPhoto || importingPhoto}
+                  >
+                    Reset
+                  </Button>
+                )}
+              </div>
+              <div className="flex gap-3">
                 <Button
-                  onClick={handleImportUrlItems}
-                  variant="primary"
-                  disabled={importingUrl || urlExtractedItems.filter(i => i.selected).length === 0}
+                  variant="secondary"
+                  onClick={() => {
+                    setShowPhotoImport(false)
+                    setPhotoPreview(null)
+                    setExtractedItems([])
+                    setPhotoProcessingNotes(null)
+                  }}
+                  disabled={analyzingPhoto || importingPhoto}
                 >
-                  {importingUrl
-                    ? 'Importing...'
-                    : `Import ${urlExtractedItems.filter(i => i.selected).length} Item${urlExtractedItems.filter(i => i.selected).length !== 1 ? 's' : ''}`
-                  }
+                  Cancel
                 </Button>
-              )}
+                {extractedItems.length > 0 && extractedItems.some(i => i.selected) && (
+                  <Button
+                    variant="primary"
+                    onClick={handleImportSelectedItems}
+                    disabled={importingPhoto}
+                  >
+                    {importingPhoto
+                      ? 'Importing...'
+                      : `Import ${extractedItems.filter(i => i.selected).length} Items`}
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </Modal>
-
-        {/* Import Notification Toast */}
-        {importNotification && (
-          <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 fade-in duration-300">
-            <div
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border ${
-                importNotification.type === 'success'
-                  ? 'bg-green-900/90 border-green-600/50 text-green-100'
-                  : 'bg-red-900/90 border-red-600/50 text-red-100'
-              }`}
-            >
-              {importNotification.type === 'success' ? (
-                <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              ) : (
-                <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              )}
-              <span className="font-medium">{importNotification.message}</span>
-              <button
-                onClick={() => setImportNotification(null)}
-                className="ml-2 text-current opacity-70 hover:opacity-100"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        )}
       </PageContainer>
     </AppLayout>
   )
