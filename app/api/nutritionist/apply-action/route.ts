@@ -2,11 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import {
-  executeAction,
-  validateAction,
-  NutritionistAction,
-} from '@/lib/nutritionist'
+import { validateAction, NutritionistAction } from '@/lib/nutritionist'
+import { executeAction } from '@/lib/nutritionist/actions'
 
 /**
  * POST /api/nutritionist/apply-action

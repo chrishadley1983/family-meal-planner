@@ -37,9 +37,11 @@ export {
   getMacroCalculationPrompt,
 } from './prompts'
 
-// Actions
+// Actions (client-safe display/validation functions)
+// Note: executeAction is server-only and should be imported directly from './actions'
 export {
-  executeAction,
   validateAction,
   formatActionForDisplay,
-} from './actions'
+} from './actions-display'
+
+export type { ActionResult } from './actions-display'
