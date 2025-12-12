@@ -343,7 +343,7 @@ export async function POST(request: NextRequest) {
         (a): a is CreateRecipeAction => (a as any).type === 'CREATE_RECIPE'
       ) as CreateRecipeAction | undefined
 
-      if (recipeAction && profile.dailyFatTarget) {
+      if (recipeAction && profileContext.dailyFatTarget) {
         console.log('🔷 Validating recipe against user macro targets...')
         const validation = await validateRecipeAction(recipeAction, profileContext)
 
@@ -360,7 +360,7 @@ export async function POST(request: NextRequest) {
             content: `Wait - I calculated the actual nutrition from those ingredients and found issues:
 ${validation.issues.join('\n')}
 
-Please adjust the recipe to better fit my macro targets (${profile.dailyFatTarget}g fat, ${profile.dailyCalorieTarget} calories daily).
+Please adjust the recipe to better fit my macro targets (${profileContext.dailyFatTarget}g fat, ${profileContext.dailyCalorieTarget} calories daily).
 Consider using leaner ingredients, reducing portion sizes, or swapping high-fat items for lower-fat alternatives.
 Give me a revised version of the recipe.`,
           })
