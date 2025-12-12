@@ -20,6 +20,7 @@ function decimalToNumber(val: unknown): number | null {
  */
 function toProfileContext(profile: any): ProfileContext {
   return {
+    profileId: profile.id,
     profileName: profile.profileName,
     age: profile.age,
     gender: profile.gender,

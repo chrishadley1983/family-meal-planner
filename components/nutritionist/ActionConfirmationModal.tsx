@@ -6,6 +6,7 @@ import {
   NutritionistAction,
   CreateRecipeAction,
   UpdateMacrosAction,
+  UpdatePreferencesAction,
   AddInventoryAction,
   AddStapleAction,
 } from '@/lib/nutritionist/types'
@@ -37,6 +38,8 @@ export function ActionConfirmationModal({
         return renderRecipePreview(action as CreateRecipeAction)
       case 'UPDATE_MACROS':
         return renderMacrosPreview(action as UpdateMacrosAction)
+      case 'UPDATE_PREFERENCES':
+        return renderPreferencesPreview(action as UpdatePreferencesAction)
       case 'ADD_INVENTORY_ITEM':
         return renderInventoryPreview(action as AddInventoryAction)
       case 'ADD_STAPLE':
@@ -211,6 +214,91 @@ function renderMacrosPreview(action: UpdateMacrosAction) {
           <div className="text-xs text-zinc-500">Fiber</div>
         </div>
       )}
+    </div>
+  )
+}
+
+function renderPreferencesPreview(action: UpdatePreferencesAction) {
+  const { data } = action
+
+  const hasAddLikes = data.addLikes && data.addLikes.length > 0
+  const hasRemoveLikes = data.removeLikes && data.removeLikes.length > 0
+  const hasAddDislikes = data.addDislikes && data.addDislikes.length > 0
+  const hasRemoveDislikes = data.removeDislikes && data.removeDislikes.length > 0
+
+  return (
+    <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700">
+      <div className="space-y-4">
+        {/* Likes Section */}
+        {(hasAddLikes || hasRemoveLikes) && (
+          <div>
+            <h4 className="text-sm font-medium text-green-400 mb-2 flex items-center gap-2">
+              <span>👍</span> Likes
+            </h4>
+            <div className="space-y-2">
+              {hasAddLikes && (
+                <div className="flex flex-wrap gap-2">
+                  {data.addLikes!.map((item, idx) => (
+                    <span
+                      key={idx}
+                      className="px-2 py-1 bg-green-900/50 text-green-300 rounded-full text-sm flex items-center gap-1"
+                    >
+                      <span className="text-green-500">+</span> {item}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {hasRemoveLikes && (
+                <div className="flex flex-wrap gap-2">
+                  {data.removeLikes!.map((item, idx) => (
+                    <span
+                      key={idx}
+                      className="px-2 py-1 bg-zinc-700 text-zinc-400 rounded-full text-sm flex items-center gap-1 line-through"
+                    >
+                      <span className="text-red-500">-</span> {item}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Dislikes Section */}
+        {(hasAddDislikes || hasRemoveDislikes) && (
+          <div>
+            <h4 className="text-sm font-medium text-red-400 mb-2 flex items-center gap-2">
+              <span>👎</span> Dislikes
+            </h4>
+            <div className="space-y-2">
+              {hasAddDislikes && (
+                <div className="flex flex-wrap gap-2">
+                  {data.addDislikes!.map((item, idx) => (
+                    <span
+                      key={idx}
+                      className="px-2 py-1 bg-red-900/50 text-red-300 rounded-full text-sm flex items-center gap-1"
+                    >
+                      <span className="text-red-500">+</span> {item}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {hasRemoveDislikes && (
+                <div className="flex flex-wrap gap-2">
+                  {data.removeDislikes!.map((item, idx) => (
+                    <span
+                      key={idx}
+                      className="px-2 py-1 bg-zinc-700 text-zinc-400 rounded-full text-sm flex items-center gap-1 line-through"
+                    >
+                      <span className="text-green-500">-</span> {item}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

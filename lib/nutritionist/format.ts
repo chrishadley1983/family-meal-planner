@@ -6,6 +6,7 @@
 import {
   NutritionistAction,
   UpdateMacrosAction,
+  UpdatePreferencesAction,
   CreateRecipeAction,
   AddInventoryAction,
   AddStapleAction,
@@ -31,6 +32,21 @@ export function formatActionForDisplay(action: NutritionistAction): {
           'Carbs': `${data.dailyCarbsTarget}g`,
           'Fat': `${data.dailyFatTarget}g`,
           'Fiber': data.dailyFiberTarget ? `${data.dailyFiberTarget}g` : 'Not set',
+        },
+      }
+    }
+    case 'UPDATE_PREFERENCES': {
+      const data = (action as UpdatePreferencesAction).data
+      const changes: string[] = []
+      if (data.addLikes?.length) changes.push(`Add to likes: ${data.addLikes.join(', ')}`)
+      if (data.removeLikes?.length) changes.push(`Remove from likes: ${data.removeLikes.join(', ')}`)
+      if (data.addDislikes?.length) changes.push(`Add to dislikes: ${data.addDislikes.join(', ')}`)
+      if (data.removeDislikes?.length) changes.push(`Remove from dislikes: ${data.removeDislikes.join(', ')}`)
+      return {
+        title: 'Update Food Preferences',
+        description: 'This will update your food likes and dislikes:',
+        details: {
+          'Changes': changes,
         },
       }
     }

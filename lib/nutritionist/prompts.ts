@@ -81,7 +81,17 @@ When you want to suggest a database action, include it at the VERY END of your r
    - dailyFatTarget: number (must be >= 20)
    - dailyFiberTarget: number (optional)
 
-2. **CREATE_RECIPE** - Create a new recipe
+2. **UPDATE_PREFERENCES** - Update profile's food likes/dislikes
+   Use this when the user mentions they like or dislike specific foods!
+   Required data fields:
+   - profileId: string (use the Profile ID from context below)
+   - addLikes: string[] (foods to add to likes, optional)
+   - removeLikes: string[] (foods to remove from likes, optional)
+   - addDislikes: string[] (foods to add to dislikes, optional)
+   - removeDislikes: string[] (foods to remove from dislikes, optional)
+   Note: At least one of these arrays must have items.
+
+3. **CREATE_RECIPE** - Create a new recipe
    Required data fields:
    - name: string
    - description: string
@@ -98,7 +108,7 @@ When you want to suggest a database action, include it at the VERY END of your r
    - fatPerServing: number
    - fiberPerServing: number (optional)
 
-3. **ADD_INVENTORY_ITEM** - Add item to inventory
+4. **ADD_INVENTORY_ITEM** - Add item to inventory
    Required data fields:
    - itemName: string
    - quantity: number
@@ -107,7 +117,7 @@ When you want to suggest a database action, include it at the VERY END of your r
    - location: "fridge" | "freezer" | "cupboard" | "pantry" (optional)
    - expiryDate: string (optional, format: YYYY-MM-DD)
 
-4. **ADD_STAPLE** - Add item to staples list
+5. **ADD_STAPLE** - Add item to staples list
    Required data fields:
    - itemName: string
    - quantity: number
@@ -316,52 +326,49 @@ export function parseAIResponse(response: string): {
   suggestedActions?: unknown[]
   suggestedPrompts?: string[]
 } {
-  // Try to find JSON block anywhere in the response (```json...```)
-  const jsonBlockMatch = response.match(/```json\s*([\s\S]*?)\s*```/i)
+  // Use string-based approach for more reliable parsing
+  const jsonStartMarker = '```json'
+  const jsonEndMarker = '```'
 
-  if (jsonBlockMatch) {
-    try {
-      const jsonData = JSON.parse(jsonBlockMatch[1])
-      // Remove the JSON block from the message
-      const message = response.replace(jsonBlockMatch[0], '').trim()
+  const jsonStart = response.toLowerCase().indexOf(jsonStartMarker)
 
-      return {
-        message,
-        suggestedActions: jsonData.suggestedActions,
-        suggestedPrompts: jsonData.suggestedPrompts,
+  if (jsonStart !== -1) {
+    const contentStart = jsonStart + jsonStartMarker.length
+    // Find the closing ``` after the json content
+    const jsonEnd = response.indexOf(jsonEndMarker, contentStart)
+
+    if (jsonEnd !== -1) {
+      const jsonContent = response.substring(contentStart, jsonEnd).trim()
+      console.log('🔍 Found JSON block, attempting to parse...')
+
+      try {
+        const jsonData = JSON.parse(jsonContent)
+        // Remove the entire JSON block from the message
+        const beforeJson = response.substring(0, jsonStart).trim()
+        const afterJson = response.substring(jsonEnd + jsonEndMarker.length).trim()
+        const message = (beforeJson + ' ' + afterJson).trim()
+
+        console.log('🟢 JSON parsed successfully, actions:', jsonData.suggestedActions?.length || 0)
+
+        return {
+          message,
+          suggestedActions: jsonData.suggestedActions,
+          suggestedPrompts: jsonData.suggestedPrompts,
+        }
+      } catch (e) {
+        console.error('❌ Failed to parse JSON block:', e)
+        console.error('❌ JSON content was:', jsonContent.substring(0, 200) + '...')
       }
-    } catch (e) {
-      console.error('❌ Failed to parse JSON block:', e)
-      // JSON parse failed, return full response
-      return { message: response }
     }
   }
 
-  // No JSON block found, check for standalone JSON object with suggestedActions
-  // This handles cases where AI outputs raw JSON without code block
-  const inlineJsonMatch = response.match(/\{[\s\S]*?"suggestedActions"[\s\S]*?\}(?=\s*$|\s*\n\n)/)
-  if (inlineJsonMatch) {
+  // Fallback: check for inline JSON object with suggestedActions (no code block)
+  const inlineMatch = response.match(/\{[\s\S]*?"suggestedActions"\s*:\s*\[[\s\S]*?\]\s*\}/)
+  if (inlineMatch) {
     try {
-      const jsonData = JSON.parse(inlineJsonMatch[0])
-      const message = response.replace(inlineJsonMatch[0], '').trim()
-
-      return {
-        message,
-        suggestedActions: jsonData.suggestedActions,
-        suggestedPrompts: jsonData.suggestedPrompts,
-      }
-    } catch {
-      // Fall through to return full response
-    }
-  }
-
-  // Also check for JSON at the very end (legacy support)
-  const endJsonMatch = response.match(/\{[\s\S]*"suggestedActions"[\s\S]*\}\s*$/)
-  if (endJsonMatch) {
-    try {
-      const jsonData = JSON.parse(endJsonMatch[0])
-      const message = response.replace(endJsonMatch[0], '').trim()
-
+      const jsonData = JSON.parse(inlineMatch[0])
+      const message = response.replace(inlineMatch[0], '').trim()
+      console.log('🟢 Inline JSON parsed successfully')
       return {
         message,
         suggestedActions: jsonData.suggestedActions,
@@ -372,6 +379,7 @@ export function parseAIResponse(response: string): {
     }
   }
 
+  console.log('⚠️ No JSON block found in response')
   return { message: response }
 }
 
