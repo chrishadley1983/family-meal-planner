@@ -841,7 +841,14 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                 ) : (
                   <div className="mt-4 relative h-64 w-full bg-zinc-800 rounded-md overflow-hidden">
                     <Image
-                      src={recipe.imageUrl || generateRecipeSVG(recipe.recipeName, recipe.mealType)}
+                      src={(() => {
+                        const hasValidImage = recipe.imageUrl && (
+                          recipe.imageUrl.startsWith('http://') ||
+                          recipe.imageUrl.startsWith('https://') ||
+                          (recipe.imageUrl.startsWith('data:image/') && recipe.imageUrl.length > 100)
+                        )
+                        return hasValidImage ? recipe.imageUrl : generateRecipeSVG(recipe.recipeName, recipe.mealType)
+                      })()}
                       alt={recipe.recipeName}
                       fill
                       className="object-cover"

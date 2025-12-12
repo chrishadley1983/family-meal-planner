@@ -541,8 +541,14 @@ export default function RecipesPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredRecipes.map((recipe) => {
-              // Generate SVG if no image provided
-              const imageUrl = recipe.imageUrl || generateRecipeSVG(recipe.recipeName, recipe.mealType)
+              // Generate SVG if no valid image provided
+              // Valid images: http(s) URLs, or data:image/ URLs with proper format
+              const hasValidImage = recipe.imageUrl && (
+                recipe.imageUrl.startsWith('http://') ||
+                recipe.imageUrl.startsWith('https://') ||
+                (recipe.imageUrl.startsWith('data:image/') && recipe.imageUrl.length > 100)
+              )
+              const imageUrl = hasValidImage ? recipe.imageUrl : generateRecipeSVG(recipe.recipeName, recipe.mealType)
 
               return (
                 <div key={recipe.id} className="card-interactive overflow-hidden">
