@@ -14,6 +14,7 @@ import {
   InstructionModification,
   SuggestedPromptsContext
 } from './types/nutritionist'
+import { AI_LOCALE_INSTRUCTION } from './config/locale'
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY
@@ -137,7 +138,8 @@ export async function getNutritionistFeedback(params: {
 }) {
   const { mealPlan, profiles } = params
 
-  const prompt = `You are a professional nutritionist. Analyze this meal plan and provide feedback:
+  const prompt = `You are a professional nutritionist. Analyze this meal plan and provide feedback.
+${AI_LOCALE_INSTRUCTION}
 
 FAMILY PROFILES:
 ${profiles.map((p, i) => `
@@ -386,6 +388,7 @@ ${JSON.stringify(jsonLdRecipe, null, 2).substring(0, 15000)}
   const visibleText = extractVisibleText(htmlContent).substring(0, 8000)
 
   const prompt = `You are an expert recipe extraction assistant. Extract ALL recipe details with high accuracy from the provided data.
+${AI_LOCALE_INSTRUCTION}
 
 URL: ${url}
 
@@ -512,6 +515,7 @@ export async function calculateNutrition(ingredients: Array<{
     .join('\n')
 
   const prompt = `You are a nutrition expert. Analyze these recipe ingredients and calculate the approximate nutrition per serving.
+${AI_LOCALE_INSTRUCTION}
 
 INGREDIENTS (for ${servings} servings):
 ${ingredientList}
@@ -558,6 +562,7 @@ Use standard nutrition databases for your calculations. Be as accurate as possib
 export async function analyzeRecipePhoto(images: string[]) {
   const imageCount = images.length
   const prompt = `You are a recipe recognition assistant. Analyze ${imageCount === 1 ? 'this image' : `these ${imageCount} images`} and extract or identify recipe information.
+${AI_LOCALE_INSTRUCTION}
 
 ${imageCount > 1 ? 'Note: Multiple images are provided (e.g., front and back of a recipe card, or different angles of the dish). Use all images together to get complete information.' : ''}
 
@@ -661,6 +666,7 @@ Be accurate when extracting text, and be specific and practical when suggesting 
 
 export async function analyzeRecipeText(text: string) {
   const prompt = `You are a recipe parsing assistant. Parse the following recipe text and extract structured recipe information.
+${AI_LOCALE_INSTRUCTION}
 
 The text may be formatted in various ways:
 - Traditional recipe format with clear "Ingredients:" and "Instructions:" sections
@@ -696,7 +702,7 @@ Return ONLY a valid JSON object in this exact format:
     {
       "ingredientName": "string",
       "quantity": number,
-      "unit": "string (e.g., 'cup', 'tbsp', 'tsp', 'g', 'ml', 'oz', 'lb', 'piece', '')"
+      "unit": "string (e.g., 'g', 'kg', 'ml', 'L', 'tbsp', 'tsp', 'piece', 'can', 'bunch')"
     }
   ],
   "instructions": [
@@ -776,6 +782,7 @@ export async function analyzeRecipeMacros(params: {
     .join('\n')
 
   const prompt = `You are a nutrition expert. Analyze this recipe and provide macro ratings based on the user's dietary goals.
+${AI_LOCALE_INSTRUCTION}
 
 RECIPE:
 Name: ${recipe.recipeName}
@@ -1286,6 +1293,7 @@ export async function getNutritionistFeedbackForRecipe(params: {
     : (typeof userProfile.allergies === 'string' ? [userProfile.allergies] : [])
 
   const prompt = `You are Emilia, a friendly and knowledgeable nutritionist. Provide personalized, encouraging feedback about this recipe for your client.
+${AI_LOCALE_INSTRUCTION}
 
 CLIENT PROFILE:
 Name: ${userProfile.profileName}
@@ -1420,6 +1428,7 @@ export async function interactWithNutritionist(
   const isFollowUp = conversationHistory.length > 0
 
   const systemPrompt = `You are Emilia, a friendly nutritionist helping tweak THIS SPECIFIC RECIPE. Keep responses focused and concise.
+${AI_LOCALE_INSTRUCTION}
 
 SCOPE - VERY IMPORTANT:
 - You can ONLY help with small nutritional tweaks to this recipe (add/remove/swap ingredients, adjust quantities)

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { analyzeRecipeText } from '@/lib/claude'
+import { convertRecipeIngredientsToMetric, getConversionSummary } from '@/lib/units/convert-recipe-to-metric'
 
 export async function POST(req: NextRequest) {
   try {
@@ -24,6 +25,16 @@ export async function POST(req: NextRequest) {
 
     console.log('🟢 Recipe parsed successfully:', analyzedRecipe.recipeName)
 
+    // Convert ingredients to metric if they have imperial units
+    let convertedIngredients = analyzedRecipe.ingredients || []
+    if (convertedIngredients.length > 0) {
+      convertedIngredients = convertRecipeIngredientsToMetric(convertedIngredients)
+      const summary = getConversionSummary(convertedIngredients)
+      if (summary.converted > 0) {
+        console.log(`🔄 Converted ${summary.converted}/${summary.total} ingredients to metric`)
+      }
+    }
+
     // Transform the response to match the recipe schema
     const recipeData = {
       recipeName: analyzedRecipe.recipeName,
@@ -41,7 +52,7 @@ export async function POST(req: NextRequest) {
       isDairyFree: analyzedRecipe.isDairyFree || false,
       isGlutenFree: analyzedRecipe.isGlutenFree || false,
       containsNuts: analyzedRecipe.containsNuts || false,
-      ingredients: analyzedRecipe.ingredients || [],
+      ingredients: convertedIngredients,
       instructions: analyzedRecipe.instructions || []
     }
 

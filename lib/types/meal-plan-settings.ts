@@ -153,7 +153,7 @@ export const SHOPPING_MODE_DESCRIPTIONS: Record<ShoppingMode, string> = {
 export const EXPIRY_PRIORITY_DESCRIPTIONS: Record<ExpiryPriority, string> = {
   soft: 'Consider expiring items, but don\'t force them (0.3 rating boost)',
   moderate: 'Prioritize expiring items when possible (0.5 rating boost)',
-  strong: 'Strongly favor recipes using expiring items (1.0 rating boost)'
+  strong: 'Strongly favour recipes using expiring items (1.0 rating boost)'
 }
 
 // Feedback detail descriptions for UI

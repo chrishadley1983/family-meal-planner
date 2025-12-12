@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { parseRecipeFromUrl } from '@/lib/claude'
+import { convertRecipeIngredientsToMetric, getConversionSummary } from '@/lib/units/convert-recipe-to-metric'
 
 export async function POST(req: NextRequest) {
   try {
@@ -42,16 +43,24 @@ export async function POST(req: NextRequest) {
     // Parse recipe using Claude
     const parsedRecipe = await parseRecipeFromUrl(url, htmlContent)
 
+    // Convert ingredients to metric if they have imperial units
+    let convertedIngredients = parsedRecipe.ingredients || []
+    if (convertedIngredients.length > 0) {
+      convertedIngredients = convertRecipeIngredientsToMetric(convertedIngredients)
+      const summary = getConversionSummary(convertedIngredients)
+      if (summary.converted > 0) {
+        console.log(`🔄 Converted ${summary.converted}/${summary.total} ingredients to metric`)
+      }
+    }
+
     // Add the source URL to the parsed recipe
     const recipeData = {
       ...parsedRecipe,
+      ingredients: convertedIngredients,
       sourceUrl: url,
       recipeSource: new URL(url).hostname
     }
 
-    return NextResponse.json({
-      recipe: recipeData
-    })
     return NextResponse.json({ recipe: recipeData })
   } catch (error: any) {
     console.error('Error importing recipe from URL:', error)

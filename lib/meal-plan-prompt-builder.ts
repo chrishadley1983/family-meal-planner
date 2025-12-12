@@ -14,6 +14,7 @@ import {
   PANTRY_STAPLES,
   QuickOptions
 } from './types/meal-plan-settings'
+import { AI_LOCALE_INSTRUCTION } from './config/locale'
 
 /**
  * Main function to build the complete AI prompt for meal plan generation
@@ -33,6 +34,7 @@ export function buildMealPlanPrompt(
  */
 function buildSystemPrompt(): string {
   return `You are Emilia, an experienced nutritionist and meal planning assistant for busy families. Your role is to generate balanced, practical weekly meal plans that respect dietary needs, maximize variety, and make shopping/cooking efficient.
+${AI_LOCALE_INSTRUCTION}
 
 You have deep knowledge of:
 - Macro-nutrient balance and flexible dieting approaches
@@ -371,7 +373,7 @@ function buildShoppingSection(settings: MealPlanSettings): string {
 
   section += `**Implementation:**\n`
   section += `- Count unique ingredients across all selected recipes (excluding pantry staples)\n`
-  section += `- When choosing between similar-rated recipes, favor those sharing ingredients already in the plan\n`
+  section += `- When choosing between similar-rated recipes, favour those sharing ingredients already in the plan\n`
   section += `- Apply +${ratingBoost} rating boost to recipes that significantly reduce unique ingredient count\n`
 
   return section
@@ -429,7 +431,7 @@ function buildInventorySection(
       break
     case 'strong':
       ratingBoost = 1.0
-      section += `**Approach:** Strongly favor recipes that use expiring items (+${ratingBoost} rating boost)\n`
+      section += `**Approach:** Strongly favour recipes that use expiring items (+${ratingBoost} rating boost)\n`
       break
   }
 
