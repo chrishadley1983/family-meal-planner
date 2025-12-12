@@ -11,7 +11,7 @@ import { Button, Badge, Input, Select } from '@/components/ui'
 import { useSession } from 'next-auth/react'
 import { useAILoading } from '@/components/providers/AILoadingProvider'
 import { useNotification } from '@/components/providers/NotificationProvider'
-import { ChatMessage, IngredientModification, InstructionModification, ProjectedNutrition } from '@/lib/types/nutritionist'
+import { ChatMessage, IngredientModification, InstructionModification, ProjectedNutrition, ValidatedNutrition } from '@/lib/types/nutritionist'
 
 interface RecipePageProps {
   params: Promise<{ id: string }>
@@ -77,6 +77,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
   const [suggestedPrompts, setSuggestedPrompts] = useState<string[]>([])
   const [chatLoading, setChatLoading] = useState(false)
   const [projectedNutrition, setProjectedNutrition] = useState<ProjectedNutrition | null>(null)
+  const [validatedNutrition, setValidatedNutrition] = useState<ValidatedNutrition | null>(null)
 
   // Undo history state
   const [history, setHistory] = useState<Array<{
@@ -290,14 +291,17 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
         // Save projected nutrition for display/validation
         if (data.projectedNutrition) {
           setProjectedNutrition(data.projectedNutrition)
-          console.log('📊 Projected nutrition after changes:', data.projectedNutrition)
+          setValidatedNutrition(data.validatedNutrition || null)
+          console.log('📊 Projected nutrition after changes:', data.projectedNutrition,
+            data.validatedNutrition ? '(validated)' : '(estimate)')
         }
 
         // Apply ingredient modifications if any
         if (data.ingredientModifications && data.ingredientModifications.length > 0) {
           const updatedIngredients = applyIngredientModifications(data.ingredientModifications)
-          // Clear projected nutrition - macro analysis will refresh via useEffect
+          // Clear projected/validated nutrition - macro analysis will refresh via useEffect
           setProjectedNutrition(null)
+          setValidatedNutrition(null)
           console.log('🔄 Ingredient modifications applied, macro analysis will auto-refresh:', updatedIngredients.length, 'ingredients')
         }
 
@@ -1377,11 +1381,13 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
 
                             {/* Projected Nutrition (shown when Emilia suggests changes) */}
                             {projectedNutrition && (
-                              <div className="bg-green-900/20 border border-green-700/50 rounded-lg p-3">
+                              <div className={`rounded-lg p-3 ${validatedNutrition?.isValidated ? 'bg-green-900/30 border border-green-600/50' : 'bg-zinc-800/50 border border-zinc-600/50'}`}>
                                 <div className="flex items-center gap-2 mb-2">
-                                  <span className="text-xs font-medium text-green-400">Estimated Nutrition (will recalculate)</span>
+                                  <span className={`text-xs font-medium ${validatedNutrition?.isValidated ? 'text-green-400' : 'text-zinc-400'}`}>
+                                    {validatedNutrition?.isValidated ? '✓ Validated Nutrition Impact' : 'Estimated (will recalculate)'}
+                                  </span>
                                   <button
-                                    onClick={() => setProjectedNutrition(null)}
+                                    onClick={() => { setProjectedNutrition(null); setValidatedNutrition(null); }}
                                     className="text-xs text-zinc-500 hover:text-zinc-400"
                                   >
                                     ✕
@@ -1391,18 +1397,38 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                                   <div>
                                     <p className="text-zinc-400">Calories</p>
                                     <p className="text-blue-400 font-semibold">{Math.round(projectedNutrition.calories)}</p>
+                                    {validatedNutrition?.impact && (
+                                      <p className={`text-[10px] ${validatedNutrition.impact.calories <= 0 ? 'text-green-500' : 'text-red-400'}`}>
+                                        {validatedNutrition.impact.calories > 0 ? '+' : ''}{validatedNutrition.impact.calories}
+                                      </p>
+                                    )}
                                   </div>
                                   <div>
                                     <p className="text-zinc-400">Protein</p>
                                     <p className="text-purple-400 font-semibold">{Math.round(projectedNutrition.protein)}g</p>
+                                    {validatedNutrition?.impact && (
+                                      <p className={`text-[10px] ${validatedNutrition.impact.protein >= 0 ? 'text-green-500' : 'text-red-400'}`}>
+                                        {validatedNutrition.impact.protein > 0 ? '+' : ''}{validatedNutrition.impact.protein}g
+                                      </p>
+                                    )}
                                   </div>
                                   <div>
                                     <p className="text-zinc-400">Carbs</p>
                                     <p className="text-green-400 font-semibold">{Math.round(projectedNutrition.carbs)}g</p>
+                                    {validatedNutrition?.impact && (
+                                      <p className={`text-[10px] ${validatedNutrition.impact.carbs <= 0 ? 'text-green-500' : 'text-yellow-500'}`}>
+                                        {validatedNutrition.impact.carbs > 0 ? '+' : ''}{validatedNutrition.impact.carbs}g
+                                      </p>
+                                    )}
                                   </div>
                                   <div>
                                     <p className="text-zinc-400">Fat</p>
                                     <p className="text-yellow-400 font-semibold">{Math.round(projectedNutrition.fat)}g</p>
+                                    {validatedNutrition?.impact && (
+                                      <p className={`text-[10px] ${validatedNutrition.impact.fat <= 0 ? 'text-green-500' : 'text-red-400'}`}>
+                                        {validatedNutrition.impact.fat > 0 ? '+' : ''}{validatedNutrition.impact.fat}g
+                                      </p>
+                                    )}
                                   </div>
                                 </div>
                               </div>

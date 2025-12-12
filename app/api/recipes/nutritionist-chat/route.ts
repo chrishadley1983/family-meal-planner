@@ -2,8 +2,73 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { interactWithNutritionist, generateSuggestedPrompts } from '@/lib/claude'
-import { NutritionistChatRequest } from '@/lib/types/nutritionist'
+import { interactWithNutritionist, generateSuggestedPrompts, analyzeRecipeMacros } from '@/lib/claude'
+import { NutritionistChatRequest, IngredientModification } from '@/lib/types/nutritionist'
+
+/**
+ * Apply ingredient modifications to a copy of the ingredient list
+ * Returns the modified ingredient array for validation
+ */
+function applyModificationsToIngredients(
+  originalIngredients: Array<{ ingredientName: string; quantity: number; unit: string; notes?: string }>,
+  modifications: IngredientModification[]
+): Array<{ ingredientName: string; quantity: number; unit: string; notes?: string }> {
+  let ingredients = [...originalIngredients]
+
+  for (const mod of modifications) {
+    switch (mod.action) {
+      case 'add':
+        if (mod.newIngredient) {
+          ingredients.push({
+            ingredientName: mod.newIngredient.name,
+            quantity: mod.newIngredient.quantity,
+            unit: mod.newIngredient.unit,
+            notes: mod.newIngredient.notes || '',
+          })
+        }
+        break
+
+      case 'remove':
+        ingredients = ingredients.filter(
+          ing => ing.ingredientName.toLowerCase() !== mod.ingredientName.toLowerCase()
+        )
+        break
+
+      case 'replace':
+        if (mod.newIngredient) {
+          const index = ingredients.findIndex(
+            ing => ing.ingredientName.toLowerCase() === mod.ingredientName.toLowerCase()
+          )
+          if (index !== -1) {
+            ingredients[index] = {
+              ingredientName: mod.newIngredient.name,
+              quantity: mod.newIngredient.quantity,
+              unit: mod.newIngredient.unit,
+              notes: mod.newIngredient.notes || '',
+            }
+          }
+        }
+        break
+
+      case 'adjust':
+        if (mod.newIngredient) {
+          const index = ingredients.findIndex(
+            ing => ing.ingredientName.toLowerCase() === mod.ingredientName.toLowerCase()
+          )
+          if (index !== -1) {
+            ingredients[index] = {
+              ...ingredients[index],
+              quantity: mod.newIngredient.quantity,
+              unit: mod.newIngredient.unit || ingredients[index].unit,
+            }
+          }
+        }
+        break
+    }
+  }
+
+  return ingredients
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -113,6 +178,79 @@ export async function POST(request: NextRequest) {
       hasInstructionMods: !!response.instructionModifications?.length,
       modificationsPending: response.modificationsPending,
     })
+
+    // VALIDATION: If Emilia proposed or applied ingredient modifications,
+    // calculate ACTUAL nutrition impact before returning response
+    if (response.ingredientModifications && response.ingredientModifications.length > 0) {
+      console.log('🔬 Validating ingredient modifications with macro analysis...')
+
+      try {
+        // Apply modifications to a copy of the ingredients
+        const modifiedIngredients = applyModificationsToIngredients(
+          recipe.ingredients || [],
+          response.ingredientModifications
+        )
+
+        console.log('📝 Modified ingredients:', modifiedIngredients.length, 'items')
+
+        // Run macro analysis on the modified recipe
+        const validationAnalysis = await analyzeRecipeMacros({
+          recipe: {
+            recipeName: recipe.recipeName,
+            servings: recipe.servings || 4,
+            ingredients: modifiedIngredients,
+          },
+          userProfile: {
+            dailyCalorieTarget: mainProfile.dailyCalorieTarget,
+            dailyProteinTarget: mainProfile.dailyProteinTarget,
+            dailyCarbsTarget: mainProfile.dailyCarbsTarget,
+            dailyFatTarget: mainProfile.dailyFatTarget,
+            macroTrackingEnabled: mainProfile.macroTrackingEnabled,
+          },
+        })
+
+        if (validationAnalysis?.perServing) {
+          // Replace Emilia's estimate with actual calculated values
+          const actualNutrition = {
+            calories: Math.round(validationAnalysis.perServing.calories),
+            protein: Math.round(validationAnalysis.perServing.protein * 10) / 10,
+            carbs: Math.round(validationAnalysis.perServing.carbs * 10) / 10,
+            fat: Math.round(validationAnalysis.perServing.fat * 10) / 10,
+            fiber: Math.round(validationAnalysis.perServing.fiber * 10) / 10,
+            sugar: Math.round(validationAnalysis.perServing.sugar * 10) / 10,
+            sodium: Math.round(validationAnalysis.perServing.sodium),
+          }
+
+          // Calculate the actual impact (change from current to new)
+          const currentNutrition = macroAnalysis.perServing
+          const impact = {
+            calories: actualNutrition.calories - Math.round(currentNutrition.calories),
+            protein: Math.round((actualNutrition.protein - currentNutrition.protein) * 10) / 10,
+            carbs: Math.round((actualNutrition.carbs - currentNutrition.carbs) * 10) / 10,
+            fat: Math.round((actualNutrition.fat - currentNutrition.fat) * 10) / 10,
+          }
+
+          console.log('✅ Validation complete:', {
+            before: { fat: currentNutrition.fat, protein: currentNutrition.protein },
+            after: actualNutrition,
+            impact,
+          })
+
+          // Override Emilia's projected nutrition with actual values
+          response.projectedNutrition = actualNutrition
+
+          // Add validation metadata for the client
+          ;(response as any).validatedNutrition = {
+            isValidated: true,
+            impact,
+            meetsGoal: impact.fat <= 0 || impact.protein >= 0, // Simple check: less fat or more protein is good
+          }
+        }
+      } catch (validationError) {
+        console.error('⚠️ Validation failed, using Emilia estimate:', validationError)
+        // Keep Emilia's estimate if validation fails
+      }
+    }
 
     return NextResponse.json(response)
   } catch (error) {

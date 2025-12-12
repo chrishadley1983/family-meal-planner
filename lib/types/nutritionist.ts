@@ -82,13 +82,25 @@ export interface ProjectedNutrition {
   sodium: number
 }
 
+export interface ValidatedNutrition {
+  isValidated: boolean // True if nutrition was calculated via macro analysis (not Emilia's estimate)
+  impact: {
+    calories: number
+    protein: number
+    carbs: number
+    fat: number
+  }
+  meetsGoal: boolean // Whether the changes move in the right direction
+}
+
 export interface NutritionistChatResponse {
   message: string
   suggestedPrompts: string[]
   ingredientModifications?: IngredientModification[]
   instructionModifications?: InstructionModification[]
   modificationsPending: boolean // Whether there are unapplied modifications awaiting confirmation
-  projectedNutrition?: ProjectedNutrition // Projected nutrition per serving if modifications are applied
+  projectedNutrition?: ProjectedNutrition // Nutrition per serving if modifications are applied
+  validatedNutrition?: ValidatedNutrition // Validation metadata (present if macro analysis was run)
 }
 
 export interface SuggestedPromptsContext {
