@@ -17,17 +17,18 @@ model User {
   lastLogin    DateTime?
   preferences  Json      @default("{}")
 
-  profiles               FamilyProfile[]
-  recipes                Recipe[]
-  mealPlans              MealPlan[]
-  shoppingLists          ShoppingList[]
-  shoppingListCategories ShoppingListCategory[]
-  inventory              InventoryItem[]
-  staples                Staple[]
-  settings               AppSettings?
-  mealPlanSettings       MealPlanSettings?
-  inventorySettings      InventorySettings?
-  recipeHistory          RecipeUsageHistory[]
+  profiles                  FamilyProfile[]
+  recipes                   Recipe[]
+  mealPlans                 MealPlan[]
+  shoppingLists             ShoppingList[]
+  shoppingListCategories    ShoppingListCategory[]
+  inventory                 InventoryItem[]
+  staples                   Staple[]
+  settings                  AppSettings?
+  mealPlanSettings          MealPlanSettings?
+  inventorySettings         InventorySettings?
+  recipeHistory             RecipeUsageHistory[]
+  nutritionistConversations NutritionistConversation[]
 
   @@map("users")
 }
@@ -53,9 +54,18 @@ model FamilyProfile {
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
-  user                User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  mealParticipations  MealParticipant[]
-  recipeCompatibility RecipeProfileCompatibility[]
+  // Body stats for TDEE/macro calculation
+  currentWeightKg    Decimal? @db.Decimal(5, 2)
+  targetWeightKg     Decimal? @db.Decimal(5, 2)
+  heightCm           Int?
+  gender             String?
+  goalType           String?  // 'lose', 'maintain', 'gain'
+  goalTimeframeWeeks Int?
+
+  user                         User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mealParticipations           MealParticipant[]
+  recipeCompatibility          RecipeProfileCompatibility[]
+  nutritionistConversations    NutritionistConversation[]
 
   @@unique([userId, profileName])
   @@index([userId])
@@ -536,4 +546,36 @@ model RecipeUsageHistory {
   @@index([userId, recipeId, usedDate])
   @@index([userId, usedDate])
   @@map("recipe_usage_history")
+}
+
+// Nutritionist conversation tracking
+model NutritionistConversation {
+  id        String   @id @default(uuid())
+  userId    String
+  profileId String
+  title     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profile  FamilyProfile         @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  messages NutritionistMessage[]
+
+  @@index([userId])
+  @@index([profileId])
+  @@map("nutritionist_conversations")
+}
+
+model NutritionistMessage {
+  id             String   @id @default(uuid())
+  conversationId String
+  role           String   // 'user' | 'assistant'
+  content        String
+  metadata       Json?    // Store suggested actions, applied changes, etc.
+  createdAt      DateTime @default(now())
+
+  conversation NutritionistConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@map("nutritionist_messages")
 }
