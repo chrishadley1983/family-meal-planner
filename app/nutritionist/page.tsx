@@ -31,6 +31,7 @@ export default function NutritionistPage() {
   const router = useRouter()
   const chatEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const isNewConversationRef = useRef(false)
 
   // State
   const [profiles, setProfiles] = useState<Profile[]>([])
@@ -70,15 +71,12 @@ export default function NutritionistPage() {
     }
   }, [selectedProfileId])
 
-  // Track if we just created a new conversation (to skip fetchConversation)
-  const [isNewConversation, setIsNewConversation] = useState(false)
-
   // Fetch messages when conversation changes (skip if we just created it)
   useEffect(() => {
     if (selectedConversationId) {
-      if (isNewConversation) {
+      if (isNewConversationRef.current) {
         // Skip fetching - we already have the greeting message
-        setIsNewConversation(false)
+        isNewConversationRef.current = false
       } else {
         fetchConversation(selectedConversationId)
       }
@@ -86,7 +84,7 @@ export default function NutritionistPage() {
       setMessages([])
       setSuggestedPrompts([])
     }
-  }, [selectedConversationId, isNewConversation])
+  }, [selectedConversationId])
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -238,7 +236,7 @@ export default function NutritionistPage() {
         ])
 
         // Mark as new conversation to prevent fetchConversation from overwriting
-        setIsNewConversation(true)
+        isNewConversationRef.current = true
 
         // Select the new conversation
         setSelectedConversationId(data.conversation.id)

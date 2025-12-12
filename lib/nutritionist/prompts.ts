@@ -54,7 +54,7 @@ export function getHolisticNutritionistSystemPrompt(
 - Reference specific data from their profile/recipes/inventory when available
 
 **Action Format:**
-When you want to suggest a database action, include it at the END of your response in this exact JSON format:
+When you want to suggest a database action, include it at the VERY END of your response (after all text) in this exact JSON format:
 \`\`\`json
 {
   "suggestedActions": [
@@ -67,6 +67,8 @@ When you want to suggest a database action, include it at the END of your respon
   "suggestedPrompts": ["prompt 1", "prompt 2", "prompt 3"]
 }
 \`\`\`
+
+**CRITICAL:** The JSON block MUST come AFTER all your conversational text. Never put JSON in the middle of your response. Write your full message first, then add the JSON block at the very end.
 
 Available action types:
 - UPDATE_MACROS: Update profile's daily macro targets (calories, protein, carbs, fat, fiber)
@@ -268,33 +270,37 @@ export function getContextAwareSuggestedPrompts(
 
 /**
  * Parse AI response for actions and prompts
+ * Handles JSON blocks anywhere in the response (not just at the end)
  */
 export function parseAIResponse(response: string): {
   message: string
   suggestedActions?: unknown[]
   suggestedPrompts?: string[]
 } {
-  // Try to find JSON block at the end of the response
-  const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```\s*$/i)
+  // Try to find JSON block anywhere in the response (```json...```)
+  const jsonBlockMatch = response.match(/```json\s*([\s\S]*?)\s*```/i)
 
-  if (jsonMatch) {
+  if (jsonBlockMatch) {
     try {
-      const jsonData = JSON.parse(jsonMatch[1])
-      const message = response.replace(jsonMatch[0], '').trim()
+      const jsonData = JSON.parse(jsonBlockMatch[1])
+      // Remove the JSON block from the message
+      const message = response.replace(jsonBlockMatch[0], '').trim()
 
       return {
         message,
         suggestedActions: jsonData.suggestedActions,
         suggestedPrompts: jsonData.suggestedPrompts,
       }
-    } catch {
+    } catch (e) {
+      console.error('❌ Failed to parse JSON block:', e)
       // JSON parse failed, return full response
       return { message: response }
     }
   }
 
-  // No JSON block found, check for inline JSON (fallback)
-  const inlineJsonMatch = response.match(/\{[\s\S]*"suggestedActions"[\s\S]*\}\s*$/)
+  // No JSON block found, check for standalone JSON object with suggestedActions
+  // This handles cases where AI outputs raw JSON without code block
+  const inlineJsonMatch = response.match(/\{[\s\S]*?"suggestedActions"[\s\S]*?\}(?=\s*$|\s*\n\n)/)
   if (inlineJsonMatch) {
     try {
       const jsonData = JSON.parse(inlineJsonMatch[0])
@@ -306,7 +312,24 @@ export function parseAIResponse(response: string): {
         suggestedPrompts: jsonData.suggestedPrompts,
       }
     } catch {
-      return { message: response }
+      // Fall through to return full response
+    }
+  }
+
+  // Also check for JSON at the very end (legacy support)
+  const endJsonMatch = response.match(/\{[\s\S]*"suggestedActions"[\s\S]*\}\s*$/)
+  if (endJsonMatch) {
+    try {
+      const jsonData = JSON.parse(endJsonMatch[0])
+      const message = response.replace(endJsonMatch[0], '').trim()
+
+      return {
+        message,
+        suggestedActions: jsonData.suggestedActions,
+        suggestedPrompts: jsonData.suggestedPrompts,
+      }
+    } catch {
+      // Fall through
     }
   }
 
