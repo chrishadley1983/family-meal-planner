@@ -1462,7 +1462,16 @@ RESPONSE FORMAT (JSON only):
       "reason": "brief reason"
     }
   ],
-  "modificationsPending": false
+  "modificationsPending": false,
+  "projectedNutrition": {
+    "calories": number,
+    "protein": number,
+    "carbs": number,
+    "fat": number,
+    "fiber": number,
+    "sugar": number,
+    "sodium": number
+  }
 }
 
 RULES:
@@ -1471,7 +1480,9 @@ RULES:
 3. For partial agreement, only include what they agreed to
 4. When adding ingredients, ADD a new instruction step explaining how to use it
 5. When replacing ingredients, UPDATE instructions that mention the old ingredient
-6. Consider user's macro targets when suggesting changes`
+6. Consider user's macro targets when suggesting changes
+7. ARITHMETIC CHECK: When calculating nutrition changes, double-check your maths. If you say "X minus Y minus Z", verify the result is correct before stating it. For example: 28g - 8g - 5g = 15g, NOT 19g.
+8. ALWAYS include projectedNutrition when proposing or applying changes - this shows what the nutrition will be AFTER the changes. Calculate carefully from current values.`
 
   const userPrompt = `RECIPE: ${recipe.recipeName}
 Servings: ${recipe.servings}
@@ -1523,7 +1534,8 @@ Respond as Emilia. ${isFollowUp ? 'Keep it SHORT (1-2 sentences).' : ''} JSON on
         suggestedPrompts: parsed.suggestedPrompts || [],
         ingredientModifications: parsed.ingredientModifications || undefined,
         instructionModifications: parsed.instructionModifications || undefined,
-        modificationsPending: parsed.modificationsPending || false
+        modificationsPending: parsed.modificationsPending || false,
+        projectedNutrition: parsed.projectedNutrition || undefined,
       }
     } catch (parseError) {
       console.error('Failed to parse nutritionist response as JSON:', parseError)

@@ -7,7 +7,7 @@ import Image from 'next/image'
 import { AppLayout, PageContainer } from '@/components/layout'
 import { useSession } from 'next-auth/react'
 import { useAILoading } from '@/components/providers/AILoadingProvider'
-import type { ChatMessage, IngredientModification, InstructionModification } from '@/lib/types/nutritionist'
+import type { ChatMessage, IngredientModification, InstructionModification, ProjectedNutrition } from '@/lib/types/nutritionist'
 
 type InputMethod = 'manual' | 'url' | 'photo' | 'text'
 
@@ -100,6 +100,7 @@ export default function NewRecipePage() {
   const [chatInput, setChatInput] = useState('')
   const [suggestedPrompts, setSuggestedPrompts] = useState<string[]>([])
   const [chatLoading, setChatLoading] = useState(false)
+  const [projectedNutrition, setProjectedNutrition] = useState<ProjectedNutrition | null>(null)
 
   const mealCategories = ['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert']
 
@@ -227,6 +228,7 @@ export default function NewRecipePage() {
           hasIngredientMods: !!data.ingredientModifications?.length,
           hasInstructionMods: !!data.instructionModifications?.length,
           suggestedPrompts: data.suggestedPrompts?.length,
+          projectedNutrition: data.projectedNutrition,
         })
 
         const assistantMessage: ChatMessage = {
@@ -238,9 +240,17 @@ export default function NewRecipePage() {
         setChatMessages((prev: ChatMessage[]) => [...prev, assistantMessage])
         setSuggestedPrompts(data.suggestedPrompts || [])
 
+        // Save projected nutrition for display/validation
+        if (data.projectedNutrition) {
+          setProjectedNutrition(data.projectedNutrition)
+          console.log('📊 Projected nutrition after changes:', data.projectedNutrition)
+        }
+
         // Apply ingredient modifications if any
         if (data.ingredientModifications && data.ingredientModifications.length > 0) {
           applyIngredientModifications(data.ingredientModifications)
+          // Clear projected nutrition as macros will be recalculated after ingredient changes
+          setProjectedNutrition(null)
         }
 
         // Apply instruction modifications if any
@@ -1571,6 +1581,39 @@ Instructions:
                           </div>
                         )}
                       </div>
+
+                      {/* Projected Nutrition (shown when Emilia suggests changes) */}
+                      {projectedNutrition && (
+                        <div className="bg-green-900/20 border border-green-700/50 rounded-lg p-3">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-xs font-medium text-green-400">Projected Nutrition After Changes</span>
+                            <button
+                              onClick={() => setProjectedNutrition(null)}
+                              className="text-xs text-zinc-500 hover:text-zinc-400"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                            <div>
+                              <p className="text-zinc-400">Calories</p>
+                              <p className="text-blue-400 font-semibold">{Math.round(projectedNutrition.calories)}</p>
+                            </div>
+                            <div>
+                              <p className="text-zinc-400">Protein</p>
+                              <p className="text-purple-400 font-semibold">{Math.round(projectedNutrition.protein)}g</p>
+                            </div>
+                            <div>
+                              <p className="text-zinc-400">Carbs</p>
+                              <p className="text-green-400 font-semibold">{Math.round(projectedNutrition.carbs)}g</p>
+                            </div>
+                            <div>
+                              <p className="text-zinc-400">Fat</p>
+                              <p className="text-yellow-400 font-semibold">{Math.round(projectedNutrition.fat)}g</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                       {/* Suggested Prompts */}
                       {suggestedPrompts.length > 0 && !chatLoading && (

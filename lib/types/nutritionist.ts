@@ -72,12 +72,23 @@ export interface NutritionistChatRequest {
   userMessage: string
 }
 
+export interface ProjectedNutrition {
+  calories: number
+  protein: number
+  carbs: number
+  fat: number
+  fiber: number
+  sugar: number
+  sodium: number
+}
+
 export interface NutritionistChatResponse {
   message: string
   suggestedPrompts: string[]
   ingredientModifications?: IngredientModification[]
   instructionModifications?: InstructionModification[]
   modificationsPending: boolean // Whether there are unapplied modifications awaiting confirmation
+  projectedNutrition?: ProjectedNutrition // Projected nutrition per serving if modifications are applied
 }
 
 export interface SuggestedPromptsContext {
