@@ -1665,7 +1665,7 @@ Instructions:
                       {projectedNutrition && (
                         <div className="bg-green-900/20 border border-green-700/50 rounded-lg p-3">
                           <div className="flex items-center gap-2 mb-2">
-                            <span className="text-xs font-medium text-green-400">Projected Nutrition After Changes</span>
+                            <span className="text-xs font-medium text-green-400">Estimated Nutrition (will recalculate)</span>
                             <button
                               onClick={() => setProjectedNutrition(null)}
                               className="text-xs text-zinc-500 hover:text-zinc-400"

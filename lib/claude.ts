@@ -1482,7 +1482,8 @@ RULES:
 5. When replacing ingredients, UPDATE instructions that mention the old ingredient
 6. Consider user's macro targets when suggesting changes
 7. ARITHMETIC CHECK: When calculating nutrition changes, double-check your maths. If you say "X minus Y minus Z", verify the result is correct before stating it. For example: 28g - 8g - 5g = 15g, NOT 19g.
-8. ALWAYS include projectedNutrition with ACTUAL NUMBERS (not zeros) when proposing or applying changes. Calculate the new values by subtracting/adding the estimated changes from the current values shown above. For example, if current fat is 28g and you're saving 13g, projectedNutrition.fat should be 15.`
+8. ALWAYS include projectedNutrition with your best ESTIMATE (these are approximate - the actual values will be recalculated from the ingredient list).
+9. CRITICAL: When APPLYING changes (not just proposing), NEVER state specific final nutrition values in your message (e.g., DON'T say "fat is now 11g"). Instead, say something like "Done! I've made those changes - check the nutrition panel above for the updated values." This is because your estimates may differ from the actual recalculated values.`
 
   const userPrompt = `RECIPE: ${recipe.recipeName}
 Servings: ${recipe.servings}
