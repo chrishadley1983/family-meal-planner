@@ -75,7 +75,7 @@ Calculate macros based on standard USDA nutrition data for the ingredients.
 Return ONLY the JSON object, no explanatory text.`
 
         const message = await client.messages.create({
-          model: 'claude-haiku-4-5',
+          model: 'claude-3-5-haiku-20241022',
           max_tokens: 1024,
           messages: [{
             role: 'user',

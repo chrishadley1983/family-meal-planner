@@ -229,7 +229,7 @@ export async function POST(request: NextRequest) {
 
     // Call Claude API
     const response = await client.messages.create({
-      model: 'claude-haiku-4-5-20250822',
+      model: 'claude-3-5-haiku-20241022',
       max_tokens: 2048,
       system: systemPrompt,
       messages: conversationHistory.map((msg) => ({

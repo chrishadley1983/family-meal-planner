@@ -513,7 +513,7 @@ Use the EXACT category names from the list. Example: ["Fresh Produce", "Cupboard
           console.log(`🔷 AI prompt built, sending ${needsAI.length} items to Claude...`)
 
           const message = await client.messages.create({
-            model: 'claude-haiku-4-5',
+            model: 'claude-3-5-haiku-20241022',
             max_tokens: 4096,
             temperature: 0, // Lower temperature for more consistent results
             messages: [{ role: 'user', content: prompt }],
@@ -662,7 +662,7 @@ Respond with ONLY valid JSON: {"quantity": <number>, "unit": "<unit>", "itemName
 
             try {
               const message = await client.messages.create({
-                model: 'claude-haiku-4-5',
+                model: 'claude-3-5-haiku-20241022',
                 max_tokens: 150,
                 messages: [{ role: 'user', content: prompt }],
               })
