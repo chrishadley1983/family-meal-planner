@@ -82,7 +82,14 @@ When you want to suggest a database action, include it at the VERY END of your r
    - dailyFiberTarget: number (optional)
 
 2. **UPDATE_PREFERENCES** - Update profile's food likes/dislikes
-   Use this when the user mentions they like or dislike specific foods!
+   **CRITICAL: You MUST use this action whenever a user expresses a food preference!**
+   Trigger phrases (look for these patterns):
+   - "I hate...", "I don't like...", "I can't stand...", "I detest..." → addDislikes
+   - "I love...", "I like...", "I enjoy...", "I prefer..." → addLikes
+   - "I no longer hate...", "I've started liking..." → removeDislikes/addLikes
+
+   Example: User says "I HATE brown rice" → You MUST suggest UPDATE_PREFERENCES with addDislikes: ["brown rice"]
+
    Required data fields:
    - profileId: string (use the Profile ID from context below)
    - addLikes: string[] (foods to add to likes, optional)
@@ -129,6 +136,7 @@ When you want to suggest a database action, include it at the VERY END of your r
 - ONLY suggest actions when they make sense in context
 - ALWAYS include ALL required data fields with actual values (never placeholders)
 - For UPDATE_MACROS: You MUST calculate the actual macro values first, then include them in the action
+- For UPDATE_PREFERENCES: Scan EVERY user message for food likes/dislikes and ALWAYS suggest saving them
 - If user hasn't provided enough info for an action, ask follow-up questions first`
 
   // Build profile context

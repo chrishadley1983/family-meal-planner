@@ -3,6 +3,18 @@
  * Style matches Emilia's friendly cartoon aesthetic
  */
 
+/**
+ * Escape special XML characters to prevent SVG parsing errors
+ */
+function escapeXml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 // Color schemes based on meal category
 const COLOR_SCHEMES = {
   Breakfast: {
@@ -57,10 +69,11 @@ export function generateRecipeSVG(
   const category = mealCategory?.[0] || 'default'
   const colors = COLOR_SCHEMES[category as keyof typeof COLOR_SCHEMES] || COLOR_SCHEMES.default
 
-  // Truncate recipe name if too long
-  const displayName = recipeName.length > 30
+  // Truncate recipe name if too long and escape XML characters
+  const truncatedName = recipeName.length > 30
     ? recipeName.substring(0, 27) + '...'
     : recipeName
+  const displayName = escapeXml(truncatedName)
 
   // Generate SVG
   const svg = `
