@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { AppLayout, PageContainer } from '@/components/layout'
 import { useSession } from 'next-auth/react'
 import { useAILoading } from '@/components/providers/AILoadingProvider'
+import type { ChatMessage, IngredientModification, InstructionModification } from '@/lib/types/nutritionist'
 
 type InputMethod = 'manual' | 'url' | 'photo' | 'text'
 
@@ -94,6 +95,12 @@ export default function NewRecipePage() {
   const [loadingMacros, setLoadingMacros] = useState(false)
   const [loadingFeedback, setLoadingFeedback] = useState(false)
 
+  // Interactive Nutritionist Chat state
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+  const [chatInput, setChatInput] = useState('')
+  const [suggestedPrompts, setSuggestedPrompts] = useState<string[]>([])
+  const [chatLoading, setChatLoading] = useState(false)
+
   const mealCategories = ['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert']
 
   // Auto-fetch macro analysis when recipe changes
@@ -175,6 +182,185 @@ export default function NewRecipePage() {
       setLoadingFeedback(false)
       stopLoading()
     }
+  }
+
+  // Send a message to the nutritionist chat
+  const sendChatMessage = async (message: string) => {
+    if (!message.trim() || !macroAnalysis) return
+
+    const userMessage: ChatMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: message.trim(),
+      timestamp: new Date(),
+    }
+
+    setChatMessages((prev: ChatMessage[]) => [...prev, userMessage])
+    setChatInput('')
+    setChatLoading(true)
+
+    try {
+      console.log('🗣️ Sending chat message:', message.substring(0, 50))
+      const response = await fetch('/api/recipes/nutritionist-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipe: {
+            recipeName,
+            servings,
+            mealType,
+            ingredients: ingredients.filter(i => i.ingredientName && i.unit),
+            instructions: instructions.filter(i => i.instruction),
+          },
+          macroAnalysis,
+          conversationHistory: chatMessages.map(m => ({
+            role: m.role,
+            content: m.content,
+          })),
+          userMessage: message.trim(),
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log('🟢 Chat response received:', {
+          hasIngredientMods: !!data.ingredientModifications?.length,
+          hasInstructionMods: !!data.instructionModifications?.length,
+          suggestedPrompts: data.suggestedPrompts?.length,
+        })
+
+        const assistantMessage: ChatMessage = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: data.message,
+          timestamp: new Date(),
+        }
+        setChatMessages((prev: ChatMessage[]) => [...prev, assistantMessage])
+        setSuggestedPrompts(data.suggestedPrompts || [])
+
+        // Apply ingredient modifications if any
+        if (data.ingredientModifications && data.ingredientModifications.length > 0) {
+          applyIngredientModifications(data.ingredientModifications)
+        }
+
+        // Apply instruction modifications if any
+        if (data.instructionModifications && data.instructionModifications.length > 0) {
+          applyInstructionModifications(data.instructionModifications)
+        }
+      } else {
+        console.error('❌ Chat request failed')
+        const errorMessage: ChatMessage = {
+          id: `error-${Date.now()}`,
+          role: 'assistant',
+          content: "I'm having trouble responding right now. Please try again.",
+          timestamp: new Date(),
+        }
+        setChatMessages((prev: ChatMessage[]) => [...prev, errorMessage])
+      }
+    } catch (err) {
+      console.error('❌ Failed to send chat message:', err)
+      const errorMessage: ChatMessage = {
+        id: `error-${Date.now()}`,
+        role: 'assistant',
+        content: "Something went wrong. Please try again.",
+        timestamp: new Date(),
+      }
+      setChatMessages((prev: ChatMessage[]) => [...prev, errorMessage])
+    } finally {
+      setChatLoading(false)
+    }
+  }
+
+  // Apply ingredient modifications from the nutritionist
+  const applyIngredientModifications = (modifications: IngredientModification[]) => {
+    let updatedIngredients = [...ingredients]
+
+    for (const mod of modifications) {
+      switch (mod.action) {
+        case 'add':
+          if (mod.newIngredient) {
+            updatedIngredients.push({
+              ingredientName: mod.newIngredient.name,
+              quantity: mod.newIngredient.quantity,
+              unit: mod.newIngredient.unit,
+              notes: mod.newIngredient.notes,
+            })
+          }
+          break
+
+        case 'remove':
+          updatedIngredients = updatedIngredients.filter(
+            i => i.ingredientName.toLowerCase() !== mod.ingredientName.toLowerCase()
+          )
+          break
+
+        case 'replace':
+          if (mod.newIngredient) {
+            const index = updatedIngredients.findIndex(
+              i => i.ingredientName.toLowerCase() === mod.ingredientName.toLowerCase()
+            )
+            if (index !== -1) {
+              updatedIngredients[index] = {
+                ingredientName: mod.newIngredient.name,
+                quantity: mod.newIngredient.quantity,
+                unit: mod.newIngredient.unit,
+                notes: mod.newIngredient.notes,
+              }
+            }
+          }
+          break
+
+        case 'adjust':
+          if (mod.newIngredient) {
+            const index = updatedIngredients.findIndex(
+              i => i.ingredientName.toLowerCase() === mod.ingredientName.toLowerCase()
+            )
+            if (index !== -1) {
+              updatedIngredients[index] = {
+                ...updatedIngredients[index],
+                quantity: mod.newIngredient.quantity,
+                unit: mod.newIngredient.unit || updatedIngredients[index].unit,
+              }
+            }
+          }
+          break
+      }
+    }
+
+    setIngredients(updatedIngredients)
+    console.log('✅ Applied ingredient modifications:', modifications.length)
+  }
+
+  // Apply instruction modifications from the nutritionist
+  const applyInstructionModifications = (modifications: InstructionModification[]) => {
+    let updatedInstructions = [...instructions]
+
+    for (const mod of modifications) {
+      switch (mod.action) {
+        case 'add':
+          const newStep = {
+            stepNumber: updatedInstructions.length + 1,
+            instruction: mod.instruction,
+          }
+          updatedInstructions.push(newStep)
+          break
+
+        case 'update':
+          if (mod.stepNumber !== undefined) {
+            const index = updatedInstructions.findIndex(i => i.stepNumber === mod.stepNumber)
+            if (index !== -1) {
+              updatedInstructions[index] = {
+                ...updatedInstructions[index],
+                instruction: mod.instruction,
+              }
+            }
+          }
+          break
+      }
+    }
+
+    setInstructions(updatedInstructions)
+    console.log('✅ Applied instruction modifications:', modifications.length)
   }
 
   // Handle servings change with ingredient scaling
@@ -1332,9 +1518,9 @@ Instructions:
               </div>
             )}
 
-            {/* Emilia Nutritionist Feedback */}
+            {/* Emilia's Nutritionist Feedback - Interactive Chat */}
             {nutritionistFeedback && (
-              <div className="bg-gradient-to-r from-green-900/20 to-blue-900/20 border border-green-800/50 rounded-lg p-6">
+              <div className="bg-gradient-to-r from-green-900/20 to-blue-900/20 border border-green-800/50 rounded-lg p-6 mb-6">
                 <div className="flex items-start gap-4">
                   {/* Emilia Avatar */}
                   <div className="flex-shrink-0">
@@ -1350,10 +1536,82 @@ Instructions:
                   {/* Feedback Content */}
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <h3 className="text-lg font-semibold text-white">Emilia's Nutritionist Tips</h3>
+                      <h3 className="text-lg font-semibold text-white">Emilia&apos;s Nutritionist Tips</h3>
+                      <span className="text-xs text-green-400 bg-green-900/30 px-2 py-0.5 rounded-full">
+                        Interactive
+                      </span>
                       {loadingFeedback && <span className="text-xs text-zinc-400">Analyzing...</span>}
                     </div>
-                    <p className="text-zinc-300 leading-relaxed">{nutritionistFeedback}</p>
+
+                    {/* Interactive Chat */}
+                    <div className="space-y-4">
+                      {/* Chat Messages */}
+                      <div className="space-y-3 max-h-64 overflow-y-auto">
+                        {chatMessages.map((msg) => (
+                          <div
+                            key={msg.id}
+                            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                          >
+                            <div
+                              className={`max-w-[85%] rounded-lg px-4 py-2 ${
+                                msg.role === 'user'
+                                  ? 'bg-purple-600 text-white'
+                                  : 'bg-zinc-700/50 text-zinc-200'
+                              }`}
+                            >
+                              <p className="text-sm leading-relaxed">{msg.content}</p>
+                            </div>
+                          </div>
+                        ))}
+                        {chatLoading && (
+                          <div className="flex justify-start">
+                            <div className="bg-zinc-700/50 text-zinc-400 rounded-lg px-4 py-2">
+                              <p className="text-sm">Emilia is typing...</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Suggested Prompts */}
+                      {suggestedPrompts.length > 0 && !chatLoading && (
+                        <div className="flex flex-wrap gap-2">
+                          {suggestedPrompts.map((prompt, index) => (
+                            <button
+                              key={index}
+                              onClick={() => sendChatMessage(prompt)}
+                              className="text-xs bg-zinc-700/50 hover:bg-zinc-600/50 text-zinc-300 px-3 py-1.5 rounded-full border border-zinc-600 transition-colors"
+                            >
+                              {prompt}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Chat Input */}
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={chatInput}
+                          onChange={(e) => setChatInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault()
+                              sendChatMessage(chatInput)
+                            }
+                          }}
+                          placeholder="Ask Emilia to tweak this recipe (e.g. add protein, reduce fat)..."
+                          className="flex-1 bg-zinc-800 border border-zinc-600 rounded-lg px-4 py-2 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-green-500"
+                          disabled={chatLoading}
+                        />
+                        <button
+                          onClick={() => sendChatMessage(chatInput)}
+                          disabled={chatLoading || !chatInput.trim()}
+                          className="bg-green-600 hover:bg-green-700 disabled:bg-zinc-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                        >
+                          Send
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
