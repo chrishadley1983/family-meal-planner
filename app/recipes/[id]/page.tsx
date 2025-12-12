@@ -295,9 +295,10 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
 
         // Apply ingredient modifications if any
         if (data.ingredientModifications && data.ingredientModifications.length > 0) {
-          applyIngredientModifications(data.ingredientModifications)
-          // Clear projected nutrition as macros will be recalculated after ingredient changes
+          const updatedIngredients = applyIngredientModifications(data.ingredientModifications)
+          // Clear projected nutrition - macro analysis will refresh via useEffect
           setProjectedNutrition(null)
+          console.log('🔄 Ingredient modifications applied, macro analysis will auto-refresh:', updatedIngredients.length, 'ingredients')
         }
 
         // Apply instruction modifications if any
@@ -329,7 +330,8 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
   }
 
   // Apply ingredient modifications from the nutritionist
-  const applyIngredientModifications = (modifications: IngredientModification[]) => {
+  // Returns the updated ingredients array for immediate use (avoids closure issues)
+  const applyIngredientModifications = (modifications: IngredientModification[]): typeof ingredients => {
     console.log('⚡ Applying ingredient modifications:', modifications)
     saveToHistory() // Save current state for undo
 
@@ -392,7 +394,8 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
     }
 
     setIngredients(updatedIngredients)
-    // Note: The existing useEffect will auto-trigger macro analysis refresh due to ingredients change
+    console.log('🔄 Ingredients state updated, useEffect will auto-trigger macro analysis')
+    return updatedIngredients
   }
 
   // Apply instruction modifications from the nutritionist
