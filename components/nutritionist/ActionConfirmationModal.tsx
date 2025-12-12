@@ -9,7 +9,7 @@ import {
   AddInventoryAction,
   AddStapleAction,
 } from '@/lib/nutritionist/types'
-import { formatActionForDisplay } from '@/lib/nutritionist/actions'
+import { formatActionForDisplay } from '@/lib/nutritionist/format'
 
 interface ActionConfirmationModalProps {
   isOpen: boolean
