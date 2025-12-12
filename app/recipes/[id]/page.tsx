@@ -1291,6 +1291,11 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
                         {/* Edit Mode - Interactive Chat */}
                         {isEditing && (
                           <div className="space-y-4">
+                            {/* Initial Feedback */}
+                            <div className="text-sm text-zinc-300 leading-relaxed whitespace-pre-line">
+                              {nutritionistFeedback}
+                            </div>
+
                             {/* Chat Messages */}
                             <div className="space-y-3 max-h-64 overflow-y-auto">
                               {chatMessages.map((msg) => (

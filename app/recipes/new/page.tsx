@@ -1553,6 +1553,11 @@ Instructions:
                       {loadingFeedback && <span className="text-xs text-zinc-400">Analyzing...</span>}
                     </div>
 
+                    {/* Initial Feedback */}
+                    <div className="text-sm text-zinc-300 leading-relaxed mb-4 whitespace-pre-line">
+                      {nutritionistFeedback}
+                    </div>
+
                     {/* Interactive Chat */}
                     <div className="space-y-4">
                       {/* Chat Messages */}
