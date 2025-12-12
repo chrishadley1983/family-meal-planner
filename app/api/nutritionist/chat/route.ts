@@ -13,7 +13,9 @@ import {
   InventoryContext,
   StapleContext,
   NutritionistAction,
+  CreateRecipeAction,
 } from '@/lib/nutritionist'
+import { calculateNutrition } from '@/lib/claude'
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -131,6 +133,87 @@ function generateTitle(message: string): string {
 }
 
 /**
+ * Validate a CREATE_RECIPE action against user's macro targets
+ * Returns validation result with calculated nutrition
+ */
+async function validateRecipeAction(
+  action: CreateRecipeAction,
+  profile: ProfileContext
+): Promise<{
+  isValid: boolean
+  calculatedNutrition: {
+    caloriesPerServing: number
+    proteinPerServing: number
+    carbsPerServing: number
+    fatPerServing: number
+    fiberPerServing?: number
+  } | null
+  issues: string[]
+}> {
+  const issues: string[] = []
+
+  try {
+    // Calculate actual nutrition from ingredients
+    const ingredientsForCalc = action.data.ingredients.map((ing) => ({
+      ingredientName: ing.name,
+      quantity: ing.quantity,
+      unit: ing.unit,
+    }))
+
+    const calculatedNutrition = await calculateNutrition(
+      ingredientsForCalc,
+      action.data.servings
+    )
+
+    console.log('🔷 Validated recipe nutrition:', {
+      aiEstimate: {
+        calories: action.data.caloriesPerServing,
+        protein: action.data.proteinPerServing,
+        carbs: action.data.carbsPerServing,
+        fat: action.data.fatPerServing,
+      },
+      calculated: calculatedNutrition,
+      userTargets: {
+        calories: profile.dailyCalorieTarget,
+        protein: profile.dailyProteinTarget,
+        carbs: profile.dailyCarbsTarget,
+        fat: profile.dailyFatTarget,
+      },
+    })
+
+    // Check if calculated nutrition aligns with user targets
+    // Allow up to 20% deviation for a single meal (assuming 3-4 meals per day)
+    const maxFatPerMeal = profile.dailyFatTarget ? profile.dailyFatTarget * 0.4 : null
+    const maxCaloriesPerMeal = profile.dailyCalorieTarget ? profile.dailyCalorieTarget * 0.45 : null
+
+    if (maxFatPerMeal && calculatedNutrition.fatPerServing > maxFatPerMeal) {
+      issues.push(
+        `Fat content (${calculatedNutrition.fatPerServing}g) exceeds recommended per-meal limit (${Math.round(maxFatPerMeal)}g based on daily target of ${profile.dailyFatTarget}g)`
+      )
+    }
+
+    if (maxCaloriesPerMeal && calculatedNutrition.caloriesPerServing > maxCaloriesPerMeal) {
+      issues.push(
+        `Calories (${calculatedNutrition.caloriesPerServing}) exceed recommended per-meal limit (${Math.round(maxCaloriesPerMeal)} based on daily target of ${profile.dailyCalorieTarget})`
+      )
+    }
+
+    return {
+      isValid: issues.length === 0,
+      calculatedNutrition,
+      issues,
+    }
+  } catch (error) {
+    console.error('❌ Error validating recipe nutrition:', error)
+    return {
+      isValid: true, // Allow recipe if we can't validate
+      calculatedNutrition: null,
+      issues: [],
+    }
+  }
+}
+
+/**
  * POST /api/nutritionist/chat
  * Send a message to Emilia and get a response
  */
@@ -228,27 +311,82 @@ export async function POST(request: NextRequest) {
 
     console.log('🔷 Calling Claude API...')
 
-    // Call Claude API
-    const response = await client.messages.create({
-      model: 'claude-haiku-4-5',
-      max_tokens: 2048,
-      system: systemPrompt,
-      messages: conversationHistory.map((msg) => ({
-        role: msg.role,
-        content: msg.content,
-      })),
-    })
+    // Call Claude API with validation loop for recipes
+    let parsed: ReturnType<typeof parseAIResponse> = { message: '', suggestedActions: undefined, suggestedPrompts: undefined }
+    let currentHistory = [...conversationHistory]
+    const MAX_RECIPE_RETRIES = 2
 
-    // Extract the response text
-    const responseText = response.content
-      .filter((block): block is Anthropic.TextBlock => block.type === 'text')
-      .map((block) => block.text)
-      .join('\n')
+    for (let attempt = 0; attempt <= MAX_RECIPE_RETRIES; attempt++) {
+      const response = await client.messages.create({
+        model: 'claude-haiku-4-5',
+        max_tokens: 2048,
+        system: systemPrompt,
+        messages: currentHistory.map((msg) => ({
+          role: msg.role,
+          content: msg.content,
+        })),
+      })
 
-    console.log('🟢 Received Claude response:', responseText.substring(0, 100) + '...')
+      // Extract the response text
+      const responseText = response.content
+        .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+        .map((block) => block.text)
+        .join('\n')
 
-    // Parse the response for actions and prompts
-    const parsed = parseAIResponse(responseText)
+      console.log(`🟢 Received Claude response (attempt ${attempt + 1}):`, responseText.substring(0, 100) + '...')
+
+      // Parse the response for actions and prompts
+      parsed = parseAIResponse(responseText)
+
+      // Check if there's a CREATE_RECIPE action that needs validation
+      const recipeAction = (parsed.suggestedActions || []).find(
+        (a): a is CreateRecipeAction => (a as any).type === 'CREATE_RECIPE'
+      ) as CreateRecipeAction | undefined
+
+      if (recipeAction && profile.dailyFatTarget) {
+        console.log('🔷 Validating recipe against user macro targets...')
+        const validation = await validateRecipeAction(recipeAction, profileContext)
+
+        if (!validation.isValid && attempt < MAX_RECIPE_RETRIES) {
+          console.log('⚠️ Recipe validation failed, asking AI to adjust:', validation.issues)
+
+          // Add the AI's response and a correction request to history
+          currentHistory.push({
+            role: 'assistant',
+            content: responseText,
+          })
+          currentHistory.push({
+            role: 'user',
+            content: `Wait - I calculated the actual nutrition from those ingredients and found issues:
+${validation.issues.join('\n')}
+
+Please adjust the recipe to better fit my macro targets (${profile.dailyFatTarget}g fat, ${profile.dailyCalorieTarget} calories daily).
+Consider using leaner ingredients, reducing portion sizes, or swapping high-fat items for lower-fat alternatives.
+Give me a revised version of the recipe.`,
+          })
+
+          continue // Try again with feedback
+        }
+
+        // If we have calculated nutrition, update the action data with accurate values
+        if (validation.calculatedNutrition && parsed.suggestedActions) {
+          const actionIndex = parsed.suggestedActions.findIndex(
+            (a) => (a as any).type === 'CREATE_RECIPE'
+          )
+          if (actionIndex >= 0) {
+            const updatedAction = parsed.suggestedActions[actionIndex] as CreateRecipeAction
+            updatedAction.data.caloriesPerServing = validation.calculatedNutrition.caloriesPerServing
+            updatedAction.data.proteinPerServing = validation.calculatedNutrition.proteinPerServing
+            updatedAction.data.carbsPerServing = validation.calculatedNutrition.carbsPerServing
+            updatedAction.data.fatPerServing = validation.calculatedNutrition.fatPerServing
+            updatedAction.data.fiberPerServing = validation.calculatedNutrition.fiberPerServing
+            console.log('🟢 Updated recipe action with calculated nutrition')
+          }
+        }
+      }
+
+      break // Validation passed or no recipe to validate
+    }
 
     // Save the user message
     await prisma.nutritionistMessage.create({

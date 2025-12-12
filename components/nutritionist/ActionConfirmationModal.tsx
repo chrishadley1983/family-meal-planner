@@ -104,12 +104,28 @@ function renderRecipePreview(action: CreateRecipeAction) {
         )}
       </div>
 
-      {/* Nutrition note - actual values calculated from ingredients after creation */}
-      <div className="p-3 bg-zinc-900/50 rounded-lg border border-zinc-700">
-        <p className="text-sm text-zinc-400 text-center">
-          <span className="text-amber-400">📊</span> Nutrition will be calculated from ingredients after creation
-        </p>
+      {/* Macros - now showing calculated values from ingredients */}
+      <div className="grid grid-cols-4 gap-2 p-3 bg-zinc-900/50 rounded-lg">
+        <div className="text-center">
+          <div className="text-lg font-semibold text-amber-400">{data.caloriesPerServing}</div>
+          <div className="text-xs text-zinc-500">kcal</div>
+        </div>
+        <div className="text-center">
+          <div className="text-lg font-semibold text-green-400">{data.proteinPerServing}g</div>
+          <div className="text-xs text-zinc-500">protein</div>
+        </div>
+        <div className="text-center">
+          <div className="text-lg font-semibold text-blue-400">{data.carbsPerServing}g</div>
+          <div className="text-xs text-zinc-500">carbs</div>
+        </div>
+        <div className="text-center">
+          <div className="text-lg font-semibold text-purple-400">{data.fatPerServing}g</div>
+          <div className="text-xs text-zinc-500">fat</div>
+        </div>
       </div>
+      <p className="text-xs text-zinc-500 text-center -mt-2">
+        Calculated from ingredients
+      </p>
 
       {/* Ingredients */}
       <div>
