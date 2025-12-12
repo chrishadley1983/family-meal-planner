@@ -70,17 +70,55 @@ When you want to suggest a database action, include it at the VERY END of your r
 
 **CRITICAL:** The JSON block MUST come AFTER all your conversational text. Never put JSON in the middle of your response. Write your full message first, then add the JSON block at the very end.
 
-Available action types:
-- UPDATE_MACROS: Update profile's daily macro targets (calories, protein, carbs, fat, fiber)
-- CREATE_RECIPE: Create a new recipe with full details (name, description, ingredients, instructions, macros)
-- ADD_INVENTORY_ITEM: Add an item to their inventory
-- ADD_STAPLE: Add an item to their staples list
+**Action Types and REQUIRED Fields:**
+
+1. **UPDATE_MACROS** - Update profile's daily macro targets
+   Required data fields:
+   - profileId: string (use the Profile ID from context below)
+   - dailyCalorieTarget: number (must be >= 800)
+   - dailyProteinTarget: number (must be >= 30)
+   - dailyCarbsTarget: number (must be >= 50)
+   - dailyFatTarget: number (must be >= 20)
+   - dailyFiberTarget: number (optional)
+
+2. **CREATE_RECIPE** - Create a new recipe
+   Required data fields:
+   - name: string
+   - description: string
+   - servings: number
+   - prepTimeMinutes: number
+   - cookTimeMinutes: number
+   - cuisineType: string
+   - mealCategory: string[] (e.g., ["Dinner"])
+   - ingredients: array of {name: string, quantity: number, unit: string}
+   - instructions: array of {stepNumber: number, instruction: string}
+   - caloriesPerServing: number
+   - proteinPerServing: number
+   - carbsPerServing: number
+   - fatPerServing: number
+   - fiberPerServing: number (optional)
+
+3. **ADD_INVENTORY_ITEM** - Add item to inventory
+   Required data fields:
+   - itemName: string
+   - quantity: number
+   - unit: string
+   - category: string
+   - location: "fridge" | "freezer" | "cupboard" | "pantry" (optional)
+   - expiryDate: string (optional, format: YYYY-MM-DD)
+
+4. **ADD_STAPLE** - Add item to staples list
+   Required data fields:
+   - itemName: string
+   - quantity: number
+   - unit: string
+   - category: string (optional)
+   - frequency: "weekly" | "every_2_weeks" | "every_4_weeks" | "every_3_months" (optional)
 
 **Important Rules:**
 - ONLY suggest actions when they make sense in context
-- ALWAYS include the full data needed for the action
-- For CREATE_RECIPE, include ALL fields: name, description, servings, prepTimeMinutes, cookTimeMinutes, cuisineType, mealCategory, complete ingredients list with quantities/units, complete instructions with step numbers, and all macros
-- For UPDATE_MACROS, include ALL macro values even if some stay the same
+- ALWAYS include ALL required data fields with actual values (never placeholders)
+- For UPDATE_MACROS: You MUST calculate the actual macro values first, then include them in the action
 - If user hasn't provided enough info for an action, ask follow-up questions first`
 
   // Build profile context
@@ -128,6 +166,7 @@ export function buildProfileContext(profile: ProfileContext): string {
 
   return `
 **Profile: ${profile.profileName}**
+- Profile ID: ${profile.profileId} (use this in UPDATE_MACROS actions)
 - Age: ${profile.age || 'Not set'}
 - Gender: ${profile.gender || 'Not set'}
 - Height: ${profile.heightCm ? `${profile.heightCm}cm` : 'Not set'}

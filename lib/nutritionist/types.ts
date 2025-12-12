@@ -152,6 +152,7 @@ export interface HolisticNutritionistResponse {
 // ============================================================================
 
 export interface ProfileContext {
+  profileId: string  // Required for UPDATE_MACROS action
   profileName: string
   age?: number | null
   gender?: string | null
