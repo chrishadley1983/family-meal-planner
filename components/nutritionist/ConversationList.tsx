@@ -21,6 +21,7 @@ interface ConversationListProps {
   selectedId: string | null
   onSelect: (id: string) => void
   onNewConversation: () => void
+  onDelete?: (id: string) => void
   isLoading?: boolean
 }
 
@@ -29,6 +30,7 @@ export function ConversationList({
   selectedId,
   onSelect,
   onNewConversation,
+  onDelete,
   isLoading = false,
 }: ConversationListProps) {
   const formatTime = (date: Date | string) => {
@@ -70,19 +72,35 @@ export function ConversationList({
         ) : (
           <div className="p-2 space-y-1">
             {conversations.map((conv) => (
-              <button
+              <div
                 key={conv.id}
-                onClick={() => onSelect(conv.id)}
                 className={`
-                  w-full p-3 rounded-lg text-left transition-colors
+                  group relative w-full p-3 rounded-lg text-left transition-colors cursor-pointer
                   ${conv.id === selectedId
                     ? 'bg-purple-600/20 border border-purple-600/30'
                     : 'hover:bg-zinc-800 border border-transparent'
                   }
                 `}
+                onClick={() => onSelect(conv.id)}
               >
+                {/* Delete button - appears on hover */}
+                {onDelete && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onDelete(conv.id)
+                    }}
+                    className="absolute top-2 right-2 p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-red-500/20 text-zinc-500 hover:text-red-400 transition-all"
+                    title="Delete conversation"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                )}
+
                 {/* Title */}
-                <div className="font-medium text-zinc-200 text-sm truncate">
+                <div className="font-medium text-zinc-200 text-sm truncate pr-6">
                   {conv.title || 'New conversation'}
                 </div>
 
@@ -102,7 +120,7 @@ export function ConversationList({
                     {formatTime(conv.lastMessageAt)}
                   </span>
                 </div>
-              </button>
+              </div>
             ))}
           </div>
         )}

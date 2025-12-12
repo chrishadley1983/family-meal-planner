@@ -678,10 +678,19 @@ export async function POST(request: NextRequest) {
 
     console.log('🟢 Chat processed successfully')
 
+    // Generate fallback prompts if AI didn't provide any
+    let suggestedPrompts = parsed.suggestedPrompts
+    if (!suggestedPrompts || suggestedPrompts.length === 0) {
+      // Import context-aware prompts function
+      const { getContextAwareSuggestedPrompts } = await import('@/lib/nutritionist')
+      suggestedPrompts = getContextAwareSuggestedPrompts(profileContext, conversationContext)
+      console.log('📋 Generated fallback prompts:', suggestedPrompts)
+    }
+
     return NextResponse.json({
       message: finalMessage,
       suggestedActions: processedActions as NutritionistAction[] | undefined,
-      suggestedPrompts: parsed.suggestedPrompts,
+      suggestedPrompts,
       messageId: assistantMessage.id,
     })
   } catch (error) {

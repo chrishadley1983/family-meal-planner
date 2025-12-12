@@ -231,6 +231,34 @@ export default function NutritionistPage() {
     }
   }
 
+  const deleteConversation = async (conversationId: string) => {
+    if (!confirm('Delete this conversation? This cannot be undone.')) return
+
+    try {
+      const response = await fetch(`/api/nutritionist/conversations/${conversationId}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        // Remove from list
+        setConversations((prev) => prev.filter((c) => c.id !== conversationId))
+
+        // If deleted conversation was selected, clear selection
+        if (selectedConversationId === conversationId) {
+          setSelectedConversationId(null)
+          setMessages([])
+          setSuggestedPrompts([])
+        }
+
+        console.log('🗑️ Conversation deleted:', conversationId)
+      } else {
+        console.error('❌ Failed to delete conversation')
+      }
+    } catch (error) {
+      console.error('❌ Error deleting conversation:', error)
+    }
+  }
+
   const sendMessage = async (content: string) => {
     if (!content.trim() || !selectedConversationId || isSending) return
 
@@ -387,6 +415,7 @@ export default function NutritionistPage() {
               selectedId={selectedConversationId}
               onSelect={setSelectedConversationId}
               onNewConversation={createNewConversation}
+              onDelete={deleteConversation}
               isLoading={isLoading}
             />
           </div>
