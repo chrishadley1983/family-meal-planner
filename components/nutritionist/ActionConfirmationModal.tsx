@@ -164,6 +164,24 @@ function renderRecipePreview(action: CreateRecipeAction) {
 function renderMacrosPreview(action: UpdateMacrosAction) {
   const { data } = action
 
+  // Check if we have valid data
+  const hasValidData = data &&
+    typeof data.dailyCalorieTarget === 'number' &&
+    typeof data.dailyProteinTarget === 'number' &&
+    typeof data.dailyCarbsTarget === 'number' &&
+    typeof data.dailyFatTarget === 'number'
+
+  if (!hasValidData) {
+    return (
+      <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700">
+        <div className="text-center text-zinc-400">
+          <p>Unable to display macro targets.</p>
+          <p className="text-sm mt-2">The AI response may be missing required values.</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700">
       <h4 className="text-sm font-medium text-zinc-300 mb-4">New Daily Targets</h4>
@@ -187,7 +205,7 @@ function renderMacrosPreview(action: UpdateMacrosAction) {
         </div>
       </div>
 
-      {data.dailyFiberTarget && (
+      {typeof data.dailyFiberTarget === 'number' && data.dailyFiberTarget > 0 && (
         <div className="mt-4 bg-zinc-900/50 rounded-lg p-3 text-center">
           <div className="text-xl font-bold text-orange-400">{data.dailyFiberTarget}g</div>
           <div className="text-xs text-zinc-500">Fiber</div>

@@ -273,18 +273,21 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Update conversation title if this is the first message
-    if (conversation.messages.length === 0 && !conversation.title) {
-      await prisma.nutritionistConversation.update({
-        where: { id: conversationId },
-        data: { title: generateTitle(message) },
-      })
+    // Update conversation title if this is the first user message (no prior user messages)
+    let newTitle: string | null = null
+    const priorUserMessages = conversation.messages.filter(m => m.role === 'user')
+    if (priorUserMessages.length === 0 && !conversation.title) {
+      newTitle = generateTitle(message)
+      console.log('🔷 Setting conversation title:', newTitle)
     }
 
-    // Update conversation timestamp
+    // Update conversation timestamp (and title if needed)
     await prisma.nutritionistConversation.update({
       where: { id: conversationId },
-      data: { updatedAt: new Date() },
+      data: {
+        updatedAt: new Date(),
+        ...(newTitle && { title: newTitle }),
+      },
     })
 
     console.log('🟢 Chat processed successfully')
@@ -294,6 +297,7 @@ export async function POST(request: NextRequest) {
       suggestedActions: parsed.suggestedActions as NutritionistAction[] | undefined,
       suggestedPrompts: parsed.suggestedPrompts,
       messageId: assistantMessage.id,
+      conversationTitle: newTitle, // Return title if it was just set
     })
   } catch (error) {
     console.error('❌ Error processing chat:', error)

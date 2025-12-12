@@ -70,15 +70,23 @@ export default function NutritionistPage() {
     }
   }, [selectedProfileId])
 
-  // Fetch messages when conversation changes
+  // Track if we just created a new conversation (to skip fetchConversation)
+  const [isNewConversation, setIsNewConversation] = useState(false)
+
+  // Fetch messages when conversation changes (skip if we just created it)
   useEffect(() => {
     if (selectedConversationId) {
-      fetchConversation(selectedConversationId)
+      if (isNewConversation) {
+        // Skip fetching - we already have the greeting message
+        setIsNewConversation(false)
+      } else {
+        fetchConversation(selectedConversationId)
+      }
     } else {
       setMessages([])
       setSuggestedPrompts([])
     }
-  }, [selectedConversationId])
+  }, [selectedConversationId, isNewConversation])
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -178,6 +186,31 @@ export default function NutritionistPage() {
     }
   }
 
+  const deleteConversation = async (conversationId: string) => {
+    try {
+      console.log('🔷 Deleting conversation:', conversationId)
+      const response = await fetch(`/api/nutritionist/conversations/${conversationId}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        console.log('🟢 Conversation deleted')
+        // Remove from list
+        setConversations((prev) => prev.filter((c) => c.id !== conversationId))
+        // Clear selection if it was the deleted conversation
+        if (selectedConversationId === conversationId) {
+          setSelectedConversationId(null)
+          setMessages([])
+          setSuggestedPrompts([])
+        }
+      } else {
+        console.error('❌ Failed to delete conversation')
+      }
+    } catch (error) {
+      console.error('❌ Error deleting conversation:', error)
+    }
+  }
+
   const createNewConversation = async () => {
     if (!selectedProfileId) return
 
@@ -203,6 +236,9 @@ export default function NutritionistPage() {
           },
           ...prev,
         ])
+
+        // Mark as new conversation to prevent fetchConversation from overwriting
+        setIsNewConversation(true)
 
         // Select the new conversation
         setSelectedConversationId(data.conversation.id)
@@ -292,12 +328,13 @@ export default function NutritionistPage() {
         setCurrentMessageId(data.messageId)
       }
 
-      // Update conversation in sidebar
+      // Update conversation in sidebar (including title if returned)
       setConversations((prev) =>
         prev.map((conv) =>
           conv.id === selectedConversationId
             ? {
                 ...conv,
+                title: data.conversationTitle || conv.title,
                 lastMessage: data.message?.substring(0, 100),
                 lastMessageAt: new Date(),
               }
@@ -387,6 +424,7 @@ export default function NutritionistPage() {
               selectedId={selectedConversationId}
               onSelect={setSelectedConversationId}
               onNewConversation={createNewConversation}
+              onDelete={deleteConversation}
               isLoading={isLoading}
             />
           </div>
