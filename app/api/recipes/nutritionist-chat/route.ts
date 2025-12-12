@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { interactWithNutritionist, generateSuggestedPrompts, analyzeRecipeMacros } from '@/lib/claude'
+import { interactWithNutritionist, generateSuggestedPrompts } from '@/lib/claude'
 import { NutritionistChatRequest, IngredientModification } from '@/lib/types/nutritionist'
+import { calculateRecipeNutrition } from '@/lib/nutrition'
 
 /**
  * Apply ingredient modifications to a copy of the ingredient list
@@ -180,9 +181,9 @@ export async function POST(request: NextRequest) {
     })
 
     // VALIDATION: If Emilia proposed or applied ingredient modifications,
-    // calculate ACTUAL nutrition impact before returning response
+    // calculate ACTUAL nutrition impact using USDA/seed data (no AI variance!)
     if (response.ingredientModifications && response.ingredientModifications.length > 0) {
-      console.log('🔬 Validating ingredient modifications with macro analysis...')
+      console.log('🔬 Validating ingredient modifications with nutrition service...')
 
       try {
         // Apply modifications to a copy of the ingredients
@@ -193,58 +194,53 @@ export async function POST(request: NextRequest) {
 
         console.log('📝 Modified ingredients:', modifiedIngredients.length, 'items')
 
-        // Run macro analysis on the modified recipe
-        const validationAnalysis = await analyzeRecipeMacros({
-          recipe: {
-            recipeName: recipe.recipeName,
-            servings: recipe.servings || 4,
-            ingredients: modifiedIngredients,
-          },
-          userProfile: {
-            dailyCalorieTarget: mainProfile.dailyCalorieTarget,
-            dailyProteinTarget: mainProfile.dailyProteinTarget,
-            dailyCarbsTarget: mainProfile.dailyCarbsTarget,
-            dailyFatTarget: mainProfile.dailyFatTarget,
-            macroTrackingEnabled: mainProfile.macroTrackingEnabled,
-          },
+        // Calculate nutrition using authoritative data (USDA + seed data)
+        // This is deterministic - no AI variance!
+        const servings = recipe.servings || 4
+        const nutritionResult = await calculateRecipeNutrition(
+          modifiedIngredients,
+          servings,
+          true // Enable USDA API lookups
+        )
+
+        console.log(`📊 Nutrition calculated (${nutritionResult.confidence} confidence)`)
+
+        // Replace Emilia's estimate with actual calculated values
+        const actualNutrition = {
+          calories: nutritionResult.perServing.calories,
+          protein: nutritionResult.perServing.protein,
+          carbs: nutritionResult.perServing.carbs,
+          fat: nutritionResult.perServing.fat,
+          fiber: nutritionResult.perServing.fiber,
+          sugar: nutritionResult.perServing.sugar,
+          sodium: nutritionResult.perServing.sodium,
+        }
+
+        // Calculate the actual impact (change from current to new)
+        const currentNutrition = macroAnalysis.perServing
+        const impact = {
+          calories: actualNutrition.calories - Math.round(currentNutrition.calories),
+          protein: Math.round((actualNutrition.protein - currentNutrition.protein) * 10) / 10,
+          carbs: Math.round((actualNutrition.carbs - currentNutrition.carbs) * 10) / 10,
+          fat: Math.round((actualNutrition.fat - currentNutrition.fat) * 10) / 10,
+        }
+
+        console.log('✅ Validation complete:', {
+          before: { fat: currentNutrition.fat, protein: currentNutrition.protein },
+          after: actualNutrition,
+          impact,
+          confidence: nutritionResult.confidence,
         })
 
-        if (validationAnalysis?.perServing) {
-          // Replace Emilia's estimate with actual calculated values
-          const actualNutrition = {
-            calories: Math.round(validationAnalysis.perServing.calories),
-            protein: Math.round(validationAnalysis.perServing.protein * 10) / 10,
-            carbs: Math.round(validationAnalysis.perServing.carbs * 10) / 10,
-            fat: Math.round(validationAnalysis.perServing.fat * 10) / 10,
-            fiber: Math.round(validationAnalysis.perServing.fiber * 10) / 10,
-            sugar: Math.round(validationAnalysis.perServing.sugar * 10) / 10,
-            sodium: Math.round(validationAnalysis.perServing.sodium),
-          }
+        // Override Emilia's projected nutrition with actual values
+        response.projectedNutrition = actualNutrition
 
-          // Calculate the actual impact (change from current to new)
-          const currentNutrition = macroAnalysis.perServing
-          const impact = {
-            calories: actualNutrition.calories - Math.round(currentNutrition.calories),
-            protein: Math.round((actualNutrition.protein - currentNutrition.protein) * 10) / 10,
-            carbs: Math.round((actualNutrition.carbs - currentNutrition.carbs) * 10) / 10,
-            fat: Math.round((actualNutrition.fat - currentNutrition.fat) * 10) / 10,
-          }
-
-          console.log('✅ Validation complete:', {
-            before: { fat: currentNutrition.fat, protein: currentNutrition.protein },
-            after: actualNutrition,
-            impact,
-          })
-
-          // Override Emilia's projected nutrition with actual values
-          response.projectedNutrition = actualNutrition
-
-          // Add validation metadata for the client
-          ;(response as any).validatedNutrition = {
-            isValidated: true,
-            impact,
-            meetsGoal: impact.fat <= 0 || impact.protein >= 0, // Simple check: less fat or more protein is good
-          }
+        // Add validation metadata for the client
+        ;(response as any).validatedNutrition = {
+          isValidated: true,
+          impact,
+          meetsGoal: impact.fat <= 0 || impact.protein >= 0, // Simple check: less fat or more protein is good
+          confidence: nutritionResult.confidence,
         }
       } catch (validationError) {
         console.error('⚠️ Validation failed, using Emilia estimate:', validationError)
