@@ -479,7 +479,7 @@ Return ONLY the JSON object, no other text.`
 
   try {
     const message = await client.messages.create({
-      model: 'claude-3-5-haiku-20241022',
+      model: 'claude-haiku-4-5',
       max_tokens: 4096,
       messages: [{
         role: 'user',
@@ -535,7 +535,7 @@ Use standard nutrition databases for your calculations. Be as accurate as possib
 
   try {
     const message = await client.messages.create({
-      model: 'claude-3-5-haiku-20241022',
+      model: 'claude-haiku-4-5',
       max_tokens: 1024,
       messages: [{
         role: 'user',
@@ -640,7 +640,7 @@ Be accurate when extracting text, and be specific and practical when suggesting 
     })
 
     const message = await client.messages.create({
-      model: 'claude-3-5-haiku-20241022',
+      model: 'claude-haiku-4-5',
       max_tokens: 2048,
       messages: [{
         role: 'user',
@@ -726,7 +726,7 @@ Return ONLY a valid JSON object in this exact format:
     console.log('🔷 Calling Claude API to parse recipe text...')
 
     const message = await client.messages.create({
-      model: 'claude-3-5-haiku-20241022',
+      model: 'claude-haiku-4-5',
       max_tokens: 2048,
       messages: [{
         role: 'user',
@@ -835,7 +835,7 @@ Consider: calories per serving vs daily target, macro ratios, ingredient health 
 
   try {
     const message = await client.messages.create({
-      model: 'claude-3-5-haiku-20241022',
+      model: 'claude-haiku-4-5',
       max_tokens: 2048,
       messages: [{
         role: 'user',
@@ -942,7 +942,7 @@ IMPORTANT: You MUST rate EVERY ingredient. The ingredientRatings array must have
 
   try {
     const message = await client.messages.create({
-      model: 'claude-3-5-haiku-20241022',
+      model: 'claude-haiku-4-5',
       max_tokens: 1024,
       messages: [{
         role: 'user',
@@ -1049,7 +1049,7 @@ Important:
     })
 
     const message = await client.messages.create({
-      model: 'claude-3-5-haiku-20241022',
+      model: 'claude-haiku-4-5',
       max_tokens: 4096,
       messages: [{
         role: 'user',
@@ -1136,7 +1136,7 @@ Important:
 
   try {
     const message = await client.messages.create({
-      model: 'claude-3-5-haiku-20241022',
+      model: 'claude-haiku-4-5',
       max_tokens: 4096,
       messages: [{
         role: 'user',
@@ -1245,7 +1245,7 @@ Frequency values (use EXACTLY these strings):
     })
 
     const message = await client.messages.create({
-      model: 'claude-3-5-haiku-20241022',
+      model: 'claude-haiku-4-5',
       max_tokens: 4096,
       messages: [{
         role: 'user',
@@ -1342,7 +1342,7 @@ If no staple items can be identified, return:
 
   try {
     const message = await client.messages.create({
-      model: 'claude-3-5-haiku-20241022',
+      model: 'claude-haiku-4-5',
       max_tokens: 4096,
       messages: [{
         role: 'user',
@@ -1451,7 +1451,7 @@ Example tone: "Hi! This looks like a great choice - the protein content will rea
 
   try {
     const message = await client.messages.create({
-      model: 'claude-3-5-haiku-20241022',
+      model: 'claude-haiku-4-5',
       max_tokens: 512,
       messages: [{
         role: 'user',
@@ -1624,7 +1624,7 @@ Respond as Emilia. ${isFollowUp ? 'Keep it SHORT (1-2 sentences).' : ''} JSON on
 
   try {
     const response = await client.messages.create({
-      model: 'claude-3-5-haiku-20241022',
+      model: 'claude-haiku-4-5',
       max_tokens: 768,
       messages: [{
         role: 'user',
