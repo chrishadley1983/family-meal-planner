@@ -54,7 +54,7 @@ export function getHolisticNutritionistSystemPrompt(
 - Reference specific data from their profile/recipes/inventory when available
 
 **Action Format:**
-When you want to suggest a database action, include it at the END of your response in this exact JSON format:
+When you want to suggest a database action, include it at the VERY END of your response (after all text) in this exact JSON format:
 \`\`\`json
 {
   "suggestedActions": [
@@ -68,17 +68,71 @@ When you want to suggest a database action, include it at the END of your respon
 }
 \`\`\`
 
-Available action types:
-- UPDATE_MACROS: Update profile's daily macro targets (calories, protein, carbs, fat, fiber)
-- CREATE_RECIPE: Create a new recipe with full details (name, description, ingredients, instructions) - macros calculated automatically
-- ADD_INVENTORY_ITEM: Add an item to their inventory
-- ADD_STAPLE: Add an item to their staples list
+**CRITICAL:** The JSON block MUST come AFTER all your conversational text. Never put JSON in the middle of your response. Write your full message first, then add the JSON block at the very end.
+
+**Action Types and REQUIRED Fields:**
+
+1. **UPDATE_MACROS** - Update profile's daily macro targets
+   Required data fields:
+   - profileId: string (use the Profile ID from context below)
+   - dailyCalorieTarget: number (must be >= 800)
+   - dailyProteinTarget: number (must be >= 30)
+   - dailyCarbsTarget: number (must be >= 50)
+   - dailyFatTarget: number (must be >= 20)
+   - dailyFiberTarget: number (optional)
+
+2. **UPDATE_PREFERENCES** - Update profile's food likes/dislikes
+   **CRITICAL: You MUST use this action whenever a user expresses a food preference!**
+   Trigger phrases (look for these patterns):
+   - "I hate...", "I don't like...", "I can't stand...", "I detest..." → addDislikes
+   - "I love...", "I like...", "I enjoy...", "I prefer..." → addLikes
+   - "I no longer hate...", "I've started liking..." → removeDislikes/addLikes
+
+   Example: User says "I HATE brown rice" → You MUST suggest UPDATE_PREFERENCES with addDislikes: ["brown rice"]
+
+   Required data fields:
+   - profileId: string (use the Profile ID from context below)
+   - addLikes: string[] (foods to add to likes, optional)
+   - removeLikes: string[] (foods to remove from likes, optional)
+   - addDislikes: string[] (foods to add to dislikes, optional)
+   - removeDislikes: string[] (foods to remove from dislikes, optional)
+   Note: At least one of these arrays must have items.
+
+3. **CREATE_RECIPE** - Create a new recipe (macros calculated automatically)
+   Required data fields:
+   - name: string
+   - description: string
+   - servings: number
+   - prepTimeMinutes: number
+   - cookTimeMinutes: number
+   - cuisineType: string
+   - mealCategory: string[] (e.g., ["Dinner"])
+   - ingredients: array of {name: string, quantity: number, unit: string} - use metric (g, ml)
+   - instructions: array of {stepNumber: number, instruction: string}
+   NOTE: DO NOT include caloriesPerServing, proteinPerServing, etc. - these will be calculated automatically from ingredients using USDA FoodData Central.
+
+4. **ADD_INVENTORY_ITEM** - Add item to inventory
+   Required data fields:
+   - itemName: string
+   - quantity: number
+   - unit: string
+   - category: string
+   - location: "fridge" | "freezer" | "cupboard" | "pantry" (optional)
+   - expiryDate: string (optional, format: YYYY-MM-DD)
+
+5. **ADD_STAPLE** - Add item to staples list
+   Required data fields:
+   - itemName: string
+   - quantity: number
+   - unit: string
+   - category: string (optional)
+   - frequency: "weekly" | "every_2_weeks" | "every_4_weeks" | "every_3_months" (optional)
 
 **Important Rules:**
 - ONLY suggest actions when they make sense in context
-- ALWAYS include the full data needed for the action
-- For CREATE_RECIPE, include: name, description, servings, prepTimeMinutes, cookTimeMinutes, cuisineType, mealCategory, complete ingredients list with quantities/units in metric (g, ml), and complete instructions with step numbers. DO NOT include macro/nutrition values (caloriesPerServing, proteinPerServing, etc.) - these will be calculated automatically from the ingredients using authoritative nutrition data.
-- For UPDATE_MACROS, include ALL macro values even if some stay the same
+- ALWAYS include ALL required data fields with actual values (never placeholders)
+- For UPDATE_MACROS: You MUST calculate the actual macro values first, then include them in the action
+- For UPDATE_PREFERENCES: Scan EVERY user message for food likes/dislikes and ALWAYS suggest saving them
 - If user hasn't provided enough info for an action, ask follow-up questions first
 
 **CRITICAL - Nutrition Calculation:**
@@ -132,6 +186,7 @@ export function buildProfileContext(profile: ProfileContext): string {
 
   return `
 **Profile: ${profile.profileName}**
+- Profile ID: ${profile.profileId} (use this in UPDATE_MACROS actions)
 - Age: ${profile.age || 'Not set'}
 - Gender: ${profile.gender || 'Not set'}
 - Height: ${profile.heightCm ? `${profile.heightCm}cm` : 'Not set'}
@@ -274,48 +329,67 @@ export function getContextAwareSuggestedPrompts(
 
 /**
  * Parse AI response for actions and prompts
+ * Handles JSON blocks anywhere in the response (not just at the end)
  */
 export function parseAIResponse(response: string): {
   message: string
   suggestedActions?: unknown[]
   suggestedPrompts?: string[]
 } {
-  // Try to find JSON block at the end of the response
-  const jsonMatch = response.match(/```json\s*([\s\S]*?)\s*```\s*$/i)
+  // Use string-based approach for more reliable parsing
+  const jsonStartMarker = '```json'
+  const jsonEndMarker = '```'
 
-  if (jsonMatch) {
+  const jsonStart = response.toLowerCase().indexOf(jsonStartMarker)
+
+  if (jsonStart !== -1) {
+    const contentStart = jsonStart + jsonStartMarker.length
+    // Find the closing ``` after the json content
+    const jsonEnd = response.indexOf(jsonEndMarker, contentStart)
+
+    if (jsonEnd !== -1) {
+      const jsonContent = response.substring(contentStart, jsonEnd).trim()
+      console.log('🔍 Found JSON block, attempting to parse...')
+
+      try {
+        const jsonData = JSON.parse(jsonContent)
+        // Remove the entire JSON block from the message
+        const beforeJson = response.substring(0, jsonStart).trim()
+        const afterJson = response.substring(jsonEnd + jsonEndMarker.length).trim()
+        const message = (beforeJson + ' ' + afterJson).trim()
+
+        console.log('🟢 JSON parsed successfully, actions:', jsonData.suggestedActions?.length || 0)
+
+        return {
+          message,
+          suggestedActions: jsonData.suggestedActions,
+          suggestedPrompts: jsonData.suggestedPrompts,
+        }
+      } catch (e) {
+        console.error('❌ Failed to parse JSON block:', e)
+        console.error('❌ JSON content was:', jsonContent.substring(0, 200) + '...')
+      }
+    }
+  }
+
+  // Fallback: check for inline JSON object with suggestedActions (no code block)
+  const inlineMatch = response.match(/\{[\s\S]*?"suggestedActions"\s*:\s*\[[\s\S]*?\]\s*\}/)
+  if (inlineMatch) {
     try {
-      const jsonData = JSON.parse(jsonMatch[1])
-      const message = response.replace(jsonMatch[0], '').trim()
-
+      const jsonData = JSON.parse(inlineMatch[0])
+      const message = response.replace(inlineMatch[0], '').trim()
+      console.log('🟢 Inline JSON parsed successfully')
       return {
         message,
         suggestedActions: jsonData.suggestedActions,
         suggestedPrompts: jsonData.suggestedPrompts,
       }
     } catch {
-      // JSON parse failed, return full response
-      return { message: response }
+      // Fall through
     }
   }
 
-  // No JSON block found, check for inline JSON (fallback)
-  const inlineJsonMatch = response.match(/\{[\s\S]*"suggestedActions"[\s\S]*\}\s*$/)
-  if (inlineJsonMatch) {
-    try {
-      const jsonData = JSON.parse(inlineJsonMatch[0])
-      const message = response.replace(inlineJsonMatch[0], '').trim()
-
-      return {
-        message,
-        suggestedActions: jsonData.suggestedActions,
-        suggestedPrompts: jsonData.suggestedPrompts,
-      }
-    } catch {
-      return { message: response }
-    }
-  }
-
+  console.log('⚠️ No JSON block found in response')
   return { message: response }
 }
 

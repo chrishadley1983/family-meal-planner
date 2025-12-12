@@ -31,6 +31,7 @@ export default function NutritionistPage() {
   const router = useRouter()
   const chatEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const isNewConversationRef = useRef(false)
 
   // State
   const [profiles, setProfiles] = useState<Profile[]>([])
@@ -70,10 +71,15 @@ export default function NutritionistPage() {
     }
   }, [selectedProfileId])
 
-  // Fetch messages when conversation changes
+  // Fetch messages when conversation changes (skip if we just created it)
   useEffect(() => {
     if (selectedConversationId) {
-      fetchConversation(selectedConversationId)
+      if (isNewConversationRef.current) {
+        // Skip fetching - we already have the greeting message
+        isNewConversationRef.current = false
+      } else {
+        fetchConversation(selectedConversationId)
+      }
     } else {
       setMessages([])
       setSuggestedPrompts([])
@@ -204,6 +210,9 @@ export default function NutritionistPage() {
           ...prev,
         ])
 
+        // Mark as new conversation to prevent fetchConversation from overwriting
+        isNewConversationRef.current = true
+
         // Select the new conversation
         setSelectedConversationId(data.conversation.id)
 
@@ -320,12 +329,13 @@ export default function NutritionistPage() {
         setCurrentMessageId(data.messageId)
       }
 
-      // Update conversation in sidebar
+      // Update conversation in sidebar (including title if returned)
       setConversations((prev) =>
         prev.map((conv) =>
           conv.id === selectedConversationId
             ? {
                 ...conv,
+                title: data.conversationTitle || conv.title,
                 lastMessage: data.message?.substring(0, 100),
                 lastMessageAt: new Date(),
               }
@@ -341,13 +351,21 @@ export default function NutritionistPage() {
     }
   }
 
-  const handleActionClick = (action: NutritionistAction) => {
-    setActionToConfirm(action)
+  const handleActionClick = async (action: NutritionistAction) => {
+    // Simple actions like UPDATE_PREFERENCES are applied automatically without confirmation
+    const simpleActions = ['UPDATE_PREFERENCES']
+
+    if (simpleActions.includes(action.type)) {
+      // Auto-apply simple actions
+      await applyAction(action)
+    } else {
+      // Complex actions need confirmation
+      setActionToConfirm(action)
+    }
   }
 
-  const confirmAction = async () => {
-    if (!actionToConfirm) return
-
+  // Apply an action and add confirmation to chat
+  const applyAction = async (action: NutritionistAction) => {
     setIsApplyingAction(true)
 
     try {
@@ -356,7 +374,7 @@ export default function NutritionistPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           conversationId: selectedConversationId,
-          action: actionToConfirm,
+          action: action,
           messageId: currentMessageId,
         }),
       })
@@ -364,29 +382,52 @@ export default function NutritionistPage() {
       const data = await response.json()
 
       if (data.success) {
-        // Close modal
-        setActionToConfirm(null)
+        // Add a system confirmation message (not a user message!)
+        const confirmationMessage =
+          action.type === 'UPDATE_MACROS'
+            ? '✅ Macro targets have been updated on your profile.'
+            : action.type === 'UPDATE_PREFERENCES'
+            ? '✅ Food preferences have been saved to your profile.'
+            : action.type === 'CREATE_RECIPE'
+            ? '✅ Recipe has been added to your collection.'
+            : action.type === 'ADD_INVENTORY_ITEM'
+            ? '✅ Item has been added to your inventory.'
+            : '✅ Item has been added to your staples.'
 
-        // Send a follow-up message to the conversation
-        const followUpMessage =
-          actionToConfirm.type === 'UPDATE_MACROS'
-            ? 'I\'ve applied those macro targets to my profile.'
-            : actionToConfirm.type === 'CREATE_RECIPE'
-            ? 'I\'ve added that recipe to my collection.'
-            : actionToConfirm.type === 'ADD_INVENTORY_ITEM'
-            ? 'I\'ve added that to my inventory.'
-            : 'I\'ve added that to my staples.'
-
-        await sendMessage(followUpMessage)
+        // Add as an assistant message (system confirmation)
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `confirmation-${Date.now()}`,
+            role: 'assistant',
+            content: confirmationMessage,
+            timestamp: new Date(),
+          },
+        ])
       } else {
         console.error('❌ Action failed:', data.error)
-        // Could show error toast here
+        // Show error in chat
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `error-${Date.now()}`,
+            role: 'assistant',
+            content: `❌ Sorry, I couldn't complete that action: ${data.error || 'Unknown error'}`,
+            timestamp: new Date(),
+          },
+        ])
       }
     } catch (error) {
       console.error('❌ Error applying action:', error)
     } finally {
       setIsApplyingAction(false)
     }
+  }
+
+  const confirmAction = async () => {
+    if (!actionToConfirm) return
+    setActionToConfirm(null) // Close modal first
+    await applyAction(actionToConfirm)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

@@ -96,7 +96,7 @@ If no duplicates found, return: {"groups": []}`
     console.log('🤖 Calling AI for semantic duplicate detection...')
 
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-haiku-4-5',
       max_tokens: 1000,
       messages: [{ role: 'user', content: prompt }],
     })
@@ -363,7 +363,7 @@ Respond with ONLY valid JSON in this exact format:
 
       try {
         const message = await client.messages.create({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-haiku-4-5',
           max_tokens: 150,
           messages: [{ role: 'user', content: prompt }],
         })

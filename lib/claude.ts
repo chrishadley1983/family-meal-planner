@@ -108,7 +108,7 @@ Important: Return ONLY the JSON object, no other text.`
 
   try {
     const message = await client.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-haiku-4-5',
       max_tokens: 2048,
       messages: [{
         role: 'user',
@@ -162,7 +162,7 @@ Keep it concise and practical.`
 
   try {
     const message = await client.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-haiku-4-5',
       max_tokens: 1024,
       messages: [{
         role: 'user',
@@ -252,7 +252,7 @@ async function generateAdvancedMealPlan(params: {
   try {
     console.log('🔷 Calling Claude API for advanced meal plan generation...')
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-5',
+      model: 'claude-haiku-4-5',
       max_tokens: 4096,
       messages: [{
         role: 'user',

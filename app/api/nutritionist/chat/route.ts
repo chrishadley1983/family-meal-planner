@@ -35,6 +35,7 @@ function decimalToNumber(val: unknown): number | null {
  */
 function toProfileContext(profile: any): ProfileContext {
   return {
+    profileId: profile.id,  // Required for UPDATE_MACROS action
     profileName: profile.profileName,
     age: profile.age,
     gender: profile.gender,
@@ -471,6 +472,91 @@ async function validateAndRefineRecipe(
 }
 
 /**
+ * Validate a CREATE_RECIPE action against user's macro targets
+ * Returns validation result with calculated nutrition
+ */
+async function validateRecipeAction(
+  action: CreateRecipeAction,
+  profile: ProfileContext
+): Promise<{
+  isValid: boolean
+  calculatedNutrition: {
+    caloriesPerServing: number
+    proteinPerServing: number
+    carbsPerServing: number
+    fatPerServing: number
+    fiberPerServing?: number
+  } | null
+  issues: string[]
+}> {
+  const issues: string[] = []
+
+  try {
+    // Calculate actual nutrition from ingredients using unified nutrition service
+    const ingredients: RecipeIngredient[] = action.data.ingredients.map((ing) => ({
+      ingredientName: ing.name,
+      quantity: ing.quantity,
+      unit: ing.unit,
+      notes: null,
+    }))
+
+    const nutrition = await getRecipeNutrition({
+      ingredients,
+      servings: action.data.servings,
+      forceRecalculate: true,
+    })
+
+    const calculatedNutrition = {
+      caloriesPerServing: nutrition.perServing.calories,
+      proteinPerServing: nutrition.perServing.protein,
+      carbsPerServing: nutrition.perServing.carbs,
+      fatPerServing: nutrition.perServing.fat,
+      fiberPerServing: nutrition.perServing.fiber,
+    }
+
+    console.log('🔷 Validated recipe nutrition:', {
+      calculated: calculatedNutrition,
+      userTargets: {
+        calories: profile.dailyCalorieTarget,
+        protein: profile.dailyProteinTarget,
+        carbs: profile.dailyCarbsTarget,
+        fat: profile.dailyFatTarget,
+      },
+    })
+
+    // Check if calculated nutrition aligns with user targets
+    // Allow up to 40% of daily fat target per meal (assuming 3 meals)
+    const maxFatPerMeal = profile.dailyFatTarget ? profile.dailyFatTarget * 0.4 : null
+    const maxCaloriesPerMeal = profile.dailyCalorieTarget ? profile.dailyCalorieTarget * 0.45 : null
+
+    if (maxFatPerMeal && calculatedNutrition.fatPerServing > maxFatPerMeal) {
+      issues.push(
+        `Fat content (${calculatedNutrition.fatPerServing}g) exceeds recommended per-meal limit (${Math.round(maxFatPerMeal)}g based on daily target of ${profile.dailyFatTarget}g)`
+      )
+    }
+
+    if (maxCaloriesPerMeal && calculatedNutrition.caloriesPerServing > maxCaloriesPerMeal) {
+      issues.push(
+        `Calories (${calculatedNutrition.caloriesPerServing}) exceed recommended per-meal limit (${Math.round(maxCaloriesPerMeal)} based on daily target of ${profile.dailyCalorieTarget})`
+      )
+    }
+
+    return {
+      isValid: issues.length === 0,
+      calculatedNutrition,
+      issues,
+    }
+  } catch (error) {
+    console.error('❌ Error validating recipe nutrition:', error)
+    return {
+      isValid: true, // Allow recipe if we can't validate
+      calculatedNutrition: null,
+      issues: [],
+    }
+  }
+}
+
+/**
  * POST /api/nutritionist/chat
  * Send a message to Emilia and get a response
  */
@@ -568,27 +654,82 @@ export async function POST(request: NextRequest) {
 
     console.log('🔷 Calling Claude API...')
 
-    // Call Claude API
-    const response = await client.messages.create({
-      model: 'claude-haiku-4-5-20250822',
-      max_tokens: 2048,
-      system: systemPrompt,
-      messages: conversationHistory.map((msg) => ({
-        role: msg.role,
-        content: msg.content,
-      })),
-    })
+    // Call Claude API with validation loop for recipes
+    let parsed: ReturnType<typeof parseAIResponse> = { message: '', suggestedActions: undefined, suggestedPrompts: undefined }
+    let currentHistory = [...conversationHistory]
+    const MAX_RECIPE_RETRIES = 2
 
-    // Extract the response text
-    const responseText = response.content
-      .filter((block): block is Anthropic.TextBlock => block.type === 'text')
-      .map((block) => block.text)
-      .join('\n')
+    for (let attempt = 0; attempt <= MAX_RECIPE_RETRIES; attempt++) {
+      const response = await client.messages.create({
+        model: 'claude-haiku-4-5',
+        max_tokens: 2048,
+        system: systemPrompt,
+        messages: currentHistory.map((msg) => ({
+          role: msg.role,
+          content: msg.content,
+        })),
+      })
 
-    console.log('🟢 Received Claude response:', responseText.substring(0, 100) + '...')
+      // Extract the response text
+      const responseText = response.content
+        .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+        .map((block) => block.text)
+        .join('\n')
 
-    // Parse the response for actions and prompts
-    const parsed = parseAIResponse(responseText)
+      console.log(`🟢 Received Claude response (attempt ${attempt + 1}):`, responseText.substring(0, 100) + '...')
+
+      // Parse the response for actions and prompts
+      parsed = parseAIResponse(responseText)
+
+      // Check if there's a CREATE_RECIPE action that needs validation
+      const recipeAction = (parsed.suggestedActions || []).find(
+        (a): a is CreateRecipeAction => (a as any).type === 'CREATE_RECIPE'
+      ) as CreateRecipeAction | undefined
+
+      if (recipeAction && profileContext.dailyFatTarget) {
+        console.log('🔷 Validating recipe against user macro targets...')
+        const validation = await validateRecipeAction(recipeAction, profileContext)
+
+        if (!validation.isValid && attempt < MAX_RECIPE_RETRIES) {
+          console.log('⚠️ Recipe validation failed, asking AI to adjust:', validation.issues)
+
+          // Add the AI's response and a correction request to history
+          currentHistory.push({
+            role: 'assistant',
+            content: responseText,
+          })
+          currentHistory.push({
+            role: 'user',
+            content: `Wait - I calculated the actual nutrition from those ingredients and found issues:
+${validation.issues.join('\n')}
+
+Please adjust the recipe to better fit my macro targets (${profileContext.dailyFatTarget}g fat, ${profileContext.dailyCalorieTarget} calories daily).
+Consider using leaner ingredients, reducing portion sizes, or swapping high-fat items for lower-fat alternatives.
+Give me a revised version of the recipe.`,
+          })
+
+          continue // Try again with feedback
+        }
+
+        // If we have calculated nutrition, update the action data with accurate values
+        if (validation.calculatedNutrition && parsed.suggestedActions) {
+          const actionIndex = parsed.suggestedActions.findIndex(
+            (a) => (a as any).type === 'CREATE_RECIPE'
+          )
+          if (actionIndex >= 0) {
+            const updatedAction = parsed.suggestedActions[actionIndex] as CreateRecipeAction
+            updatedAction.data.caloriesPerServing = validation.calculatedNutrition.caloriesPerServing
+            updatedAction.data.proteinPerServing = validation.calculatedNutrition.proteinPerServing
+            updatedAction.data.carbsPerServing = validation.calculatedNutrition.carbsPerServing
+            updatedAction.data.fatPerServing = validation.calculatedNutrition.fatPerServing
+            updatedAction.data.fiberPerServing = validation.calculatedNutrition.fiberPerServing
+            console.log('🟢 Updated recipe action with calculated nutrition')
+          }
+        }
+      }
+
+      break // Validation passed or no recipe to validate
+    }
 
     // Process and validate any CREATE_RECIPE actions
     let processedActions = parsed.suggestedActions || []
@@ -662,18 +803,21 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Update conversation title if this is the first message
-    if (conversation.messages.length === 0 && !conversation.title) {
-      await prisma.nutritionistConversation.update({
-        where: { id: conversationId },
-        data: { title: generateTitle(message) },
-      })
+    // Update conversation title if this is the first user message (no prior user messages)
+    let newTitle: string | null = null
+    const priorUserMessages = conversation.messages.filter(m => m.role === 'user')
+    if (priorUserMessages.length === 0 && !conversation.title) {
+      newTitle = generateTitle(message)
+      console.log('🔷 Setting conversation title:', newTitle)
     }
 
-    // Update conversation timestamp
+    // Update conversation timestamp (and title if needed)
     await prisma.nutritionistConversation.update({
       where: { id: conversationId },
-      data: { updatedAt: new Date() },
+      data: {
+        updatedAt: new Date(),
+        ...(newTitle && { title: newTitle }),
+      },
     })
 
     console.log('🟢 Chat processed successfully')
@@ -692,6 +836,7 @@ export async function POST(request: NextRequest) {
       suggestedActions: processedActions as NutritionistAction[] | undefined,
       suggestedPrompts,
       messageId: assistantMessage.id,
+      conversationTitle: newTitle, // Return title if it was just set
     })
   } catch (error) {
     console.error('❌ Error processing chat:', error)

@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 
 export interface ConversationPreview {
@@ -33,9 +34,29 @@ export function ConversationList({
   onDelete,
   isLoading = false,
 }: ConversationListProps) {
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+
   const formatTime = (date: Date | string) => {
     const d = typeof date === 'string' ? new Date(date) : date
     return formatDistanceToNow(d, { addSuffix: true })
+  }
+
+  const handleDeleteClick = (e: React.MouseEvent, convId: string) => {
+    e.stopPropagation()
+    setDeleteConfirmId(convId)
+  }
+
+  const handleConfirmDelete = (e: React.MouseEvent, convId: string) => {
+    e.stopPropagation()
+    if (onDelete) {
+      onDelete(convId)
+    }
+    setDeleteConfirmId(null)
+  }
+
+  const handleCancelDelete = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setDeleteConfirmId(null)
   }
 
   return (
@@ -75,7 +96,7 @@ export function ConversationList({
               <div
                 key={conv.id}
                 className={`
-                  group relative w-full p-3 rounded-lg text-left transition-colors cursor-pointer
+                  w-full p-3 rounded-lg text-left transition-colors cursor-pointer relative group
                   ${conv.id === selectedId
                     ? 'bg-purple-600/20 border border-purple-600/30'
                     : 'hover:bg-zinc-800 border border-transparent'
@@ -83,14 +104,29 @@ export function ConversationList({
                 `}
                 onClick={() => onSelect(conv.id)}
               >
-                {/* Delete button - appears on hover */}
-                {onDelete && (
+                {/* Delete confirmation overlay */}
+                {deleteConfirmId === conv.id ? (
+                  <div className="absolute inset-0 bg-zinc-900/95 rounded-lg flex items-center justify-center gap-2 z-10">
+                    <button
+                      onClick={(e) => handleConfirmDelete(e, conv.id)}
+                      className="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white text-xs rounded-md transition-colors"
+                    >
+                      Delete
+                    </button>
+                    <button
+                      onClick={handleCancelDelete}
+                      className="px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-white text-xs rounded-md transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : null}
+
+                {/* Delete button (visible on hover) */}
+                {onDelete && deleteConfirmId !== conv.id && (
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onDelete(conv.id)
-                    }}
-                    className="absolute top-2 right-2 p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-red-500/20 text-zinc-500 hover:text-red-400 transition-all"
+                    onClick={(e) => handleDeleteClick(e, conv.id)}
+                    className="absolute top-2 right-2 p-1.5 text-zinc-500 hover:text-red-400 hover:bg-zinc-700 rounded opacity-0 group-hover:opacity-100 transition-opacity"
                     title="Delete conversation"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

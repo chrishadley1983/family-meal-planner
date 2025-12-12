@@ -3,10 +3,8 @@
  * Run this after applying the Prisma schema migration
  */
 
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { UNIT_SEED_DATA } from './unit-seed-data'
-
-const prisma = new PrismaClient()
 
 export async function seedUnits(): Promise<{ created: number; skipped: number }> {
   console.log('🌱 Seeding units of measure...')
