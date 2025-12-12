@@ -60,7 +60,7 @@ export async function PATCH(
       })
     }
 
-    // Update only the macro fields
+    // Update macro fields and tracking metadata
     await prisma.recipe.update({
       where: { id },
       data: {
@@ -71,6 +71,10 @@ export async function PATCH(
         fiberPerServing: data.fiberPerServing,
         sugarPerServing: data.sugarPerServing,
         sodiumPerServing: data.sodiumPerServing,
+        // Mark as manually synced
+        nutritionSource: 'manual',
+        nutritionCalculatedAt: new Date(),
+        nutritionAutoCalculated: true,
       }
     })
 

@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { getRecipeNutrition, calculateIngredientsHash } from '@/lib/nutrition/nutrition-service'
 
 const ingredientSchema = z.object({
   id: z.string().optional(),
@@ -155,6 +156,20 @@ export async function PUT(
 
     const { ingredients, instructions, ...recipeData } = data
 
+    // Check if ingredients are changing - if so, calculate new hash
+    let newIngredientsHash: string | undefined
+    let shouldRecalculateNutrition = false
+
+    if (ingredients !== undefined && ingredients.length > 0) {
+      newIngredientsHash = calculateIngredientsHash(ingredients)
+
+      // If hash changed, we need to recalculate nutrition
+      if (newIngredientsHash !== existingRecipe.ingredientsHash) {
+        console.log('🔄 Ingredients changed, will recalculate nutrition')
+        shouldRecalculateNutrition = true
+      }
+    }
+
     // Handle ingredients update
     if (ingredients !== undefined) {
       // Delete existing ingredients
@@ -177,6 +192,8 @@ export async function PUT(
         ...recipeData,
         totalTimeMinutes,
         ratingDate,
+        // Update ingredients hash if ingredients changed
+        ...(newIngredientsHash && { ingredientsHash: newIngredientsHash }),
         ...(ingredients !== undefined && {
           ingredients: {
             create: ingredients.map((ing, index) => ({
@@ -209,6 +226,23 @@ export async function PUT(
         },
       }
     })
+
+    // Recalculate nutrition if ingredients changed
+    if (shouldRecalculateNutrition && ingredients && ingredients.length > 0) {
+      console.log('📊 Recalculating nutrition for updated recipe:', recipe.recipeName)
+
+      // Run in background to not block the response
+      getRecipeNutrition({
+        recipeId: recipe.id,
+        ingredients,
+        servings: data.servings ?? existingRecipe.servings ?? 4,
+        forceRecalculate: true,
+      }).then(result => {
+        console.log(`✅ Nutrition recalculated for ${recipe.recipeName}: ${result.perServing.calories} cal (${result.confidence})`)
+      }).catch(error => {
+        console.error('❌ Failed to recalculate nutrition:', error)
+      })
+    }
 
     return NextResponse.json({ recipe })
   } catch (error) {

@@ -148,6 +148,12 @@ model Recipe {
   updatedAt               DateTime  @updatedAt
   isArchived              Boolean   @default(false)
 
+  // Nutrition tracking for smart recalculation
+  ingredientsHash         String?            // SHA256 hash of sorted ingredients JSON
+  nutritionCalculatedAt   DateTime?          // When macros were last calculated
+  nutritionSource         String?            // 'calculated' | 'manual' | 'legacy' | 'ai_estimated'
+  nutritionConfidence     String?            // 'high' | 'medium' | 'low'
+
   user                 User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
   ingredients          RecipeIngredient[]
   instructions         RecipeInstruction[]
@@ -621,4 +627,32 @@ model NutritionistMessage {
 
   @@index([conversationId])
   @@map("nutritionist_messages")
+}
+
+// Persistent cache for ingredient nutrition data from USDA
+model IngredientNutritionCache {
+  id               String   @id @default(uuid())
+  ingredientName   String   @unique  // Original ingredient name
+  normalizedName   String             // Cleaned name for fuzzy matching
+  fdcId            Int?               // USDA FoodData Central ID (null if AI-estimated)
+
+  // Nutrition per 100g
+  caloriesPer100g  Int
+  proteinPer100g   Float
+  carbsPer100g     Float
+  fatPer100g       Float
+  fiberPer100g     Float    @default(0)
+  sugarPer100g     Float    @default(0)
+  sodiumPer100g    Int      @default(0)
+
+  // Metadata
+  source           String   @default("usda")  // 'usda' | 'ai_estimate' | 'seed_data' | 'manual'
+  confidence       String   @default("high")  // 'high' | 'medium' | 'low'
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([normalizedName])
+  @@index([source])
+  @@map("ingredient_nutrition_cache")
 }

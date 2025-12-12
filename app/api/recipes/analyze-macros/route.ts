@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { rateIngredients } from '@/lib/claude'
-import { calculateRecipeNutrition } from '@/lib/nutrition'
+import { getRecipeNutrition } from '@/lib/nutrition/nutrition-service'
 
 export async function POST(request: NextRequest) {
   try {
@@ -49,17 +49,17 @@ export async function POST(request: NextRequest) {
 
     const servings = recipe.servings || 4
 
-    console.log('📊 Calculating nutrition using USDA/seed data...')
+    console.log('📊 Calculating nutrition via unified service...')
 
-    // Step 1: Calculate accurate nutrition using USDA data + seed data
-    // This is deterministic and consistent - no AI variance
-    const nutritionResult = await calculateRecipeNutrition(
-      recipe.ingredients,
+    // Step 1: Calculate accurate nutrition using unified service
+    // Uses persistent DB cache → seed data → USDA API → AI estimation
+    const nutritionResult = await getRecipeNutrition({
+      recipeId: recipe.id, // If provided, will save to recipe and use cached values
+      ingredients: recipe.ingredients,
       servings,
-      true // Enable USDA API lookups for unknown ingredients
-    )
+    })
 
-    console.log(`✅ Nutrition calculated (${nutritionResult.confidence} confidence):`, nutritionResult.perServing)
+    console.log(`✅ Nutrition calculated (${nutritionResult.confidence} confidence, source: ${nutritionResult.source}):`, nutritionResult.perServing)
 
     // Step 2: Get qualitative ratings from Claude (ingredient healthiness, overall rating)
     // This is the only AI call - used for subjective assessments, not numbers

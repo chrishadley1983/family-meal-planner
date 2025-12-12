@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { generateRecipeSVG } from '@/lib/generate-recipe-image'
+import { getRecipeNutrition, calculateIngredientsHash } from '@/lib/nutrition/nutrition-service'
 
 const ingredientSchema = z.object({
   ingredientName: z.string().min(1),
@@ -123,11 +124,17 @@ export async function POST(req: NextRequest) {
 
     const { ingredients, instructions, ...recipeData } = data
 
+    // Calculate ingredients hash before creating
+    const ingredientsHash = ingredients.length > 0
+      ? calculateIngredientsHash(ingredients)
+      : null
+
     const recipe = await prisma.recipe.create({
       data: {
         ...recipeData,
         totalTimeMinutes,
         userId: session.user.id,
+        ingredientsHash,
         ingredients: {
           create: ingredients.map((ing, index) => ({
             ...ing,
@@ -150,6 +157,26 @@ export async function POST(req: NextRequest) {
         },
       }
     })
+
+    // Calculate nutrition automatically if we have ingredients and no nutrition was provided
+    if (
+      ingredients.length > 0 &&
+      !data.caloriesPerServing &&
+      !data.proteinPerServing
+    ) {
+      console.log('📊 Auto-calculating nutrition for new recipe:', recipe.recipeName)
+
+      // Run nutrition calculation in background (don't block response)
+      getRecipeNutrition({
+        recipeId: recipe.id,
+        ingredients,
+        servings: data.servings || 4,
+      }).then(result => {
+        console.log(`✅ Nutrition calculated for ${recipe.recipeName}: ${result.perServing.calories} cal (${result.confidence})`)
+      }).catch(error => {
+        console.error('❌ Failed to auto-calculate nutrition:', error)
+      })
+    }
 
     return NextResponse.json({ recipe }, { status: 201 })
   } catch (error) {
