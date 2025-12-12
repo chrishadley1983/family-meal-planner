@@ -3,7 +3,8 @@
  * All actions require user confirmation before execution
  */
 
-import { PrismaClient, StapleFrequency, StorageLocation } from '@prisma/client'
+import { StapleFrequency, StorageLocation } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import {
   NutritionistAction,
   UpdateMacrosAction,
@@ -11,8 +12,6 @@ import {
   AddInventoryAction,
   AddStapleAction,
 } from './types'
-
-const prisma = new PrismaClient()
 
 export interface ActionResult {
   success: boolean
