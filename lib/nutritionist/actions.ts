@@ -5,6 +5,7 @@
 
 import { StapleFrequency, StorageLocation } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import { calculateNutrition } from '@/lib/claude'
 import {
   NutritionistAction,
   UpdateMacrosAction,
@@ -195,6 +196,7 @@ async function handleUpdatePreferences(
 
 /**
  * Handle CREATE_RECIPE action - create a new recipe with full details
+ * Calculates actual nutrition from ingredients instead of using AI estimates
  */
 async function handleCreateRecipe(
   action: CreateRecipeAction,
@@ -212,24 +214,51 @@ async function handleCreateRecipe(
       }
     }
 
+    const servings = data.servings || 4
+
+    // Calculate ACTUAL nutrition from ingredients (not AI's guesses)
+    console.log('🔷 Calculating actual nutrition from ingredients...')
+    let calculatedNutrition = null
+    try {
+      const ingredientsForCalculation = data.ingredients.map((ing) => ({
+        ingredientName: ing.name,
+        quantity: ing.quantity,
+        unit: ing.unit,
+      }))
+      calculatedNutrition = await calculateNutrition(ingredientsForCalculation, servings)
+      console.log('🟢 Calculated nutrition:', calculatedNutrition)
+    } catch (nutritionError) {
+      console.warn('⚠️ Could not calculate nutrition, using AI estimates:', nutritionError)
+      // Fall back to AI estimates if calculation fails
+    }
+
+    // Use calculated values, or fall back to AI estimates if calculation failed
+    const nutritionValues = calculatedNutrition || {
+      caloriesPerServing: data.caloriesPerServing,
+      proteinPerServing: data.proteinPerServing,
+      carbsPerServing: data.carbsPerServing,
+      fatPerServing: data.fatPerServing,
+      fiberPerServing: data.fiberPerServing,
+    }
+
     // Create the recipe with all related data
     const recipe = await prisma.recipe.create({
       data: {
         userId,
         recipeName: data.name,
         description: data.description || '',
-        servings: data.servings || 4,
+        servings,
         prepTimeMinutes: data.prepTimeMinutes || null,
         cookTimeMinutes: data.cookTimeMinutes || null,
         totalTimeMinutes: (data.prepTimeMinutes || 0) + (data.cookTimeMinutes || 0) || null,
         cuisineType: data.cuisineType || null,
         mealType: data.mealCategory || [],
         recipeSource: 'ai_nutritionist',
-        caloriesPerServing: data.caloriesPerServing || null,
-        proteinPerServing: data.proteinPerServing || null,
-        carbsPerServing: data.carbsPerServing || null,
-        fatPerServing: data.fatPerServing || null,
-        fiberPerServing: data.fiberPerServing || null,
+        caloriesPerServing: nutritionValues.caloriesPerServing || null,
+        proteinPerServing: nutritionValues.proteinPerServing || null,
+        carbsPerServing: nutritionValues.carbsPerServing || null,
+        fatPerServing: nutritionValues.fatPerServing || null,
+        fiberPerServing: nutritionValues.fiberPerServing || null,
         nutritionAutoCalculated: true,
         ingredients: {
           create: data.ingredients.map((ing, idx) => ({
