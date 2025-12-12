@@ -4,16 +4,7 @@
  * Tests the shopping list management operations
  */
 
-import { GET, POST } from '@/app/api/shopping-lists/route'
-import { prismaMock } from '../mocks/prisma'
-import {
-  createMockRequest,
-  createMockSession,
-  parseJsonResponse,
-  testDataFactories,
-} from '../helpers/api-test-helpers'
-
-// Mock next-auth
+// Mock next-auth BEFORE importing routes
 jest.mock('next-auth', () => ({
   getServerSession: jest.fn(),
 }))
@@ -23,12 +14,30 @@ jest.mock('@/lib/auth', () => ({
   authOptions: {},
 }))
 
-// Mock prisma
+// Mock prisma with inline mock
+const mockPrisma = {
+  shoppingList: {
+    findMany: jest.fn(),
+    findFirst: jest.fn(),
+    findUnique: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+  },
+}
+
 jest.mock('@/lib/prisma', () => ({
-  prisma: prismaMock,
+  prisma: mockPrisma,
 }))
 
+import { GET, POST } from '@/app/api/shopping-lists/route'
 import { getServerSession } from 'next-auth'
+import {
+  createMockRequest,
+  createMockSession,
+  parseJsonResponse,
+  testDataFactories,
+} from '../helpers/api-test-helpers'
 
 const mockGetServerSession = getServerSession as jest.MockedFunction<typeof getServerSession>
 
@@ -58,7 +67,7 @@ describe('Shopping Lists API', () => {
         { ...testDataFactories.shoppingList({ id: 'sl-2', name: 'Quick Run' }), items: [], _count: { items: 3 } },
       ]
 
-      prismaMock.shoppingList.findMany.mockResolvedValue(mockLists as any)
+      mockPrisma.shoppingList.findMany.mockResolvedValue(mockLists as any)
 
       const request = createMockRequest('GET', '/api/shopping-lists')
       const response = await GET(request)
@@ -70,12 +79,12 @@ describe('Shopping Lists API', () => {
 
     it('should order shopping lists by creation date descending', async () => {
       mockGetServerSession.mockResolvedValue(mockSession)
-      prismaMock.shoppingList.findMany.mockResolvedValue([])
+      mockPrisma.shoppingList.findMany.mockResolvedValue([])
 
       const request = createMockRequest('GET', '/api/shopping-lists')
       await GET(request)
 
-      expect(prismaMock.shoppingList.findMany).toHaveBeenCalledWith(
+      expect(mockPrisma.shoppingList.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           orderBy: { createdAt: 'desc' },
         })
@@ -84,12 +93,12 @@ describe('Shopping Lists API', () => {
 
     it('should include item count', async () => {
       mockGetServerSession.mockResolvedValue(mockSession)
-      prismaMock.shoppingList.findMany.mockResolvedValue([])
+      mockPrisma.shoppingList.findMany.mockResolvedValue([])
 
       const request = createMockRequest('GET', '/api/shopping-lists')
       await GET(request)
 
-      expect(prismaMock.shoppingList.findMany).toHaveBeenCalledWith(
+      expect(mockPrisma.shoppingList.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           include: expect.objectContaining({
             _count: expect.anything(),
@@ -123,7 +132,7 @@ describe('Shopping Lists API', () => {
         items: [],
       }
 
-      prismaMock.shoppingList.create.mockResolvedValue(createdList as any)
+      mockPrisma.shoppingList.create.mockResolvedValue(createdList as any)
 
       const request = createMockRequest('POST', '/api/shopping-lists', {
         body: validListData,
@@ -135,7 +144,7 @@ describe('Shopping Lists API', () => {
 
     it('should generate default name if not provided', async () => {
       mockGetServerSession.mockResolvedValue(mockSession)
-      prismaMock.shoppingList.create.mockResolvedValue({
+      mockPrisma.shoppingList.create.mockResolvedValue({
         ...testDataFactories.shoppingList(),
         items: [],
       } as any)
@@ -159,7 +168,7 @@ describe('Shopping Lists API', () => {
         ],
       }
 
-      prismaMock.shoppingList.create.mockResolvedValue({
+      mockPrisma.shoppingList.create.mockResolvedValue({
         ...testDataFactories.shoppingList({ name: 'Shopping List' }),
         items: listWithItems.items,
       } as any)
@@ -174,7 +183,7 @@ describe('Shopping Lists API', () => {
 
     it('should associate shopping list with authenticated user', async () => {
       mockGetServerSession.mockResolvedValue(mockSession)
-      prismaMock.shoppingList.create.mockResolvedValue({
+      mockPrisma.shoppingList.create.mockResolvedValue({
         ...testDataFactories.shoppingList(),
         items: [],
       } as any)
@@ -184,7 +193,7 @@ describe('Shopping Lists API', () => {
       })
       await POST(request)
 
-      expect(prismaMock.shoppingList.create).toHaveBeenCalledWith(
+      expect(mockPrisma.shoppingList.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
             userId: testUserId,

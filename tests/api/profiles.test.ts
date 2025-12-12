@@ -4,16 +4,7 @@
  * Tests the family profiles CRUD operations
  */
 
-import { GET, POST } from '@/app/api/profiles/route'
-import { prismaMock } from '../mocks/prisma'
-import {
-  createMockRequest,
-  createMockSession,
-  parseJsonResponse,
-  testDataFactories,
-} from '../helpers/api-test-helpers'
-
-// Mock next-auth
+// Mock next-auth BEFORE importing routes
 jest.mock('next-auth', () => ({
   getServerSession: jest.fn(),
 }))
@@ -23,12 +14,30 @@ jest.mock('@/lib/auth', () => ({
   authOptions: {},
 }))
 
-// Mock prisma
+// Mock prisma with inline mock
+const mockPrisma = {
+  familyProfile: {
+    findMany: jest.fn(),
+    findFirst: jest.fn(),
+    findUnique: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+  },
+}
+
 jest.mock('@/lib/prisma', () => ({
-  prisma: prismaMock,
+  prisma: mockPrisma,
 }))
 
+import { GET, POST } from '@/app/api/profiles/route'
 import { getServerSession } from 'next-auth'
+import {
+  createMockRequest,
+  createMockSession,
+  parseJsonResponse,
+  testDataFactories,
+} from '../helpers/api-test-helpers'
 
 const mockGetServerSession = getServerSession as jest.MockedFunction<typeof getServerSession>
 
@@ -61,7 +70,7 @@ describe('Profiles API', () => {
         testDataFactories.profile({ id: 'profile-3', profileName: 'Child' }),
       ]
 
-      prismaMock.familyProfile.findMany.mockResolvedValue(mockProfiles as any)
+      mockPrisma.familyProfile.findMany.mockResolvedValue(mockProfiles as any)
 
       const request = createMockRequest('GET', '/api/profiles')
       const response = await GET(request)
@@ -73,12 +82,12 @@ describe('Profiles API', () => {
 
     it('should only return profiles for the authenticated user', async () => {
       mockGetServerSession.mockResolvedValue(mockSession)
-      prismaMock.familyProfile.findMany.mockResolvedValue([])
+      mockPrisma.familyProfile.findMany.mockResolvedValue([])
 
       const request = createMockRequest('GET', '/api/profiles')
       await GET(request)
 
-      expect(prismaMock.familyProfile.findMany).toHaveBeenCalledWith(
+      expect(mockPrisma.familyProfile.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { userId: testUserId },
         })
@@ -87,7 +96,7 @@ describe('Profiles API', () => {
 
     it('should handle database errors gracefully', async () => {
       mockGetServerSession.mockResolvedValue(mockSession)
-      prismaMock.familyProfile.findMany.mockRejectedValue(new Error('Database error'))
+      mockPrisma.familyProfile.findMany.mockRejectedValue(new Error('Database error'))
 
       const request = createMockRequest('GET', '/api/profiles')
       const response = await GET(request)
@@ -126,7 +135,7 @@ describe('Profiles API', () => {
         profileName: 'New Family Member',
       })
 
-      prismaMock.familyProfile.create.mockResolvedValue(createdProfile as any)
+      mockPrisma.familyProfile.create.mockResolvedValue(createdProfile as any)
 
       const request = createMockRequest('POST', '/api/profiles', {
         body: validProfileData,
@@ -157,7 +166,7 @@ describe('Profiles API', () => {
 
     it('should associate profile with authenticated user', async () => {
       mockGetServerSession.mockResolvedValue(mockSession)
-      prismaMock.familyProfile.create.mockResolvedValue(
+      mockPrisma.familyProfile.create.mockResolvedValue(
         testDataFactories.profile() as any
       )
 
@@ -166,7 +175,7 @@ describe('Profiles API', () => {
       })
       await POST(request)
 
-      expect(prismaMock.familyProfile.create).toHaveBeenCalledWith(
+      expect(mockPrisma.familyProfile.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
             userId: testUserId,
@@ -177,7 +186,7 @@ describe('Profiles API', () => {
 
     it('should accept profiles without optional fields', async () => {
       mockGetServerSession.mockResolvedValue(mockSession)
-      prismaMock.familyProfile.create.mockResolvedValue(
+      mockPrisma.familyProfile.create.mockResolvedValue(
         testDataFactories.profile({ profileName: 'Minimal Profile' }) as any
       )
 

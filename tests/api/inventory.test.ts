@@ -4,16 +4,7 @@
  * Tests the inventory management operations
  */
 
-import { GET, POST, DELETE } from '@/app/api/inventory/route'
-import { prismaMock } from '../mocks/prisma'
-import {
-  createMockRequest,
-  createMockSession,
-  parseJsonResponse,
-  testDataFactories,
-} from '../helpers/api-test-helpers'
-
-// Mock next-auth
+// Mock next-auth BEFORE importing routes
 jest.mock('next-auth', () => ({
   getServerSession: jest.fn(),
 }))
@@ -23,12 +14,31 @@ jest.mock('@/lib/auth', () => ({
   authOptions: {},
 }))
 
-// Mock prisma
+// Mock prisma with inline mock
+const mockPrisma = {
+  inventoryItem: {
+    findMany: jest.fn(),
+    findFirst: jest.fn(),
+    findUnique: jest.fn(),
+    create: jest.fn(),
+    createMany: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+  },
+}
+
 jest.mock('@/lib/prisma', () => ({
-  prisma: prismaMock,
+  prisma: mockPrisma,
 }))
 
+import { GET, POST, DELETE } from '@/app/api/inventory/route'
 import { getServerSession } from 'next-auth'
+import {
+  createMockRequest,
+  createMockSession,
+  parseJsonResponse,
+  testDataFactories,
+} from '../helpers/api-test-helpers'
 
 const mockGetServerSession = getServerSession as jest.MockedFunction<typeof getServerSession>
 
@@ -59,7 +69,7 @@ describe('Inventory API', () => {
         testDataFactories.inventoryItem({ id: 'inv-3', itemName: 'Vegetables' }),
       ]
 
-      prismaMock.inventoryItem.findMany.mockResolvedValue(mockItems as any)
+      mockPrisma.inventoryItem.findMany.mockResolvedValue(mockItems as any)
 
       const request = createMockRequest('GET', '/api/inventory')
       const response = await GET(request)
@@ -71,14 +81,14 @@ describe('Inventory API', () => {
 
     it('should filter by location when specified', async () => {
       mockGetServerSession.mockResolvedValue(mockSession)
-      prismaMock.inventoryItem.findMany.mockResolvedValue([])
+      mockPrisma.inventoryItem.findMany.mockResolvedValue([])
 
       const request = createMockRequest('GET', '/api/inventory', {
         searchParams: { location: 'fridge' },
       })
       await GET(request)
 
-      expect(prismaMock.inventoryItem.findMany).toHaveBeenCalledWith(
+      expect(mockPrisma.inventoryItem.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             location: 'fridge',
@@ -89,14 +99,14 @@ describe('Inventory API', () => {
 
     it('should filter by category when specified', async () => {
       mockGetServerSession.mockResolvedValue(mockSession)
-      prismaMock.inventoryItem.findMany.mockResolvedValue([])
+      mockPrisma.inventoryItem.findMany.mockResolvedValue([])
 
       const request = createMockRequest('GET', '/api/inventory', {
         searchParams: { category: 'Protein' },
       })
       await GET(request)
 
-      expect(prismaMock.inventoryItem.findMany).toHaveBeenCalledWith(
+      expect(mockPrisma.inventoryItem.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             category: 'Protein',
@@ -107,12 +117,12 @@ describe('Inventory API', () => {
 
     it('should only return active items by default', async () => {
       mockGetServerSession.mockResolvedValue(mockSession)
-      prismaMock.inventoryItem.findMany.mockResolvedValue([])
+      mockPrisma.inventoryItem.findMany.mockResolvedValue([])
 
       const request = createMockRequest('GET', '/api/inventory')
       await GET(request)
 
-      expect(prismaMock.inventoryItem.findMany).toHaveBeenCalledWith(
+      expect(mockPrisma.inventoryItem.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             isActive: true,
@@ -150,7 +160,7 @@ describe('Inventory API', () => {
         itemName: 'Chicken Breast',
       })
 
-      prismaMock.inventoryItem.create.mockResolvedValue(createdItem as any)
+      mockPrisma.inventoryItem.create.mockResolvedValue(createdItem as any)
 
       const request = createMockRequest('POST', '/api/inventory', {
         body: validItemData,
@@ -204,7 +214,7 @@ describe('Inventory API', () => {
         ],
       }
 
-      prismaMock.inventoryItem.createMany.mockResolvedValue({ count: 3 })
+      mockPrisma.inventoryItem.createMany.mockResolvedValue({ count: 3 })
 
       const request = createMockRequest('POST', '/api/inventory', {
         body: bulkItems,
@@ -230,10 +240,10 @@ describe('Inventory API', () => {
     it('should soft delete inventory item', async () => {
       mockGetServerSession.mockResolvedValue(mockSession)
 
-      prismaMock.inventoryItem.findFirst.mockResolvedValue(
+      mockPrisma.inventoryItem.findFirst.mockResolvedValue(
         testDataFactories.inventoryItem() as any
       )
-      prismaMock.inventoryItem.update.mockResolvedValue(
+      mockPrisma.inventoryItem.update.mockResolvedValue(
         { ...testDataFactories.inventoryItem(), isActive: false } as any
       )
 
@@ -247,7 +257,7 @@ describe('Inventory API', () => {
 
     it('should return 404 for non-existent item', async () => {
       mockGetServerSession.mockResolvedValue(mockSession)
-      prismaMock.inventoryItem.findFirst.mockResolvedValue(null)
+      mockPrisma.inventoryItem.findFirst.mockResolvedValue(null)
 
       const request = createMockRequest('DELETE', '/api/inventory', {
         searchParams: { id: 'non-existent' },
@@ -259,7 +269,7 @@ describe('Inventory API', () => {
 
     it('should not delete items belonging to other users', async () => {
       mockGetServerSession.mockResolvedValue(mockSession)
-      prismaMock.inventoryItem.findFirst.mockResolvedValue(null) // No match for this user
+      mockPrisma.inventoryItem.findFirst.mockResolvedValue(null) // No match for this user
 
       const request = createMockRequest('DELETE', '/api/inventory', {
         searchParams: { id: 'other-users-item' },

@@ -5,16 +5,8 @@
  */
 
 import { NextRequest } from 'next/server'
-import { GET, POST } from '@/app/api/recipes/route'
-import { prismaMock } from '../mocks/prisma'
-import {
-  createMockRequest,
-  createMockSession,
-  parseJsonResponse,
-  testDataFactories,
-} from '../helpers/api-test-helpers'
 
-// Mock next-auth
+// Mock next-auth BEFORE importing routes
 jest.mock('next-auth', () => ({
   getServerSession: jest.fn(),
 }))
@@ -24,9 +16,20 @@ jest.mock('@/lib/auth', () => ({
   authOptions: {},
 }))
 
-// Mock prisma
+// Mock prisma with inline mock
+const mockPrisma = {
+  recipe: {
+    findMany: jest.fn(),
+    findFirst: jest.fn(),
+    findUnique: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+  },
+}
+
 jest.mock('@/lib/prisma', () => ({
-  prisma: prismaMock,
+  prisma: mockPrisma,
 }))
 
 // Mock image generation
@@ -34,7 +37,14 @@ jest.mock('@/lib/generate-recipe-image', () => ({
   generateRecipeSVG: jest.fn().mockReturnValue('<svg></svg>'),
 }))
 
+import { GET, POST } from '@/app/api/recipes/route'
 import { getServerSession } from 'next-auth'
+import {
+  createMockRequest,
+  createMockSession,
+  parseJsonResponse,
+  testDataFactories,
+} from '../helpers/api-test-helpers'
 
 const mockGetServerSession = getServerSession as jest.MockedFunction<typeof getServerSession>
 
@@ -66,7 +76,7 @@ describe('Recipes API', () => {
         testDataFactories.recipe({ id: 'recipe-2', recipeName: 'Beef Stew' }),
       ]
 
-      prismaMock.recipe.findMany.mockResolvedValue(mockRecipes as any)
+      mockPrisma.recipe.findMany.mockResolvedValue(mockRecipes as any)
 
       const request = createMockRequest('GET', '/api/recipes')
       const response = await GET(request)
@@ -79,12 +89,12 @@ describe('Recipes API', () => {
 
     it('should filter out archived recipes by default', async () => {
       mockGetServerSession.mockResolvedValue(mockSession)
-      prismaMock.recipe.findMany.mockResolvedValue([])
+      mockPrisma.recipe.findMany.mockResolvedValue([])
 
       const request = createMockRequest('GET', '/api/recipes')
       await GET(request)
 
-      expect(prismaMock.recipe.findMany).toHaveBeenCalledWith(
+      expect(mockPrisma.recipe.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             userId: testUserId,
@@ -96,14 +106,14 @@ describe('Recipes API', () => {
 
     it('should include archived recipes when requested', async () => {
       mockGetServerSession.mockResolvedValue(mockSession)
-      prismaMock.recipe.findMany.mockResolvedValue([])
+      mockPrisma.recipe.findMany.mockResolvedValue([])
 
       const request = createMockRequest('GET', '/api/recipes', {
         searchParams: { includeArchived: 'true' },
       })
       await GET(request)
 
-      expect(prismaMock.recipe.findMany).toHaveBeenCalledWith(
+      expect(mockPrisma.recipe.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             userId: testUserId,
@@ -114,7 +124,7 @@ describe('Recipes API', () => {
 
     it('should handle database errors gracefully', async () => {
       mockGetServerSession.mockResolvedValue(mockSession)
-      prismaMock.recipe.findMany.mockRejectedValue(new Error('Database error'))
+      mockPrisma.recipe.findMany.mockRejectedValue(new Error('Database error'))
 
       const request = createMockRequest('GET', '/api/recipes')
       const response = await GET(request)
@@ -164,7 +174,7 @@ describe('Recipes API', () => {
         instructions: validRecipeData.instructions,
       }
 
-      prismaMock.recipe.create.mockResolvedValue(createdRecipe as any)
+      mockPrisma.recipe.create.mockResolvedValue(createdRecipe as any)
 
       const request = createMockRequest('POST', '/api/recipes', {
         body: validRecipeData,
@@ -212,7 +222,7 @@ describe('Recipes API', () => {
 
     it('should calculate total time from prep and cook time', async () => {
       mockGetServerSession.mockResolvedValue(mockSession)
-      prismaMock.recipe.create.mockResolvedValue({
+      mockPrisma.recipe.create.mockResolvedValue({
         ...testDataFactories.recipe(),
         ingredients: [],
         instructions: [],
@@ -227,7 +237,7 @@ describe('Recipes API', () => {
       })
       await POST(request)
 
-      expect(prismaMock.recipe.create).toHaveBeenCalledWith(
+      expect(mockPrisma.recipe.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
             totalTimeMinutes: 30,
