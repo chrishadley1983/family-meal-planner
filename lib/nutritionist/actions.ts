@@ -100,13 +100,14 @@ async function handleUpdateMacros(
 
 /**
  * Handle CREATE_RECIPE action - create a new recipe with full details
+ * Uses calculatedMacros from the unified nutrition service (not Claude's estimates)
  */
 async function handleCreateRecipe(
   action: CreateRecipeAction,
   userId: string
 ): Promise<ActionResult> {
   try {
-    const { data } = action
+    const { data, calculatedMacros } = action
 
     // Validate required fields
     if (!data.name || !data.ingredients || !data.instructions) {
@@ -115,6 +116,25 @@ async function handleCreateRecipe(
         message: 'Missing required recipe data',
         error: 'Recipe must have name, ingredients, and instructions',
       }
+    }
+
+    // Use calculated macros if available, otherwise use data values (for backwards compatibility)
+    // In the new flow, calculatedMacros should ALWAYS be present from the validation loop
+    const macros = calculatedMacros || {
+      caloriesPerServing: data.caloriesPerServing || null,
+      proteinPerServing: data.proteinPerServing || null,
+      carbsPerServing: data.carbsPerServing || null,
+      fatPerServing: data.fatPerServing || null,
+      fiberPerServing: data.fiberPerServing || null,
+      source: 'ai_estimated',
+      confidence: 'low',
+    }
+
+    // Log which macros we're using
+    if (calculatedMacros) {
+      console.log(`✅ Using calculated macros for "${data.name}": ${macros.caloriesPerServing} kcal, ${macros.proteinPerServing}g protein`)
+    } else {
+      console.warn(`⚠️ No calculated macros for "${data.name}", using fallback values`)
     }
 
     // Create the recipe with all related data
@@ -130,12 +150,17 @@ async function handleCreateRecipe(
         cuisineType: data.cuisineType || null,
         mealType: data.mealCategory || [],
         recipeSource: 'ai_nutritionist',
-        caloriesPerServing: data.caloriesPerServing || null,
-        proteinPerServing: data.proteinPerServing || null,
-        carbsPerServing: data.carbsPerServing || null,
-        fatPerServing: data.fatPerServing || null,
-        fiberPerServing: data.fiberPerServing || null,
+        // Use calculated macros from unified nutrition service
+        caloriesPerServing: macros.caloriesPerServing,
+        proteinPerServing: macros.proteinPerServing,
+        carbsPerServing: macros.carbsPerServing,
+        fatPerServing: macros.fatPerServing,
+        fiberPerServing: macros.fiberPerServing,
+        // Track nutrition metadata
         nutritionAutoCalculated: true,
+        nutritionSource: calculatedMacros ? macros.source : 'ai_estimated',
+        nutritionConfidence: calculatedMacros ? macros.confidence : 'low',
+        nutritionCalculatedAt: calculatedMacros ? new Date() : null,
         ingredients: {
           create: data.ingredients.map((ing, idx) => ({
             ingredientName: ing.name,

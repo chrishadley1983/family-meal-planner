@@ -13,7 +13,10 @@ import {
   InventoryContext,
   StapleContext,
   NutritionistAction,
+  CreateRecipeAction,
+  CalculatedMacros,
 } from '@/lib/nutritionist'
+import { getRecipeNutrition, RecipeIngredient } from '@/lib/nutrition/nutrition-service'
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -127,6 +130,344 @@ function generateTitle(message: string): string {
   }
 
   return title
+}
+
+/**
+ * Extract nutritional requirements from conversation history
+ * Looks for patterns like "high protein", "under 500 calories", "low carb", etc.
+ */
+interface NutritionalRequirements {
+  maxCalories?: number
+  minCalories?: number
+  minProtein?: number
+  maxProtein?: number
+  minCarbs?: number
+  maxCarbs?: number
+  minFat?: number
+  maxFat?: number
+  highProtein?: boolean
+  lowCarb?: boolean
+  lowFat?: boolean
+  lowCalorie?: boolean
+}
+
+function extractNutritionalRequirements(conversationHistory: Array<{ role: string; content: string }>): NutritionalRequirements {
+  const requirements: NutritionalRequirements = {}
+
+  // Combine all user messages to extract requirements
+  const userMessages = conversationHistory
+    .filter(msg => msg.role === 'user')
+    .map(msg => msg.content.toLowerCase())
+    .join(' ')
+
+  // Extract specific calorie limits
+  const calorieMatch = userMessages.match(/(?:under|below|less than|max(?:imum)?|at most)\s*(\d+)\s*(?:cal(?:ories)?|kcal)/i)
+  if (calorieMatch) {
+    requirements.maxCalories = parseInt(calorieMatch[1])
+  }
+
+  const minCalorieMatch = userMessages.match(/(?:at least|minimum|over|above|more than)\s*(\d+)\s*(?:cal(?:ories)?|kcal)/i)
+  if (minCalorieMatch) {
+    requirements.minCalories = parseInt(minCalorieMatch[1])
+  }
+
+  // Extract protein requirements
+  const proteinMatch = userMessages.match(/(?:at least|minimum|over|above|more than)\s*(\d+)\s*g?\s*(?:of\s*)?protein/i)
+  if (proteinMatch) {
+    requirements.minProtein = parseInt(proteinMatch[1])
+  }
+
+  const maxProteinMatch = userMessages.match(/(?:under|below|less than|max(?:imum)?|at most)\s*(\d+)\s*g?\s*(?:of\s*)?protein/i)
+  if (maxProteinMatch) {
+    requirements.maxProtein = parseInt(maxProteinMatch[1])
+  }
+
+  // Extract carb requirements
+  const carbMatch = userMessages.match(/(?:under|below|less than|max(?:imum)?|at most)\s*(\d+)\s*g?\s*(?:of\s*)?carb/i)
+  if (carbMatch) {
+    requirements.maxCarbs = parseInt(carbMatch[1])
+  }
+
+  // Extract fat requirements
+  const fatMatch = userMessages.match(/(?:under|below|less than|max(?:imum)?|at most)\s*(\d+)\s*g?\s*(?:of\s*)?fat/i)
+  if (fatMatch) {
+    requirements.maxFat = parseInt(fatMatch[1])
+  }
+
+  // Detect qualitative requirements
+  if (userMessages.includes('high protein') || userMessages.includes('protein-rich') || userMessages.includes('high-protein')) {
+    requirements.highProtein = true
+    // Set minimum 25g protein per serving for "high protein"
+    if (!requirements.minProtein) requirements.minProtein = 25
+  }
+
+  if (userMessages.includes('low carb') || userMessages.includes('low-carb') || userMessages.includes('keto')) {
+    requirements.lowCarb = true
+    // Set max 20g carbs for "low carb"
+    if (!requirements.maxCarbs) requirements.maxCarbs = 20
+  }
+
+  if (userMessages.includes('low fat') || userMessages.includes('low-fat')) {
+    requirements.lowFat = true
+    // Set max 10g fat for "low fat"
+    if (!requirements.maxFat) requirements.maxFat = 10
+  }
+
+  if (userMessages.includes('low calorie') || userMessages.includes('low-calorie') || userMessages.includes('light meal')) {
+    requirements.lowCalorie = true
+    // Set max 400 calories for "low calorie"
+    if (!requirements.maxCalories) requirements.maxCalories = 400
+  }
+
+  return requirements
+}
+
+/**
+ * Check if calculated macros meet the user's requirements
+ */
+function checkRequirementsMet(
+  macros: CalculatedMacros,
+  requirements: NutritionalRequirements
+): { met: boolean; violations: string[] } {
+  const violations: string[] = []
+
+  if (requirements.maxCalories && macros.caloriesPerServing > requirements.maxCalories) {
+    violations.push(`Calories (${macros.caloriesPerServing}) exceed maximum of ${requirements.maxCalories}`)
+  }
+  if (requirements.minCalories && macros.caloriesPerServing < requirements.minCalories) {
+    violations.push(`Calories (${macros.caloriesPerServing}) below minimum of ${requirements.minCalories}`)
+  }
+  if (requirements.minProtein && macros.proteinPerServing < requirements.minProtein) {
+    violations.push(`Protein (${macros.proteinPerServing}g) below minimum of ${requirements.minProtein}g`)
+  }
+  if (requirements.maxProtein && macros.proteinPerServing > requirements.maxProtein) {
+    violations.push(`Protein (${macros.proteinPerServing}g) exceeds maximum of ${requirements.maxProtein}g`)
+  }
+  if (requirements.maxCarbs && macros.carbsPerServing > requirements.maxCarbs) {
+    violations.push(`Carbs (${macros.carbsPerServing}g) exceed maximum of ${requirements.maxCarbs}g`)
+  }
+  if (requirements.maxFat && macros.fatPerServing > requirements.maxFat) {
+    violations.push(`Fat (${macros.fatPerServing}g) exceeds maximum of ${requirements.maxFat}g`)
+  }
+
+  return {
+    met: violations.length === 0,
+    violations,
+  }
+}
+
+/**
+ * Build a refinement prompt for Claude to adjust the recipe
+ */
+function buildRefinementPrompt(
+  recipeName: string,
+  calculatedMacros: CalculatedMacros,
+  violations: string[],
+  requirements: NutritionalRequirements,
+  iterationNumber: number
+): string {
+  let prompt = `The recipe "${recipeName}" has been calculated with the following nutrition per serving:
+- Calories: ${calculatedMacros.caloriesPerServing} kcal
+- Protein: ${calculatedMacros.proteinPerServing}g
+- Carbs: ${calculatedMacros.carbsPerServing}g
+- Fat: ${calculatedMacros.fatPerServing}g
+
+However, this does NOT meet the user's requirements:
+${violations.map(v => `- ${v}`).join('\n')}
+
+Please adjust the recipe to meet these requirements. Consider:
+`
+
+  if (requirements.maxCalories && calculatedMacros.caloriesPerServing > requirements.maxCalories) {
+    prompt += `- Reduce portion sizes or use lower-calorie ingredients\n`
+  }
+  if (requirements.minProtein && calculatedMacros.proteinPerServing < requirements.minProtein) {
+    prompt += `- Add more protein sources (chicken, fish, tofu, legumes, Greek yogurt)\n`
+  }
+  if (requirements.maxCarbs && calculatedMacros.carbsPerServing > requirements.maxCarbs) {
+    prompt += `- Replace high-carb ingredients with low-carb alternatives\n`
+  }
+  if (requirements.maxFat && calculatedMacros.fatPerServing > requirements.maxFat) {
+    prompt += `- Use leaner cooking methods and reduce oil/butter\n`
+  }
+
+  prompt += `\nProvide an adjusted recipe that meets all requirements. Remember: DO NOT include calorie/macro estimates - they will be recalculated from your ingredients.`
+
+  if (iterationNumber >= 2) {
+    prompt += `\n\nIMPORTANT: This is attempt ${iterationNumber + 1}. Make more significant adjustments to meet the targets.`
+  }
+
+  return prompt
+}
+
+/**
+ * Calculate nutrition for a CREATE_RECIPE action and attach calculated macros
+ */
+async function calculateAndAttachMacros(action: CreateRecipeAction): Promise<CreateRecipeAction> {
+  const ingredients: RecipeIngredient[] = action.data.ingredients.map(ing => ({
+    ingredientName: ing.name,
+    quantity: ing.quantity,
+    unit: ing.unit,
+    notes: null,
+  }))
+
+  console.log(`📊 Calculating macros for recipe: ${action.data.name}`)
+
+  const nutrition = await getRecipeNutrition({
+    ingredients,
+    servings: action.data.servings,
+    forceRecalculate: true,
+  })
+
+  const calculatedMacros: CalculatedMacros = {
+    caloriesPerServing: nutrition.perServing.calories,
+    proteinPerServing: nutrition.perServing.protein,
+    carbsPerServing: nutrition.perServing.carbs,
+    fatPerServing: nutrition.perServing.fat,
+    fiberPerServing: nutrition.perServing.fiber,
+    sugarPerServing: nutrition.perServing.sugar,
+    sodiumPerServing: nutrition.perServing.sodium,
+    source: determineOverallSource(nutrition.ingredientBreakdown.map(b => b.source)),
+    confidence: nutrition.confidence,
+  }
+
+  console.log(`✅ Calculated macros: ${calculatedMacros.caloriesPerServing} kcal, ${calculatedMacros.proteinPerServing}g protein`)
+
+  return {
+    ...action,
+    calculatedMacros,
+  }
+}
+
+/**
+ * Determine overall source based on individual ingredient sources
+ */
+function determineOverallSource(sources: string[]): CalculatedMacros['source'] {
+  const uniqueSources = new Set(sources)
+  if (uniqueSources.size === 1) {
+    const source = sources[0]
+    if (source === 'usda' || source === 'db_cache') return 'usda'
+    if (source === 'seed_data') return 'seed_data'
+    if (source === 'ai_estimate') return 'ai_estimated'
+  }
+  return 'mixed'
+}
+
+/**
+ * Validate and potentially refine a CREATE_RECIPE action
+ * Returns the action with calculated macros, iterating if requirements not met
+ */
+async function validateAndRefineRecipe(
+  action: CreateRecipeAction,
+  conversationHistory: Array<{ role: string; content: string }>,
+  systemPrompt: string,
+  maxIterations: number = 3
+): Promise<{ action: CreateRecipeAction; message?: string; wasRefined: boolean }> {
+  // Extract requirements from conversation
+  const requirements = extractNutritionalRequirements(conversationHistory)
+  const hasRequirements = Object.keys(requirements).length > 0
+
+  console.log('📋 Extracted requirements:', requirements)
+
+  // Calculate initial macros
+  let currentAction = await calculateAndAttachMacros(action)
+
+  // If no specific requirements, just return with calculated macros
+  if (!hasRequirements) {
+    console.log('✅ No specific requirements, returning calculated recipe')
+    return { action: currentAction, wasRefined: false }
+  }
+
+  // Check if requirements are met
+  let checkResult = checkRequirementsMet(currentAction.calculatedMacros!, requirements)
+
+  if (checkResult.met) {
+    console.log('✅ Recipe meets all requirements')
+    return { action: currentAction, wasRefined: false }
+  }
+
+  console.log(`⚠️ Recipe does not meet requirements: ${checkResult.violations.join(', ')}`)
+
+  // Iterate to refine the recipe
+  for (let iteration = 0; iteration < maxIterations; iteration++) {
+    console.log(`🔄 Refinement iteration ${iteration + 1}/${maxIterations}`)
+
+    // Build refinement prompt
+    const refinementPrompt = buildRefinementPrompt(
+      currentAction.data.name,
+      currentAction.calculatedMacros!,
+      checkResult.violations,
+      requirements,
+      iteration
+    )
+
+    // Call Claude to refine
+    const refinedHistory = [
+      ...conversationHistory,
+      { role: 'assistant' as const, content: 'I\'ll adjust the recipe to better meet your requirements.' },
+      { role: 'user' as const, content: refinementPrompt },
+    ]
+
+    try {
+      const response = await client.messages.create({
+        model: 'claude-haiku-4-5-20250822',
+        max_tokens: 2048,
+        system: systemPrompt,
+        messages: refinedHistory.map(msg => ({
+          role: msg.role as 'user' | 'assistant',
+          content: msg.content,
+        })),
+      })
+
+      const responseText = response.content
+        .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+        .map(block => block.text)
+        .join('\n')
+
+      // Parse response for new recipe action
+      const { parseAIResponse } = await import('@/lib/nutritionist')
+      const parsed = parseAIResponse(responseText)
+
+      // Find CREATE_RECIPE action in response
+      const newRecipeAction = (parsed.suggestedActions || []).find(
+        (a: any) => a.type === 'CREATE_RECIPE'
+      ) as CreateRecipeAction | undefined
+
+      if (newRecipeAction) {
+        // Calculate macros for refined recipe
+        currentAction = await calculateAndAttachMacros(newRecipeAction)
+
+        // Check requirements again
+        checkResult = checkRequirementsMet(currentAction.calculatedMacros!, requirements)
+
+        if (checkResult.met) {
+          console.log(`✅ Recipe meets requirements after ${iteration + 1} refinements`)
+          return {
+            action: currentAction,
+            message: parsed.message,
+            wasRefined: true,
+          }
+        }
+
+        console.log(`⚠️ Still not meeting requirements: ${checkResult.violations.join(', ')}`)
+      } else {
+        console.log('⚠️ No CREATE_RECIPE action in refinement response')
+        break
+      }
+    } catch (error) {
+      console.error('❌ Error during recipe refinement:', error)
+      break
+    }
+  }
+
+  // If we exhausted iterations, return best effort with a note
+  console.log(`⚠️ Could not fully meet requirements after ${maxIterations} iterations`)
+
+  return {
+    action: currentAction,
+    message: `Note: I've adjusted the recipe as much as possible, but it may not fully meet all your nutritional targets. The calculated values are: ${currentAction.calculatedMacros!.caloriesPerServing} kcal, ${currentAction.calculatedMacros!.proteinPerServing}g protein, ${currentAction.calculatedMacros!.carbsPerServing}g carbs, ${currentAction.calculatedMacros!.fatPerServing}g fat.`,
+    wasRefined: true,
+  }
 }
 
 /**
@@ -249,6 +590,54 @@ export async function POST(request: NextRequest) {
     // Parse the response for actions and prompts
     const parsed = parseAIResponse(responseText)
 
+    // Process and validate any CREATE_RECIPE actions
+    let processedActions = parsed.suggestedActions || []
+    let finalMessage = parsed.message
+
+    // Find CREATE_RECIPE actions and validate/calculate macros
+    const createRecipeActions = processedActions.filter(
+      (a: any) => a.type === 'CREATE_RECIPE'
+    ) as CreateRecipeAction[]
+
+    if (createRecipeActions.length > 0) {
+      console.log(`📊 Found ${createRecipeActions.length} CREATE_RECIPE action(s), validating...`)
+
+      // Process each CREATE_RECIPE action
+      for (let i = 0; i < processedActions.length; i++) {
+        const action = processedActions[i] as any
+        if (action.type === 'CREATE_RECIPE') {
+          try {
+            const validationResult = await validateAndRefineRecipe(
+              action as CreateRecipeAction,
+              conversationHistory,
+              systemPrompt
+            )
+
+            // Replace with validated action (has calculatedMacros attached)
+            processedActions[i] = validationResult.action
+
+            // If refinement happened, append a note to the message
+            if (validationResult.wasRefined && validationResult.message) {
+              finalMessage += `\n\n${validationResult.message}`
+            }
+
+            // Add calculated nutrition info to the message
+            const macros = validationResult.action.calculatedMacros!
+            finalMessage += `\n\n**Calculated Nutrition (per serving):**\n` +
+              `- Calories: ${macros.caloriesPerServing} kcal\n` +
+              `- Protein: ${macros.proteinPerServing}g\n` +
+              `- Carbs: ${macros.carbsPerServing}g\n` +
+              `- Fat: ${macros.fatPerServing}g\n` +
+              `- Fiber: ${macros.fiberPerServing}g\n` +
+              `*(${macros.confidence} confidence from ${macros.source} data)*`
+          } catch (error) {
+            console.error('❌ Error validating recipe:', error)
+            // Continue without validation - action will be saved without calculated macros
+          }
+        }
+      }
+    }
+
     // Save the user message
     await prisma.nutritionistMessage.create({
       data: {
@@ -260,7 +649,7 @@ export async function POST(request: NextRequest) {
 
     // Save the assistant message with metadata
     const messageMetadata = {
-      suggestedActions: (parsed.suggestedActions || []) as any[],
+      suggestedActions: processedActions as any[],
       suggestedPrompts: (parsed.suggestedPrompts || []) as string[],
     }
 
@@ -268,7 +657,7 @@ export async function POST(request: NextRequest) {
       data: {
         conversationId,
         role: 'assistant',
-        content: parsed.message,
+        content: finalMessage,
         metadata: messageMetadata,
       },
     })
@@ -290,8 +679,8 @@ export async function POST(request: NextRequest) {
     console.log('🟢 Chat processed successfully')
 
     return NextResponse.json({
-      message: parsed.message,
-      suggestedActions: parsed.suggestedActions as NutritionistAction[] | undefined,
+      message: finalMessage,
+      suggestedActions: processedActions as NutritionistAction[] | undefined,
       suggestedPrompts: parsed.suggestedPrompts,
       messageId: assistantMessage.id,
     })

@@ -467,13 +467,10 @@ Return ONLY a valid JSON object:
       "instruction": "string"
     }
   ],
-  "caloriesPerServing": number or null,
-  "proteinPerServing": number or null,
-  "carbsPerServing": number or null,
-  "fatPerServing": number or null,
-  "fiberPerServing": number or null,
   "notes": "string or null"
 }
+
+IMPORTANT: Do NOT include nutrition/macro values (calories, protein, carbs, fat, fiber) - these will be calculated automatically from ingredients.
 
 Return ONLY the JSON object, no other text.`
 

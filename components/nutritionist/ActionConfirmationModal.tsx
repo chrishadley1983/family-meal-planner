@@ -67,7 +67,18 @@ export function ActionConfirmationModal({
 }
 
 function renderRecipePreview(action: CreateRecipeAction) {
-  const { data } = action
+  const { data, calculatedMacros } = action
+
+  // Use calculated macros if available, otherwise fall back to data (for backwards compatibility)
+  const macros = calculatedMacros || {
+    caloriesPerServing: data.caloriesPerServing || 0,
+    proteinPerServing: data.proteinPerServing || 0,
+    carbsPerServing: data.carbsPerServing || 0,
+    fatPerServing: data.fatPerServing || 0,
+    fiberPerServing: data.fiberPerServing || 0,
+    source: 'unknown' as const,
+    confidence: 'low' as const,
+  }
 
   return (
     <div className="bg-zinc-800/50 rounded-lg p-4 space-y-4 border border-zinc-700">
@@ -101,24 +112,33 @@ function renderRecipePreview(action: CreateRecipeAction) {
         )}
       </div>
 
-      {/* Macros */}
-      <div className="grid grid-cols-4 gap-2 p-3 bg-zinc-900/50 rounded-lg">
-        <div className="text-center">
-          <div className="text-lg font-semibold text-amber-400">{data.caloriesPerServing}</div>
-          <div className="text-xs text-zinc-500">kcal</div>
+      {/* Calculated Macros - now using unified nutrition service values */}
+      <div className="space-y-2">
+        <div className="grid grid-cols-4 gap-2 p-3 bg-zinc-900/50 rounded-lg">
+          <div className="text-center">
+            <div className="text-lg font-semibold text-amber-400">{macros.caloriesPerServing}</div>
+            <div className="text-xs text-zinc-500">kcal</div>
+          </div>
+          <div className="text-center">
+            <div className="text-lg font-semibold text-green-400">{macros.proteinPerServing}g</div>
+            <div className="text-xs text-zinc-500">protein</div>
+          </div>
+          <div className="text-center">
+            <div className="text-lg font-semibold text-blue-400">{macros.carbsPerServing}g</div>
+            <div className="text-xs text-zinc-500">carbs</div>
+          </div>
+          <div className="text-center">
+            <div className="text-lg font-semibold text-purple-400">{macros.fatPerServing}g</div>
+            <div className="text-xs text-zinc-500">fat</div>
+          </div>
         </div>
-        <div className="text-center">
-          <div className="text-lg font-semibold text-green-400">{data.proteinPerServing}g</div>
-          <div className="text-xs text-zinc-500">protein</div>
-        </div>
-        <div className="text-center">
-          <div className="text-lg font-semibold text-blue-400">{data.carbsPerServing}g</div>
-          <div className="text-xs text-zinc-500">carbs</div>
-        </div>
-        <div className="text-center">
-          <div className="text-lg font-semibold text-purple-400">{data.fatPerServing}g</div>
-          <div className="text-xs text-zinc-500">fat</div>
-        </div>
+        {/* Show nutrition source and confidence */}
+        {calculatedMacros && (
+          <div className="text-xs text-center text-zinc-500">
+            Calculated from ingredients • {calculatedMacros.confidence} confidence
+            {calculatedMacros.source !== 'mixed' && ` • ${calculatedMacros.source} data`}
+          </div>
+        )}
       </div>
 
       {/* Ingredients */}

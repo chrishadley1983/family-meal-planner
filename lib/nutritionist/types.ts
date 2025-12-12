@@ -63,6 +63,22 @@ export interface UpdateMacrosAction extends BaseAction {
   }
 }
 
+/**
+ * Calculated macros from unified nutrition service
+ * These are the AUTHORITATIVE values - not Claude's estimates
+ */
+export interface CalculatedMacros {
+  caloriesPerServing: number
+  proteinPerServing: number
+  carbsPerServing: number
+  fatPerServing: number
+  fiberPerServing: number
+  sugarPerServing?: number
+  sodiumPerServing?: number
+  source: 'usda' | 'seed_data' | 'ai_estimated' | 'mixed'
+  confidence: 'high' | 'medium' | 'low'
+}
+
 export interface CreateRecipeAction extends BaseAction {
   type: 'CREATE_RECIPE'
   data: {
@@ -83,12 +99,16 @@ export interface CreateRecipeAction extends BaseAction {
       stepNumber: number
       instruction: string
     }>
-    caloriesPerServing: number
-    proteinPerServing: number
-    carbsPerServing: number
-    fatPerServing: number
+    // Macros are now OPTIONAL - Claude should NOT provide these
+    // They will be calculated by the unified nutrition service
+    caloriesPerServing?: number
+    proteinPerServing?: number
+    carbsPerServing?: number
+    fatPerServing?: number
     fiberPerServing?: number
   }
+  // Calculated macros from unified nutrition service (attached after validation)
+  calculatedMacros?: CalculatedMacros
 }
 
 export interface AddInventoryAction extends BaseAction {
