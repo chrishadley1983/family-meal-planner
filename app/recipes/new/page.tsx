@@ -162,9 +162,10 @@ export default function NewRecipePage() {
       const data = await response.json()
       if (response.ok && data.analysis) {
         setMacroAnalysis(data.analysis)
-        // Once we have macro analysis, fetch nutritionist feedback
+        // Once we have macro analysis, fetch nutritionist feedback and suggested prompts
         // (loading popup stays open until feedback completes)
         fetchNutritionistFeedback(data.analysis)
+        fetchSuggestedPrompts(data.analysis)
       } else {
         // Analysis failed, stop the loading popup
         stopLoading()
@@ -205,6 +206,27 @@ export default function NewRecipePage() {
     } finally {
       setLoadingFeedback(false)
       stopLoading()
+    }
+  }
+
+  // Fetch initial suggested prompts based on macro analysis
+  const fetchSuggestedPrompts = async (analysis: MacroAnalysis) => {
+    try {
+      const params = new URLSearchParams({
+        overallRating: analysis.overallRating,
+        protein: String(analysis.perServing.protein),
+        fat: String(analysis.perServing.fat),
+        carbs: String(analysis.perServing.carbs),
+        sodium: String(analysis.perServing.sodium),
+        fiber: String(analysis.perServing.fiber),
+      })
+      const response = await fetch(`/api/recipes/nutritionist-chat?${params}`)
+      if (response.ok) {
+        const data = await response.json()
+        setSuggestedPrompts(data.suggestedPrompts || [])
+      }
+    } catch (err) {
+      console.error('❌ Failed to fetch suggested prompts:', err)
     }
   }
 
