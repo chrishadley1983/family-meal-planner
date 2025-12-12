@@ -856,6 +856,122 @@ Consider: calories per serving vs daily target, macro ratios, ingredient health 
   }
 }
 
+/**
+ * Rate ingredients for healthiness - used when nutrition is calculated separately
+ * This is a more focused AI call that only asks for qualitative ratings,
+ * not nutrition numbers (which are calculated from authoritative data)
+ */
+export async function rateIngredients(params: {
+  ingredients: Array<{
+    ingredientName: string
+    quantity: number
+    unit: string
+  }>
+  nutrition: {
+    calories: number
+    protein: number
+    carbs: number
+    fat: number
+    fiber: number
+    sugar: number
+    sodium: number
+  }
+  userProfile: {
+    dailyCalorieTarget?: number | null
+    dailyProteinTarget?: number | null
+    dailyCarbsTarget?: number | null
+    dailyFatTarget?: number | null
+    macroTrackingEnabled: boolean
+  }
+}): Promise<{
+  overallRating: 'green' | 'yellow' | 'red'
+  overallExplanation: string
+  ingredientRatings: Array<{
+    ingredientName: string
+    rating: 'green' | 'yellow' | 'red'
+    reason: string
+  }>
+}> {
+  const { ingredients, nutrition, userProfile } = params
+
+  const ingredientList = ingredients
+    .map(ing => `- ${ing.quantity} ${ing.unit} ${ing.ingredientName}`)
+    .join('\n')
+
+  const prompt = `You are a nutrition expert. Rate these ingredients for healthiness based on the user's goals.
+
+INGREDIENTS:
+${ingredientList}
+
+CALCULATED NUTRITION (per serving - these are FACTS, not estimates):
+- Calories: ${nutrition.calories} kcal
+- Protein: ${nutrition.protein}g
+- Carbs: ${nutrition.carbs}g
+- Fat: ${nutrition.fat}g
+- Fiber: ${nutrition.fiber}g
+- Sugar: ${nutrition.sugar}g
+- Sodium: ${nutrition.sodium}mg
+
+USER'S DAILY TARGETS:
+${userProfile.macroTrackingEnabled ? `
+- Calories: ${userProfile.dailyCalorieTarget || 2000} kcal
+- Protein: ${userProfile.dailyProteinTarget || 50}g
+- Carbs: ${userProfile.dailyCarbsTarget || 250}g
+- Fat: ${userProfile.dailyFatTarget || 70}g
+` : 'User has not set targets - use general healthy eating guidelines (2000 kcal, 50g protein, 250g carbs, 70g fat)'}
+
+Rate EACH ingredient and provide an overall rating. Return ONLY valid JSON:
+{
+  "overallRating": "green" | "yellow" | "red",
+  "overallExplanation": "1 sentence explaining the rating based on the CALCULATED nutrition above",
+  "ingredientRatings": [
+    {
+      "ingredientName": "exact name from list",
+      "rating": "green" | "yellow" | "red",
+      "reason": "brief reason (e.g., 'High in saturated fat' or 'Good protein source')"
+    }
+  ]
+}
+
+Rating criteria:
+- GREEN: Healthy choice, fits user's goals
+- YELLOW: Moderate concern (high in fat/sugar/sodium but acceptable)
+- RED: Poor fit for health goals (very high fat/sugar/sodium, processed, etc.)
+
+IMPORTANT: You MUST rate EVERY ingredient. The ingredientRatings array must have ${ingredients.length} items.`
+
+  try {
+    const message = await client.messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 1024,
+      messages: [{
+        role: 'user',
+        content: prompt
+      }]
+    })
+
+    const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      throw new Error('Failed to parse ingredient ratings from Claude response')
+    }
+
+    return JSON.parse(jsonMatch[0])
+  } catch (error) {
+    console.error('Error rating ingredients with Claude:', error)
+    // Return a safe fallback
+    return {
+      overallRating: 'yellow',
+      overallExplanation: 'Unable to rate - please check ingredients manually',
+      ingredientRatings: ingredients.map(ing => ({
+        ingredientName: ing.ingredientName,
+        rating: 'yellow' as const,
+        reason: 'Rating unavailable'
+      }))
+    }
+  }
+}
+
 export async function analyzeInventoryPhoto(images: string[]) {
   const imageCount = images.length
   const prompt = `You are a grocery and food inventory recognition assistant. Analyze ${imageCount === 1 ? 'this image' : `these ${imageCount} images`} and identify all food items visible.
