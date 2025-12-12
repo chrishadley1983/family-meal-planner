@@ -77,7 +77,7 @@ describe('Shopping Lists API', () => {
       expect(data.shoppingLists).toHaveLength(2)
     })
 
-    it('should order shopping lists by creation date descending', async () => {
+    it('should order shopping lists by status then updatedAt', async () => {
       mockGetServerSession.mockResolvedValue(mockSession)
       mockPrisma.shoppingList.findMany.mockResolvedValue([])
 
@@ -86,12 +86,15 @@ describe('Shopping Lists API', () => {
 
       expect(mockPrisma.shoppingList.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          orderBy: { createdAt: 'desc' },
+          orderBy: [
+            { status: 'asc' },
+            { updatedAt: 'desc' },
+          ],
         })
       )
     })
 
-    it('should include item count', async () => {
+    it('should include mealPlans in response', async () => {
       mockGetServerSession.mockResolvedValue(mockSession)
       mockPrisma.shoppingList.findMany.mockResolvedValue([])
 
@@ -101,7 +104,7 @@ describe('Shopping Lists API', () => {
       expect(mockPrisma.shoppingList.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           include: expect.objectContaining({
-            _count: expect.anything(),
+            mealPlans: expect.anything(),
           }),
         })
       )

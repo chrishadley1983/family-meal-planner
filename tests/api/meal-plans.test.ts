@@ -77,7 +77,7 @@ describe('Meal Plans API', () => {
       expect(data.mealPlans).toHaveLength(2)
     })
 
-    it('should order meal plans by weekStarting descending', async () => {
+    it('should order meal plans by weekStartDate descending', async () => {
       mockGetServerSession.mockResolvedValue(mockSession)
       mockPrisma.mealPlan.findMany.mockResolvedValue([])
 
@@ -86,12 +86,12 @@ describe('Meal Plans API', () => {
 
       expect(mockPrisma.mealPlan.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          orderBy: { weekStarting: 'desc' },
+          orderBy: { weekStartDate: 'desc' },
         })
       )
     })
 
-    it('should include meals with the meal plan', async () => {
+    it('should include meals with recipes', async () => {
       mockGetServerSession.mockResolvedValue(mockSession)
       mockPrisma.mealPlan.findMany.mockResolvedValue([])
 
@@ -100,9 +100,13 @@ describe('Meal Plans API', () => {
 
       expect(mockPrisma.mealPlan.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          include: expect.objectContaining({
-            meals: expect.anything(),
-          }),
+          include: {
+            meals: {
+              include: {
+                recipe: true
+              }
+            }
+          },
         })
       )
     })
@@ -110,8 +114,8 @@ describe('Meal Plans API', () => {
 
   describe('POST /api/meal-plans', () => {
     const validMealPlanData = {
-      name: 'New Week Plan',
-      weekStarting: new Date().toISOString(),
+      weekStartDate: new Date().toISOString(),
+      meals: [],
     }
 
     it('should return 401 when not authenticated', async () => {
@@ -129,7 +133,7 @@ describe('Meal Plans API', () => {
       mockGetServerSession.mockResolvedValue(mockSession)
 
       const createdMealPlan = {
-        ...testDataFactories.mealPlan({ name: 'New Week Plan' }),
+        ...testDataFactories.mealPlan(),
         meals: [],
       }
 
@@ -162,6 +166,17 @@ describe('Meal Plans API', () => {
           }),
         })
       )
+    })
+
+    it('should return 400 for missing weekStartDate', async () => {
+      mockGetServerSession.mockResolvedValue(mockSession)
+
+      const request = createMockRequest('POST', '/api/meal-plans', {
+        body: { meals: [] },
+      })
+      const response = await POST(request)
+
+      expect(response.status).toBe(400)
     })
 
     it('should handle database errors gracefully', async () => {

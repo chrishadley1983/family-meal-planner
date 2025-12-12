@@ -137,8 +137,10 @@ describe('Nutritionist API', () => {
         })
         const response = await applyActionPOST(request)
 
-        const data = await parseJsonResponse<{ success: boolean }>(response)
-        expect(data.success).toBe(false)
+        expect(response.status).toBe(400)
+        const data = await parseJsonResponse<{ error: string; details: string[] }>(response)
+        expect(data.error).toBe('Invalid action')
+        expect(data.details).toContain('Calories must be at least 800')
       })
     })
 
@@ -195,8 +197,9 @@ describe('Nutritionist API', () => {
         })
         const response = await applyActionPOST(request)
 
-        const data = await parseJsonResponse<{ success: boolean }>(response)
-        expect(data.success).toBe(false)
+        expect(response.status).toBe(400)
+        const data = await parseJsonResponse<{ error: string; details: string[] }>(response)
+        expect(data.error).toBe('Invalid action')
       })
     })
 
@@ -298,8 +301,9 @@ describe('Nutritionist API', () => {
         })
         const response = await applyActionPOST(request)
 
-        const data = await parseJsonResponse<{ success: boolean }>(response)
-        expect(data.success).toBe(false)
+        expect(response.status).toBe(400)
+        const data = await parseJsonResponse<{ error: string; details: string[] }>(response)
+        expect(data.error).toBe('Invalid action')
       })
     })
 
@@ -322,8 +326,10 @@ describe('Nutritionist API', () => {
         })
         const response = await applyActionPOST(request)
 
-        const data = await parseJsonResponse<{ success: boolean }>(response)
-        expect(data.success).toBe(false)
+        expect(response.status).toBe(400)
+        const data = await parseJsonResponse<{ error: string; details: string[] }>(response)
+        expect(data.error).toBe('Invalid action')
+        expect(data.details).toContain('Unknown action type')
       })
     })
   })

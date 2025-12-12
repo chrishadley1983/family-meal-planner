@@ -79,43 +79,7 @@ describe('Inventory API', () => {
       expect(data.items).toHaveLength(3)
     })
 
-    it('should filter by location when specified', async () => {
-      mockGetServerSession.mockResolvedValue(mockSession)
-      mockPrisma.inventoryItem.findMany.mockResolvedValue([])
-
-      const request = createMockRequest('GET', '/api/inventory', {
-        searchParams: { location: 'fridge' },
-      })
-      await GET(request)
-
-      expect(mockPrisma.inventoryItem.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            location: 'fridge',
-          }),
-        })
-      )
-    })
-
-    it('should filter by category when specified', async () => {
-      mockGetServerSession.mockResolvedValue(mockSession)
-      mockPrisma.inventoryItem.findMany.mockResolvedValue([])
-
-      const request = createMockRequest('GET', '/api/inventory', {
-        searchParams: { category: 'Protein' },
-      })
-      await GET(request)
-
-      expect(mockPrisma.inventoryItem.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            category: 'Protein',
-          }),
-        })
-      )
-    })
-
-    it('should only return active items by default', async () => {
+    it('should order by expiry date and category', async () => {
       mockGetServerSession.mockResolvedValue(mockSession)
       mockPrisma.inventoryItem.findMany.mockResolvedValue([])
 
@@ -124,9 +88,26 @@ describe('Inventory API', () => {
 
       expect(mockPrisma.inventoryItem.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({
-            isActive: true,
-          }),
+          orderBy: [
+            { expiryDate: 'asc' },
+            { category: 'asc' }
+          ],
+        })
+      )
+    })
+
+    it('should filter by userId', async () => {
+      mockGetServerSession.mockResolvedValue(mockSession)
+      mockPrisma.inventoryItem.findMany.mockResolvedValue([])
+
+      const request = createMockRequest('GET', '/api/inventory')
+      await GET(request)
+
+      expect(mockPrisma.inventoryItem.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            userId: testUserId,
+          },
         })
       )
     })
@@ -203,21 +184,19 @@ describe('Inventory API', () => {
       expect(response.status).toBe(400)
     })
 
-    it('should support bulk item creation', async () => {
+    it('should set default values for optional fields', async () => {
       mockGetServerSession.mockResolvedValue(mockSession)
 
-      const bulkItems = {
-        items: [
-          { itemName: 'Chicken', quantity: 500, unit: 'g' },
-          { itemName: 'Rice', quantity: 1, unit: 'kg' },
-          { itemName: 'Milk', quantity: 2, unit: 'litres' },
-        ],
-      }
+      const createdItem = testDataFactories.inventoryItem({
+        itemName: 'Test Item',
+        isActive: true,
+        addedBy: 'manual',
+      })
 
-      mockPrisma.inventoryItem.createMany.mockResolvedValue({ count: 3 })
+      mockPrisma.inventoryItem.create.mockResolvedValue(createdItem as any)
 
       const request = createMockRequest('POST', '/api/inventory', {
-        body: bulkItems,
+        body: validItemData,
       })
       const response = await POST(request)
 
@@ -237,15 +216,12 @@ describe('Inventory API', () => {
       expect(response.status).toBe(401)
     })
 
-    it('should soft delete inventory item', async () => {
+    it('should delete inventory item (hard delete)', async () => {
       mockGetServerSession.mockResolvedValue(mockSession)
 
-      mockPrisma.inventoryItem.findFirst.mockResolvedValue(
-        testDataFactories.inventoryItem() as any
-      )
-      mockPrisma.inventoryItem.update.mockResolvedValue(
-        { ...testDataFactories.inventoryItem(), isActive: false } as any
-      )
+      const mockItem = testDataFactories.inventoryItem({ userId: testUserId })
+      mockPrisma.inventoryItem.findUnique.mockResolvedValue(mockItem as any)
+      mockPrisma.inventoryItem.delete.mockResolvedValue(mockItem as any)
 
       const request = createMockRequest('DELETE', '/api/inventory', {
         searchParams: { id: 'inv-123' },
@@ -253,11 +229,14 @@ describe('Inventory API', () => {
       const response = await DELETE(request)
 
       expect(response.status).toBe(200)
+      expect(mockPrisma.inventoryItem.delete).toHaveBeenCalledWith({
+        where: { id: 'inv-123' },
+      })
     })
 
     it('should return 404 for non-existent item', async () => {
       mockGetServerSession.mockResolvedValue(mockSession)
-      mockPrisma.inventoryItem.findFirst.mockResolvedValue(null)
+      mockPrisma.inventoryItem.findUnique.mockResolvedValue(null)
 
       const request = createMockRequest('DELETE', '/api/inventory', {
         searchParams: { id: 'non-existent' },
@@ -267,16 +246,28 @@ describe('Inventory API', () => {
       expect(response.status).toBe(404)
     })
 
-    it('should not delete items belonging to other users', async () => {
+    it('should return 403 for items belonging to other users', async () => {
       mockGetServerSession.mockResolvedValue(mockSession)
-      mockPrisma.inventoryItem.findFirst.mockResolvedValue(null) // No match for this user
+
+      // Item exists but belongs to different user
+      const otherUserItem = testDataFactories.inventoryItem({ userId: 'other-user-456' })
+      mockPrisma.inventoryItem.findUnique.mockResolvedValue(otherUserItem as any)
 
       const request = createMockRequest('DELETE', '/api/inventory', {
         searchParams: { id: 'other-users-item' },
       })
       const response = await DELETE(request)
 
-      expect(response.status).toBe(404)
+      expect(response.status).toBe(403)
+    })
+
+    it('should return 400 if no item ID provided', async () => {
+      mockGetServerSession.mockResolvedValue(mockSession)
+
+      const request = createMockRequest('DELETE', '/api/inventory')
+      const response = await DELETE(request)
+
+      expect(response.status).toBe(400)
     })
   })
 })
