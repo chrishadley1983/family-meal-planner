@@ -31,7 +31,8 @@ export default function NutritionistPage() {
   const router = useRouter()
   const chatEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const isNewConversationRef = useRef(false)
+  // Track newly created conversation ID to prevent race condition in Strict Mode
+  const newlyCreatedConversationIdRef = useRef<string | null>(null)
 
   // State
   const [profiles, setProfiles] = useState<Profile[]>([])
@@ -74,12 +75,13 @@ export default function NutritionistPage() {
   // Fetch messages when conversation changes (skip if we just created it)
   useEffect(() => {
     if (selectedConversationId) {
-      if (isNewConversationRef.current) {
-        // Skip fetching - we already have the greeting message
-        isNewConversationRef.current = false
-      } else {
-        fetchConversation(selectedConversationId)
+      // Skip if this conversation was just created (we already have the greeting)
+      // Using ID comparison is Strict Mode safe (doesn't flip like a boolean)
+      if (newlyCreatedConversationIdRef.current === selectedConversationId) {
+        console.log('🔄 Skipping fetch for newly created conversation:', selectedConversationId)
+        return // Don't clear the ref yet - greeting is already loaded
       }
+      fetchConversation(selectedConversationId)
     } else {
       setMessages([])
       setSuggestedPrompts([])
@@ -210,8 +212,9 @@ export default function NutritionistPage() {
           ...prev,
         ])
 
-        // Mark as new conversation to prevent fetchConversation from overwriting
-        isNewConversationRef.current = true
+        // Store the ID to prevent fetchConversation from overwriting the greeting
+        // This is Strict Mode safe - ID comparison instead of boolean flip
+        newlyCreatedConversationIdRef.current = data.conversation.id
 
         // Select the new conversation
         setSelectedConversationId(data.conversation.id)
@@ -241,8 +244,7 @@ export default function NutritionistPage() {
   }
 
   const deleteConversation = async (conversationId: string) => {
-    if (!confirm('Delete this conversation? This cannot be undone.')) return
-
+    // Note: ConversationList already shows inline confirmation UI, so no need for confirm() here
     try {
       const response = await fetch(`/api/nutritionist/conversations/${conversationId}`, {
         method: 'DELETE',
@@ -454,7 +456,14 @@ export default function NutritionistPage() {
             <ConversationList
               conversations={conversations}
               selectedId={selectedConversationId}
-              onSelect={setSelectedConversationId}
+              onSelect={(id) => {
+                // Clear the new conversation ref when selecting a different conversation
+                // This ensures going back will fetch fresh data
+                if (id !== newlyCreatedConversationIdRef.current) {
+                  newlyCreatedConversationIdRef.current = null
+                }
+                setSelectedConversationId(id)
+              }}
               onNewConversation={createNewConversation}
               onDelete={deleteConversation}
               isLoading={isLoading}

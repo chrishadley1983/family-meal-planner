@@ -122,11 +122,11 @@ export function ConversationList({
                   </div>
                 ) : null}
 
-                {/* Delete button (visible on hover) */}
+                {/* Delete button (always visible) */}
                 {onDelete && deleteConfirmId !== conv.id && (
                   <button
                     onClick={(e) => handleDeleteClick(e, conv.id)}
-                    className="absolute top-2 right-2 p-1.5 text-zinc-500 hover:text-red-400 hover:bg-zinc-700 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-2 right-2 p-1.5 text-zinc-500 hover:text-red-400 hover:bg-zinc-700 rounded transition-colors"
                     title="Delete conversation"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
