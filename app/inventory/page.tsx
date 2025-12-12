@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { AppLayout, PageContainer } from '@/components/layout'
 import { Button, Badge, Input, Modal } from '@/components/ui'
 import { useSession } from 'next-auth/react'
-import { COMMON_UNITS, DEFAULT_CATEGORIES } from '@/lib/unit-conversion'
+import { DEFAULT_CATEGORIES } from '@/lib/unit-conversion'
 import {
   enrichInventoryItemWithExpiry,
   filterInventoryItems,
@@ -210,10 +210,30 @@ export default function InventoryPage() {
   // Get stats
   const stats = useMemo(() => getInventoryStats(items), [items])
 
+  // Available units for dropdown (from API)
+  const [availableUnits, setAvailableUnits] = useState<Record<string, Array<{
+    code: string
+    name: string
+    abbreviation: string
+  }>>>({})
+
   useEffect(() => {
     fetchItems()
     fetchCategories()
     fetchSettings()
+    // Fetch available units
+    const fetchUnits = async () => {
+      try {
+        const response = await fetch('/api/units?groupByCategory=true')
+        if (response.ok) {
+          const data = await response.json()
+          setAvailableUnits(data.units || {})
+        }
+      } catch (err) {
+        console.error('Failed to fetch units:', err)
+      }
+    }
+    fetchUnits()
   }, [])
 
   const fetchSettings = async () => {
@@ -1520,8 +1540,14 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
                   <option value="">Select unit...</option>
-                  {COMMON_UNITS.map(u => (
-                    <option key={u.value} value={u.value}>{u.label}</option>
+                  {Object.entries(availableUnits).map(([category, units]) => (
+                    <optgroup key={category} label={category.charAt(0).toUpperCase() + category.slice(1)}>
+                      {units.map((unit) => (
+                        <option key={unit.code} value={unit.abbreviation}>
+                          {unit.abbreviation} ({unit.name})
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
               </div>
@@ -1629,8 +1655,14 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
                   <option value="">Select unit...</option>
-                  {COMMON_UNITS.map(u => (
-                    <option key={u.value} value={u.value}>{u.label}</option>
+                  {Object.entries(availableUnits).map(([category, units]) => (
+                    <optgroup key={category} label={category.charAt(0).toUpperCase() + category.slice(1)}>
+                      {units.map((unit) => (
+                        <option key={unit.code} value={unit.abbreviation}>
+                          {unit.abbreviation} ({unit.name})
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
               </div>
@@ -1997,8 +2029,14 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
                               className="px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
                             >
                               <option value="">Unit...</option>
-                              {COMMON_UNITS.map(unit => (
-                                <option key={unit.value} value={unit.value}>{unit.label}</option>
+                              {Object.entries(availableUnits).map(([category, units]) => (
+                                <optgroup key={category} label={category.charAt(0).toUpperCase() + category.slice(1)}>
+                                  {units.map((unit) => (
+                                    <option key={unit.code} value={unit.abbreviation}>
+                                      {unit.abbreviation} ({unit.name})
+                                    </option>
+                                  ))}
+                                </optgroup>
                               ))}
                             </select>
                             {/* Category select */}
@@ -2336,8 +2374,14 @@ Frozen Peas,500,g,Frozen,freezer,2026-06-01,`
                               className="px-2 py-1 text-sm bg-zinc-700 border border-zinc-600 rounded text-white focus:outline-none focus:ring-1 focus:ring-purple-500"
                             >
                               <option value="">Unit...</option>
-                              {COMMON_UNITS.map(unit => (
-                                <option key={unit.value} value={unit.value}>{unit.label}</option>
+                              {Object.entries(availableUnits).map(([category, units]) => (
+                                <optgroup key={category} label={category.charAt(0).toUpperCase() + category.slice(1)}>
+                                  {units.map((unit) => (
+                                    <option key={unit.code} value={unit.abbreviation}>
+                                      {unit.abbreviation} ({unit.name})
+                                    </option>
+                                  ))}
+                                </optgroup>
                               ))}
                             </select>
                             {/* Category select */}

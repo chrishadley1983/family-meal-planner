@@ -104,6 +104,29 @@ export default function NewRecipePage() {
 
   const mealCategories = ['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert']
 
+  // Available units for dropdown
+  const [availableUnits, setAvailableUnits] = useState<Record<string, Array<{
+    code: string
+    name: string
+    abbreviation: string
+  }>>>({})
+
+  // Fetch available units on mount
+  useEffect(() => {
+    const fetchUnits = async () => {
+      try {
+        const response = await fetch('/api/units?groupByCategory=true')
+        if (response.ok) {
+          const data = await response.json()
+          setAvailableUnits(data.units || {})
+        }
+      } catch (err) {
+        console.error('Failed to fetch units:', err)
+      }
+    }
+    fetchUnits()
+  }, [])
+
   // Auto-fetch macro analysis when recipe changes
   useEffect(() => {
     if (recipeName && ingredients.some(i => i.ingredientName && i.unit)) {
@@ -1405,13 +1428,22 @@ Instructions:
                         value={ing.quantity}
                         onChange={(e) => updateIngredient(index, 'quantity', parseFloat(e.target.value))}
                       />
-                      <input
-                        type="text"
-                        placeholder="Unit"
-                        className="col-span-2 rounded-md bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-purple-500 focus:ring-purple-500 px-3 py-2 border text-sm"
+                      <select
+                        className="col-span-2 rounded-md bg-zinc-800 border-zinc-700 text-white focus:border-purple-500 focus:ring-purple-500 px-3 py-2 border text-sm"
                         value={ing.unit}
                         onChange={(e) => updateIngredient(index, 'unit', e.target.value)}
-                      />
+                      >
+                        <option value="">Unit</option>
+                        {Object.entries(availableUnits).map(([category, units]) => (
+                          <optgroup key={category} label={category.charAt(0).toUpperCase() + category.slice(1)}>
+                            {units.map((unit) => (
+                              <option key={unit.code} value={unit.abbreviation}>
+                                {unit.abbreviation} ({unit.name})
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
                       <input
                         type="text"
                         placeholder="Notes"
@@ -1558,34 +1590,51 @@ Instructions:
                       {nutritionistFeedback}
                     </div>
 
+                    {/* Suggested Prompts - shown after initial feedback */}
+                    {suggestedPrompts.length > 0 && !chatLoading && (
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {suggestedPrompts.map((prompt, index) => (
+                          <button
+                            key={index}
+                            onClick={() => sendChatMessage(prompt)}
+                            className="text-xs bg-zinc-700/50 hover:bg-zinc-600/50 text-zinc-300 px-3 py-1.5 rounded-full border border-zinc-600 transition-colors"
+                          >
+                            {prompt}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
                     {/* Interactive Chat */}
                     <div className="space-y-4">
                       {/* Chat Messages */}
-                      <div className="space-y-3 max-h-64 overflow-y-auto">
-                        {chatMessages.map((msg) => (
-                          <div
-                            key={msg.id}
-                            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                          >
+                      {chatMessages.length > 0 && (
+                        <div className="space-y-3 max-h-64 overflow-y-auto">
+                          {chatMessages.map((msg) => (
                             <div
-                              className={`max-w-[85%] rounded-lg px-4 py-2 ${
-                                msg.role === 'user'
-                                  ? 'bg-purple-600 text-white'
-                                  : 'bg-zinc-700/50 text-zinc-200'
-                              }`}
+                              key={msg.id}
+                              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                             >
-                              <p className="text-sm leading-relaxed">{msg.content}</p>
+                              <div
+                                className={`max-w-[85%] rounded-lg px-4 py-2 ${
+                                  msg.role === 'user'
+                                    ? 'bg-purple-600 text-white'
+                                    : 'bg-zinc-700/50 text-zinc-200'
+                                }`}
+                              >
+                                <p className="text-sm leading-relaxed">{msg.content}</p>
+                              </div>
                             </div>
-                          </div>
-                        ))}
-                        {chatLoading && (
-                          <div className="flex justify-start">
-                            <div className="bg-zinc-700/50 text-zinc-400 rounded-lg px-4 py-2">
-                              <p className="text-sm">Emilia is typing...</p>
+                          ))}
+                          {chatLoading && (
+                            <div className="flex justify-start">
+                              <div className="bg-zinc-700/50 text-zinc-400 rounded-lg px-4 py-2">
+                                <p className="text-sm">Emilia is typing...</p>
+                              </div>
                             </div>
-                          </div>
-                        )}
-                      </div>
+                          )}
+                        </div>
+                      )}
 
                       {/* Projected Nutrition (shown when Emilia suggests changes) */}
                       {projectedNutrition && (
@@ -1617,21 +1666,6 @@ Instructions:
                               <p className="text-yellow-400 font-semibold">{Math.round(projectedNutrition.fat)}g</p>
                             </div>
                           </div>
-                        </div>
-                      )}
-
-                      {/* Suggested Prompts */}
-                      {suggestedPrompts.length > 0 && !chatLoading && (
-                        <div className="flex flex-wrap gap-2">
-                          {suggestedPrompts.map((prompt, index) => (
-                            <button
-                              key={index}
-                              onClick={() => sendChatMessage(prompt)}
-                              className="text-xs bg-zinc-700/50 hover:bg-zinc-600/50 text-zinc-300 px-3 py-1.5 rounded-full border border-zinc-600 transition-colors"
-                            >
-                              {prompt}
-                            </button>
-                          ))}
                         </div>
                       )}
 

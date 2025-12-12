@@ -204,9 +204,29 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
     isBulk?: boolean
   } | null>(null)
 
+  // Available units for dropdown
+  const [availableUnits, setAvailableUnits] = useState<Record<string, Array<{
+    code: string
+    name: string
+    abbreviation: string
+  }>>>({})
+
   useEffect(() => {
     fetchShoppingList()
     fetchExcludedItems()
+    // Fetch available units
+    const fetchUnits = async () => {
+      try {
+        const response = await fetch('/api/units?groupByCategory=true')
+        if (response.ok) {
+          const data = await response.json()
+          setAvailableUnits(data.units || {})
+        }
+      } catch (err) {
+        console.error('Failed to fetch units:', err)
+      }
+    }
+    fetchUnits()
   }, [id])
 
   const fetchExcludedItems = async () => {
@@ -2123,13 +2143,22 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
                 </div>
                 <div className="flex-1">
                   <label className="block text-sm text-gray-400 mb-1">Unit</label>
-                  <input
-                    type="text"
+                  <select
                     value={editItemUnit}
                     onChange={(e) => setEditItemUnit(e.target.value)}
                     className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white"
-                    placeholder="Unit (e.g., kg, g, pieces)"
-                  />
+                  >
+                    <option value="">Select Unit</option>
+                    {Object.entries(availableUnits).map(([category, units]) => (
+                      <optgroup key={category} label={category.charAt(0).toUpperCase() + category.slice(1)}>
+                        {units.map((unit) => (
+                          <option key={unit.code} value={unit.abbreviation}>
+                            {unit.abbreviation} ({unit.name})
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
                 </div>
               </div>
             </div>
