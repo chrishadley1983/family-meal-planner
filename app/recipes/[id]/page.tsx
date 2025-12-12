@@ -697,6 +697,8 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
         setRecipe(data.recipe)
         setIsEditing(false)
         fetchRecipe() // Refresh the data
+        // Refresh nutritional analysis with saved recipe data
+        fetchAIAnalysis(data.recipe)
       }
     } catch (err) {
       console.error('Failed to save recipe')

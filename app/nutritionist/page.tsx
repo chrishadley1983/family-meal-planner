@@ -31,6 +31,8 @@ export default function NutritionistPage() {
   const router = useRouter()
   const chatEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  // Track newly created conversation ID to prevent race condition in Strict Mode
+  const newlyCreatedConversationIdRef = useRef<string | null>(null)
 
   // State
   const [profiles, setProfiles] = useState<Profile[]>([])
@@ -70,9 +72,15 @@ export default function NutritionistPage() {
     }
   }, [selectedProfileId])
 
-  // Fetch messages when conversation changes
+  // Fetch messages when conversation changes (skip if we just created it)
   useEffect(() => {
     if (selectedConversationId) {
+      // Skip if this conversation was just created (we already have the greeting)
+      // Using ID comparison is Strict Mode safe (doesn't flip like a boolean)
+      if (newlyCreatedConversationIdRef.current === selectedConversationId) {
+        console.log('🔄 Skipping fetch for newly created conversation:', selectedConversationId)
+        return // Don't clear the ref yet - greeting is already loaded
+      }
       fetchConversation(selectedConversationId)
     } else {
       setMessages([])
@@ -204,6 +212,10 @@ export default function NutritionistPage() {
           ...prev,
         ])
 
+        // Store the ID to prevent fetchConversation from overwriting the greeting
+        // This is Strict Mode safe - ID comparison instead of boolean flip
+        newlyCreatedConversationIdRef.current = data.conversation.id
+
         // Select the new conversation
         setSelectedConversationId(data.conversation.id)
 
@@ -228,6 +240,33 @@ export default function NutritionistPage() {
       }
     } catch (error) {
       console.error('❌ Error creating conversation:', error)
+    }
+  }
+
+  const deleteConversation = async (conversationId: string) => {
+    // Note: ConversationList already shows inline confirmation UI, so no need for confirm() here
+    try {
+      const response = await fetch(`/api/nutritionist/conversations/${conversationId}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        // Remove from list
+        setConversations((prev) => prev.filter((c) => c.id !== conversationId))
+
+        // If deleted conversation was selected, clear selection
+        if (selectedConversationId === conversationId) {
+          setSelectedConversationId(null)
+          setMessages([])
+          setSuggestedPrompts([])
+        }
+
+        console.log('🗑️ Conversation deleted:', conversationId)
+      } else {
+        console.error('❌ Failed to delete conversation')
+      }
+    } catch (error) {
+      console.error('❌ Error deleting conversation:', error)
     }
   }
 
@@ -292,12 +331,13 @@ export default function NutritionistPage() {
         setCurrentMessageId(data.messageId)
       }
 
-      // Update conversation in sidebar
+      // Update conversation in sidebar (including title if returned)
       setConversations((prev) =>
         prev.map((conv) =>
           conv.id === selectedConversationId
             ? {
                 ...conv,
+                title: data.conversationTitle || conv.title,
                 lastMessage: data.message?.substring(0, 100),
                 lastMessageAt: new Date(),
               }
@@ -313,13 +353,21 @@ export default function NutritionistPage() {
     }
   }
 
-  const handleActionClick = (action: NutritionistAction) => {
-    setActionToConfirm(action)
+  const handleActionClick = async (action: NutritionistAction) => {
+    // Simple actions like UPDATE_PREFERENCES are applied automatically without confirmation
+    const simpleActions = ['UPDATE_PREFERENCES']
+
+    if (simpleActions.includes(action.type)) {
+      // Auto-apply simple actions
+      await applyAction(action)
+    } else {
+      // Complex actions need confirmation
+      setActionToConfirm(action)
+    }
   }
 
-  const confirmAction = async () => {
-    if (!actionToConfirm) return
-
+  // Apply an action and add confirmation to chat
+  const applyAction = async (action: NutritionistAction) => {
     setIsApplyingAction(true)
 
     try {
@@ -328,7 +376,7 @@ export default function NutritionistPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           conversationId: selectedConversationId,
-          action: actionToConfirm,
+          action: action,
           messageId: currentMessageId,
         }),
       })
@@ -336,29 +384,52 @@ export default function NutritionistPage() {
       const data = await response.json()
 
       if (data.success) {
-        // Close modal
-        setActionToConfirm(null)
+        // Add a system confirmation message (not a user message!)
+        const confirmationMessage =
+          action.type === 'UPDATE_MACROS'
+            ? '✅ Macro targets have been updated on your profile.'
+            : action.type === 'UPDATE_PREFERENCES'
+            ? '✅ Food preferences have been saved to your profile.'
+            : action.type === 'CREATE_RECIPE'
+            ? '✅ Recipe has been added to your collection.'
+            : action.type === 'ADD_INVENTORY_ITEM'
+            ? '✅ Item has been added to your inventory.'
+            : '✅ Item has been added to your staples.'
 
-        // Send a follow-up message to the conversation
-        const followUpMessage =
-          actionToConfirm.type === 'UPDATE_MACROS'
-            ? 'I\'ve applied those macro targets to my profile.'
-            : actionToConfirm.type === 'CREATE_RECIPE'
-            ? 'I\'ve added that recipe to my collection.'
-            : actionToConfirm.type === 'ADD_INVENTORY_ITEM'
-            ? 'I\'ve added that to my inventory.'
-            : 'I\'ve added that to my staples.'
-
-        await sendMessage(followUpMessage)
+        // Add as an assistant message (system confirmation)
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `confirmation-${Date.now()}`,
+            role: 'assistant',
+            content: confirmationMessage,
+            timestamp: new Date(),
+          },
+        ])
       } else {
         console.error('❌ Action failed:', data.error)
-        // Could show error toast here
+        // Show error in chat
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `error-${Date.now()}`,
+            role: 'assistant',
+            content: `❌ Sorry, I couldn't complete that action: ${data.error || 'Unknown error'}`,
+            timestamp: new Date(),
+          },
+        ])
       }
     } catch (error) {
       console.error('❌ Error applying action:', error)
     } finally {
       setIsApplyingAction(false)
     }
+  }
+
+  const confirmAction = async () => {
+    if (!actionToConfirm) return
+    setActionToConfirm(null) // Close modal first
+    await applyAction(actionToConfirm)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -385,8 +456,16 @@ export default function NutritionistPage() {
             <ConversationList
               conversations={conversations}
               selectedId={selectedConversationId}
-              onSelect={setSelectedConversationId}
+              onSelect={(id) => {
+                // Clear the new conversation ref when selecting a different conversation
+                // This ensures going back will fetch fresh data
+                if (id !== newlyCreatedConversationIdRef.current) {
+                  newlyCreatedConversationIdRef.current = null
+                }
+                setSelectedConversationId(id)
+              }}
               onNewConversation={createNewConversation}
+              onDelete={deleteConversation}
               isLoading={isLoading}
             />
           </div>

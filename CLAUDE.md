@@ -732,6 +732,24 @@ Let me know if the error persists or if you see any new issues.
 - TypeScript errors appear for "missing" functions that actually existed
 - No clear indication that features were lost until someone notices
 
+### Claude Code Branch Naming Convention
+
+Claude Code creates branches with the format: `claude/<feature-name>-<session-id>`
+
+Example: `claude/shopping-list-feature-01MauoCARzp94XiM4QwUKw8N`
+
+**Important:** When referencing or deleting branches, you must use the FULL branch name including the session ID suffix.
+
+```powershell
+# List all remote branches to see full names
+git branch -r | Select-String -NotMatch "HEAD"
+
+# Delete a branch (use FULL name)
+git push origin --delete claude/feature-name-<session-id>
+
+# Short names like "shopping-list-feature" will NOT work
+```
+
 ### Feature Branch Workflow
 
 **1. Before Creating a New Feature Branch:**

@@ -8,6 +8,7 @@ import { prisma } from '@/lib/prisma'
 import {
   NutritionistAction,
   UpdateMacrosAction,
+  UpdatePreferencesAction,
   CreateRecipeAction,
   AddInventoryAction,
   AddStapleAction,
@@ -30,6 +31,8 @@ export async function executeAction(
   switch (action.type) {
     case 'UPDATE_MACROS':
       return handleUpdateMacros(action as UpdateMacrosAction, userId)
+    case 'UPDATE_PREFERENCES':
+      return handleUpdatePreferences(action as UpdatePreferencesAction, userId)
     case 'CREATE_RECIPE':
       return handleCreateRecipe(action as CreateRecipeAction, userId)
     case 'ADD_INVENTORY_ITEM':
@@ -98,6 +101,99 @@ async function handleUpdateMacros(
 }
 
 /**
+ * Handle UPDATE_PREFERENCES action - update a profile's food likes/dislikes
+ */
+async function handleUpdatePreferences(
+  action: UpdatePreferencesAction,
+  userId: string
+): Promise<ActionResult> {
+  try {
+    // Verify the profile belongs to this user
+    const profile = await prisma.familyProfile.findFirst({
+      where: {
+        id: action.data.profileId,
+        userId: userId,
+      },
+    })
+
+    if (!profile) {
+      return {
+        success: false,
+        message: 'Profile not found',
+        error: 'The specified profile does not exist or does not belong to you',
+      }
+    }
+
+    // Get current likes/dislikes
+    const currentLikes = Array.isArray(profile.foodLikes) ? profile.foodLikes as string[] : []
+    const currentDislikes = Array.isArray(profile.foodDislikes) ? profile.foodDislikes as string[] : []
+
+    // Calculate new likes (add new ones, remove specified ones)
+    let newLikes = [...currentLikes]
+    if (action.data.addLikes) {
+      // Add new likes (avoid duplicates, case-insensitive)
+      for (const like of action.data.addLikes) {
+        const normalized = like.toLowerCase().trim()
+        if (!newLikes.some(l => l.toLowerCase() === normalized)) {
+          newLikes.push(like.trim())
+        }
+      }
+    }
+    if (action.data.removeLikes) {
+      // Remove specified likes
+      const toRemove = action.data.removeLikes.map(l => l.toLowerCase().trim())
+      newLikes = newLikes.filter(l => !toRemove.includes(l.toLowerCase()))
+    }
+
+    // Calculate new dislikes (add new ones, remove specified ones)
+    let newDislikes = [...currentDislikes]
+    if (action.data.addDislikes) {
+      // Add new dislikes (avoid duplicates, case-insensitive)
+      for (const dislike of action.data.addDislikes) {
+        const normalized = dislike.toLowerCase().trim()
+        if (!newDislikes.some(d => d.toLowerCase() === normalized)) {
+          newDislikes.push(dislike.trim())
+        }
+      }
+    }
+    if (action.data.removeDislikes) {
+      // Remove specified dislikes
+      const toRemove = action.data.removeDislikes.map(d => d.toLowerCase().trim())
+      newDislikes = newDislikes.filter(d => !toRemove.includes(d.toLowerCase()))
+    }
+
+    // Update the profile
+    const updatedProfile = await prisma.familyProfile.update({
+      where: { id: action.data.profileId },
+      data: {
+        foodLikes: newLikes,
+        foodDislikes: newDislikes,
+      },
+    })
+
+    // Build summary message
+    const changes: string[] = []
+    if (action.data.addLikes?.length) changes.push(`added ${action.data.addLikes.join(', ')} to likes`)
+    if (action.data.removeLikes?.length) changes.push(`removed ${action.data.removeLikes.join(', ')} from likes`)
+    if (action.data.addDislikes?.length) changes.push(`added ${action.data.addDislikes.join(', ')} to dislikes`)
+    if (action.data.removeDislikes?.length) changes.push(`removed ${action.data.removeDislikes.join(', ')} from dislikes`)
+
+    return {
+      success: true,
+      message: `Preferences updated for ${profile.profileName}: ${changes.join(', ')}`,
+      data: updatedProfile,
+    }
+  } catch (error) {
+    console.error('❌ Error updating preferences:', error)
+    return {
+      success: false,
+      message: 'Failed to update preferences',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }
+  }
+}
+
+/**
  * Handle CREATE_RECIPE action - create a new recipe with full details
  * Uses calculatedMacros from the unified nutrition service (not Claude's estimates)
  */
@@ -117,6 +213,8 @@ async function handleCreateRecipe(
       }
     }
 
+    const servings = data.servings || 4
+
     // Use calculated macros if available, otherwise use data values (for backwards compatibility)
     // In the new flow, calculatedMacros should ALWAYS be present from the validation loop
     const macros = calculatedMacros || {
@@ -125,8 +223,8 @@ async function handleCreateRecipe(
       carbsPerServing: data.carbsPerServing || null,
       fatPerServing: data.fatPerServing || null,
       fiberPerServing: data.fiberPerServing || null,
-      source: 'ai_estimated',
-      confidence: 'low',
+      source: 'ai_estimated' as const,
+      confidence: 'low' as const,
     }
 
     // Log which macros we're using
@@ -142,7 +240,7 @@ async function handleCreateRecipe(
         userId,
         recipeName: data.name,
         description: data.description || '',
-        servings: data.servings || 4,
+        servings,
         prepTimeMinutes: data.prepTimeMinutes || null,
         cookTimeMinutes: data.cookTimeMinutes || null,
         totalTimeMinutes: (data.prepTimeMinutes || 0) + (data.cookTimeMinutes || 0) || null,
@@ -317,6 +415,20 @@ export function validateAction(action: NutritionistAction): {
       }
       break
     }
+    case 'UPDATE_PREFERENCES': {
+      const data = (action as UpdatePreferencesAction).data
+      if (!data.profileId) errors.push('Missing profile ID')
+      // At least one change must be specified
+      const hasChanges =
+        (data.addLikes && data.addLikes.length > 0) ||
+        (data.removeLikes && data.removeLikes.length > 0) ||
+        (data.addDislikes && data.addDislikes.length > 0) ||
+        (data.removeDislikes && data.removeDislikes.length > 0)
+      if (!hasChanges) {
+        errors.push('At least one preference change must be specified')
+      }
+      break
+    }
     case 'CREATE_RECIPE': {
       const data = (action as CreateRecipeAction).data
       if (!data.name) errors.push('Missing recipe name')
@@ -376,6 +488,21 @@ export function formatActionForDisplay(action: NutritionistAction): {
           'Carbs': `${data.dailyCarbsTarget}g`,
           'Fat': `${data.dailyFatTarget}g`,
           'Fiber': data.dailyFiberTarget ? `${data.dailyFiberTarget}g` : 'Not set',
+        },
+      }
+    }
+    case 'UPDATE_PREFERENCES': {
+      const data = (action as UpdatePreferencesAction).data
+      const changes: string[] = []
+      if (data.addLikes?.length) changes.push(`Add to likes: ${data.addLikes.join(', ')}`)
+      if (data.removeLikes?.length) changes.push(`Remove from likes: ${data.removeLikes.join(', ')}`)
+      if (data.addDislikes?.length) changes.push(`Add to dislikes: ${data.addDislikes.join(', ')}`)
+      if (data.removeDislikes?.length) changes.push(`Remove from dislikes: ${data.removeDislikes.join(', ')}`)
+      return {
+        title: 'Update Food Preferences',
+        description: 'This will update your food likes and dislikes:',
+        details: {
+          'Changes': changes,
         },
       }
     }

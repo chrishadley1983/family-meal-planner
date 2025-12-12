@@ -29,6 +29,7 @@ export interface InventoryItem {
   isActive: boolean
   addedBy: AddedBySource
   notes: string | null
+  isUsedInPlannedMeal?: boolean
   createdAt: Date
   updatedAt: Date
 }
@@ -264,4 +265,71 @@ export const EXPIRY_STATUS_COLORS: Record<ExpiryStatus, { bg: string; text: stri
   expired: { bg: 'bg-red-900/20', text: 'text-red-400', border: 'border-red-500' },
   expiring_soon: { bg: 'bg-yellow-900/20', text: 'text-yellow-400', border: 'border-yellow-500' },
   fresh: { bg: 'bg-green-900/20', text: 'text-green-400', border: 'border-green-500' },
+}
+
+// API Request types (from other branch)
+export interface CreateInventoryItemRequest {
+  itemName: string
+  quantity: number
+  unit: string
+  category: string
+  location?: StorageLocation
+  purchaseDate?: string  // ISO date string
+  expiryDate?: string    // ISO date string
+  notes?: string
+  isActive?: boolean
+}
+
+export interface UpdateInventoryItemRequest {
+  itemName?: string
+  quantity?: number
+  unit?: string
+  category?: string
+  location?: StorageLocation | null
+  purchaseDate?: string
+  expiryDate?: string | null
+  expiryIsEstimated?: boolean
+  isActive?: boolean
+  notes?: string | null
+}
+
+export interface BulkUpdateInventoryRequest {
+  ids: string[]
+  expiryDate?: string
+  isActive?: boolean
+}
+
+export interface BulkDeleteInventoryRequest {
+  ids: string[]
+}
+
+// Response wrappers
+export interface InventoryItemResponse {
+  success: boolean
+  item?: InventoryItem
+  error?: string
+}
+
+export interface InventoryItemsResponse {
+  success: boolean
+  items?: InventoryItemWithExpiry[]
+  total?: number
+  error?: string
+}
+
+export interface InventorySettingsResponse {
+  success: boolean
+  settings?: InventorySettings
+  error?: string
+}
+
+// Dashboard statistics
+export interface InventoryStatistics {
+  totalItems: number
+  activeItems: number
+  expiredCount: number
+  expiringSoonCount: number
+  freshCount: number
+  byCategory: Record<string, number>
+  byLocation: Record<StorageLocation | 'unassigned', number>
 }

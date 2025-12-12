@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 
 export interface ConversationPreview {
@@ -21,6 +22,7 @@ interface ConversationListProps {
   selectedId: string | null
   onSelect: (id: string) => void
   onNewConversation: () => void
+  onDelete?: (id: string) => void
   isLoading?: boolean
 }
 
@@ -29,11 +31,32 @@ export function ConversationList({
   selectedId,
   onSelect,
   onNewConversation,
+  onDelete,
   isLoading = false,
 }: ConversationListProps) {
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+
   const formatTime = (date: Date | string) => {
     const d = typeof date === 'string' ? new Date(date) : date
     return formatDistanceToNow(d, { addSuffix: true })
+  }
+
+  const handleDeleteClick = (e: React.MouseEvent, convId: string) => {
+    e.stopPropagation()
+    setDeleteConfirmId(convId)
+  }
+
+  const handleConfirmDelete = (e: React.MouseEvent, convId: string) => {
+    e.stopPropagation()
+    if (onDelete) {
+      onDelete(convId)
+    }
+    setDeleteConfirmId(null)
+  }
+
+  const handleCancelDelete = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setDeleteConfirmId(null)
   }
 
   return (
@@ -70,19 +93,50 @@ export function ConversationList({
         ) : (
           <div className="p-2 space-y-1">
             {conversations.map((conv) => (
-              <button
+              <div
                 key={conv.id}
-                onClick={() => onSelect(conv.id)}
                 className={`
-                  w-full p-3 rounded-lg text-left transition-colors
+                  w-full p-3 rounded-lg text-left transition-colors cursor-pointer relative group
                   ${conv.id === selectedId
                     ? 'bg-purple-600/20 border border-purple-600/30'
                     : 'hover:bg-zinc-800 border border-transparent'
                   }
                 `}
+                onClick={() => onSelect(conv.id)}
               >
+                {/* Delete confirmation overlay */}
+                {deleteConfirmId === conv.id ? (
+                  <div className="absolute inset-0 bg-zinc-900/95 rounded-lg flex items-center justify-center gap-2 z-10">
+                    <button
+                      onClick={(e) => handleConfirmDelete(e, conv.id)}
+                      className="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white text-xs rounded-md transition-colors"
+                    >
+                      Delete
+                    </button>
+                    <button
+                      onClick={handleCancelDelete}
+                      className="px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-white text-xs rounded-md transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : null}
+
+                {/* Delete button (always visible) */}
+                {onDelete && deleteConfirmId !== conv.id && (
+                  <button
+                    onClick={(e) => handleDeleteClick(e, conv.id)}
+                    className="absolute top-2 right-2 p-1.5 text-zinc-500 hover:text-red-400 hover:bg-zinc-700 rounded transition-colors"
+                    title="Delete conversation"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                )}
+
                 {/* Title */}
-                <div className="font-medium text-zinc-200 text-sm truncate">
+                <div className="font-medium text-zinc-200 text-sm truncate pr-6">
                   {conv.title || 'New conversation'}
                 </div>
 
@@ -102,7 +156,7 @@ export function ConversationList({
                     {formatTime(conv.lastMessageAt)}
                   </span>
                 </div>
-              </button>
+              </div>
             ))}
           </div>
         )}

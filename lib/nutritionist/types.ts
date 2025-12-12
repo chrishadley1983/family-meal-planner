@@ -42,6 +42,7 @@ export interface MessageMetadata {
 
 export type NutritionistActionType =
   | 'UPDATE_MACROS'
+  | 'UPDATE_PREFERENCES'
   | 'CREATE_RECIPE'
   | 'ADD_INVENTORY_ITEM'
   | 'ADD_STAPLE'
@@ -60,6 +61,17 @@ export interface UpdateMacrosAction extends BaseAction {
     dailyCarbsTarget: number
     dailyFatTarget: number
     dailyFiberTarget?: number
+  }
+}
+
+export interface UpdatePreferencesAction extends BaseAction {
+  type: 'UPDATE_PREFERENCES'
+  data: {
+    profileId: string
+    addLikes?: string[]      // Foods to add to likes
+    removeLikes?: string[]   // Foods to remove from likes
+    addDislikes?: string[]   // Foods to add to dislikes
+    removeDislikes?: string[] // Foods to remove from dislikes
   }
 }
 
@@ -136,6 +148,7 @@ export interface AddStapleAction extends BaseAction {
 
 export type NutritionistAction =
   | UpdateMacrosAction
+  | UpdatePreferencesAction
   | CreateRecipeAction
   | AddInventoryAction
   | AddStapleAction
@@ -172,6 +185,7 @@ export interface HolisticNutritionistResponse {
 // ============================================================================
 
 export interface ProfileContext {
+  profileId: string  // Required for UPDATE_MACROS action
   profileName: string
   age?: number | null
   gender?: string | null
