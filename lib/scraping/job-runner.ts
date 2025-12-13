@@ -19,6 +19,7 @@ export interface RunScrapingJobOptions {
   siteName?: string  // Site name like 'bbcgoodfood', not UUID
   category?: string
   maxPagesPerCategory?: number
+  maxUrlsPerCategory?: number  // Limit URLs per site/category for variety
   delayBetweenUrls?: number
   delayBetweenCategories?: number
 }
@@ -45,6 +46,7 @@ export async function runScrapingJob(
     siteName,
     category,
     maxPagesPerCategory = 2,
+    maxUrlsPerCategory,  // undefined = no limit
     delayBetweenUrls = 2500,
     delayBetweenCategories = 3000
   } = options || {}
@@ -112,8 +114,13 @@ export async function runScrapingJob(
           maxPages: maxPagesPerCategory
         })
 
+        // Apply maxUrlsPerCategory limit for variety
+        const urlsToProcess = maxUrlsPerCategory
+          ? discovered.urls.slice(0, maxUrlsPerCategory)
+          : discovered.urls
+
         totalDiscovered += discovered.urls.length
-        console.log(`   Found ${discovered.urls.length} URLs`)
+        console.log(`   Found ${discovered.urls.length} URLs${maxUrlsPerCategory ? `, processing ${urlsToProcess.length}` : ''}`)
 
         // Update job progress
         await prisma.recipeScrapingJob.update({
@@ -122,7 +129,7 @@ export async function runScrapingJob(
         })
 
         // Step 2: Import each URL
-        for (const url of discovered.urls) {
+        for (const url of urlsToProcess) {
           totalProcessed++
 
           // Check if exists first (quick check)
