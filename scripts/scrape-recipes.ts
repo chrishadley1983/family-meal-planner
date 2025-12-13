@@ -1,21 +1,25 @@
-#!/usr/bin/env npx ts-node
+#!/usr/bin/env npx tsx
 /**
  * CLI Script for running recipe scraping jobs
  *
  * Usage:
- *   npx ts-node scripts/scrape-recipes.ts [options]
+ *   npx tsx scripts/scrape-recipes.ts [options]
+ *   npm run scrape -- [options]
  *
  * Options:
- *   --site <siteId>      Only scrape a specific site
- *   --category <cat>     Only scrape a specific category
+ *   --site <name>        Only scrape a specific site (by name, e.g., 'bbcgoodfood')
+ *   --category <cat>     Only scrape a specific category (e.g., 'chicken', 'vegetarian')
  *   --max-pages <n>      Max pages per category (default: 2)
  *   --help               Show this help message
  *
  * Examples:
- *   npx ts-node scripts/scrape-recipes.ts
- *   npx ts-node scripts/scrape-recipes.ts --category chicken
- *   npx ts-node scripts/scrape-recipes.ts --site bbcgoodfood --category vegetarian
+ *   npm run scrape
+ *   npm run scrape -- --category chicken
+ *   npm run scrape -- --site bbcgoodfood --category vegetarian
  */
+
+// Load environment variables FIRST before any other imports
+import 'dotenv/config'
 
 import { runScrapingJob } from '../lib/scraping/index'
 

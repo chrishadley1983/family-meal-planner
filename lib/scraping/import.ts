@@ -3,8 +3,8 @@
  * Reuses existing import logic, targets master_recipes table
  */
 
-import { prisma } from '@/lib/prisma'
-import { parseRecipeFromUrl, calculateNutrition } from '@/lib/claude'
+import { prisma } from '../prisma'
+import { parseRecipeFromUrl, calculateNutrition } from '../claude'
 import { RecipeSourceSite, MasterRecipe } from '@prisma/client'
 import { ImportResult, ParsedRecipeData, ParsedIngredient } from './types'
 import { detectAllergens } from './allergens'
