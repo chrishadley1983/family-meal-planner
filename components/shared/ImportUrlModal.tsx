@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Button, Input, Modal, Badge } from '@/components/ui'
+import { useNotification } from '@/components/providers/NotificationProvider'
 import { COMMON_UNITS } from '@/lib/unit-conversion'
 import { STORAGE_LOCATIONS } from '@/lib/types/inventory'
 import { STAPLE_FREQUENCIES } from '@/lib/types/staples'
@@ -24,6 +25,7 @@ export function ImportUrlModal({
   const [analyzing, setAnalyzing] = useState(false)
   const [extractedItems, setExtractedItems] = useState<ExtractedItem[]>([])
   const [importing, setImporting] = useState(false)
+  const notification = useNotification()
 
   const handleClose = () => {
     setUrl('')
@@ -65,7 +67,18 @@ export function ImportUrlModal({
       )
     } catch (error) {
       console.error('❌ Error analyzing URL:', error)
-      alert(error instanceof Error ? error.message : 'Failed to analyze URL')
+      const errorMessage = error instanceof Error ? error.message : ''
+
+      // Provide user-friendly messages based on the error
+      if (errorMessage.includes('403')) {
+        notification.error('This website blocked our request. Try Photo Import instead.')
+      } else if (errorMessage.includes('404')) {
+        notification.error('Page not found. Please check the URL and try again.')
+      } else if (errorMessage.includes('Failed to fetch')) {
+        notification.error("Couldn't access this URL. Please check the link or try Photo Import.")
+      } else {
+        notification.error("Couldn't analyze this page. Try Photo Import or add items manually.")
+      }
     } finally {
       setAnalyzing(false)
     }
@@ -119,7 +132,7 @@ export function ImportUrlModal({
       onImportComplete(importedCount)
     } catch (error) {
       console.error(`❌ Error importing ${config.itemLabelPlural}:`, error)
-      alert(error instanceof Error ? error.message : `Failed to import ${config.itemLabelPlural}`)
+      notification.error(`Couldn't import ${config.itemLabelPlural}. Please try again.`)
     } finally {
       setImporting(false)
     }

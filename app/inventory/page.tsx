@@ -65,7 +65,7 @@ interface RawInventoryItem {
 
 export default function InventoryPage() {
   const { data: session } = useSession()
-  const { success } = useNotification()
+  const { success, error: showError, warning } = useNotification()
   const [rawItems, setRawItems] = useState<RawInventoryItem[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -345,7 +345,7 @@ export default function InventoryPage() {
       resetAddForm()
     } catch (error) {
       console.error('❌ Error creating item:', error)
-      alert(error instanceof Error ? error.message : 'Failed to create item')
+      showError("Couldn't add item. Please try again.")
     } finally {
       setAddingItem(false)
     }
@@ -378,7 +378,7 @@ export default function InventoryPage() {
       setPendingNewItem(null)
     } catch (error) {
       console.error('❌ Error merging item:', error)
-      alert('Failed to merge items')
+      showError("Couldn't merge items. Please try again.")
     } finally {
       setAddingItem(false)
     }
@@ -425,7 +425,7 @@ export default function InventoryPage() {
       })
     } catch (error) {
       console.error('❌ Error deleting item:', error)
-      alert('Failed to delete item')
+      showError("Couldn't delete item. Please try again.")
     }
   }
 
@@ -447,7 +447,7 @@ export default function InventoryPage() {
       setRawItems(rawItems.map(i => i.id === item.id ? data.item : i))
     } catch (error) {
       console.error('❌ Error updating item:', error)
-      alert('Failed to update item')
+      showError("Couldn't update item. Please try again.")
     }
   }
 
@@ -495,7 +495,7 @@ export default function InventoryPage() {
       setEditingItem(null)
     } catch (error) {
       console.error('❌ Error updating item:', error)
-      alert(error instanceof Error ? error.message : 'Failed to update item')
+      showError("Couldn't save changes. Please try again.")
     } finally {
       setSavingEdit(false)
     }
@@ -543,7 +543,7 @@ export default function InventoryPage() {
       setSelectedIds(new Set())
     } catch (error) {
       console.error('❌ Error in bulk delete:', error)
-      alert('Failed to delete some items')
+      showError("Couldn't delete some items. Please try again.")
     } finally {
       setProcessingBulk(false)
     }
@@ -576,7 +576,7 @@ export default function InventoryPage() {
       setBulkExpiryDate('')
     } catch (error) {
       console.error('❌ Error in bulk update:', error)
-      alert('Failed to update some items')
+      showError("Couldn't update expiry dates. Please try again.")
     } finally {
       setProcessingBulk(false)
     }
@@ -606,7 +606,7 @@ export default function InventoryPage() {
       setSelectedIds(new Set())
     } catch (error) {
       console.error('❌ Error in bulk update:', error)
-      alert('Failed to update some items')
+      showError("Couldn't mark items as inactive. Please try again.")
     } finally {
       setProcessingBulk(false)
     }
@@ -640,7 +640,7 @@ export default function InventoryPage() {
         setCsvSummary(summary)
       } catch (error) {
         console.error('❌ Error parsing CSV:', error)
-        alert('Failed to parse CSV file. Please check the format.')
+        showError('Failed to parse CSV file. Please check the format.')
       }
     }
     reader.readAsText(file)
@@ -651,7 +651,7 @@ export default function InventoryPage() {
 
     const itemsToImport = getImportableItems(csvSummary, true) // Include warnings
     if (itemsToImport.length === 0) {
-      alert('No valid items to import')
+      warning('No valid items to import')
       return
     }
 
@@ -697,9 +697,9 @@ export default function InventoryPage() {
 
     // Show result
     if (errorCount === 0) {
-      alert(`Successfully imported ${successCount} items!`)
+      success(`Successfully imported ${successCount} items!`)
     } else {
-      alert(`Imported ${successCount} items. ${errorCount} items failed to import.`)
+      warning(`Imported ${successCount} items. ${errorCount} items failed.`)
     }
   }
 
@@ -715,13 +715,13 @@ export default function InventoryPage() {
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      alert('Please select an image file (JPEG or PNG)')
+      warning('Please select an image file (JPEG or PNG)')
       return
     }
 
     // Validate file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
-      alert('Image is too large. Please select an image under 10MB.')
+      warning('Image is too large. Please select an image under 10MB.')
       return
     }
 
@@ -767,7 +767,7 @@ export default function InventoryPage() {
       setPhotoProcessingNotes(data.processingNotes)
     } catch (error) {
       console.error('❌ Error analyzing photo:', error)
-      alert(error instanceof Error ? error.message : 'Failed to analyze photo')
+      showError("Couldn't read items from photo. Please try a clearer image.")
     } finally {
       setAnalyzingPhoto(false)
     }
@@ -784,7 +784,7 @@ export default function InventoryPage() {
   const handleImportSelectedItems = async () => {
     const selectedItems = extractedItems.filter(item => item.selected)
     if (selectedItems.length === 0) {
-      alert('Please select at least one item to import')
+      warning('Please select at least one item to import')
       return
     }
 
@@ -836,9 +836,9 @@ export default function InventoryPage() {
 
     // Show result
     if (errorCount === 0) {
-      alert(`Successfully imported ${successCount} items!`)
+      success(`Successfully imported ${successCount} items!`)
     } else {
-      alert(`Imported ${successCount} items. ${errorCount} items failed to import.`)
+      warning(`Imported ${successCount} items. ${errorCount} items failed.`)
     }
   }
 

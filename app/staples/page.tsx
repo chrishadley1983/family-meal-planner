@@ -332,9 +332,9 @@ export default function StaplesPage() {
         }))
       )
       setPhotoSummary(data.summary || '')
-    } catch (error) {
-      console.error('❌ Error analyzing photo:', error)
-      alert(error instanceof Error ? error.message : 'Failed to analyze photo')
+    } catch (err) {
+      console.error('❌ Error analyzing photo:', err)
+      error("Couldn't read items from photo. Please try a clearer image.")
     } finally {
       setAnalyzingPhoto(false)
     }
@@ -441,9 +441,20 @@ export default function StaplesPage() {
         }))
       )
       setUrlSummary(data.summary || '')
-    } catch (error) {
-      console.error('❌ Error analyzing URL:', error)
-      alert(error instanceof Error ? error.message : 'Failed to analyze URL')
+    } catch (err) {
+      console.error('❌ Error analyzing URL:', err)
+      const errorMessage = err instanceof Error ? err.message : ''
+
+      // Provide user-friendly messages based on the error
+      if (errorMessage.includes('403')) {
+        error('This website blocked our request. Try Photo Import instead.')
+      } else if (errorMessage.includes('404')) {
+        error('Page not found. Please check the URL and try again.')
+      } else if (errorMessage.includes('Failed to fetch')) {
+        error("Couldn't access this URL. Please check the link or try Photo Import.")
+      } else {
+        error("Couldn't analyze this page. Try Photo Import or add items manually.")
+      }
     } finally {
       setAnalyzingUrl(false)
     }
