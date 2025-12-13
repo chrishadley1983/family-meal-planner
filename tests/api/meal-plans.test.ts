@@ -1,0 +1,194 @@
+/**
+ * API Tests for /api/meal-plans endpoints
+ *
+ * Tests the meal plan management operations
+ */
+
+// Mock next-auth BEFORE importing routes
+jest.mock('next-auth', () => ({
+  getServerSession: jest.fn(),
+}))
+
+// Mock auth options
+jest.mock('@/lib/auth', () => ({
+  authOptions: {},
+}))
+
+// Mock prisma with inline mock
+const mockPrisma = {
+  mealPlan: {
+    findMany: jest.fn(),
+    findFirst: jest.fn(),
+    findUnique: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+  },
+}
+
+jest.mock('@/lib/prisma', () => ({
+  prisma: mockPrisma,
+}))
+
+import { GET, POST } from '@/app/api/meal-plans/route'
+import { getServerSession } from 'next-auth'
+import {
+  createMockRequest,
+  createMockSession,
+  parseJsonResponse,
+  testDataFactories,
+} from '../helpers/api-test-helpers'
+
+const mockGetServerSession = getServerSession as jest.MockedFunction<typeof getServerSession>
+
+describe('Meal Plans API', () => {
+  const testUserId = 'test-user-123'
+  const mockSession = createMockSession(testUserId)
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  describe('GET /api/meal-plans', () => {
+    it('should return 401 when not authenticated', async () => {
+      mockGetServerSession.mockResolvedValue(null)
+
+      const request = createMockRequest('GET', '/api/meal-plans')
+      const response = await GET(request)
+
+      expect(response.status).toBe(401)
+    })
+
+    it('should return meal plans for authenticated user', async () => {
+      mockGetServerSession.mockResolvedValue(mockSession)
+
+      const mockMealPlans = [
+        { ...testDataFactories.mealPlan({ id: 'mp-1', name: 'Week 1' }), meals: [] },
+        { ...testDataFactories.mealPlan({ id: 'mp-2', name: 'Week 2' }), meals: [] },
+      ]
+
+      mockPrisma.mealPlan.findMany.mockResolvedValue(mockMealPlans as any)
+
+      const request = createMockRequest('GET', '/api/meal-plans')
+      const response = await GET(request)
+
+      expect(response.status).toBe(200)
+      const data = await parseJsonResponse<{ mealPlans: unknown[] }>(response)
+      expect(data.mealPlans).toHaveLength(2)
+    })
+
+    it('should order meal plans by weekStartDate descending', async () => {
+      mockGetServerSession.mockResolvedValue(mockSession)
+      mockPrisma.mealPlan.findMany.mockResolvedValue([])
+
+      const request = createMockRequest('GET', '/api/meal-plans')
+      await GET(request)
+
+      expect(mockPrisma.mealPlan.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderBy: { weekStartDate: 'desc' },
+        })
+      )
+    })
+
+    it('should include meals with recipes', async () => {
+      mockGetServerSession.mockResolvedValue(mockSession)
+      mockPrisma.mealPlan.findMany.mockResolvedValue([])
+
+      const request = createMockRequest('GET', '/api/meal-plans')
+      await GET(request)
+
+      expect(mockPrisma.mealPlan.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: {
+            meals: {
+              include: {
+                recipe: true
+              }
+            }
+          },
+        })
+      )
+    })
+  })
+
+  describe('POST /api/meal-plans', () => {
+    const validMealPlanData = {
+      weekStartDate: new Date().toISOString(),
+      meals: [],
+    }
+
+    it('should return 401 when not authenticated', async () => {
+      mockGetServerSession.mockResolvedValue(null)
+
+      const request = createMockRequest('POST', '/api/meal-plans', {
+        body: validMealPlanData,
+      })
+      const response = await POST(request)
+
+      expect(response.status).toBe(401)
+    })
+
+    it('should create a meal plan for authenticated user', async () => {
+      mockGetServerSession.mockResolvedValue(mockSession)
+
+      const createdMealPlan = {
+        ...testDataFactories.mealPlan(),
+        meals: [],
+      }
+
+      mockPrisma.mealPlan.create.mockResolvedValue(createdMealPlan as any)
+
+      const request = createMockRequest('POST', '/api/meal-plans', {
+        body: validMealPlanData,
+      })
+      const response = await POST(request)
+
+      expect(response.status).toBe(201)
+    })
+
+    it('should associate meal plan with authenticated user', async () => {
+      mockGetServerSession.mockResolvedValue(mockSession)
+      mockPrisma.mealPlan.create.mockResolvedValue({
+        ...testDataFactories.mealPlan(),
+        meals: [],
+      } as any)
+
+      const request = createMockRequest('POST', '/api/meal-plans', {
+        body: validMealPlanData,
+      })
+      await POST(request)
+
+      expect(mockPrisma.mealPlan.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            userId: testUserId,
+          }),
+        })
+      )
+    })
+
+    it('should return 400 for missing weekStartDate', async () => {
+      mockGetServerSession.mockResolvedValue(mockSession)
+
+      const request = createMockRequest('POST', '/api/meal-plans', {
+        body: { meals: [] },
+      })
+      const response = await POST(request)
+
+      expect(response.status).toBe(400)
+    })
+
+    it('should handle database errors gracefully', async () => {
+      mockGetServerSession.mockResolvedValue(mockSession)
+      mockPrisma.mealPlan.create.mockRejectedValue(new Error('Database error'))
+
+      const request = createMockRequest('POST', '/api/meal-plans', {
+        body: validMealPlanData,
+      })
+      const response = await POST(request)
+
+      expect(response.status).toBe(500)
+    })
+  })
+})
