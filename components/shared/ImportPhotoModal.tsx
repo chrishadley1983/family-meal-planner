@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Button, Modal, Badge } from '@/components/ui'
+import { useNotification } from '@/components/providers/NotificationProvider'
 import { COMMON_UNITS } from '@/lib/unit-conversion'
 import { STORAGE_LOCATIONS } from '@/lib/types/inventory'
 import { STAPLE_FREQUENCIES } from '@/lib/types/staples'
@@ -24,6 +25,7 @@ export function ImportPhotoModal({
   const [analyzing, setAnalyzing] = useState(false)
   const [extractedItems, setExtractedItems] = useState<ExtractedItem[]>([])
   const [importing, setImporting] = useState(false)
+  const notification = useNotification()
 
   const handleClose = () => {
     setImages([])
@@ -98,7 +100,7 @@ export function ImportPhotoModal({
       )
     } catch (error) {
       console.error('❌ Error analyzing photo:', error)
-      alert(error instanceof Error ? error.message : 'Failed to analyze photo')
+      notification.error("Couldn't read items from photo. Please try a clearer image.")
     } finally {
       setAnalyzing(false)
     }
@@ -152,7 +154,7 @@ export function ImportPhotoModal({
       onImportComplete(importedCount)
     } catch (error) {
       console.error(`❌ Error importing ${config.itemLabelPlural}:`, error)
-      alert(error instanceof Error ? error.message : `Failed to import ${config.itemLabelPlural}`)
+      notification.error(`Couldn't import ${config.itemLabelPlural}. Please try again.`)
     } finally {
       setImporting(false)
     }
