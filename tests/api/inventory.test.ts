@@ -79,7 +79,7 @@ describe('Inventory API', () => {
       expect(data.items).toHaveLength(3)
     })
 
-    it('should order by expiry date and category', async () => {
+    it('should order by expiry date, category, and item name', async () => {
       mockGetServerSession.mockResolvedValue(mockSession)
       mockPrisma.inventoryItem.findMany.mockResolvedValue([])
 
@@ -90,7 +90,8 @@ describe('Inventory API', () => {
         expect.objectContaining({
           orderBy: [
             { expiryDate: 'asc' },
-            { category: 'asc' }
+            { category: 'asc' },
+            { itemName: 'asc' }
           ],
         })
       )

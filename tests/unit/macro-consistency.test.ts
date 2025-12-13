@@ -105,7 +105,8 @@ describe('Macro Calculation Consistency', () => {
 
       // Verify macros are based on TDEE
       expect(macros.dailyCalories).toBeLessThan(tdeeResult.tdee) // Weight loss = deficit
-      expect(macros.dailyCalories).toBe(tdeeResult.tdee - macros.deficit)
+      // Note: dailyCalories is rounded, so use toBeCloseTo to account for rounding
+      expect(macros.dailyCalories).toBeCloseTo(tdeeResult.tdee - macros.deficit, 0)
     })
 
     it('should maintain calorie math: protein + carbs + fat = total (approximately)', () => {
