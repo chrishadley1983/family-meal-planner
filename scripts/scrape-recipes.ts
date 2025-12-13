@@ -24,7 +24,7 @@ import 'dotenv/config'
 import { runScrapingJob } from '../lib/scraping/index'
 
 interface CLIOptions {
-  siteId?: string
+  siteName?: string
   category?: string
   maxPagesPerCategory?: number
   help?: boolean
@@ -40,7 +40,7 @@ function parseArgs(args: string[]): CLIOptions {
     switch (arg) {
       case '--site':
         if (nextArg) {
-          options.siteId = nextArg
+          options.siteName = nextArg
           i++
         }
         break
@@ -110,8 +110,8 @@ async function main() {
   console.log('═══════════════════════════════════════════════════════════')
   console.log(`   Started at: ${new Date().toISOString()}`)
 
-  if (options.siteId) {
-    console.log(`   Site filter: ${options.siteId}`)
+  if (options.siteName) {
+    console.log(`   Site filter: ${options.siteName}`)
   }
   if (options.category) {
     console.log(`   Category filter: ${options.category}`)
@@ -124,7 +124,7 @@ async function main() {
 
   try {
     const result = await runScrapingJob({
-      siteId: options.siteId,
+      siteName: options.siteName,
       category: options.category,
       maxPagesPerCategory: options.maxPagesPerCategory
     })

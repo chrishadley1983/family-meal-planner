@@ -16,7 +16,7 @@ function sleep(ms: number): Promise<void> {
 }
 
 export interface RunScrapingJobOptions {
-  siteId?: string
+  siteName?: string  // Site name like 'bbcgoodfood', not UUID
   category?: string
   maxPagesPerCategory?: number
   delayBetweenUrls?: number
@@ -42,17 +42,30 @@ export async function runScrapingJob(
   options?: RunScrapingJobOptions
 ): Promise<ScrapingJobResult> {
   const {
-    siteId,
+    siteName,
     category,
     maxPagesPerCategory = 2,
     delayBetweenUrls = 2500,
     delayBetweenCategories = 3000
   } = options || {}
 
+  // Look up site by name if provided
+  let resolvedSiteId: string | null = null
+  if (siteName) {
+    const site = await prisma.recipeSourceSite.findUnique({
+      where: { name: siteName },
+      select: { id: true }
+    })
+    if (!site) {
+      throw new Error(`Site not found: "${siteName}". Run 'npm run seed:sources' first.`)
+    }
+    resolvedSiteId = site.id
+  }
+
   // Create job record
   const job = await prisma.recipeScrapingJob.create({
     data: {
-      sourceSiteId: siteId || null,
+      sourceSiteId: resolvedSiteId,
       category: category || null,
       status: 'running',
       startedAt: new Date()
@@ -60,7 +73,7 @@ export async function runScrapingJob(
   })
 
   console.log(`\n🚀 Starting scraping job: ${job.id}`)
-  console.log(`   Site filter: ${siteId || 'all sites'}`)
+  console.log(`   Site filter: ${siteName || 'all sites'}`)
   console.log(`   Category filter: ${category || 'all categories'}`)
 
   let totalDiscovered = 0
@@ -75,7 +88,7 @@ export async function runScrapingJob(
     const sites = await prisma.recipeSourceSite.findMany({
       where: {
         isActive: true,
-        ...(siteId ? { id: siteId } : {})
+        ...(resolvedSiteId ? { id: resolvedSiteId } : {})
       }
     })
 
