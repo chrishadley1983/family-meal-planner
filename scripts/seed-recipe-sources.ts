@@ -1,14 +1,16 @@
-#!/usr/bin/env npx ts-node
+#!/usr/bin/env npx tsx
 /**
  * Seed script for recipe source sites configuration
  *
  * Usage:
- *   npx ts-node scripts/seed-recipe-sources.ts
+ *   npx tsx scripts/seed-recipe-sources.ts
+ *   npm run seed:sources
  */
 
-import { PrismaClient } from '@prisma/client'
+// Load environment variables FIRST before any other imports
+import 'dotenv/config'
 
-const prisma = new PrismaClient()
+import { prisma } from '../lib/prisma'
 
 // Recipe source site configurations
 const sites = [
@@ -120,8 +122,6 @@ async function main() {
   } catch (error) {
     console.error('\n❌ Seeding failed:', error)
     process.exit(1)
-  } finally {
-    await prisma.$disconnect()
   }
 }
 

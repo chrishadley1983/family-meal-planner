@@ -3,7 +3,7 @@
  * Orchestrates URL discovery and import for scraping jobs
  */
 
-import { prisma } from '@/lib/prisma'
+import { prisma } from '../prisma'
 import { discoverRecipeUrls } from './discovery'
 import { importToMasterDB } from './import'
 import { ScrapingJobStatus } from '@prisma/client'
