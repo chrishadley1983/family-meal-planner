@@ -13,13 +13,15 @@ import 'dotenv/config'
 import { prisma } from '../lib/prisma'
 
 // Recipe source site configurations
+// Note: searchResultsSelector is null to use generic fallback selectors
+// which are more resilient to website structure changes
 const sites = [
   {
     name: 'bbcgoodfood',
     displayName: 'BBC Good Food',
     baseUrl: 'https://www.bbcgoodfood.com',
     searchUrlPattern: '/search?q={query}&page={page}',
-    searchResultsSelector: 'a.standard-card-new__article-title',
+    searchResultsSelector: null,  // Uses generic: a[href*="/recipes/"]
     categories: [
       'chicken', 'beef', 'pork', 'lamb', 'fish', 'seafood', 'salmon',
       'vegetarian', 'vegan', 'pasta', 'rice', 'curry', 'stir-fry',
@@ -33,7 +35,7 @@ const sites = [
     displayName: 'AllRecipes',
     baseUrl: 'https://www.allrecipes.com',
     searchUrlPattern: '/search?q={query}&page={page}',
-    searchResultsSelector: 'a.mntl-card-list-card',
+    searchResultsSelector: null,  // Uses generic: a[href*="/recipe/"]
     categories: [
       'chicken', 'beef', 'pork', 'fish', 'vegetarian', 'vegan',
       'pasta', 'casserole', 'soup', 'salad', 'breakfast', 'dinner',
@@ -46,7 +48,7 @@ const sites = [
     displayName: 'Delicious Magazine',
     baseUrl: 'https://www.deliciousmagazine.co.uk',
     searchUrlPattern: '/search?q={query}',
-    searchResultsSelector: 'a.recipe-card',
+    searchResultsSelector: null,  // Uses generic fallbacks
     categories: [
       'chicken', 'beef', 'fish', 'vegetarian', 'pasta', 'curry',
       'roast', 'salad', 'soup', 'quick', 'weekend'
@@ -58,7 +60,7 @@ const sites = [
     displayName: 'Taste.com.au',
     baseUrl: 'https://www.taste.com.au',
     searchUrlPattern: '/search-recipes?q={query}&page={page}',
-    searchResultsSelector: 'a.recipe-card-link',
+    searchResultsSelector: null,  // Uses generic fallbacks
     categories: [
       'chicken', 'beef', 'lamb', 'fish', 'vegetarian', 'pasta',
       'asian', 'indian', 'healthy', 'quick', 'family'
@@ -70,7 +72,7 @@ const sites = [
     displayName: 'Olive Magazine',
     baseUrl: 'https://www.olivemagazine.com',
     searchUrlPattern: '/search?q={query}',
-    searchResultsSelector: 'a.post-card',
+    searchResultsSelector: null,  // Uses generic fallbacks
     categories: [
       'chicken', 'beef', 'fish', 'vegetarian', 'vegan', 'pasta',
       'mediterranean', 'asian', 'healthy', 'quick'
