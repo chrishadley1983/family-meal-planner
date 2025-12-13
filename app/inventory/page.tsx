@@ -32,6 +32,16 @@ import {
 import { parseCSV, generateCSVTemplate, downloadCSV } from '@/lib/inventory/csv-parser'
 import { validateCSVData, getImportableItems, generateErrorReport } from '@/lib/inventory/csv-validator'
 import { COMMON_UNITS, DEFAULT_CATEGORIES } from '@/lib/unit-conversion'
+import { SHELF_LIFE_SEED_DATA } from '@/lib/inventory'
+import type { ShelfLifeSeedItem } from '@/lib/inventory'
+import {
+  ImportButtons,
+  ImportUrlModal,
+  ImportPhotoModal,
+  ShelfLifeSuggestion,
+  INVENTORY_CONFIG,
+} from '@/components/shared'
+import { useNotification } from '@/components/providers/NotificationProvider'
 
 // Raw inventory item from API
 interface RawInventoryItem {
@@ -55,8 +65,16 @@ interface RawInventoryItem {
 
 export default function InventoryPage() {
   const { data: session } = useSession()
+  const { success, error: showError, warning } = useNotification()
   const [rawItems, setRawItems] = useState<RawInventoryItem[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Import modal state (URL and Photo)
+  const [showUrlModal, setShowUrlModal] = useState(false)
+  const [showPhotoModal, setShowPhotoModal] = useState(false)
+
+  // AI shelf life suggestion state
+  const [shelfLifeSuggestion, setShelfLifeSuggestion] = useState<ShelfLifeSeedItem | null>(null)
 
   // Filter and sort state
   const [filters, setFilters] = useState<InventoryFilters>({})
@@ -209,6 +227,83 @@ export default function InventoryPage() {
     ) || null
   }
 
+  // Local shelf life lookup using seed data (synchronous)
+  const lookupShelfLife = (itemName: string): ShelfLifeSeedItem | null => {
+    if (!itemName || itemName.length < 2) return null
+
+    const normalizedInput = itemName.toLowerCase().trim()
+
+    // Try exact match first
+    const exactMatch = SHELF_LIFE_SEED_DATA.find(
+      item => item.ingredientName.toLowerCase() === normalizedInput
+    )
+    if (exactMatch) return exactMatch
+
+    // Try partial match (input contains reference or vice versa)
+    const partialMatch = SHELF_LIFE_SEED_DATA.find(item => {
+      const refLower = item.ingredientName.toLowerCase()
+      return normalizedInput.includes(refLower) || refLower.includes(normalizedInput)
+    })
+    return partialMatch || null
+  }
+
+  // Handle item name change with shelf life lookup
+  const handleItemNameChange = (value: string) => {
+    setNewItem({ ...newItem, itemName: value })
+
+    // Look up shelf life
+    const shelfLife = lookupShelfLife(value)
+    setShelfLifeSuggestion(shelfLife)
+    if (shelfLife) {
+      console.log('🔄 Shelf life suggestion:', shelfLife.ingredientName, shelfLife.shelfLifeDays, 'days')
+    }
+  }
+
+  // Apply shelf life suggestion to form
+  const applyShelfLifeSuggestion = () => {
+    if (!shelfLifeSuggestion) return
+
+    const updates: Partial<typeof newItem> = {}
+
+    // Set category if not already set
+    if (!newItem.category && shelfLifeSuggestion.category) {
+      updates.category = shelfLifeSuggestion.category
+    }
+
+    // Set location if not already set
+    if (!newItem.location && shelfLifeSuggestion.defaultLocation) {
+      updates.location = shelfLifeSuggestion.defaultLocation
+    }
+
+    // Calculate and set expiry date if not already set
+    if (!newItem.expiryDate && shelfLifeSuggestion.shelfLifeDays) {
+      const expiryDate = new Date()
+      expiryDate.setDate(expiryDate.getDate() + shelfLifeSuggestion.shelfLifeDays)
+      updates.expiryDate = expiryDate.toISOString().split('T')[0]
+    }
+
+    setNewItem({ ...newItem, ...updates })
+    console.log('⚡ Applied shelf life suggestion:', updates)
+  }
+
+  // Calculate expiry date from shelf life for display
+  const getCalculatedExpiryDate = (): string | undefined => {
+    if (!shelfLifeSuggestion?.shelfLifeDays) return undefined
+    const expiryDate = new Date()
+    expiryDate.setDate(expiryDate.getDate() + shelfLifeSuggestion.shelfLifeDays)
+    return expiryDate.toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    })
+  }
+
+  // Handle import completion from URL/Photo modals
+  const handleImportComplete = (count: number) => {
+    success(`Successfully imported ${count} item${count !== 1 ? 's' : ''}`)
+    fetchItems() // Refresh the list
+  }
+
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault()
     if (addingItem) return
@@ -250,7 +345,7 @@ export default function InventoryPage() {
       resetAddForm()
     } catch (error) {
       console.error('❌ Error creating item:', error)
-      alert(error instanceof Error ? error.message : 'Failed to create item')
+      showError("Couldn't add item. Please try again.")
     } finally {
       setAddingItem(false)
     }
@@ -283,7 +378,7 @@ export default function InventoryPage() {
       setPendingNewItem(null)
     } catch (error) {
       console.error('❌ Error merging item:', error)
-      alert('Failed to merge items')
+      showError("Couldn't merge items. Please try again.")
     } finally {
       setAddingItem(false)
     }
@@ -330,7 +425,7 @@ export default function InventoryPage() {
       })
     } catch (error) {
       console.error('❌ Error deleting item:', error)
-      alert('Failed to delete item')
+      showError("Couldn't delete item. Please try again.")
     }
   }
 
@@ -352,7 +447,7 @@ export default function InventoryPage() {
       setRawItems(rawItems.map(i => i.id === item.id ? data.item : i))
     } catch (error) {
       console.error('❌ Error updating item:', error)
-      alert('Failed to update item')
+      showError("Couldn't update item. Please try again.")
     }
   }
 
@@ -400,7 +495,7 @@ export default function InventoryPage() {
       setEditingItem(null)
     } catch (error) {
       console.error('❌ Error updating item:', error)
-      alert(error instanceof Error ? error.message : 'Failed to update item')
+      showError("Couldn't save changes. Please try again.")
     } finally {
       setSavingEdit(false)
     }
@@ -448,7 +543,7 @@ export default function InventoryPage() {
       setSelectedIds(new Set())
     } catch (error) {
       console.error('❌ Error in bulk delete:', error)
-      alert('Failed to delete some items')
+      showError("Couldn't delete some items. Please try again.")
     } finally {
       setProcessingBulk(false)
     }
@@ -481,7 +576,7 @@ export default function InventoryPage() {
       setBulkExpiryDate('')
     } catch (error) {
       console.error('❌ Error in bulk update:', error)
-      alert('Failed to update some items')
+      showError("Couldn't update expiry dates. Please try again.")
     } finally {
       setProcessingBulk(false)
     }
@@ -511,7 +606,7 @@ export default function InventoryPage() {
       setSelectedIds(new Set())
     } catch (error) {
       console.error('❌ Error in bulk update:', error)
-      alert('Failed to update some items')
+      showError("Couldn't mark items as inactive. Please try again.")
     } finally {
       setProcessingBulk(false)
     }
@@ -545,7 +640,7 @@ export default function InventoryPage() {
         setCsvSummary(summary)
       } catch (error) {
         console.error('❌ Error parsing CSV:', error)
-        alert('Failed to parse CSV file. Please check the format.')
+        showError('Failed to parse CSV file. Please check the format.')
       }
     }
     reader.readAsText(file)
@@ -556,7 +651,7 @@ export default function InventoryPage() {
 
     const itemsToImport = getImportableItems(csvSummary, true) // Include warnings
     if (itemsToImport.length === 0) {
-      alert('No valid items to import')
+      warning('No valid items to import')
       return
     }
 
@@ -602,9 +697,9 @@ export default function InventoryPage() {
 
     // Show result
     if (errorCount === 0) {
-      alert(`Successfully imported ${successCount} items!`)
+      success(`Successfully imported ${successCount} items!`)
     } else {
-      alert(`Imported ${successCount} items. ${errorCount} items failed to import.`)
+      warning(`Imported ${successCount} items. ${errorCount} items failed.`)
     }
   }
 
@@ -620,13 +715,13 @@ export default function InventoryPage() {
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      alert('Please select an image file (JPEG or PNG)')
+      warning('Please select an image file (JPEG or PNG)')
       return
     }
 
     // Validate file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
-      alert('Image is too large. Please select an image under 10MB.')
+      warning('Image is too large. Please select an image under 10MB.')
       return
     }
 
@@ -672,7 +767,7 @@ export default function InventoryPage() {
       setPhotoProcessingNotes(data.processingNotes)
     } catch (error) {
       console.error('❌ Error analyzing photo:', error)
-      alert(error instanceof Error ? error.message : 'Failed to analyze photo')
+      showError("Couldn't read items from photo. Please try a clearer image.")
     } finally {
       setAnalyzingPhoto(false)
     }
@@ -689,7 +784,7 @@ export default function InventoryPage() {
   const handleImportSelectedItems = async () => {
     const selectedItems = extractedItems.filter(item => item.selected)
     if (selectedItems.length === 0) {
-      alert('Please select at least one item to import')
+      warning('Please select at least one item to import')
       return
     }
 
@@ -741,9 +836,9 @@ export default function InventoryPage() {
 
     // Show result
     if (errorCount === 0) {
-      alert(`Successfully imported ${successCount} items!`)
+      success(`Successfully imported ${successCount} items!`)
     } else {
-      alert(`Imported ${successCount} items. ${errorCount} items failed to import.`)
+      warning(`Imported ${successCount} items. ${errorCount} items failed.`)
     }
   }
 
@@ -799,9 +894,6 @@ export default function InventoryPage() {
         description="Track your household food items and expiry dates"
         action={
           <div className="flex gap-2">
-            <Button onClick={() => setShowPhotoImport(true)} variant="secondary">
-              Scan Photo
-            </Button>
             <Button onClick={() => setShowCSVImport(true)} variant="secondary">
               Import CSV
             </Button>
@@ -1142,11 +1234,28 @@ export default function InventoryPage() {
         {/* Add Item Modal */}
         <Modal
           isOpen={showAddForm}
-          onClose={() => setShowAddForm(false)}
+          onClose={() => {
+            setShowAddForm(false)
+            setShelfLifeSuggestion(null)
+          }}
           title="Add Inventory Item"
           maxWidth="md"
         >
           <form onSubmit={handleAddItem} className="p-6 space-y-4">
+            {/* Import buttons */}
+            <ImportButtons
+              onUrlClick={() => {
+                setShowAddForm(false)
+                setShelfLifeSuggestion(null)
+                setShowUrlModal(true)
+              }}
+              onPhotoClick={() => {
+                setShowAddForm(false)
+                setShelfLifeSuggestion(null)
+                setShowPhotoModal(true)
+              }}
+            />
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-1">
@@ -1156,16 +1265,15 @@ export default function InventoryPage() {
                   type="text"
                   required
                   value={newItem.itemName}
-                  onChange={(e) => setNewItem({ ...newItem, itemName: e.target.value })}
+                  onChange={(e) => handleItemNameChange(e.target.value)}
                   placeholder="e.g., Milk"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-1">
-                  Category *
+                  Category
                 </label>
                 <select
-                  required
                   value={newItem.category}
                   onChange={(e) => setNewItem({ ...newItem, category: e.target.value })}
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
@@ -1232,6 +1340,15 @@ export default function InventoryPage() {
                 <p className="text-xs text-zinc-500 mt-1">Leave blank to auto-calculate</p>
               </div>
             </div>
+
+            {/* AI Shelf Life Suggestion */}
+            <ShelfLifeSuggestion
+              suggestion={shelfLifeSuggestion}
+              onApply={applyShelfLifeSuggestion}
+              showExpiryCalculation={true}
+              calculatedExpiryDate={getCalculatedExpiryDate()}
+            />
+
             <div>
               <label className="block text-sm font-medium text-zinc-300 mb-1">
                 Notes
@@ -1926,6 +2043,24 @@ export default function InventoryPage() {
             </div>
           </div>
         </Modal>
+
+        {/* Import URL Modal (shared component) */}
+        <ImportUrlModal
+          isOpen={showUrlModal}
+          onClose={() => setShowUrlModal(false)}
+          onImportComplete={handleImportComplete}
+          config={INVENTORY_CONFIG}
+          categories={DEFAULT_CATEGORIES}
+        />
+
+        {/* Import Photo Modal (shared component) */}
+        <ImportPhotoModal
+          isOpen={showPhotoModal}
+          onClose={() => setShowPhotoModal(false)}
+          onImportComplete={handleImportComplete}
+          config={INVENTORY_CONFIG}
+          categories={DEFAULT_CATEGORIES}
+        />
       </PageContainer>
     </AppLayout>
   )

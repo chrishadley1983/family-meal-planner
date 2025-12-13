@@ -26,13 +26,16 @@ export async function POST(req: NextRequest) {
     // Fetch the webpage content
     const response = await fetch(data.url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-GB,en;q=0.5',
       }
     })
 
     if (!response.ok) {
+      console.error(`❌ Failed to fetch URL: ${response.status} ${response.statusText}`)
       return NextResponse.json(
-        { error: 'Failed to fetch content from URL' },
+        { error: `Failed to fetch content from URL (${response.status} ${response.statusText})` },
         { status: 400 }
       )
     }

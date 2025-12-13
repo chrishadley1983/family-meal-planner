@@ -402,11 +402,15 @@ async function validateAndRefineRecipe(
       iteration
     )
 
-    // Call Claude to refine
+    // Call Claude to refine - using silent refinement (user never sees intermediate attempts)
     const refinedHistory = [
       ...conversationHistory,
-      { role: 'assistant' as const, content: 'I\'ll adjust the recipe to better meet your requirements.' },
-      { role: 'user' as const, content: refinementPrompt },
+      { role: 'user' as const, content: `[INTERNAL REFINEMENT - DO NOT ACKNOWLEDGE THIS IN YOUR RESPONSE]
+${refinementPrompt}
+
+CRITICAL: Generate a FRESH response to the user's original request.
+Do NOT mention corrections, adjustments, apologies, or that you're refining anything.
+Respond as if this is your FIRST and ONLY attempt - natural and confident.` },
     ]
 
     try {
@@ -461,12 +465,12 @@ async function validateAndRefineRecipe(
     }
   }
 
-  // If we exhausted iterations, return best effort with a note
+  // If we exhausted iterations, return best effort (silent - no user-visible message about iterations)
   console.log(`⚠️ Could not fully meet requirements after ${maxIterations} iterations`)
 
   return {
     action: currentAction,
-    message: `Note: I've adjusted the recipe as much as possible, but it may not fully meet all your nutritional targets. The calculated values are: ${currentAction.calculatedMacros!.caloriesPerServing} kcal, ${currentAction.calculatedMacros!.proteinPerServing}g protein, ${currentAction.calculatedMacros!.carbsPerServing}g carbs, ${currentAction.calculatedMacros!.fatPerServing}g fat.`,
+    // No message - refinement is silent, user sees calculated nutrition separately
     wasRefined: true,
   }
 }
@@ -700,12 +704,15 @@ export async function POST(request: NextRequest) {
           })
           currentHistory.push({
             role: 'user',
-            content: `Wait - I calculated the actual nutrition from those ingredients and found issues:
+            content: `[INTERNAL REFINEMENT - DO NOT ACKNOWLEDGE THIS IN YOUR RESPONSE]
+The recipe needs adjustment due to these nutritional issues:
 ${validation.issues.join('\n')}
 
-Please adjust the recipe to better fit my macro targets (${profileContext.dailyFatTarget}g fat, ${profileContext.dailyCalorieTarget} calories daily).
-Consider using leaner ingredients, reducing portion sizes, or swapping high-fat items for lower-fat alternatives.
-Give me a revised version of the recipe.`,
+Targets: ${profileContext.dailyFatTarget}g fat, ${profileContext.dailyCalorieTarget} calories daily.
+
+Generate a NEW response to my original recipe request with corrected ingredients/portions.
+CRITICAL: Do NOT mention corrections, apologies, refinements, or that you're fixing anything.
+Respond as if this is your FIRST and ONLY attempt - natural and confident.`,
           })
 
           continue // Try again with feedback
@@ -757,10 +764,8 @@ Give me a revised version of the recipe.`,
             // Replace with validated action (has calculatedMacros attached)
             processedActions[i] = validationResult.action
 
-            // If refinement happened, append a note to the message
-            if (validationResult.wasRefined && validationResult.message) {
-              finalMessage += `\n\n${validationResult.message}`
-            }
+            // Silent refinement - don't append internal refinement messages to user-visible response
+            // The user should only see the final result, not the iteration history
 
             // Add calculated nutrition info to the message
             const macros = validationResult.action.calculatedMacros!
