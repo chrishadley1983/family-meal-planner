@@ -78,6 +78,45 @@ const sites = [
       'mediterranean', 'asian', 'healthy', 'quick'
     ],
     isActive: true
+  },
+  {
+    name: 'jamieoliver',
+    displayName: 'Jamie Oliver',
+    baseUrl: 'https://www.jamieoliver.com',
+    searchUrlPattern: '/recipes/?s={query}',
+    searchResultsSelector: null,  // Uses generic fallbacks
+    categories: [
+      'chicken', 'beef', 'pork', 'lamb', 'fish', 'vegetarian', 'vegan',
+      'pasta', 'curry', 'stir-fry', 'soup', 'salad', 'breakfast',
+      'quick', 'healthy', 'family', 'budget', 'italian', 'mexican'
+    ],
+    isActive: true
+  },
+  {
+    name: 'boredoflunch',
+    displayName: 'Bored of Lunch',
+    baseUrl: 'https://boredoflunch.com',
+    searchUrlPattern: '/recipes/?s={query}',
+    searchResultsSelector: null,  // Uses generic fallbacks
+    categories: [
+      'chicken', 'beef', 'pork', 'fish', 'vegetarian',
+      'air-fryer', 'slow-cooker', 'healthy', 'quick', 'family',
+      'budget', 'batch-cooking', 'low-calorie'
+    ],
+    isActive: true
+  },
+  {
+    name: 'nytcooking',
+    displayName: 'NYT Cooking',
+    baseUrl: 'https://cooking.nytimes.com',
+    searchUrlPattern: '/search?q={query}',
+    searchResultsSelector: null,  // Uses generic fallbacks
+    categories: [
+      'chicken', 'beef', 'pork', 'lamb', 'fish', 'seafood',
+      'vegetarian', 'vegan', 'pasta', 'soup', 'salad', 'breakfast',
+      'dinner', 'quick', 'healthy', 'weeknight'
+    ],
+    isActive: true
   }
 ]
 
