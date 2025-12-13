@@ -657,3 +657,150 @@ model IngredientNutritionCache {
   @@index([source])
   @@map("ingredient_nutrition_cache")
 }
+
+// ===========================================
+// RECIPE DISCOVERY FEATURE
+// ===========================================
+
+// Configuration for recipe source websites to scrape
+model RecipeSourceSite {
+  id                    String   @id @default(uuid())
+
+  // Site identification
+  name                  String   @unique  // 'bbcgoodfood', 'allrecipes'
+  displayName           String             // 'BBC Good Food', 'AllRecipes'
+  baseUrl               String             // 'https://www.bbcgoodfood.com'
+
+  // Search configuration
+  searchUrlPattern      String             // '/search?q={query}' or '/search/recipes?keyword={query}'
+  searchResultsSelector String?            // CSS selector for recipe links on search page (optional)
+
+  // Categories to scrape
+  categories            String[]           // ['chicken', 'beef', 'vegetarian', 'pasta', 'quick-meals']
+
+  // Status
+  isActive              Boolean  @default(true)
+  lastScrapedAt         DateTime?
+
+  // Metadata
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  // Relations
+  masterRecipes         MasterRecipe[]
+
+  @@index([isActive])
+  @@map("recipe_source_sites")
+}
+
+// Master recipe database - curated recipes from various sources
+model MasterRecipe {
+  id                  String   @id @default(uuid())
+
+  // Source tracking
+  sourceUrl           String   @unique
+  sourceSiteId        String
+  sourceScrapedAt     DateTime
+
+  // Core recipe data
+  name                String
+  description         String?  @db.Text
+  imageUrl            String?
+  servings            Int?
+  prepTimeMinutes     Int?
+  cookTimeMinutes     Int?
+  totalTimeMinutes    Int?
+
+  // Categorisation
+  cuisineType         String?
+  mealCategory        String[] // ['dinner', 'lunch', 'breakfast']
+  dietaryTags         String[] // ['vegetarian', 'vegan', 'gluten-free', 'dairy-free']
+
+  // Ingredients (structured for smart filtering)
+  ingredients         Json     // [{name: string, quantity: number, unit: string, category?: string, original: string}]
+  ingredientNames     String[] // ['chicken breast', 'onion', 'garlic'] - flattened for search
+
+  // Instructions
+  instructions        Json     // [{stepNumber: number, instruction: string}]
+
+  // Nutrition (enriched via USDA/AI if not from source)
+  caloriesPerServing  Int?
+  proteinPerServing   Decimal? @db.Decimal(6, 2)
+  carbsPerServing     Decimal? @db.Decimal(6, 2)
+  fatPerServing       Decimal? @db.Decimal(6, 2)
+  fiberPerServing     Decimal? @db.Decimal(6, 2)
+  sugarPerServing     Decimal? @db.Decimal(6, 2)
+  sodiumPerServing    Int?
+  nutritionSource     String?  // 'source_site', 'usda', 'ai_estimated'
+
+  // Allergens (derived from ingredients during import)
+  allergens           String[] // ['dairy', 'gluten', 'nuts', 'eggs', 'shellfish', 'soy']
+
+  // Quality & Status
+  dataQualityScore    Int      @default(0) // 0-100 based on completeness
+  isActive            Boolean  @default(true)
+  importErrors        String?  @db.Text // Any issues during import
+
+  // Timestamps
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  // Relations
+  sourceSite          RecipeSourceSite @relation(fields: [sourceSiteId], references: [id])
+
+  // Indexes for fast filtering
+  @@index([sourceSiteId])
+  @@index([cuisineType])
+  @@index([mealCategory])
+  @@index([ingredientNames])
+  @@index([allergens])
+  @@index([caloriesPerServing])
+  @@index([proteinPerServing])
+  @@index([totalTimeMinutes])
+  @@index([isActive])
+  @@index([dataQualityScore])
+  @@index([name])
+  @@map("master_recipes")
+}
+
+// Job status enum for scraping jobs
+enum ScrapingJobStatus {
+  pending
+  running
+  completed
+  failed
+}
+
+// Track scraping job progress
+model RecipeScrapingJob {
+  id              String            @id @default(uuid())
+
+  // Job configuration
+  sourceSiteId    String?           // null = all sites
+  category        String?           // null = all categories for site
+
+  // Status
+  status          ScrapingJobStatus @default(pending)
+
+  // Progress
+  urlsDiscovered  Int               @default(0)
+  urlsProcessed   Int               @default(0)
+  urlsSucceeded   Int               @default(0)
+  urlsFailed      Int               @default(0)
+  urlsSkipped     Int               @default(0) // Already in DB
+
+  // Timing
+  startedAt       DateTime?
+  completedAt     DateTime?
+
+  // Errors
+  errorLog        String?           @db.Text
+
+  // Timestamps
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([status])
+  @@index([sourceSiteId])
+  @@map("recipe_scraping_jobs")
+}
