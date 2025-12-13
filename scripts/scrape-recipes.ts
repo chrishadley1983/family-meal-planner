@@ -17,7 +17,7 @@
  *   npx ts-node scripts/scrape-recipes.ts --site bbcgoodfood --category vegetarian
  */
 
-import { runScrapingJob } from '../lib/scraping'
+import { runScrapingJob } from '../lib/scraping/index'
 
 interface CLIOptions {
   siteId?: string
