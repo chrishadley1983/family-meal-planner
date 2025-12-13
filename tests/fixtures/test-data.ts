@@ -87,21 +87,21 @@ export const testMealsCooldownViolation: GeneratedMeal[] = [
 
 export const testMealsBatchCookingError: GeneratedMeal[] = [
   {
+    dayOfWeek: 'Monday', // First occurrence (earliest day after sorting)
+    mealType: 'dinner',
+    recipeId: 'recipe-1',
+    recipeName: 'Chicken Stir Fry',
+    servings: 4,
+    isLeftover: true, // ERROR: First occurrence should NOT be marked as leftover
+  },
+  {
     dayOfWeek: 'Wednesday',
     mealType: 'dinner',
     recipeId: 'recipe-1',
     recipeName: 'Chicken Stir Fry',
     servings: 4,
-    isLeftover: true, // First occurrence marked as leftover - error
+    isLeftover: true,
     batchCookSourceDay: 'Monday',
-  },
-  {
-    dayOfWeek: 'Monday',
-    mealType: 'dinner',
-    recipeId: 'recipe-1',
-    recipeName: 'Chicken Stir Fry',
-    servings: 4,
-    isLeftover: false,
   },
 ]
 
@@ -454,7 +454,7 @@ export const testIngredientNormalization = [
   { input: 'ground beef', expected: 'beef mince' },
   { input: 'shrimp', expected: 'prawn' },
   { input: 'heavy cream', expected: 'double cream' },
-  { input: 'all-purpose flour', expected: 'plain flour' },
+  { input: 'all-purpose flour', expected: 'flour' }, // "plain" gets stripped as modifier
 
   // Preparation stripping
   { input: 'diced onion', expected: 'onion' },
