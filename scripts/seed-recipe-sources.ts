@@ -117,6 +117,33 @@ const sites = [
       'dinner', 'quick', 'healthy', 'weeknight'
     ],
     isActive: true
+  },
+  {
+    name: 'bestblogrecipes',
+    displayName: 'The Best Blog Recipes',
+    baseUrl: 'https://thebestblogrecipes.com',
+    searchUrlPattern: '/?s={query}',
+    searchResultsSelector: null,  // Uses generic fallbacks
+    categories: [
+      'chicken', 'beef', 'pork', 'fish', 'vegetarian',
+      'pasta', 'casserole', 'soup', 'salad', 'breakfast',
+      'slow-cooker', 'instant-pot', 'air-fryer', 'dessert',
+      'quick', 'family', 'comfort-food'
+    ],
+    isActive: true
+  },
+  {
+    name: 'halfbakedharvest',
+    displayName: 'Half Baked Harvest',
+    baseUrl: 'https://www.halfbakedharvest.com',
+    searchUrlPattern: '/?s={query}',
+    searchResultsSelector: null,  // Uses generic fallbacks
+    categories: [
+      'chicken', 'beef', 'pork', 'fish', 'vegetarian', 'vegan',
+      'pasta', 'soup', 'salad', 'breakfast', 'brunch',
+      'comfort-food', 'healthy', 'quick', 'seasonal', 'holiday'
+    ],
+    isActive: true
   }
 ]
 
