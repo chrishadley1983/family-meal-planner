@@ -15,19 +15,38 @@ import { prisma } from '../lib/prisma'
 // Recipe source site configurations
 // Note: searchResultsSelector is null to use generic fallback selectors
 // which are more resilient to website structure changes
+// Expanded category list for maximum variety
+const expandedCategories = [
+  // Proteins
+  'chicken', 'beef', 'pork', 'lamb', 'fish', 'salmon', 'prawns', 'shrimp',
+  'turkey', 'duck', 'mince', 'sausage', 'bacon', 'ham',
+  // Dietary
+  'vegetarian', 'vegan', 'gluten-free', 'dairy-free', 'low-carb', 'keto',
+  'high-protein', 'low-calorie', 'healthy',
+  // Meal types
+  'breakfast', 'brunch', 'lunch', 'dinner', 'snack', 'dessert',
+  // Cooking methods
+  'slow-cooker', 'instant-pot', 'air-fryer', 'one-pot', 'sheet-pan',
+  'roast', 'grill', 'bbq', 'bake', 'stir-fry',
+  // Dish types
+  'pasta', 'rice', 'noodles', 'curry', 'soup', 'stew', 'salad',
+  'sandwich', 'wrap', 'pie', 'casserole', 'tacos', 'burger',
+  // Cuisines
+  'italian', 'mexican', 'indian', 'chinese', 'thai', 'japanese',
+  'mediterranean', 'greek', 'spanish', 'french', 'korean', 'vietnamese',
+  // Occasions
+  'quick', 'easy', 'weeknight', 'weekend', 'family', 'budget',
+  'batch-cooking', 'meal-prep', 'comfort-food', 'holiday', 'party'
+]
+
 const sites = [
   {
     name: 'bbcgoodfood',
     displayName: 'BBC Good Food',
     baseUrl: 'https://www.bbcgoodfood.com',
     searchUrlPattern: '/search?q={query}&page={page}',
-    searchResultsSelector: null,  // Uses generic: a[href*="/recipes/"]
-    categories: [
-      'chicken', 'beef', 'pork', 'lamb', 'fish', 'seafood', 'salmon',
-      'vegetarian', 'vegan', 'pasta', 'rice', 'curry', 'stir-fry',
-      'soup', 'salad', 'breakfast', 'lunch', 'dinner', 'quick',
-      'healthy', 'low-calorie', 'high-protein', 'family', 'budget'
-    ],
+    searchResultsSelector: null,
+    categories: expandedCategories,
     isActive: true
   },
   {
@@ -35,12 +54,8 @@ const sites = [
     displayName: 'AllRecipes',
     baseUrl: 'https://www.allrecipes.com',
     searchUrlPattern: '/search?q={query}&page={page}',
-    searchResultsSelector: null,  // Uses generic: a[href*="/recipe/"]
-    categories: [
-      'chicken', 'beef', 'pork', 'fish', 'vegetarian', 'vegan',
-      'pasta', 'casserole', 'soup', 'salad', 'breakfast', 'dinner',
-      'quick-and-easy', 'healthy', 'low-carb'
-    ],
+    searchResultsSelector: null,
+    categories: expandedCategories,
     isActive: true
   },
   {
@@ -48,11 +63,8 @@ const sites = [
     displayName: 'Delicious Magazine',
     baseUrl: 'https://www.deliciousmagazine.co.uk',
     searchUrlPattern: '/search?q={query}',
-    searchResultsSelector: null,  // Uses generic fallbacks
-    categories: [
-      'chicken', 'beef', 'fish', 'vegetarian', 'pasta', 'curry',
-      'roast', 'salad', 'soup', 'quick', 'weekend'
-    ],
+    searchResultsSelector: null,
+    categories: expandedCategories,
     isActive: true
   },
   {
@@ -60,11 +72,8 @@ const sites = [
     displayName: 'Taste.com.au',
     baseUrl: 'https://www.taste.com.au',
     searchUrlPattern: '/search-recipes?q={query}&page={page}',
-    searchResultsSelector: null,  // Uses generic fallbacks
-    categories: [
-      'chicken', 'beef', 'lamb', 'fish', 'vegetarian', 'pasta',
-      'asian', 'indian', 'healthy', 'quick', 'family'
-    ],
+    searchResultsSelector: null,
+    categories: expandedCategories,
     isActive: true
   },
   {
@@ -72,11 +81,53 @@ const sites = [
     displayName: 'Olive Magazine',
     baseUrl: 'https://www.olivemagazine.com',
     searchUrlPattern: '/search?q={query}',
-    searchResultsSelector: null,  // Uses generic fallbacks
-    categories: [
-      'chicken', 'beef', 'fish', 'vegetarian', 'vegan', 'pasta',
-      'mediterranean', 'asian', 'healthy', 'quick'
-    ],
+    searchResultsSelector: null,
+    categories: expandedCategories,
+    isActive: true
+  },
+  {
+    name: 'jamieoliver',
+    displayName: 'Jamie Oliver',
+    baseUrl: 'https://www.jamieoliver.com',
+    searchUrlPattern: '/recipes/?s={query}',
+    searchResultsSelector: null,
+    categories: expandedCategories,
+    isActive: true
+  },
+  {
+    name: 'boredoflunch',
+    displayName: 'Bored of Lunch',
+    baseUrl: 'https://boredoflunch.com',
+    searchUrlPattern: '/recipes/?s={query}',
+    searchResultsSelector: null,
+    categories: expandedCategories,
+    isActive: true
+  },
+  {
+    name: 'nytcooking',
+    displayName: 'NYT Cooking',
+    baseUrl: 'https://cooking.nytimes.com',
+    searchUrlPattern: '/search?q={query}',
+    searchResultsSelector: null,
+    categories: expandedCategories,
+    isActive: true
+  },
+  {
+    name: 'bestblogrecipes',
+    displayName: 'The Best Blog Recipes',
+    baseUrl: 'https://thebestblogrecipes.com',
+    searchUrlPattern: '/?s={query}',
+    searchResultsSelector: null,
+    categories: expandedCategories,
+    isActive: true
+  },
+  {
+    name: 'halfbakedharvest',
+    displayName: 'Half Baked Harvest',
+    baseUrl: 'https://www.halfbakedharvest.com',
+    searchUrlPattern: '/?s={query}',
+    searchResultsSelector: null,
+    categories: expandedCategories,
     isActive: true
   }
 ]
