@@ -3,19 +3,19 @@
  * CLI Script for running recipe scraping jobs
  *
  * Usage:
- *   npx tsx scripts/scrape-recipes.ts [options]
  *   npm run scrape -- [options]
  *
  * Options:
- *   --site <name>        Only scrape a specific site (by name, e.g., 'bbcgoodfood')
- *   --category <cat>     Only scrape a specific category (e.g., 'chicken', 'vegetarian')
- *   --max-pages <n>      Max pages per category (default: 2)
+ *   --site <name>        Only scrape a specific site (e.g., 'bbcgoodfood')
+ *   --category <cat>     Only scrape a specific category (e.g., 'chicken')
+ *   --max-pages <n>      Max search pages per category (default: 2)
+ *   --max-urls <n>       Max URLs per site/category combo (for variety)
  *   --help               Show this help message
  *
  * Examples:
- *   npm run scrape
- *   npm run scrape -- --category chicken
- *   npm run scrape -- --site bbcgoodfood --category vegetarian
+ *   npm run scrape -- --max-urls 5              # 5 per category, all sites
+ *   npm run scrape -- --site bbcgoodfood        # All categories from BBC
+ *   npm run scrape -- --max-urls 5 --max-pages 1  # Quick variety seed
  */
 
 // Load environment variables FIRST before any other imports
@@ -27,6 +27,7 @@ interface CLIOptions {
   siteName?: string
   category?: string
   maxPagesPerCategory?: number
+  maxUrlsPerCategory?: number
   help?: boolean
 }
 
@@ -56,6 +57,12 @@ function parseArgs(args: string[]): CLIOptions {
           i++
         }
         break
+      case '--max-urls':
+        if (nextArg) {
+          options.maxUrlsPerCategory = parseInt(nextArg, 10)
+          i++
+        }
+        break
       case '--help':
       case '-h':
         options.help = true
@@ -71,26 +78,27 @@ function showHelp() {
 Recipe Scraping CLI
 
 Usage:
-  npx ts-node scripts/scrape-recipes.ts [options]
+  npm run scrape -- [options]
 
 Options:
-  --site <siteId>      Only scrape a specific site (by name, e.g., 'bbcgoodfood')
+  --site <name>        Only scrape a specific site (e.g., 'bbcgoodfood')
   --category <cat>     Only scrape a specific category (e.g., 'chicken', 'vegetarian')
   --max-pages <n>      Max search result pages per category (default: 2)
+  --max-urls <n>       Max URLs to import per site/category (for variety)
   --help, -h           Show this help message
 
 Examples:
-  # Scrape all sites, all categories
-  npx ts-node scripts/scrape-recipes.ts
+  # Scrape all sites, all categories (no limits - takes hours!)
+  npm run scrape
 
-  # Scrape only chicken recipes from all sites
-  npx ts-node scripts/scrape-recipes.ts --category chicken
+  # Scrape 5 recipes per category from all sites (recommended for initial seed)
+  npm run scrape -- --max-urls 5
 
-  # Scrape only BBC Good Food
-  npx ts-node scripts/scrape-recipes.ts --site bbcgoodfood
+  # Scrape only chicken recipes from BBC Good Food
+  npm run scrape -- --site bbcgoodfood --category chicken
 
-  # Scrape vegetarian recipes from BBC Good Food with 3 pages
-  npx ts-node scripts/scrape-recipes.ts --site bbcgoodfood --category vegetarian --max-pages 3
+  # Full variety seed: 5 recipes per site/category combo
+  npm run scrape -- --max-urls 5 --max-pages 1
 
 Note: This script requires a DATABASE_URL environment variable to be set.
 `)
@@ -119,6 +127,9 @@ async function main() {
   if (options.maxPagesPerCategory) {
     console.log(`   Max pages: ${options.maxPagesPerCategory}`)
   }
+  if (options.maxUrlsPerCategory) {
+    console.log(`   Max URLs per category: ${options.maxUrlsPerCategory}`)
+  }
 
   console.log('═══════════════════════════════════════════════════════════\n')
 
@@ -126,7 +137,8 @@ async function main() {
     const result = await runScrapingJob({
       siteName: options.siteName,
       category: options.category,
-      maxPagesPerCategory: options.maxPagesPerCategory
+      maxPagesPerCategory: options.maxPagesPerCategory,
+      maxUrlsPerCategory: options.maxUrlsPerCategory
     })
 
     console.log('\n═══════════════════════════════════════════════════════════')
