@@ -57,14 +57,14 @@ export async function PATCH(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // Only update if values have actually changed
-    const hasChanges =
-      existingRecipe.caloriesPerServing !== data.caloriesPerServing
+    // Check if macros changed OR if AI ratings are being saved
+    const macrosChanged = existingRecipe.caloriesPerServing !== data.caloriesPerServing
+    const hasAIRatings = !!(data.aiOverallRating || data.aiNutritionistFeedback)
 
-    if (!hasChanges) {
-      console.log('🔄 Macros already in sync for:', existingRecipe.recipeName)
+    if (!macrosChanged && !hasAIRatings) {
+      console.log('🔄 No changes to sync for:', existingRecipe.recipeName)
       return NextResponse.json({
-        message: 'Macros already in sync',
+        message: 'No changes to sync',
         synced: false
       })
     }
@@ -80,13 +80,13 @@ export async function PATCH(
         fiberPerServing: data.fiberPerServing,
         sugarPerServing: data.sugarPerServing,
         sodiumPerServing: data.sodiumPerServing,
-        // AI rating fields (if provided)
+        // AI rating fields (for caching)
         ...(data.aiOverallRating && { aiOverallRating: data.aiOverallRating }),
         ...(data.aiOverallExplanation && { aiOverallExplanation: data.aiOverallExplanation }),
         ...(data.aiIngredientRatings && { aiIngredientRatings: data.aiIngredientRatings }),
         ...(data.aiNutritionistFeedback && { aiNutritionistFeedback: data.aiNutritionistFeedback }),
-        // Update timestamp if AI ratings provided
-        ...((data.aiOverallRating || data.aiNutritionistFeedback) && { aiAnalysisCalculatedAt: new Date() }),
+        // Update AI timestamp if ratings provided
+        ...(hasAIRatings && { aiAnalysisCalculatedAt: new Date() }),
         // Mark as manually synced
         nutritionSource: 'manual',
         nutritionCalculatedAt: new Date(),
