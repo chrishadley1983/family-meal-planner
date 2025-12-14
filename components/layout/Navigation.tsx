@@ -13,6 +13,7 @@ interface NavigationProps {
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: '📊' },
   { href: '/recipes', label: 'Recipes', icon: '📖' },
+  { href: '/discover', label: 'Discover', icon: '🔍' },
   { href: '/meal-plans', label: 'Meal Plans', icon: '📅' },
   { href: '/shopping-lists', label: 'Shopping', icon: '🛒' },
   { href: '/staples', label: 'Staples', icon: '📋' },
