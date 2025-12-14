@@ -44,17 +44,12 @@ async function main() {
     }
   }
 
-  // Also clear any recipes that have nutrition calculated for these ingredients
-  // so they recalculate on next view
-  console.log('\n🔄 Clearing recipe nutrition hashes for affected recipes...')
+  // Clear ALL recipe nutrition hashes so they recalculate with updated data
+  console.log('\n🔄 Clearing all recipe nutrition hashes...')
 
   const affectedRecipes = await prisma.recipe.updateMany({
     where: {
-      OR: [
-        { ingredients: { path: '$[*].ingredientName', string_contains: 'oat' } },
-        { ingredients: { path: '$[*].ingredientName', string_contains: 'yogurt' } },
-        { ingredients: { path: '$[*].ingredientName', string_contains: 'yoghurt' } },
-      ],
+      nutritionCalculatedAt: { not: null },
     },
     data: {
       ingredientsHash: null,
