@@ -44,6 +44,7 @@ export type NutritionistActionType =
   | 'UPDATE_MACROS'
   | 'UPDATE_PREFERENCES'
   | 'CREATE_RECIPE'
+  | 'ADD_MASTER_RECIPE'
   | 'ADD_INVENTORY_ITEM'
   | 'ADD_STAPLE'
 
@@ -146,10 +147,38 @@ export interface AddStapleAction extends BaseAction {
   }
 }
 
+/**
+ * Action to add a curated recipe from the master database to user's library
+ */
+export interface AddMasterRecipeAction extends BaseAction {
+  type: 'ADD_MASTER_RECIPE'
+  data: {
+    masterRecipeId: string
+    name: string
+    description: string | null
+    sourceUrl: string
+    sourceSiteName: string
+    servings: number | null
+    prepTimeMinutes: number | null
+    cookTimeMinutes: number | null
+    totalTimeMinutes: number | null
+    cuisineType: string | null
+    mealCategory: string[]
+    dietaryTags: string[]
+    // Pre-calculated nutrition from master recipe
+    caloriesPerServing: number | null
+    proteinPerServing: number | null
+    carbsPerServing: number | null
+    fatPerServing: number | null
+    fiberPerServing: number | null
+  }
+}
+
 export type NutritionistAction =
   | UpdateMacrosAction
   | UpdatePreferencesAction
   | CreateRecipeAction
+  | AddMasterRecipeAction
   | AddInventoryAction
   | AddStapleAction
 

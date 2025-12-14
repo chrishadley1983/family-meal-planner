@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button'
 import {
   NutritionistAction,
   CreateRecipeAction,
+  AddMasterRecipeAction,
   UpdateMacrosAction,
   UpdatePreferencesAction,
   AddInventoryAction,
@@ -36,6 +37,8 @@ export function ActionConfirmationModal({
     switch (action.type) {
       case 'CREATE_RECIPE':
         return renderRecipePreview(action as CreateRecipeAction)
+      case 'ADD_MASTER_RECIPE':
+        return renderMasterRecipePreview(action as AddMasterRecipeAction)
       case 'UPDATE_MACROS':
         return renderMacrosPreview(action as UpdateMacrosAction)
       case 'UPDATE_PREFERENCES':
@@ -182,6 +185,110 @@ function renderRecipePreview(action: CreateRecipeAction) {
             </li>
           )}
         </ol>
+      </div>
+    </div>
+  )
+}
+
+function renderMasterRecipePreview(action: AddMasterRecipeAction) {
+  const { data } = action
+
+  return (
+    <div className="bg-zinc-800/50 rounded-lg p-4 space-y-4 border border-zinc-700">
+      {/* Recipe header */}
+      <div>
+        <h3 className="text-lg font-semibold text-white">{data.name}</h3>
+        <div className="flex items-center gap-2 mt-1">
+          <span className="text-xs px-2 py-0.5 bg-purple-900/50 text-purple-300 rounded-full">
+            From {data.sourceSiteName}
+          </span>
+          {data.dietaryTags.length > 0 && data.dietaryTags.map((tag, idx) => (
+            <span key={idx} className="text-xs px-2 py-0.5 bg-green-900/50 text-green-300 rounded-full">
+              {tag}
+            </span>
+          ))}
+        </div>
+        {data.description && (
+          <p className="text-sm text-zinc-400 mt-2">{data.description}</p>
+        )}
+      </div>
+
+      {/* Quick info */}
+      <div className="flex flex-wrap gap-4 text-sm">
+        {data.servings && (
+          <div className="flex items-center gap-1">
+            <span className="text-zinc-500">Servings:</span>
+            <span className="text-zinc-200">{data.servings}</span>
+          </div>
+        )}
+        {data.totalTimeMinutes && (
+          <div className="flex items-center gap-1">
+            <span className="text-zinc-500">Total time:</span>
+            <span className="text-zinc-200">{data.totalTimeMinutes} mins</span>
+          </div>
+        )}
+        {data.cuisineType && (
+          <div className="flex items-center gap-1">
+            <span className="text-zinc-500">Cuisine:</span>
+            <span className="text-zinc-200">{data.cuisineType}</span>
+          </div>
+        )}
+        {data.mealCategory.length > 0 && (
+          <div className="flex items-center gap-1">
+            <span className="text-zinc-500">Meal:</span>
+            <span className="text-zinc-200">{data.mealCategory.join(', ')}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Nutrition */}
+      {(data.caloriesPerServing || data.proteinPerServing) && (
+        <div className="space-y-2">
+          <div className="grid grid-cols-4 gap-2 p-3 bg-zinc-900/50 rounded-lg">
+            <div className="text-center">
+              <div className="text-lg font-semibold text-amber-400">
+                {data.caloriesPerServing || '-'}
+              </div>
+              <div className="text-xs text-zinc-500">kcal</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-semibold text-green-400">
+                {data.proteinPerServing ? `${data.proteinPerServing}g` : '-'}
+              </div>
+              <div className="text-xs text-zinc-500">protein</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-semibold text-blue-400">
+                {data.carbsPerServing ? `${data.carbsPerServing}g` : '-'}
+              </div>
+              <div className="text-xs text-zinc-500">carbs</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-semibold text-purple-400">
+                {data.fatPerServing ? `${data.fatPerServing}g` : '-'}
+              </div>
+              <div className="text-xs text-zinc-500">fat</div>
+            </div>
+          </div>
+          <p className="text-xs text-zinc-500 text-center">
+            Pre-validated nutrition data
+          </p>
+        </div>
+      )}
+
+      {/* Source link */}
+      <div className="pt-2 border-t border-zinc-700">
+        <a
+          href={data.sourceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm text-purple-400 hover:text-purple-300 flex items-center gap-1"
+        >
+          View original recipe on {data.sourceSiteName}
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+          </svg>
+        </a>
       </div>
     </div>
   )
