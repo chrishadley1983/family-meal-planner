@@ -1,117 +1,197 @@
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { AppLayout, PageContainer } from '@/components/layout'
+import { AppLayout } from '@/components/layout'
+import {
+  DashboardHeader,
+  AlertBanner,
+  WeeklyMealsCard,
+  WeeklyShoppingCard,
+  DiscoverCard,
+  ExpiringSoonCard,
+  QuickActionsGrid,
+} from '@/components/dashboard'
 
-export default async function DashboardPage() {
-  const session = await getServerSession(authOptions)
+// Dashboard data types
+interface WeeklyMeal {
+  day: string
+  date: string
+  isToday: boolean
+  dinner: string | null
+  recipeId: string | null
+  planned: boolean
+}
 
-  if (!session) {
-    redirect('/login')
+interface ShoppingCategory {
+  name: string
+  count: number
+}
+
+interface ExpiringItem {
+  id: string
+  name: string
+  quantity: string
+  daysUntilExpiry: number
+}
+
+interface DashboardData {
+  user: {
+    firstName: string
+    familyName: string
+    initials: string
+    email: string
+  }
+  weekRange: {
+    start: string
+    end: string
+    label: string
+  }
+  weeklyMeals: WeeklyMeal[]
+  plannedCount: number
+  mealPlanId: string | null
+  shoppingList: {
+    id: string | null
+    total: number
+    purchased: number
+    categories: ShoppingCategory[]
+  }
+  expiringItems: ExpiringItem[]
+  counts: {
+    recipes: number
+    staplesDue: number
+    inventoryItems: number
+    familyMembers: number
+  }
+}
+
+export default function DashboardPage() {
+  const { data: session, status } = useSession()
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      redirect('/login')
+    }
+  }, [status])
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        console.log('🔷 Fetching dashboard data...')
+        const response = await fetch('/api/dashboard')
+        if (!response.ok) {
+          throw new Error('Failed to fetch dashboard data')
+        }
+        const data = await response.json()
+        console.log('🟢 Dashboard data received:', data)
+        setDashboardData(data)
+      } catch (err) {
+        console.error('❌ Error fetching dashboard data:', err)
+        setError('Failed to load dashboard data')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (status === 'authenticated') {
+      fetchDashboardData()
+    }
+  }, [status])
+
+  if (status === 'loading' || loading) {
+    return (
+      <AppLayout userEmail={session?.user?.email || undefined}>
+        <main className="max-w-7xl mx-auto px-4 py-6">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-zinc-400">Loading dashboard...</p>
+            </div>
+          </div>
+        </main>
+      </AppLayout>
+    )
+  }
+
+  if (error) {
+    return (
+      <AppLayout userEmail={session?.user?.email || undefined}>
+        <main className="max-w-7xl mx-auto px-4 py-6">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <p className="text-red-400 mb-4">{error}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-white text-sm"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        </main>
+      </AppLayout>
+    )
+  }
+
+  if (!dashboardData) {
+    return null
   }
 
   return (
-    <AppLayout userEmail={session.user.email}>
-      <PageContainer title="Dashboard">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Link href="/profiles" className="block">
-              <div className="card-interactive">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <svg className="h-8 w-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                  </div>
-                  <div className="ml-5 flex-1">
-                    <div className="text-sm font-medium text-zinc-400 mb-1">Family Profiles</div>
-                    <div className="text-lg font-semibold text-white">Manage members</div>
-                  </div>
-                </div>
-              </div>
-            </Link>
+    <AppLayout userEmail={session?.user?.email || undefined}>
+      <main className="max-w-7xl mx-auto px-4 py-6">
+        {/* Welcome Header with Week Context */}
+        <DashboardHeader
+          weekLabel={dashboardData.weekRange.label}
+          familyName={dashboardData.user.familyName}
+          mealPlanId={dashboardData.mealPlanId}
+        />
 
-            <Link href="/recipes" className="block">
-              <div className="card-interactive">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <svg className="h-8 w-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                    </svg>
-                  </div>
-                  <div className="ml-5 flex-1">
-                    <div className="text-sm font-medium text-zinc-400 mb-1">Recipes</div>
-                    <div className="text-lg font-semibold text-white">Browse & add</div>
-                  </div>
-                </div>
-              </div>
-            </Link>
+        {/* Alert Banner - Contextual */}
+        <AlertBanner expiringItems={dashboardData.expiringItems} />
 
-            <Link href="/meal-plans" className="block">
-              <div className="card-interactive">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <svg className="h-8 w-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                  <div className="ml-5 flex-1">
-                    <div className="text-sm font-medium text-zinc-400 mb-1">Meal Plans</div>
-                    <div className="text-lg font-semibold text-white">Plan your week</div>
-                  </div>
-                </div>
-              </div>
-            </Link>
+        {/* Main Dashboard Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column - Weekly Plan */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Weekly Meal Plan Card */}
+            <WeeklyMealsCard
+              meals={dashboardData.weeklyMeals}
+              plannedCount={dashboardData.plannedCount}
+              mealPlanId={dashboardData.mealPlanId}
+            />
 
-            <Link href="/shopping-lists" className="block">
-              <div className="card-interactive">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <svg className="h-8 w-8 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                  </div>
-                  <div className="ml-5 flex-1">
-                    <div className="text-sm font-medium text-zinc-400 mb-1">Shopping Lists</div>
-                    <div className="text-lg font-semibold text-white">View lists</div>
-                  </div>
-                </div>
-              </div>
-            </Link>
-
-            <Link href="/inventory" className="block">
-              <div className="card-interactive">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <svg className="h-8 w-8 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                    </svg>
-                  </div>
-                  <div className="ml-5 flex-1">
-                    <div className="text-sm font-medium text-zinc-400 mb-1">Inventory</div>
-                    <div className="text-lg font-semibold text-white">Track items</div>
-                  </div>
-                </div>
-              </div>
-            </Link>
-
-            <Link href="/staples" className="block">
-              <div className="card-interactive">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <svg className="h-8 w-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                    </svg>
-                  </div>
-                  <div className="ml-5 flex-1">
-                    <div className="text-sm font-medium text-zinc-400 mb-1">Weekly Staples</div>
-                    <div className="text-lg font-semibold text-white">Manage staples</div>
-                  </div>
-                </div>
-              </div>
-            </Link>
+            {/* Shopping List Summary */}
+            <WeeklyShoppingCard
+              shoppingListId={dashboardData.shoppingList.id}
+              total={dashboardData.shoppingList.total}
+              purchased={dashboardData.shoppingList.purchased}
+              categories={dashboardData.shoppingList.categories}
+            />
           </div>
-      </PageContainer>
+
+          {/* Right Column - Quick Access */}
+          <div className="space-y-6">
+            {/* Discover Recipes Card */}
+            <DiscoverCard />
+
+            {/* Expiring Items */}
+            <ExpiringSoonCard items={dashboardData.expiringItems} />
+
+            {/* Quick Actions Grid */}
+            <QuickActionsGrid
+              recipesCount={dashboardData.counts.recipes}
+              staplesDue={dashboardData.counts.staplesDue}
+              inventoryCount={dashboardData.counts.inventoryItems}
+              familyMembers={dashboardData.counts.familyMembers}
+            />
+          </div>
+        </div>
+      </main>
     </AppLayout>
   )
 }
