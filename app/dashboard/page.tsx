@@ -16,8 +16,10 @@ import {
 
 // Dashboard data types
 interface WeeklyMeal {
-  day: string
-  date: string
+  day: string           // 'Monday'
+  dayShort: string      // 'Mon'
+  date: string          // '2025-12-15' (ISO)
+  dateDisplay: string   // '15 Dec'
   isToday: boolean
   dinner: string | null
   recipeId: string | null

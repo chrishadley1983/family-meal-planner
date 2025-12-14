@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { startOfWeek, endOfWeek, addDays, format, differenceInDays, isToday } from 'date-fns'
+import { addDays, format, differenceInDays, isToday, startOfDay } from 'date-fns'
 
 // Inline types for callback parameters
 interface MealWithRecipe {
@@ -27,8 +27,10 @@ interface InventoryItemType {
 
 // Dashboard data types
 interface WeeklyMeal {
-  day: string
-  date: string
+  day: string           // 'Monday'
+  dayShort: string      // 'Mon'
+  date: string          // '2025-12-15' (ISO)
+  dateDisplay: string   // '15 Dec'
   isToday: boolean
   dinner: string | null
   recipeId: string | null
@@ -90,10 +92,7 @@ export async function GET(req: NextRequest) {
 
     console.log('🔷 Fetching dashboard data for user:', session.user.id)
 
-    // Calculate current week range (Monday to Sunday)
-    const today = new Date()
-    const weekStart = startOfWeek(today, { weekStartsOn: 1 }) // Monday
-    const weekEnd = endOfWeek(today, { weekStartsOn: 1 }) // Sunday
+    const today = startOfDay(new Date())
 
     // Fetch all data in parallel for performance
     const [
@@ -117,14 +116,12 @@ export async function GET(req: NextRequest) {
       prisma.familyProfile.count({
         where: { userId: session.user.id },
       }),
-      // Get current week's meal plan
+      // Get meal plan that covers today (weekStartDate <= today AND weekEndDate >= today)
       prisma.mealPlan.findFirst({
         where: {
           userId: session.user.id,
-          weekStartDate: {
-            gte: weekStart,
-            lte: weekEnd,
-          },
+          weekStartDate: { lte: today },
+          weekEndDate: { gte: today },
         },
         include: {
           meals: {
@@ -195,6 +192,12 @@ export async function GET(req: NextRequest) {
       }),
     ])
 
+    console.log('🔷 Meal plan found:', currentMealPlan?.id || 'none')
+    if (currentMealPlan) {
+      console.log('🔷 Meal plan dates:', currentMealPlan.weekStartDate, 'to', currentMealPlan.weekEndDate)
+      console.log('🔷 Meals found:', currentMealPlan.meals.length)
+    }
+
     // Build user info
     const firstName = mainProfile?.profileName?.split(' ')[0] || session.user.email?.split('@')[0] || 'User'
     const familyName = mainProfile?.profileName?.includes(' ')
@@ -202,26 +205,47 @@ export async function GET(req: NextRequest) {
       : 'Family'
     const initials = firstName.charAt(0).toUpperCase() + (familyName.charAt(0)?.toUpperCase() || '')
 
-    // Build week range label
-    const weekLabel = `Week of ${format(weekStart, 'd')}–${format(weekEnd, 'd MMMM')}`
+    // Build week range label from meal plan dates (or fallback)
+    let weekLabel: string
+    let weekStart: Date
+    let weekEnd: Date
 
-    // Build weekly meals array (Mon-Sun)
-    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-    const weeklyMeals: WeeklyMeal[] = dayNames.map((day, index) => {
-      const date = addDays(weekStart, index)
+    if (currentMealPlan) {
+      weekStart = new Date(currentMealPlan.weekStartDate)
+      weekEnd = new Date(currentMealPlan.weekEndDate)
+      weekLabel = `${format(weekStart, 'd')}–${format(weekEnd, 'd MMMM yyyy')}`
+    } else {
+      // Fallback: show next 7 days from today
+      weekStart = today
+      weekEnd = addDays(today, 6)
+      weekLabel = `${format(weekStart, 'd')}–${format(weekEnd, 'd MMMM yyyy')}`
+    }
+
+    // Build weekly meals array - START FROM TODAY, show 7 days
+    const weeklyMeals: WeeklyMeal[] = []
+
+    for (let i = 0; i < 7; i++) {
+      const date = addDays(today, i)
+      const dayName = format(date, 'EEEE') // 'Monday', 'Tuesday', etc.
+      const dayShort = format(date, 'EEE')  // 'Mon', 'Tue', etc.
+      const dateDisplay = format(date, 'd MMM') // '15 Dec'
+
+      // Find meal for this day (database stores full day names like 'Monday', 'Tuesday')
       const meal = currentMealPlan?.meals.find(
-        (m: MealWithRecipe) => m.dayOfWeek === day || m.dayOfWeek === dayNames[index]
+        (m: MealWithRecipe) => m.dayOfWeek === dayName
       )
 
-      return {
-        day,
+      weeklyMeals.push({
+        day: dayName,
+        dayShort,
         date: format(date, 'yyyy-MM-dd'),
-        isToday: isToday(date),
+        dateDisplay,
+        isToday: i === 0, // First day is always today
         dinner: meal?.recipe?.recipeName || meal?.recipeName || null,
         recipeId: meal?.recipeId || null,
         planned: !!(meal?.recipeId || meal?.recipeName),
-      }
-    })
+      })
+    }
 
     const plannedCount = weeklyMeals.filter((m) => m.planned).length
 
@@ -301,6 +325,7 @@ export async function GET(req: NextRequest) {
     }
 
     console.log('🟢 Dashboard data fetched successfully')
+    console.log('🟢 Weekly meals:', weeklyMeals.map(m => `${m.dayShort} ${m.dateDisplay}: ${m.dinner || 'unplanned'}`))
 
     return NextResponse.json(dashboardData)
   } catch (error) {

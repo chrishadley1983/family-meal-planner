@@ -4,8 +4,10 @@ import Link from 'next/link'
 import { Calendar, Utensils, Plus, ChevronRight, Sparkles } from 'lucide-react'
 
 interface WeeklyMeal {
-  day: string
-  date: string
+  day: string           // 'Monday'
+  dayShort: string      // 'Mon'
+  date: string          // '2025-12-15' (ISO)
+  dateDisplay: string   // '15 Dec'
   isToday: boolean
   dinner: string | null
   recipeId: string | null
@@ -46,15 +48,18 @@ export function WeeklyMealsCard({ meals, plannedCount, mealPlanId }: WeeklyMeals
       <div className="divide-y divide-zinc-800">
         {meals.map((meal) => (
           <div
-            key={meal.day}
+            key={meal.date}
             className={`px-5 py-3 flex items-center gap-4 ${
               meal.isToday ? 'bg-purple-500/10 border-l-2 border-purple-500' : ''
             }`}
           >
-            {/* Day label */}
-            <div className={`w-12 text-center ${meal.isToday ? 'text-purple-300' : 'text-zinc-500'}`}>
-              <div className="text-xs font-medium uppercase tracking-wide">{meal.day}</div>
-              {meal.isToday && <div className="text-[10px] text-purple-400 mt-0.5">Today</div>}
+            {/* Day and date label */}
+            <div className={`w-16 text-center ${meal.isToday ? 'text-purple-300' : 'text-zinc-500'}`}>
+              <div className="text-xs font-medium uppercase tracking-wide">{meal.dayShort}</div>
+              <div className={`text-[10px] ${meal.isToday ? 'text-purple-400' : 'text-zinc-600'}`}>
+                {meal.dateDisplay}
+              </div>
+              {meal.isToday && <div className="text-[10px] text-purple-400 font-medium">Today</div>}
             </div>
 
             {meal.planned ? (
