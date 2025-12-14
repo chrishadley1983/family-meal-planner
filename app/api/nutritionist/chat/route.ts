@@ -16,6 +16,12 @@ import {
   CreateRecipeAction,
   CalculatedMacros,
 } from '@/lib/nutritionist'
+import {
+  searchMasterRecipes,
+  parseSearchRequirements,
+  MasterRecipeSearchResult,
+} from '@/lib/nutritionist/master-recipe-search'
+import { buildMasterRecipesContext } from '@/lib/nutritionist/prompts'
 import { getRecipeNutrition, RecipeIngredient } from '@/lib/nutrition/nutrition-service'
 
 const client = new Anthropic({
@@ -650,11 +656,46 @@ export async function POST(request: NextRequest) {
       content: message,
     })
 
+    // Search for relevant master recipes based on user message
+    console.log('🔍 Searching master recipes for context...')
+    const searchParams = parseSearchRequirements(message)
+
+    // Add profile-based filters
+    if (profileContext.allergies.length > 0) {
+      // Map allergies to allergen tags
+      const allergenMap: Record<string, string> = {
+        dairy: 'dairy', milk: 'dairy', lactose: 'dairy',
+        gluten: 'gluten', wheat: 'gluten',
+        nuts: 'nuts', 'tree nuts': 'nuts', peanuts: 'peanuts',
+        eggs: 'eggs', egg: 'eggs',
+        fish: 'fish', shellfish: 'shellfish',
+        soy: 'soy', soya: 'soy', sesame: 'sesame'
+      }
+      searchParams.excludeAllergens = profileContext.allergies
+        .map(a => allergenMap[a.toLowerCase()])
+        .filter(Boolean) as string[]
+    }
+
+    // Search master recipes
+    let masterRecipes: MasterRecipeSearchResult[] = []
+    try {
+      masterRecipes = await searchMasterRecipes({
+        ...searchParams,
+        limit: 10  // Provide up to 10 relevant recipes for context
+      })
+      console.log(`🔍 Found ${masterRecipes.length} relevant master recipes`)
+    } catch (err) {
+      console.warn('⚠️ Master recipe search failed, continuing without:', err)
+    }
+
+    // Build master recipes context string
+    const masterRecipesContext = buildMasterRecipesContext(masterRecipes)
+
     // Get system prompt with context
     const systemPrompt = getHolisticNutritionistSystemPrompt(
       profileContext,
       conversationContext
-    )
+    ) + masterRecipesContext  // Append master recipes to system prompt
 
     console.log('🔷 Calling Claude API...')
 

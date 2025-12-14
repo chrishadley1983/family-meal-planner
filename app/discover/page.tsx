@@ -12,6 +12,7 @@ import {
   FilterPanel,
   RecipePreviewModal,
   Pagination,
+  DiscoverAssistant,
   defaultFilters,
   type DiscoverRecipe,
   type Filters
@@ -397,6 +398,14 @@ export default function DiscoverPage() {
           isAdding={addingRecipeId === previewRecipeId}
         />
       </PageContainer>
+
+      {/* Discover Assistant (Emilia) */}
+      {profiles.length > 0 && (
+        <DiscoverAssistant
+          profileId={profiles[0].id}
+          onAddRecipe={handleAddSingle}
+        />
+      )}
     </AppLayout>
   )
 }

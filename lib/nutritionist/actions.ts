@@ -10,9 +10,11 @@ import {
   UpdateMacrosAction,
   UpdatePreferencesAction,
   CreateRecipeAction,
+  AddMasterRecipeAction,
   AddInventoryAction,
   AddStapleAction,
 } from './types'
+import { addMasterRecipeToUserLibrary } from '@/lib/scraping/import'
 
 export interface ActionResult {
   success: boolean
@@ -35,6 +37,8 @@ export async function executeAction(
       return handleUpdatePreferences(action as UpdatePreferencesAction, userId)
     case 'CREATE_RECIPE':
       return handleCreateRecipe(action as CreateRecipeAction, userId)
+    case 'ADD_MASTER_RECIPE':
+      return handleAddMasterRecipe(action as AddMasterRecipeAction, userId)
     case 'ADD_INVENTORY_ITEM':
       return handleAddInventory(action as AddInventoryAction, userId)
     case 'ADD_STAPLE':
@@ -297,6 +301,58 @@ async function handleCreateRecipe(
 }
 
 /**
+ * Handle ADD_MASTER_RECIPE action - add curated recipe from master database to user's library
+ */
+async function handleAddMasterRecipe(
+  action: AddMasterRecipeAction,
+  userId: string
+): Promise<ActionResult> {
+  try {
+    const { data } = action
+
+    if (!data.masterRecipeId) {
+      return {
+        success: false,
+        message: 'Missing master recipe ID',
+        error: 'Cannot add recipe without a valid master recipe ID',
+      }
+    }
+
+    console.log(`🔷 Adding master recipe to user library: ${data.name} (${data.masterRecipeId})`)
+
+    // Use the existing import function
+    const result = await addMasterRecipeToUserLibrary(data.masterRecipeId, userId)
+
+    if (result.success) {
+      return {
+        success: true,
+        message: `Added "${data.name}" from ${data.sourceSiteName} to your recipes!`,
+        data: { recipeId: result.recipeId },
+      }
+    } else if (result.skipped) {
+      return {
+        success: true,
+        message: result.reason || 'Recipe already in your library',
+        data: { recipeId: result.recipeId, skipped: true },
+      }
+    } else {
+      return {
+        success: false,
+        message: 'Failed to add recipe to your library',
+        error: result.error || 'Unknown error',
+      }
+    }
+  } catch (error) {
+    console.error('❌ Error adding master recipe:', error)
+    return {
+      success: false,
+      message: 'Failed to add recipe to your library',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }
+  }
+}
+
+/**
  * Handle ADD_INVENTORY_ITEM action - add item to inventory
  */
 async function handleAddInventory(
@@ -443,6 +499,12 @@ export function validateAction(action: NutritionistAction): {
       }
       break
     }
+    case 'ADD_MASTER_RECIPE': {
+      const data = (action as AddMasterRecipeAction).data
+      if (!data.masterRecipeId) errors.push('Missing master recipe ID')
+      if (!data.name) errors.push('Missing recipe name')
+      break
+    }
     case 'ADD_INVENTORY_ITEM': {
       const data = (action as AddInventoryAction).data
       if (!data.itemName) errors.push('Missing item name')
@@ -521,6 +583,29 @@ export function formatActionForDisplay(action: NutritionistAction): {
           'Calories': `${data.caloriesPerServing} per serving`,
           'Protein': `${data.proteinPerServing}g per serving`,
           'Ingredients': data.ingredients.map((i) => `${i.quantity} ${i.unit} ${i.name}`),
+        },
+      }
+    }
+    case 'ADD_MASTER_RECIPE': {
+      const data = (action as AddMasterRecipeAction).data
+      const nutritionDetails: string[] = []
+      if (data.caloriesPerServing) nutritionDetails.push(`${data.caloriesPerServing} kcal`)
+      if (data.proteinPerServing) nutritionDetails.push(`${data.proteinPerServing}g protein`)
+      if (data.carbsPerServing) nutritionDetails.push(`${data.carbsPerServing}g carbs`)
+      if (data.fatPerServing) nutritionDetails.push(`${data.fatPerServing}g fat`)
+
+      return {
+        title: 'Add Curated Recipe',
+        description: `Add "${data.name}" from ${data.sourceSiteName} to your recipes:`,
+        details: {
+          'Name': data.name,
+          'Source': data.sourceSiteName,
+          'Servings': data.servings || 'Not specified',
+          'Total Time': data.totalTimeMinutes ? `${data.totalTimeMinutes} mins` : 'Not specified',
+          'Cuisine': data.cuisineType || 'Not specified',
+          'Meal Type': data.mealCategory.length > 0 ? data.mealCategory : ['Not specified'],
+          'Dietary': data.dietaryTags.length > 0 ? data.dietaryTags : ['None'],
+          'Nutrition': nutritionDetails.length > 0 ? nutritionDetails.join(', ') : 'Not available',
         },
       }
     }

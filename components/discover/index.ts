@@ -7,3 +7,5 @@ export type { Filters } from './FilterPanel'
 export { RecipePreviewModal } from './RecipePreviewModal'
 
 export { Pagination } from './Pagination'
+
+export { DiscoverAssistant } from './DiscoverAssistant'
