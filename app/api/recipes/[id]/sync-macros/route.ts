@@ -12,6 +12,15 @@ const syncMacrosSchema = z.object({
   fiberPerServing: z.number().positive().nullable().optional(),
   sugarPerServing: z.number().positive().nullable().optional(),
   sodiumPerServing: z.number().int().positive().nullable().optional(),
+  // AI rating fields
+  aiOverallRating: z.enum(['green', 'yellow', 'red']).optional(),
+  aiOverallExplanation: z.string().optional(),
+  aiIngredientRatings: z.array(z.object({
+    ingredientName: z.string(),
+    rating: z.enum(['green', 'yellow', 'red']),
+    reason: z.string(),
+  })).optional(),
+  aiNutritionistFeedback: z.string().optional(),
 })
 
 // PATCH - Sync macro values from AI analysis to database
@@ -60,7 +69,7 @@ export async function PATCH(
       })
     }
 
-    // Update macro fields and tracking metadata
+    // Update macro fields, AI ratings, and tracking metadata
     await prisma.recipe.update({
       where: { id },
       data: {
@@ -71,6 +80,13 @@ export async function PATCH(
         fiberPerServing: data.fiberPerServing,
         sugarPerServing: data.sugarPerServing,
         sodiumPerServing: data.sodiumPerServing,
+        // AI rating fields (if provided)
+        ...(data.aiOverallRating && { aiOverallRating: data.aiOverallRating }),
+        ...(data.aiOverallExplanation && { aiOverallExplanation: data.aiOverallExplanation }),
+        ...(data.aiIngredientRatings && { aiIngredientRatings: data.aiIngredientRatings }),
+        ...(data.aiNutritionistFeedback && { aiNutritionistFeedback: data.aiNutritionistFeedback }),
+        // Update timestamp if AI ratings provided
+        ...((data.aiOverallRating || data.aiNutritionistFeedback) && { aiAnalysisCalculatedAt: new Date() }),
         // Mark as manually synced
         nutritionSource: 'manual',
         nutritionCalculatedAt: new Date(),
