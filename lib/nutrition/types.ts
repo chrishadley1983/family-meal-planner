@@ -101,4 +101,13 @@ export const UNIT_TO_GRAMS: Record<string, number> = {
   'each': 100,
   'clove': 3,         // Garlic clove
   'cloves': 3,
+
+  // Small measurements (spices, seasonings)
+  'pinch': 0.3,       // ~1/16 tsp
+  'pinches': 0.3,
+  'dash': 0.5,        // ~1/8 tsp
+  'dashes': 0.5,
+  'smidgen': 0.2,
+  'drop': 0.05,
+  'drops': 0.05,
 }
