@@ -940,7 +940,7 @@ IMPORTANT: You MUST rate EVERY ingredient. The ingredientRatings array must have
   try {
     const message = await client.messages.create({
       model: 'claude-haiku-4-5',
-      max_tokens: 1024,
+      max_tokens: 2048,  // Increased for recipes with many ingredients
       messages: [{
         role: 'user',
         content: prompt
@@ -948,12 +948,12 @@ IMPORTANT: You MUST rate EVERY ingredient. The ingredientRatings array must have
     })
 
     const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
+    const parsed = safeParseJSON(responseText)
+    if (!parsed) {
       throw new Error('Failed to parse ingredient ratings from Claude response')
     }
 
-    return JSON.parse(jsonMatch[0])
+    return parsed
   } catch (error) {
     console.error('Error rating ingredients with Claude:', error)
     // Return a safe fallback
@@ -966,6 +966,47 @@ IMPORTANT: You MUST rate EVERY ingredient. The ingredientRatings array must have
         reason: 'Rating unavailable'
       }))
     }
+  }
+}
+
+/**
+ * Safely parse JSON from AI responses, handling common formatting issues
+ */
+function safeParseJSON(text: string): any | null {
+  // First, try to extract JSON from the response
+  const jsonMatch = text.match(/\{[\s\S]*\}/)
+  if (!jsonMatch) {
+    return null
+  }
+
+  let jsonStr = jsonMatch[0]
+
+  // Try parsing as-is first
+  try {
+    return JSON.parse(jsonStr)
+  } catch (e) {
+    // If that fails, try to fix common issues
+  }
+
+  // Fix 1: Remove trailing commas before ] or }
+  jsonStr = jsonStr.replace(/,(\s*[}\]])/g, '$1')
+
+  // Fix 2: Remove any markdown code block markers that might be inside
+  jsonStr = jsonStr.replace(/```json\s*/g, '').replace(/```\s*/g, '')
+
+  // Fix 3: Fix unescaped newlines in strings (replace with \n)
+  // This is tricky - only fix newlines inside string values
+  jsonStr = jsonStr.replace(/"([^"]*)\n([^"]*)"/g, '"$1\\n$2"')
+
+  // Fix 4: Remove any control characters except \n, \r, \t
+  jsonStr = jsonStr.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '')
+
+  try {
+    return JSON.parse(jsonStr)
+  } catch (e) {
+    console.error('JSON parse failed after cleanup. First 500 chars:', jsonStr.substring(0, 500))
+    console.error('Last 500 chars:', jsonStr.substring(jsonStr.length - 500))
+    return null
   }
 }
 
