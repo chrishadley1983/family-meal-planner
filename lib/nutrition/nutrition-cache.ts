@@ -263,6 +263,13 @@ const COMMON_INGREDIENTS: Record<string, NutrientsPer100g> = {
   'yoghurt': { calories: 59, protein: 10, carbs: 3.6, fat: 0.7, fiber: 0, sugar: 3.2, sodium: 36 },
   'greek yogurt': { calories: 97, protein: 9, carbs: 3.6, fat: 5, fiber: 0, sugar: 3.6, sodium: 47 },
   'greek yoghurt': { calories: 97, protein: 9, carbs: 3.6, fat: 5, fiber: 0, sugar: 3.6, sodium: 47 },
+  'greek yogurt 0%': { calories: 59, protein: 10, carbs: 3.6, fat: 0.2, fiber: 0, sugar: 3.2, sodium: 36 },  // Fat-free Greek yogurt
+  'greek yoghurt 0%': { calories: 59, protein: 10, carbs: 3.6, fat: 0.2, fiber: 0, sugar: 3.2, sodium: 36 },  // Fat-free Greek yogurt
+  '0% greek yogurt': { calories: 59, protein: 10, carbs: 3.6, fat: 0.2, fiber: 0, sugar: 3.2, sodium: 36 },  // Fat-free Greek yogurt
+  '0% greek yoghurt': { calories: 59, protein: 10, carbs: 3.6, fat: 0.2, fiber: 0, sugar: 3.2, sodium: 36 },  // Fat-free Greek yogurt
+  'fat free greek yogurt': { calories: 59, protein: 10, carbs: 3.6, fat: 0.2, fiber: 0, sugar: 3.2, sodium: 36 },  // Fat-free Greek yogurt
+  'fat free greek yoghurt': { calories: 59, protein: 10, carbs: 3.6, fat: 0.2, fiber: 0, sugar: 3.2, sodium: 36 },  // Fat-free Greek yogurt
+  'nonfat greek yogurt': { calories: 59, protein: 10, carbs: 3.6, fat: 0.2, fiber: 0, sugar: 3.2, sodium: 36 },  // Fat-free Greek yogurt
   'natural yogurt': { calories: 61, protein: 3.5, carbs: 4.7, fat: 3.3, fiber: 0, sugar: 4.7, sodium: 46 },
   'low fat yogurt': { calories: 56, protein: 5, carbs: 7.7, fat: 0.7, fiber: 0, sugar: 7.7, sodium: 76 },
   'fat free yogurt': { calories: 46, protein: 4.4, carbs: 6.5, fat: 0.2, fiber: 0, sugar: 4.5, sodium: 52 },
@@ -503,9 +510,9 @@ const COMMON_INGREDIENTS: Record<string, NutrientsPer100g> = {
   'quinoa': { calories: 120, protein: 4.4, carbs: 21, fat: 1.9, fiber: 2.8, sugar: 0.9, sodium: 7 },
   'barley': { calories: 123, protein: 2.3, carbs: 28, fat: 0.4, fiber: 3.8, sugar: 0.3, sodium: 3 },
   'pearl barley': { calories: 123, protein: 2.3, carbs: 28, fat: 0.4, fiber: 3.8, sugar: 0.3, sodium: 3 },
-  'oats': { calories: 68, protein: 2.4, carbs: 12, fat: 1.4, fiber: 1.7, sugar: 0.5, sodium: 2 },
-  'rolled oats': { calories: 68, protein: 2.4, carbs: 12, fat: 1.4, fiber: 1.7, sugar: 0.5, sodium: 2 },
-  'porridge oats': { calories: 68, protein: 2.4, carbs: 12, fat: 1.4, fiber: 1.7, sugar: 0.5, sodium: 2 },
+  'oats': { calories: 379, protein: 13.2, carbs: 67.7, fat: 6.5, fiber: 10.1, sugar: 0.9, sodium: 6 },  // Dry oats (USDA)
+  'rolled oats': { calories: 379, protein: 13.2, carbs: 67.7, fat: 6.5, fiber: 10.1, sugar: 0.9, sodium: 6 },  // Dry oats (USDA)
+  'porridge oats': { calories: 379, protein: 13.2, carbs: 67.7, fat: 6.5, fiber: 10.1, sugar: 0.9, sodium: 6 },  // Dry oats (USDA)
   'polenta': { calories: 70, protein: 1.6, carbs: 15, fat: 0.4, fiber: 1, sugar: 0.1, sodium: 1 },
   'cornmeal': { calories: 361, protein: 8.1, carbs: 77, fat: 3.6, fiber: 7.3, sugar: 0.6, sodium: 7 },
   'flour': { calories: 364, protein: 10, carbs: 76, fat: 1, fiber: 2.7, sugar: 0.3, sodium: 2 },
