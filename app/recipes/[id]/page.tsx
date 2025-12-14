@@ -147,36 +147,9 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
         console.log('✅ Macro analysis received:', macroData)
         setMacroAnalysis(macroData.analysis)
 
-        // Sync macro values to database (keeps filter values in sync with displayed values)
-        if (macroData.analysis?.perServing) {
-          console.log('🔄 Syncing macros to database...')
-          try {
-            const syncResponse = await fetch(`/api/recipes/${id}/sync-macros`, {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                caloriesPerServing: macroData.analysis.perServing.calories ? Math.round(macroData.analysis.perServing.calories) : null,
-                proteinPerServing: macroData.analysis.perServing.protein ? Math.round(macroData.analysis.perServing.protein * 10) / 10 : null,
-                carbsPerServing: macroData.analysis.perServing.carbs ? Math.round(macroData.analysis.perServing.carbs * 10) / 10 : null,
-                fatPerServing: macroData.analysis.perServing.fat ? Math.round(macroData.analysis.perServing.fat * 10) / 10 : null,
-                fiberPerServing: macroData.analysis.perServing.fiber ? Math.round(macroData.analysis.perServing.fiber * 10) / 10 : null,
-                sugarPerServing: macroData.analysis.perServing.sugar ? Math.round(macroData.analysis.perServing.sugar * 10) / 10 : null,
-                sodiumPerServing: macroData.analysis.perServing.sodium ? Math.round(macroData.analysis.perServing.sodium) : null,
-              })
-            })
-            if (syncResponse.ok) {
-              const syncData = await syncResponse.json()
-              console.log('✅ Macros synced:', syncData.synced ? 'updated' : 'already in sync')
-            } else {
-              console.warn('⚠️ Failed to sync macros:', syncResponse.status)
-            }
-          } catch (syncErr) {
-            console.warn('⚠️ Failed to sync macros:', syncErr)
-          }
-        }
-
         // Fetch nutritionist feedback
         console.log('📡 Calling nutritionist feedback API...')
+        let feedbackText = ''
         const feedbackResponse = await fetch('/api/recipes/nutritionist-feedback', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -195,9 +168,44 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
         if (feedbackResponse.ok) {
           const feedbackData = await feedbackResponse.json()
           console.log('✅ Nutritionist feedback received:', feedbackData)
-          setNutritionistFeedback(feedbackData.feedback)
+          feedbackText = feedbackData.feedback
+          setNutritionistFeedback(feedbackText)
         } else {
           console.log('❌ Feedback request failed')
+        }
+
+        // Sync ALL analysis data to database (macros + AI ratings + feedback)
+        if (macroData.analysis?.perServing) {
+          console.log('🔄 Syncing macros and AI analysis to database...')
+          try {
+            const syncResponse = await fetch(`/api/recipes/${id}/sync-macros`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                // Macro values
+                caloriesPerServing: macroData.analysis.perServing.calories ? Math.round(macroData.analysis.perServing.calories) : null,
+                proteinPerServing: macroData.analysis.perServing.protein ? Math.round(macroData.analysis.perServing.protein * 10) / 10 : null,
+                carbsPerServing: macroData.analysis.perServing.carbs ? Math.round(macroData.analysis.perServing.carbs * 10) / 10 : null,
+                fatPerServing: macroData.analysis.perServing.fat ? Math.round(macroData.analysis.perServing.fat * 10) / 10 : null,
+                fiberPerServing: macroData.analysis.perServing.fiber ? Math.round(macroData.analysis.perServing.fiber * 10) / 10 : null,
+                sugarPerServing: macroData.analysis.perServing.sugar ? Math.round(macroData.analysis.perServing.sugar * 10) / 10 : null,
+                sodiumPerServing: macroData.analysis.perServing.sodium ? Math.round(macroData.analysis.perServing.sodium) : null,
+                // AI rating values (for caching)
+                aiOverallRating: macroData.analysis.overallRating,
+                aiOverallExplanation: macroData.analysis.overallExplanation,
+                aiIngredientRatings: macroData.analysis.ingredientRatings,
+                aiNutritionistFeedback: feedbackText || undefined,
+              })
+            })
+            if (syncResponse.ok) {
+              const syncData = await syncResponse.json()
+              console.log('✅ Macros and AI analysis synced:', syncData.synced ? 'updated' : 'already in sync')
+            } else {
+              console.warn('⚠️ Failed to sync macros:', syncResponse.status)
+            }
+          } catch (syncErr) {
+            console.warn('⚠️ Failed to sync macros:', syncErr)
+          }
         }
       } else {
         const errorData = await macroResponse.json()
@@ -543,6 +551,32 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
       setInstructions(data.recipe.instructions || [])
       setImageUrl(data.recipe.imageUrl || '')
       setImagePreview(data.recipe.imageUrl || '')
+
+      // Load cached AI analysis from database if available
+      if (data.recipe.aiOverallRating && data.recipe.aiIngredientRatings) {
+        console.log('📦 Loading cached AI analysis from database')
+        setMacroAnalysis({
+          perServing: {
+            calories: data.recipe.caloriesPerServing || 0,
+            protein: data.recipe.proteinPerServing || 0,
+            carbs: data.recipe.carbsPerServing || 0,
+            fat: data.recipe.fatPerServing || 0,
+            fiber: data.recipe.fiberPerServing || 0,
+            sugar: data.recipe.sugarPerServing || 0,
+            sodium: data.recipe.sodiumPerServing || 0,
+          },
+          overallRating: data.recipe.aiOverallRating as 'green' | 'yellow' | 'red',
+          overallExplanation: data.recipe.aiOverallExplanation || '',
+          ingredientRatings: data.recipe.aiIngredientRatings as Array<{
+            ingredientName: string
+            rating: 'green' | 'yellow' | 'red'
+            reason: string
+          }>,
+        })
+        if (data.recipe.aiNutritionistFeedback) {
+          setNutritionistFeedback(data.recipe.aiNutritionistFeedback)
+        }
+      }
     } catch (err) {
       console.error('❌ Error in fetchRecipe:', err)
       router.push('/recipes')

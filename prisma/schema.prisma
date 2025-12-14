@@ -142,6 +142,11 @@ model Recipe {
   nutritionCalculatedAt   DateTime?
   nutritionConfidence     String?
   nutritionSource         String?
+  aiOverallRating         String?
+  aiOverallExplanation    String?
+  aiIngredientRatings     Json?
+  aiNutritionistFeedback  String?
+  aiAnalysisCalculatedAt  DateTime?
   meals                   Meal[]
   ingredients             RecipeIngredient[]
   instructions            RecipeInstruction[]

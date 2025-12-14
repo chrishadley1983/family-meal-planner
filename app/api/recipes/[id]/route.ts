@@ -163,9 +163,9 @@ export async function PUT(
     if (ingredients !== undefined && ingredients.length > 0) {
       newIngredientsHash = calculateIngredientsHash(ingredients)
 
-      // If hash changed, we need to recalculate nutrition
+      // If hash changed, we need to recalculate nutrition and clear AI cache
       if (newIngredientsHash !== existingRecipe.ingredientsHash) {
-        console.log('🔄 Ingredients changed, will recalculate nutrition')
+        console.log('🔄 Ingredients changed, will recalculate nutrition and clear AI cache')
         shouldRecalculateNutrition = true
       }
     }
@@ -194,6 +194,14 @@ export async function PUT(
         ratingDate,
         // Update ingredients hash if ingredients changed
         ...(newIngredientsHash && { ingredientsHash: newIngredientsHash }),
+        // Clear AI ratings cache when ingredients change (will be recalculated on next view)
+        ...(shouldRecalculateNutrition && {
+          aiOverallRating: null,
+          aiOverallExplanation: null,
+          aiIngredientRatings: null,
+          aiNutritionistFeedback: null,
+          aiAnalysisCalculatedAt: null,
+        }),
         ...(ingredients !== undefined && {
           ingredients: {
             create: ingredients.map((ing, index) => ({
