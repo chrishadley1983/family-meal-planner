@@ -421,7 +421,7 @@ Respond as if this is your FIRST and ONLY attempt - natural and confident.` },
 
     try {
       const response = await client.messages.create({
-        model: 'claude-haiku-4-5-20250822',
+        model: 'claude-haiku-4-5',
         max_tokens: 2048,
         system: systemPrompt,
         messages: refinedHistory.map(msg => ({

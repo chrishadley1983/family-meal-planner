@@ -370,7 +370,7 @@ Return ONLY a valid JSON object with these exact fields:
 Use your knowledge of food nutrition to provide reasonable estimates. Be conservative.`
 
     const response = await client.messages.create({
-      model: 'claude-haiku-4-5-20250822',
+      model: 'claude-haiku-4-5',
       max_tokens: 256,
       messages: [{ role: 'user', content: prompt }],
     })

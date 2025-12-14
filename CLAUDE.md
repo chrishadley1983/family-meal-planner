@@ -1199,7 +1199,9 @@ console.warn('⚠️ Missing required field:', fieldName);
 
 ### Claude API Usage
 
-- Model: `claude-sonnet-4-20250514` for standard operations
+- **Default Model:** `claude-haiku-4-5` for most operations (fast, cost-effective)
+- **Complex Operations:** `claude-sonnet-4-5` for complex reasoning tasks
+- **IMPORTANT:** Use short model names (e.g., `claude-haiku-4-5`) NOT date-versioned names (e.g., `claude-haiku-4-5-20250822`)
 - Temperature: 0.7 for creative (meal suggestions), 0.3 for structured (parsing)
 - Always include system prompts defining the task
 - Parse responses with Zod for type safety
