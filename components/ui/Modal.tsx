@@ -39,9 +39,9 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 'lg' }: Mod
 
   return (
     <div className="fixed inset-0 z-[60] overflow-y-auto">
-      {/* Backdrop */}
+      {/* Backdrop - semi-transparent to show content behind */}
       <div
-        className="fixed inset-0 bg-black bg-opacity-30 transition-opacity backdrop-blur-sm"
+        className="fixed inset-0 bg-black/40 transition-opacity"
         onClick={onClose}
       />
 
