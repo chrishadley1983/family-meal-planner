@@ -4,9 +4,8 @@
  * Run with: npx tsx scripts/clear-stale-nutrition-cache.ts
  */
 
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import 'dotenv/config'
+import { prisma } from '../lib/prisma'
 
 async function main() {
   console.log('🗑️  Clearing stale nutrition cache entries...\n')
@@ -73,6 +72,6 @@ main()
     console.error('❌ Error:', e)
     process.exit(1)
   })
-  .finally(async () => {
-    await prisma.$disconnect()
+  .finally(() => {
+    process.exit(0)
   })
