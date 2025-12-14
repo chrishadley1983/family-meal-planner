@@ -126,7 +126,7 @@ export async function GET(req: NextRequest) {
         include: {
           meals: {
             where: {
-              mealType: 'Dinner', // Only dinners for the weekly view
+              mealType: 'dinner', // Only dinners for the weekly view (lowercase to match database)
             },
             include: {
               recipe: {
