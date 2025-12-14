@@ -34,9 +34,10 @@ export async function GET(req: NextRequest) {
       where: {
         userId: session.user.id
       },
-      orderBy: {
-        createdAt: 'desc'
-      }
+      orderBy: [
+        { isMainUser: 'desc' },  // Main user first
+        { createdAt: 'asc' }     // Then oldest first (original profiles)
+      ]
     })
 
     return NextResponse.json({ profiles })

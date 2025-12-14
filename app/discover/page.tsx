@@ -404,6 +404,7 @@ export default function DiscoverPage() {
         <DiscoverAssistant
           profileId={profiles[0].id}
           onAddRecipe={handleAddSingle}
+          onPreviewRecipe={(recipeId) => setPreviewRecipeId(recipeId)}
         />
       ) : (
         /* No-profile hint - show small tooltip near where FAB would be */
