@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/Button'
 import { MasterRecipeSearchResult } from '@/lib/nutritionist/master-recipe-search'
-import Image from 'next/image'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -14,10 +13,12 @@ interface Message {
 interface DiscoverAssistantProps {
   profileId: string
   onAddRecipe: (recipeId: string) => Promise<void>
+  onPreviewRecipe?: (recipeId: string) => void
 }
 
-export function DiscoverAssistant({ profileId, onAddRecipe }: DiscoverAssistantProps) {
+export function DiscoverAssistant({ profileId, onAddRecipe, onPreviewRecipe }: DiscoverAssistantProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -106,7 +107,8 @@ export function DiscoverAssistant({ profileId, onAddRecipe }: DiscoverAssistantP
     }
   }
 
-  const handleAddRecipe = async (recipe: MasterRecipeSearchResult) => {
+  const handleAddRecipe = async (e: React.MouseEvent, recipe: MasterRecipeSearchResult) => {
+    e.stopPropagation() // Prevent triggering preview when clicking Add
     setAddingRecipeId(recipe.id)
     try {
       await onAddRecipe(recipe.id)
@@ -118,8 +120,18 @@ export function DiscoverAssistant({ profileId, onAddRecipe }: DiscoverAssistantP
     }
   }
 
+  const handleRecipeClick = (recipeId: string) => {
+    if (onPreviewRecipe) {
+      onPreviewRecipe(recipeId)
+    }
+  }
+
   const handlePromptClick = (prompt: string) => {
     sendMessage(prompt)
+  }
+
+  const toggleExpand = () => {
+    setIsExpanded(prev => !prev)
   }
 
   if (!isOpen) {
@@ -127,56 +139,59 @@ export function DiscoverAssistant({ profileId, onAddRecipe }: DiscoverAssistantP
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-purple-600 hover:bg-purple-500 text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-105 z-50"
+        className="fixed bottom-6 right-6 w-14 h-14 bg-purple-600 hover:bg-purple-500 text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-105 z-50 text-2xl"
         title="Ask Emilia for recipe help"
       >
-        <Image
-          src="/emilia-avatar.png"
-          alt="Emilia"
-          width={48}
-          height={48}
-          className="rounded-full"
-          onError={(e) => {
-            // Fallback to emoji if image not found
-            e.currentTarget.style.display = 'none'
-            e.currentTarget.parentElement!.innerHTML = '🍳'
-          }}
-        />
+        <span role="img" aria-label="Emilia">👩‍🍳</span>
       </button>
     )
   }
 
+  // Dynamic sizing based on expanded state
+  const containerClasses = isExpanded
+    ? "fixed bottom-6 right-6 w-[50vw] h-[80vh] bg-zinc-900 rounded-xl shadow-2xl border border-zinc-700 flex flex-col z-50 transition-all duration-300"
+    : "fixed bottom-6 right-6 w-96 h-[500px] bg-zinc-900 rounded-xl shadow-2xl border border-zinc-700 flex flex-col z-50 transition-all duration-300"
+
   return (
-    <div className="fixed bottom-6 right-6 w-96 h-[500px] bg-zinc-900 rounded-xl shadow-2xl border border-zinc-700 flex flex-col z-50">
+    <div className={containerClasses}>
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-zinc-700">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center overflow-hidden">
-            <Image
-              src="/emilia-avatar.png"
-              alt="Emilia"
-              width={40}
-              height={40}
-              className="rounded-full"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none'
-                e.currentTarget.parentElement!.innerHTML = '🍳'
-              }}
-            />
+          <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-xl">
+            <span role="img" aria-label="Emilia">👩‍🍳</span>
           </div>
           <div>
             <h3 className="font-semibold text-white">Emilia</h3>
             <p className="text-xs text-zinc-400">Recipe Assistant</p>
           </div>
         </div>
-        <button
-          onClick={() => setIsOpen(false)}
-          className="text-zinc-400 hover:text-white transition-colors"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Expand/Collapse button */}
+          <button
+            onClick={toggleExpand}
+            className="text-zinc-400 hover:text-white transition-colors p-1"
+            title={isExpanded ? "Collapse" : "Expand"}
+          >
+            {isExpanded ? (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9L4 4m0 0v5m0-5h5m6 6l5 5m0 0v-5m0 5h-5" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
+              </svg>
+            )}
+          </button>
+          {/* Close button */}
+          <button
+            onClick={() => setIsOpen(false)}
+            className="text-zinc-400 hover:text-white transition-colors p-1"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Messages */}
@@ -219,11 +234,14 @@ export function DiscoverAssistant({ profileId, onAddRecipe }: DiscoverAssistantP
 
               {/* Recipe suggestions */}
               {msg.suggestedRecipes && msg.suggestedRecipes.length > 0 && (
-                <div className="space-y-2 mt-2">
+                <div className={`space-y-2 mt-2 ${isExpanded ? 'grid grid-cols-2 gap-2 space-y-0' : ''}`}>
                   {msg.suggestedRecipes.map((recipe) => (
                     <div
                       key={recipe.id}
-                      className="bg-zinc-800/50 rounded-lg p-3 border border-zinc-700"
+                      onClick={() => handleRecipeClick(recipe.id)}
+                      className={`bg-zinc-800/50 rounded-lg p-3 border border-zinc-700 transition-colors ${
+                        onPreviewRecipe ? 'cursor-pointer hover:bg-zinc-700/50 hover:border-purple-500/50' : ''
+                      }`}
                     >
                       <div className="flex justify-between items-start gap-2">
                         <div className="flex-1 min-w-0">
@@ -240,11 +258,14 @@ export function DiscoverAssistant({ profileId, onAddRecipe }: DiscoverAssistantP
                               {recipe.proteinPerServing && ` • ${recipe.proteinPerServing}g protein`}
                             </p>
                           )}
+                          {onPreviewRecipe && (
+                            <p className="text-xs text-purple-400 mt-1">Click to preview</p>
+                          )}
                         </div>
                         <Button
                           size="sm"
                           variant={addedRecipeIds.has(recipe.id) ? 'ghost' : 'primary'}
-                          onClick={() => handleAddRecipe(recipe)}
+                          onClick={(e) => handleAddRecipe(e, recipe)}
                           disabled={addingRecipeId === recipe.id || addedRecipeIds.has(recipe.id)}
                           className="shrink-0 text-xs"
                         >

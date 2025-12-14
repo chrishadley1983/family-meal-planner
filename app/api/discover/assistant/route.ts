@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
 
     // Call Claude API
     const response = await client.messages.create({
-      model: 'claude-haiku-4-5-20250822',
+      model: 'claude-haiku-4-5',
       max_tokens: 1024,
       system: systemPrompt + masterRecipesContext,
       messages,

@@ -400,11 +400,17 @@ export default function DiscoverPage() {
       </PageContainer>
 
       {/* Discover Assistant (Emilia) */}
-      {profiles.length > 0 && (
+      {profiles.length > 0 ? (
         <DiscoverAssistant
           profileId={profiles[0].id}
           onAddRecipe={handleAddSingle}
+          onPreviewRecipe={(recipeId) => setPreviewRecipeId(recipeId)}
         />
+      ) : (
+        /* No-profile hint - show small tooltip near where FAB would be */
+        <div className="fixed bottom-6 right-6 bg-zinc-800 text-zinc-300 text-sm px-4 py-2 rounded-lg shadow-lg z-40">
+          <a href="/profiles" className="text-purple-400 hover:underline">Create a profile</a> to use the recipe assistant
+        </div>
       )}
     </AppLayout>
   )
