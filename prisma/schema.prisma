@@ -1,5 +1,3 @@
-// This is your Prisma schema file
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,28 +6,25 @@ datasource db {
   provider = "postgresql"
 }
 
-// Units of Measure - reference table for consistent unit handling
 model UnitOfMeasure {
-  id               String   @id @default(uuid())
-  code             String   @unique  // 'g', 'ml', 'pack', etc. - used as FK reference
-  name             String             // 'grams', 'millilitres', 'pack'
-  pluralName       String?            // 'grams', 'packs'
-  abbreviation     String             // 'g', 'ml', 'pk'
-  category         String             // 'weight', 'volume', 'count', 'spoon'
-  displayOrder     Int      @default(0)
-  isMetric         Boolean  @default(true)
-  conversionFactor Float?             // Factor to convert to base unit (e.g., 1000 for kg->g)
-  baseUnitCode     String?            // Reference to base unit code (e.g., 'g' for 'kg')
-  aliases          String[] @default([])
-  isActive         Boolean  @default(true)
-  createdAt        DateTime @default(now())
-
-  // Relations - FK references from other tables
-  recipeIngredients         RecipeIngredient[]
-  staples                   Staple[]
+  id                        String                     @id @default(uuid())
+  code                      String                     @unique
+  name                      String
+  pluralName                String?
+  abbreviation              String
+  category                  String
+  displayOrder              Int                        @default(0)
+  isMetric                  Boolean                    @default(true)
+  conversionFactor          Float?
+  baseUnitCode              String?
+  aliases                   String[]                   @default([])
+  isActive                  Boolean                    @default(true)
+  createdAt                 DateTime                   @default(now())
   inventoryItems            InventoryItem[]
-  shoppingListItems         ShoppingListItem[]
+  recipeIngredients         RecipeIngredient[]
   shoppingListExcludedItems ShoppingListExcludedItem[]
+  shoppingListItems         ShoppingListItem[]
+  staples                   Staple[]
 
   @@index([category])
   @@index([isActive])
@@ -37,63 +32,59 @@ model UnitOfMeasure {
 }
 
 model User {
-  id           String    @id @default(uuid())
-  email        String    @unique
-  passwordHash String
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  lastLogin    DateTime?
-  preferences  Json      @default("{}")
-
-  profiles                  FamilyProfile[]
-  recipes                   Recipe[]
-  mealPlans                 MealPlan[]
-  shoppingLists             ShoppingList[]
-  shoppingListCategories    ShoppingListCategory[]
-  inventory                 InventoryItem[]
-  staples                   Staple[]
+  id                        String                     @id @default(uuid())
+  email                     String                     @unique
+  passwordHash              String
+  createdAt                 DateTime                   @default(now())
+  updatedAt                 DateTime                   @updatedAt
+  lastLogin                 DateTime?
+  preferences               Json                       @default("{}")
   settings                  AppSettings?
-  mealPlanSettings          MealPlanSettings?
+  profiles                  FamilyProfile[]
+  inventory                 InventoryItem[]
   inventorySettings         InventorySettings?
-  recipeHistory             RecipeUsageHistory[]
+  mealPlanSettings          MealPlanSettings?
+  mealPlans                 MealPlan[]
   nutritionistConversations NutritionistConversation[]
+  recipeHistory             RecipeUsageHistory[]
+  recipes                   Recipe[]
+  shoppingListCategories    ShoppingListCategory[]
+  shoppingLists             ShoppingList[]
+  staples                   Staple[]
 
   @@map("users")
 }
 
 model FamilyProfile {
-  id                   String   @id @default(uuid())
-  userId               String
-  profileName          String
-  age                  Int?
-  avatarUrl            String?
-  foodLikes            String[]
-  foodDislikes         String[]
-  allergies            Json     @default("[]")
-  mealAvailability     Json     @default("{}")
-  activityLevel        String?
-  dailyCalorieTarget   Int?
-  dailyProteinTarget   Float?
-  dailyCarbsTarget     Float?
-  dailyFatTarget       Float?
-  dailyFiberTarget     Float?
-  macroTrackingEnabled Boolean  @default(false)
-  isMainUser           Boolean  @default(false)
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-
-  // Body stats for TDEE/macro calculation
-  currentWeightKg    Decimal? @db.Decimal(5, 2)
-  targetWeightKg     Decimal? @db.Decimal(5, 2)
-  heightCm           Int?
-  gender             String?
-  goalType           String?  // 'lose', 'maintain', 'gain'
-  goalTimeframeWeeks Int?
-
-  user                         User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  mealParticipations           MealParticipant[]
-  recipeCompatibility          RecipeProfileCompatibility[]
-  nutritionistConversations    NutritionistConversation[]
+  id                        String                       @id @default(uuid())
+  userId                    String
+  profileName               String
+  age                       Int?
+  avatarUrl                 String?
+  foodLikes                 String[]
+  foodDislikes              String[]
+  allergies                 Json                         @default("[]")
+  mealAvailability          Json                         @default("{}")
+  activityLevel             String?
+  dailyCalorieTarget        Int?
+  dailyProteinTarget        Float?
+  dailyCarbsTarget          Float?
+  dailyFatTarget            Float?
+  dailyFiberTarget          Float?
+  macroTrackingEnabled      Boolean                      @default(false)
+  createdAt                 DateTime                     @default(now())
+  updatedAt                 DateTime                     @updatedAt
+  isMainUser                Boolean                      @default(false)
+  currentWeightKg           Decimal?                     @db.Decimal(5, 2)
+  gender                    String?
+  goalTimeframeWeeks        Int?
+  goalType                  String?
+  heightCm                  Int?
+  targetWeightKg            Decimal?                     @db.Decimal(5, 2)
+  user                      User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mealParticipations        MealParticipant[]
+  nutritionistConversations NutritionistConversation[]
+  recipeCompatibility       RecipeProfileCompatibility[]
 
   @@unique([userId, profileName])
   @@index([userId])
@@ -101,39 +92,30 @@ model FamilyProfile {
 }
 
 model Recipe {
-  id                      String    @id @default(uuid())
+  id                      String                       @id @default(uuid())
   userId                  String
   recipeName              String
   description             String?
   imageUrl                String?
-  servings                Int       @default(4)
+  servings                Int                          @default(4)
   prepTimeMinutes         Int?
   cookTimeMinutes         Int?
   totalTimeMinutes        Int?
   cuisineType             String?
-  mealType                String[]
   difficultyLevel         String?
   recipeSource            String?
   sourceUrl               String?
-  timesUsed               Int       @default(0)
-  timesManuallySelected   Int       @default(0)
+  timesUsed               Int                          @default(0)
+  timesManuallySelected   Int                          @default(0)
   lastUsedDate            DateTime?
   familyRating            Float?
   ratingDate              DateTime?
   notes                   String?
   tags                    String[]
-  isVegetarian            Boolean   @default(false)
-  isVegan                 Boolean   @default(false)
-  containsMeat            Boolean   @default(false)
-  containsSeafood         Boolean   @default(false)
-  isDairyFree             Boolean   @default(false)
-  isGlutenFree            Boolean   @default(false)
-  containsNuts            Boolean   @default(false)
-  isQuickMeal             Boolean   @default(false)
-  yieldsMultipleMeals     Boolean   @default(false)
+  yieldsMultipleMeals     Boolean                      @default(false)
   mealsYielded            Int?
   leftoverInstructions    String?
-  freezable               Boolean   @default(false)
+  freezable               Boolean                      @default(false)
   reheatingInstructions   String?
   caloriesPerServing      Int?
   proteinPerServing       Float?
@@ -142,24 +124,30 @@ model Recipe {
   fiberPerServing         Float?
   sugarPerServing         Float?
   sodiumPerServing        Int?
-  nutritionAutoCalculated Boolean   @default(false)
-  isFavorite              Boolean   @default(false)
-  createdAt               DateTime  @default(now())
-  updatedAt               DateTime  @updatedAt
-  isArchived              Boolean   @default(false)
-
-  // Nutrition tracking for smart recalculation
-  ingredientsHash         String?            // SHA256 hash of sorted ingredients JSON
-  nutritionCalculatedAt   DateTime?          // When macros were last calculated
-  nutritionSource         String?            // 'calculated' | 'manual' | 'legacy' | 'ai_estimated'
-  nutritionConfidence     String?            // 'high' | 'medium' | 'low'
-
-  user                 User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  ingredients          RecipeIngredient[]
-  instructions         RecipeInstruction[]
-  profileCompatibility RecipeProfileCompatibility[]
-  meals                Meal[]
-  usageHistory         RecipeUsageHistory[]
+  nutritionAutoCalculated Boolean                      @default(false)
+  createdAt               DateTime                     @default(now())
+  updatedAt               DateTime                     @updatedAt
+  isArchived              Boolean                      @default(false)
+  isFavorite              Boolean                      @default(false)
+  containsMeat            Boolean                      @default(false)
+  containsNuts            Boolean                      @default(false)
+  containsSeafood         Boolean                      @default(false)
+  isDairyFree             Boolean                      @default(false)
+  isGlutenFree            Boolean                      @default(false)
+  isQuickMeal             Boolean                      @default(false)
+  isVegan                 Boolean                      @default(false)
+  isVegetarian            Boolean                      @default(false)
+  mealType                String[]
+  ingredientsHash         String?
+  nutritionCalculatedAt   DateTime?
+  nutritionConfidence     String?
+  nutritionSource         String?
+  meals                   Meal[]
+  ingredients             RecipeIngredient[]
+  instructions            RecipeInstruction[]
+  profileCompatibility    RecipeProfileCompatibility[]
+  usageHistory            RecipeUsageHistory[]
+  user                    User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([familyRating])
@@ -168,18 +156,17 @@ model Recipe {
 }
 
 model RecipeIngredient {
-  id             String  @id @default(uuid())
+  id             String         @id @default(uuid())
   recipeId       String
   ingredientName String
   quantity       Float
-  unit           String           // Original string value (kept for migration)
-  unitCode       String?          // FK to UnitOfMeasure.code
+  unit           String
   category       String?
   notes          String?
-  sortOrder      Int     @default(0)
-
-  recipe        Recipe          @relation(fields: [recipeId], references: [id], onDelete: Cascade)
-  unitOfMeasure UnitOfMeasure?  @relation(fields: [unitCode], references: [code])
+  sortOrder      Int            @default(0)
+  unitCode       String?
+  recipe         Recipe         @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  unitOfMeasure  UnitOfMeasure? @relation(fields: [unitCode], references: [code])
 
   @@index([recipeId])
   @@index([unitCode])
@@ -193,8 +180,7 @@ model RecipeInstruction {
   instruction  String
   timerMinutes Int?
   sortOrder    Int    @default(0)
-
-  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  recipe       Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
 
   @@index([recipeId])
   @@map("recipe_instructions")
@@ -203,31 +189,29 @@ model RecipeInstruction {
 model RecipeProfileCompatibility {
   recipeId                String
   profileId               String
-  isCompatible            Boolean  @default(true)
+  isCompatible            Boolean       @default(true)
   incompatibleIngredients String[]
-
-  recipe  Recipe        @relation(fields: [recipeId], references: [id], onDelete: Cascade)
-  profile FamilyProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profile                 FamilyProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  recipe                  Recipe        @relation(fields: [recipeId], references: [id], onDelete: Cascade)
 
   @@id([recipeId, profileId])
   @@map("recipe_profile_compatibility")
 }
 
 model MealPlan {
-  id                       String    @id @default(uuid())
+  id                       String                 @id @default(uuid())
   userId                   String
   weekStartDate            DateTime
   weekEndDate              DateTime
-  status                   String    @default("Draft")
-  customSchedule           Json?
-  createdAt                DateTime  @default(now())
+  status                   String                 @default("Draft")
+  createdAt                DateTime               @default(now())
   finalizedAt              DateTime?
-  weeklyNutritionalSummary Json      @default("{}")
-
-  user          User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  meals         Meal[]
-  shoppingLists ShoppingListMealPlan[]
-  recipeHistory RecipeUsageHistory[]
+  weeklyNutritionalSummary Json                   @default("{}")
+  customSchedule           Json?
+  user                     User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  meals                    Meal[]
+  recipeHistory            RecipeUsageHistory[]
+  shoppingLists            ShoppingListMealPlan[]
 
   @@index([userId])
   @@index([weekStartDate, weekEndDate])
@@ -235,30 +219,29 @@ model MealPlan {
 }
 
 model Meal {
-  id                  String    @id @default(uuid())
+  id                  String            @id @default(uuid())
   mealPlanId          String
   dayOfWeek           String
   mealType            String
   recipeId            String?
   recipeName          String?
   servings            Int?
-  servingsManuallySet Boolean   @default(false)
   scalingFactor       Float?
-  isLeftover          Boolean   @default(false)
+  isLeftover          Boolean           @default(false)
   leftoverFromMealId  String?
   notes               String?
-  isLocked            Boolean   @default(false)
-  nutritionalSummary  Json      @default("{}")
-  isCooked            Boolean   @default(false)
+  isLocked            Boolean           @default(false)
+  nutritionalSummary  Json              @default("{}")
+  createdAt           DateTime          @default(now())
+  servingsManuallySet Boolean           @default(false)
   cookedAt            DateTime?
-  inventoryDeducted   Boolean   @default(false)
-  createdAt           DateTime  @default(now())
-
-  mealPlan         MealPlan          @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
-  recipe           Recipe?           @relation(fields: [recipeId], references: [id], onDelete: SetNull)
-  leftoverFromMeal Meal?             @relation("LeftoverMeals", fields: [leftoverFromMealId], references: [id], onDelete: SetNull)
-  leftoverMeals    Meal[]            @relation("LeftoverMeals")
-  participants     MealParticipant[]
+  inventoryDeducted   Boolean           @default(false)
+  isCooked            Boolean           @default(false)
+  participants        MealParticipant[]
+  leftoverFromMeal    Meal?             @relation("LeftoverMeals", fields: [leftoverFromMealId], references: [id])
+  leftoverMeals       Meal[]            @relation("LeftoverMeals")
+  mealPlan            MealPlan          @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  recipe              Recipe?           @relation(fields: [recipeId], references: [id])
 
   @@index([mealPlanId])
   @@index([recipeId])
@@ -268,21 +251,12 @@ model Meal {
 model MealParticipant {
   mealId      String
   profileId   String
-  portionSize Float  @default(1.0)
-
-  meal    Meal          @relation(fields: [mealId], references: [id], onDelete: Cascade)
-  profile FamilyProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  portionSize Float         @default(1.0)
+  meal        Meal          @relation(fields: [mealId], references: [id], onDelete: Cascade)
+  profile     FamilyProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   @@id([mealId, profileId])
   @@map("meal_participants")
-}
-
-// Staple frequency enum
-enum StapleFrequency {
-  weekly
-  every_2_weeks
-  every_4_weeks
-  every_3_months
 }
 
 model Staple {
@@ -290,8 +264,7 @@ model Staple {
   userId        String
   itemName      String
   quantity      Float
-  unit          String           // Original string value (kept for migration)
-  unitCode      String?          // FK to UnitOfMeasure.code
+  unit          String
   category      String?
   frequency     StapleFrequency @default(weekly)
   isActive      Boolean         @default(true)
@@ -299,10 +272,10 @@ model Staple {
   notes         String?
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
-
-  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  unitOfMeasure UnitOfMeasure?  @relation(fields: [unitCode], references: [code])
+  unitCode      String?
   stapleImports StapleImport[]
+  unitOfMeasure UnitOfMeasure?  @relation(fields: [unitCode], references: [code])
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([userId, isActive])
@@ -311,15 +284,14 @@ model Staple {
 }
 
 model StapleImport {
-  id             String    @id @default(uuid())
+  id             String       @id @default(uuid())
   stapleId       String
   shoppingListId String
-  importedAt     DateTime  @default(now())
-  wasForceAdd    Boolean   @default(false)
+  importedAt     DateTime     @default(now())
+  wasForceAdd    Boolean      @default(false)
   finalizedAt    DateTime?
-
-  staple       Staple       @relation(fields: [stapleId], references: [id], onDelete: Cascade)
-  shoppingList ShoppingList @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+  shoppingList   ShoppingList @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+  staple         Staple       @relation(fields: [stapleId], references: [id], onDelete: Cascade)
 
   @@index([stapleId])
   @@index([shoppingListId])
@@ -327,36 +299,27 @@ model StapleImport {
   @@map("staple_imports")
 }
 
-// Storage location enum for inventory items
-enum StorageLocation {
-  fridge
-  freezer
-  cupboard
-  pantry
-}
-
 model InventoryItem {
-  id                  String           @id @default(uuid())
+  id                  String                     @id @default(uuid())
   userId              String
   itemName            String
   quantity            Float
-  unit                String            // Original string value (kept for migration)
-  unitCode            String?           // FK to UnitOfMeasure.code
+  unit                String
   category            String
-  location            StorageLocation?
-  purchaseDate        DateTime         @default(now())
   expiryDate          DateTime?
-  expiryIsEstimated   Boolean          @default(false)
-  isActive            Boolean          @default(true)
-  addedBy             String           @default("manual") // manual, csv, photo, shopping_list
+  addedBy             String                     @default("manual")
   notes               String?
-  isUsedInPlannedMeal Boolean          @default(false)
-  createdAt           DateTime         @default(now())
-  updatedAt           DateTime         @updatedAt
-
-  user          User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  unitOfMeasure UnitOfMeasure?              @relation(fields: [unitCode], references: [code])
-  exclusions    ShoppingListExcludedItem[]
+  updatedAt           DateTime                   @updatedAt
+  createdAt           DateTime                   @default(now())
+  expiryIsEstimated   Boolean                    @default(false)
+  isActive            Boolean                    @default(true)
+  purchaseDate        DateTime                   @default(now())
+  location            StorageLocation?
+  unitCode            String?
+  isUsedInPlannedMeal Boolean                    @default(false)
+  unitOfMeasure       UnitOfMeasure?             @relation(fields: [unitCode], references: [code])
+  user                User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exclusions          ShoppingListExcludedItem[]
 
   @@index([userId])
   @@index([userId, isActive])
@@ -365,22 +328,20 @@ model InventoryItem {
   @@map("inventory_items")
 }
 
-// Reference table for ingredient shelf life data
 model IngredientShelfLife {
-  id                   String           @id @default(uuid())
-  ingredientName       String           @unique
-  shelfLifeDays        Int
-  defaultLocation      StorageLocation?
-  category             String?
-  notes                String?
-  createdAt            DateTime         @default(now())
-  updatedAt            DateTime         @updatedAt
+  id              String           @id @default(uuid())
+  ingredientName  String           @unique
+  shelfLifeDays   Int
+  defaultLocation StorageLocation?
+  category        String?
+  notes           String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   @@index([ingredientName])
   @@map("ingredient_shelf_life")
 }
 
-// User settings for inventory management
 model InventorySettings {
   id                          String   @id @default(uuid())
   userId                      String   @unique
@@ -389,29 +350,26 @@ model InventorySettings {
   smallQuantityThresholdMl    Float    @default(5)
   createdAt                   DateTime @default(now())
   updatedAt                   DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("inventory_settings")
 }
 
-// Tracks items excluded from shopping list due to inventory
 model ShoppingListExcludedItem {
-  id                String    @id @default(uuid())
+  id                String         @id @default(uuid())
   shoppingListId    String
   itemName          String
   recipeQuantity    Float
-  recipeUnit        String           // Original string value (kept for migration)
-  recipeUnitCode    String?          // FK to UnitOfMeasure.code
+  recipeUnit        String
   inventoryQuantity Float
   inventoryItemId   String?
-  excludedAt        DateTime  @default(now())
+  excludedAt        DateTime       @default(now())
   addedBackAt       DateTime?
   addedBackQuantity Float?
-
-  shoppingList  ShoppingList   @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
-  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
-  unitOfMeasure UnitOfMeasure? @relation(fields: [recipeUnitCode], references: [code])
+  recipeUnitCode    String?
+  inventoryItem     InventoryItem? @relation(fields: [inventoryItemId], references: [id])
+  unitOfMeasure     UnitOfMeasure? @relation(fields: [recipeUnitCode], references: [code])
+  shoppingList      ShoppingList   @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
 
   @@index([shoppingListId])
   @@index([inventoryItemId])
@@ -420,24 +378,23 @@ model ShoppingListExcludedItem {
 }
 
 model ShoppingList {
-  id            String    @id @default(uuid())
+  id            String                     @id @default(uuid())
   userId        String
-  name          String    @default("Shopping List")
-  notes         String?
   weekStartDate DateTime?
-  status        String    @default("Draft") // Draft, Finalized, Archived
+  status        String                     @default("Draft")
   categoryOrder String[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime                   @default(now())
+  name          String                     @default("Shopping List")
+  notes         String?
+  updatedAt     DateTime                   @updatedAt
   finalizedAt   DateTime?
   archivedAt    DateTime?
-
-  user          User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  excludedItems ShoppingListExcludedItem[]
   items         ShoppingListItem[]
   mealPlans     ShoppingListMealPlan[]
-  stapleImports StapleImport[]
   shareLinks    ShoppingListShareLink[]
-  excludedItems ShoppingListExcludedItem[]
+  user          User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stapleImports StapleImport[]
 
   @@index([userId])
   @@index([status])
@@ -445,13 +402,12 @@ model ShoppingList {
 }
 
 model ShoppingListMealPlan {
-  id             String   @id @default(uuid())
+  id             String       @id @default(uuid())
   shoppingListId String
   mealPlanId     String
-  importedAt     DateTime @default(now())
-
-  shoppingList ShoppingList @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
-  mealPlan     MealPlan     @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  importedAt     DateTime     @default(now())
+  mealPlan       MealPlan     @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  shoppingList   ShoppingList @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
 
   @@unique([shoppingListId, mealPlanId])
   @@index([shoppingListId])
@@ -467,8 +423,7 @@ model ShoppingListCategory {
   isDefault    Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, name])
   @@index([userId])
@@ -476,29 +431,28 @@ model ShoppingListCategory {
 }
 
 model ShoppingListItem {
-  id                String   @id @default(uuid())
+  id                String         @id @default(uuid())
   shoppingListId    String
   itemName          String
-  originalItemName  String?  // Original name before user edits, for inventory tracking
   quantity          Float
-  unit              String           // Original string value (kept for migration)
-  unitCode          String?          // FK to UnitOfMeasure.code
+  unit              String
   category          String?
-  source            String? // recipe, staple, manual
-  sourceDetails     Json     @default("[]") // Array of {type, id, name, quantity}
-  isConsolidated    Boolean  @default(false)
-  inInventory       Boolean  @default(false)
+  source            String?
+  sourceDetails     Json           @default("[]")
+  isConsolidated    Boolean        @default(false)
+  inInventory       Boolean        @default(false)
   inventoryQuantity Float?
   netQuantityNeeded Float?
-  isPurchased       Boolean  @default(false)
+  isPurchased       Boolean        @default(false)
   customNote        String?
-  priority          String   @default("Medium") // Low, Medium, High
-  displayOrder      Int      @default(0)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  shoppingList  ShoppingList   @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
-  unitOfMeasure UnitOfMeasure? @relation(fields: [unitCode], references: [code])
+  priority          String         @default("Medium")
+  createdAt         DateTime       @default(now())
+  displayOrder      Int            @default(0)
+  updatedAt         DateTime       @updatedAt
+  originalItemName  String?
+  unitCode          String?
+  shoppingList      ShoppingList   @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+  unitOfMeasure     UnitOfMeasure? @relation(fields: [unitCode], references: [code])
 
   @@index([shoppingListId])
   @@index([category])
@@ -507,13 +461,12 @@ model ShoppingListItem {
 }
 
 model ShoppingListShareLink {
-  id             String   @id @default(uuid())
+  id             String       @id @default(uuid())
   shoppingListId String
-  shareToken     String   @unique
+  shareToken     String       @unique
   expiresAt      DateTime
-  createdAt      DateTime @default(now())
-
-  shoppingList ShoppingList @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+  shoppingList   ShoppingList @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
 
   @@index([shareToken])
   @@index([shoppingListId])
@@ -530,50 +483,33 @@ model AppSettings {
   shoppingListPreferences Json     @default("{}")
   aiPreferences           Json     @default("{}")
   updatedAt               DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("app_settings")
 }
 
 model MealPlanSettings {
-  id     String @id @default(uuid())
-  userId String @unique
-
-  // Macro Targeting
-  macroMode String @default("balanced")
-
-  // Recipe Variety
-  varietyEnabled    Boolean @default(true)
-  dinnerCooldown    Int     @default(14)
-  lunchCooldown     Int     @default(7)
-  breakfastCooldown Int     @default(3)
-  snackCooldown     Int     @default(2)
-  minCuisines       Int     @default(3)
-  maxSameCuisine    Int     @default(2)
-
-  // Shopping Efficiency
-  shoppingMode String @default("moderate")
-
-  // Inventory & Expiry
-  expiryPriority String   @default("moderate")
-  expiryWindow   Int      @default(5)
-  useItUpItems   String[] @default([])
-
-  // Batch Cooking
-  batchCookingEnabled Boolean @default(true)
-  maxLeftoverDays     Int     @default(4)
-
-  // Priority Ordering
-  priorityOrder String[] @default(["macros", "ratings", "variety", "shopping", "prep", "time"])
-
-  // Sarah's Feedback
-  feedbackDetail String @default("medium")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                  String   @id @default(uuid())
+  userId              String   @unique
+  macroMode           String   @default("balanced")
+  varietyEnabled      Boolean  @default(true)
+  dinnerCooldown      Int      @default(14)
+  lunchCooldown       Int      @default(7)
+  breakfastCooldown   Int      @default(3)
+  snackCooldown       Int      @default(2)
+  minCuisines         Int      @default(3)
+  maxSameCuisine      Int      @default(2)
+  shoppingMode        String   @default("moderate")
+  expiryPriority      String   @default("moderate")
+  expiryWindow        Int      @default(5)
+  useItUpItems        String[] @default([])
+  batchCookingEnabled Boolean  @default(true)
+  maxLeftoverDays     Int      @default(4)
+  priorityOrder       String[] @default(["macros", "ratings", "variety", "shopping", "prep", "time"])
+  feedbackDetail      String   @default("medium")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("meal_plan_settings")
 }
@@ -587,10 +523,9 @@ model RecipeUsageHistory {
   mealType   String
   wasManual  Boolean  @default(false)
   createdAt  DateTime @default(now())
-
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  recipe   Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
-  mealPlan MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  mealPlan   MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  recipe     Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, recipeId, mealPlanId, usedDate])
   @@index([userId, recipeId, usedDate])
@@ -598,18 +533,16 @@ model RecipeUsageHistory {
   @@map("recipe_usage_history")
 }
 
-// Nutritionist conversation tracking
 model NutritionistConversation {
-  id        String   @id @default(uuid())
+  id        String                @id @default(uuid())
   userId    String
   profileId String
   title     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user     User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  profile  FamilyProfile         @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  messages NutritionistMessage[]
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+  profile   FamilyProfile         @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  NutritionistMessage[]
 
   @@index([userId])
   @@index([profileId])
@@ -617,138 +550,92 @@ model NutritionistConversation {
 }
 
 model NutritionistMessage {
-  id             String   @id @default(uuid())
+  id             String                   @id @default(uuid())
   conversationId String
-  role           String   // 'user' | 'assistant'
+  role           String
   content        String
-  metadata       Json?    // Store suggested actions, applied changes, etc.
-  createdAt      DateTime @default(now())
-
-  conversation NutritionistConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  metadata       Json?
+  createdAt      DateTime                 @default(now())
+  conversation   NutritionistConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@index([conversationId])
   @@map("nutritionist_messages")
 }
 
-// Persistent cache for ingredient nutrition data from USDA
 model IngredientNutritionCache {
-  id               String   @id @default(uuid())
-  ingredientName   String   @unique  // Original ingredient name
-  normalizedName   String             // Cleaned name for fuzzy matching
-  fdcId            Int?               // USDA FoodData Central ID (null if AI-estimated)
-
-  // Nutrition per 100g
-  caloriesPer100g  Int
-  proteinPer100g   Float
-  carbsPer100g     Float
-  fatPer100g       Float
-  fiberPer100g     Float    @default(0)
-  sugarPer100g     Float    @default(0)
-  sodiumPer100g    Int      @default(0)
-
-  // Metadata
-  source           String   @default("usda")  // 'usda' | 'ai_estimate' | 'seed_data' | 'manual'
-  confidence       String   @default("high")  // 'high' | 'medium' | 'low'
-
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id              String   @id @default(uuid())
+  ingredientName  String   @unique
+  normalizedName  String
+  fdcId           Int?
+  caloriesPer100g Int
+  proteinPer100g  Float
+  carbsPer100g    Float
+  fatPer100g      Float
+  fiberPer100g    Float    @default(0)
+  sugarPer100g    Float    @default(0)
+  sodiumPer100g   Int      @default(0)
+  source          String   @default("usda")
+  confidence      String   @default("high")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@index([normalizedName])
   @@index([source])
   @@map("ingredient_nutrition_cache")
 }
 
-// ===========================================
-// RECIPE DISCOVERY FEATURE
-// ===========================================
-
-// Configuration for recipe source websites to scrape
 model RecipeSourceSite {
-  id                    String   @id @default(uuid())
-
-  // Site identification
-  name                  String   @unique  // 'bbcgoodfood', 'allrecipes'
-  displayName           String             // 'BBC Good Food', 'AllRecipes'
-  baseUrl               String             // 'https://www.bbcgoodfood.com'
-
-  // Search configuration
-  searchUrlPattern      String             // '/search?q={query}' or '/search/recipes?keyword={query}'
-  searchResultsSelector String?            // CSS selector for recipe links on search page (optional)
-
-  // Categories to scrape
-  categories            String[]           // ['chicken', 'beef', 'vegetarian', 'pasta', 'quick-meals']
-
-  // Status
-  isActive              Boolean  @default(true)
+  id                    String         @id @default(uuid())
+  name                  String         @unique
+  displayName           String
+  baseUrl               String
+  searchUrlPattern      String
+  searchResultsSelector String?
+  categories            String[]
+  isActive              Boolean        @default(true)
   lastScrapedAt         DateTime?
-
-  // Metadata
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-
-  // Relations
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
   masterRecipes         MasterRecipe[]
 
   @@index([isActive])
   @@map("recipe_source_sites")
 }
 
-// Master recipe database - curated recipes from various sources
 model MasterRecipe {
-  id                  String   @id @default(uuid())
+  id                 String           @id @default(uuid())
+  sourceUrl          String           @unique
+  sourceSiteId       String
+  sourceScrapedAt    DateTime
+  name               String
+  description        String?
+  imageUrl           String?
+  servings           Int?
+  prepTimeMinutes    Int?
+  cookTimeMinutes    Int?
+  totalTimeMinutes   Int?
+  cuisineType        String?
+  mealCategory       String[]
+  dietaryTags        String[]
+  ingredients        Json
+  ingredientNames    String[]
+  instructions       Json
+  caloriesPerServing Int?
+  proteinPerServing  Decimal?         @db.Decimal(6, 2)
+  carbsPerServing    Decimal?         @db.Decimal(6, 2)
+  fatPerServing      Decimal?         @db.Decimal(6, 2)
+  fiberPerServing    Decimal?         @db.Decimal(6, 2)
+  sugarPerServing    Decimal?         @db.Decimal(6, 2)
+  sodiumPerServing   Int?
+  nutritionSource    String?
+  allergens          String[]
+  dataQualityScore   Int              @default(0)
+  isActive           Boolean          @default(true)
+  importErrors       String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  sourceSite         RecipeSourceSite @relation(fields: [sourceSiteId], references: [id])
 
-  // Source tracking
-  sourceUrl           String   @unique
-  sourceSiteId        String
-  sourceScrapedAt     DateTime
-
-  // Core recipe data
-  name                String
-  description         String?  @db.Text
-  imageUrl            String?
-  servings            Int?
-  prepTimeMinutes     Int?
-  cookTimeMinutes     Int?
-  totalTimeMinutes    Int?
-
-  // Categorisation
-  cuisineType         String?
-  mealCategory        String[] // ['dinner', 'lunch', 'breakfast']
-  dietaryTags         String[] // ['vegetarian', 'vegan', 'gluten-free', 'dairy-free']
-
-  // Ingredients (structured for smart filtering)
-  ingredients         Json     // [{name: string, quantity: number, unit: string, category?: string, original: string}]
-  ingredientNames     String[] // ['chicken breast', 'onion', 'garlic'] - flattened for search
-
-  // Instructions
-  instructions        Json     // [{stepNumber: number, instruction: string}]
-
-  // Nutrition (enriched via USDA/AI if not from source)
-  caloriesPerServing  Int?
-  proteinPerServing   Decimal? @db.Decimal(6, 2)
-  carbsPerServing     Decimal? @db.Decimal(6, 2)
-  fatPerServing       Decimal? @db.Decimal(6, 2)
-  fiberPerServing     Decimal? @db.Decimal(6, 2)
-  sugarPerServing     Decimal? @db.Decimal(6, 2)
-  sodiumPerServing    Int?
-  nutritionSource     String?  // 'source_site', 'usda', 'ai_estimated'
-
-  // Allergens (derived from ingredients during import)
-  allergens           String[] // ['dairy', 'gluten', 'nuts', 'eggs', 'shellfish', 'soy']
-
-  // Quality & Status
-  dataQualityScore    Int      @default(0) // 0-100 based on completeness
-  isActive            Boolean  @default(true)
-  importErrors        String?  @db.Text // Any issues during import
-
-  // Timestamps
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-
-  // Relations
-  sourceSite          RecipeSourceSite @relation(fields: [sourceSiteId], references: [id])
-
-  // Indexes for fast filtering
   @@index([sourceSiteId])
   @@index([cuisineType])
   @@index([mealCategory])
@@ -763,44 +650,44 @@ model MasterRecipe {
   @@map("master_recipes")
 }
 
-// Job status enum for scraping jobs
+model RecipeScrapingJob {
+  id             String            @id @default(uuid())
+  sourceSiteId   String?
+  category       String?
+  status         ScrapingJobStatus @default(pending)
+  urlsDiscovered Int               @default(0)
+  urlsProcessed  Int               @default(0)
+  urlsSucceeded  Int               @default(0)
+  urlsFailed     Int               @default(0)
+  urlsSkipped    Int               @default(0)
+  startedAt      DateTime?
+  completedAt    DateTime?
+  errorLog       String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([status])
+  @@index([sourceSiteId])
+  @@map("recipe_scraping_jobs")
+}
+
+enum StapleFrequency {
+  weekly
+  every_2_weeks
+  every_4_weeks
+  every_3_months
+}
+
+enum StorageLocation {
+  fridge
+  freezer
+  cupboard
+  pantry
+}
+
 enum ScrapingJobStatus {
   pending
   running
   completed
   failed
-}
-
-// Track scraping job progress
-model RecipeScrapingJob {
-  id              String            @id @default(uuid())
-
-  // Job configuration
-  sourceSiteId    String?           // null = all sites
-  category        String?           // null = all categories for site
-
-  // Status
-  status          ScrapingJobStatus @default(pending)
-
-  // Progress
-  urlsDiscovered  Int               @default(0)
-  urlsProcessed   Int               @default(0)
-  urlsSucceeded   Int               @default(0)
-  urlsFailed      Int               @default(0)
-  urlsSkipped     Int               @default(0) // Already in DB
-
-  // Timing
-  startedAt       DateTime?
-  completedAt     DateTime?
-
-  // Errors
-  errorLog        String?           @db.Text
-
-  // Timestamps
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-
-  @@index([status])
-  @@index([sourceSiteId])
-  @@map("recipe_scraping_jobs")
 }
