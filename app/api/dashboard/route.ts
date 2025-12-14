@@ -7,6 +7,7 @@ import { addDays, format, differenceInDays, isToday, startOfDay } from 'date-fns
 // Inline types for callback parameters
 interface MealWithRecipe {
   dayOfWeek: string
+  mealType: string
   recipeId: string | null
   recipeName: string | null
   recipe: { id: string; recipeName: string } | null
@@ -25,16 +26,20 @@ interface InventoryItemType {
   expiryDate: Date | null
 }
 
-// Dashboard data types
+// Dashboard data types - updated for expandable meals
+interface DayMeal {
+  type: string          // 'Breakfast', 'Lunch', 'Dinner', etc.
+  name: string          // Recipe name
+  recipeId: string | null
+}
+
 interface WeeklyMeal {
-  day: string           // 'Monday'
-  dayShort: string      // 'Mon'
+  day: string           // 'Sunday'
+  dayShort: string      // 'Sun'
   date: string          // '2025-12-15' (ISO)
   dateDisplay: string   // '15 Dec'
   isToday: boolean
-  dinner: string | null
-  recipeId: string | null
-  planned: boolean
+  meals: DayMeal[]      // All meals for this day
 }
 
 interface ShoppingCategory {
@@ -62,7 +67,8 @@ interface DashboardData {
     label: string
   }
   weeklyMeals: WeeklyMeal[]
-  plannedCount: number
+  plannedDays: number      // Days with at least 1 meal
+  totalMeals: number       // Total meals across all days
   mealPlanId: string | null
   shoppingList: {
     id: string | null
@@ -117,6 +123,7 @@ export async function GET(req: NextRequest) {
         where: { userId: session.user.id },
       }),
       // Get meal plan that covers today (weekStartDate <= today AND weekEndDate >= today)
+      // Get ALL meals (breakfast, lunch, dinner, etc.) for expandable view
       prisma.mealPlan.findFirst({
         where: {
           userId: session.user.id,
@@ -125,9 +132,6 @@ export async function GET(req: NextRequest) {
         },
         include: {
           meals: {
-            where: {
-              mealType: 'dinner', // Only dinners for the weekly view (lowercase to match database)
-            },
             include: {
               recipe: {
                 select: {
@@ -222,7 +226,18 @@ export async function GET(req: NextRequest) {
     }
 
     // Build weekly meals array - START FROM TODAY, show 7 days
+    // Now with multiple meals per day (expandable view)
     const weeklyMeals: WeeklyMeal[] = []
+
+    // Meal type display order
+    const mealTypeOrder = ['breakfast', 'lunch', 'afternoon-snack', 'dinner', 'dessert']
+    const mealTypeLabels: Record<string, string> = {
+      'breakfast': 'Breakfast',
+      'lunch': 'Lunch',
+      'afternoon-snack': 'Snack',
+      'dinner': 'Dinner',
+      'dessert': 'Dessert',
+    }
 
     for (let i = 0; i < 7; i++) {
       const date = addDays(today, i)
@@ -230,10 +245,19 @@ export async function GET(req: NextRequest) {
       const dayShort = format(date, 'EEE')  // 'Mon', 'Tue', etc.
       const dateDisplay = format(date, 'd MMM') // '15 Dec'
 
-      // Find meal for this day (database stores full day names like 'Monday', 'Tuesday')
-      const meal = currentMealPlan?.meals.find(
-        (m: MealWithRecipe) => m.dayOfWeek === dayName
-      )
+      // Find ALL meals for this day (database stores full day names like 'Monday', 'Tuesday')
+      const dayMeals = currentMealPlan?.meals
+        .filter((m: MealWithRecipe) => m.dayOfWeek === dayName)
+        .sort((a: MealWithRecipe, b: MealWithRecipe) => {
+          const aIndex = mealTypeOrder.indexOf(a.mealType.toLowerCase())
+          const bIndex = mealTypeOrder.indexOf(b.mealType.toLowerCase())
+          return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex)
+        })
+        .map((m: MealWithRecipe): DayMeal => ({
+          type: mealTypeLabels[m.mealType.toLowerCase()] || m.mealType,
+          name: m.recipe?.recipeName || m.recipeName || 'Unknown',
+          recipeId: m.recipeId,
+        })) || []
 
       weeklyMeals.push({
         day: dayName,
@@ -241,13 +265,12 @@ export async function GET(req: NextRequest) {
         date: format(date, 'yyyy-MM-dd'),
         dateDisplay,
         isToday: i === 0, // First day is always today
-        dinner: meal?.recipe?.recipeName || meal?.recipeName || null,
-        recipeId: meal?.recipeId || null,
-        planned: !!(meal?.recipeId || meal?.recipeName),
+        meals: dayMeals,
       })
     }
 
-    const plannedCount = weeklyMeals.filter((m) => m.planned).length
+    const plannedDays = weeklyMeals.filter((m) => m.meals.length > 0).length
+    const totalMeals = weeklyMeals.reduce((acc, m) => acc + m.meals.length, 0)
 
     // Build shopping list summary with categories
     const categories: ShoppingCategory[] = []
@@ -307,7 +330,8 @@ export async function GET(req: NextRequest) {
         label: weekLabel,
       },
       weeklyMeals,
-      plannedCount,
+      plannedDays,
+      totalMeals,
       mealPlanId: currentMealPlan?.id || null,
       shoppingList: {
         id: activeShoppingList?.id || null,
@@ -325,7 +349,7 @@ export async function GET(req: NextRequest) {
     }
 
     console.log('🟢 Dashboard data fetched successfully')
-    console.log('🟢 Weekly meals:', weeklyMeals.map(m => `${m.dayShort} ${m.dateDisplay}: ${m.dinner || 'unplanned'}`))
+    console.log('🟢 Weekly meals:', weeklyMeals.map(m => `${m.dayShort} ${m.dateDisplay}: ${m.meals.length} meals`))
 
     return NextResponse.json(dashboardData)
   } catch (error) {

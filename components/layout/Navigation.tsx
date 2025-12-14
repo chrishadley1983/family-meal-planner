@@ -4,7 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
-import { Calendar, ChefHat, Sparkles, ShoppingCart, Package, Bell, Menu, X } from 'lucide-react'
+import { Calendar, ChefHat, Sparkles, ShoppingCart, Package, Bell, Menu, X, Home } from 'lucide-react'
 import { UserMenu } from './UserMenu'
 
 interface NavigationProps {
@@ -15,8 +15,9 @@ interface NavigationProps {
   shoppingCount?: number
 }
 
-// Primary nav items (reduced from 9 to 5)
+// Primary nav items (6 items: Dashboard + 5 core pages)
 const navItems = [
+  { href: '/dashboard', label: 'Dashboard', Icon: Home },
   { href: '/meal-plans', label: 'Meal Plan', Icon: Calendar },
   { href: '/recipes', label: 'Recipes', Icon: ChefHat },
   { href: '/discover', label: 'Discover', Icon: Sparkles },
@@ -161,19 +162,6 @@ export function Navigation({
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-zinc-800 mt-2">
           <div className="px-2 pt-2 pb-3 space-y-1">
-            {/* Dashboard link */}
-            <Link
-              href="/dashboard"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-base font-medium transition-colors ${
-                isActive('/dashboard')
-                  ? 'bg-zinc-800 text-white'
-                  : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'
-              }`}
-            >
-              <Calendar className="w-5 h-5" />
-              Dashboard
-            </Link>
             {navItems.map((item) => {
               const Icon = item.Icon
               return (

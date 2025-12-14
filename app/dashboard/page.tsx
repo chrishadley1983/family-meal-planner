@@ -15,15 +15,19 @@ import {
 } from '@/components/dashboard'
 
 // Dashboard data types
+interface DayMeal {
+  type: string          // 'Breakfast', 'Lunch', 'Dinner', etc.
+  name: string          // Recipe name
+  recipeId: string | null
+}
+
 interface WeeklyMeal {
-  day: string           // 'Monday'
-  dayShort: string      // 'Mon'
+  day: string           // 'Sunday'
+  dayShort: string      // 'Sun'
   date: string          // '2025-12-15' (ISO)
   dateDisplay: string   // '15 Dec'
   isToday: boolean
-  dinner: string | null
-  recipeId: string | null
-  planned: boolean
+  meals: DayMeal[]      // All meals for this day
 }
 
 interface ShoppingCategory {
@@ -51,7 +55,8 @@ interface DashboardData {
     label: string
   }
   weeklyMeals: WeeklyMeal[]
-  plannedCount: number
+  plannedDays: number       // Days with at least 1 meal
+  totalMeals: number        // Total meals across all days
   mealPlanId: string | null
   shoppingList: {
     id: string | null
@@ -163,7 +168,8 @@ export default function DashboardPage() {
             {/* Weekly Meal Plan Card */}
             <WeeklyMealsCard
               meals={dashboardData.weeklyMeals}
-              plannedCount={dashboardData.plannedCount}
+              plannedDays={dashboardData.plannedDays}
+              totalMeals={dashboardData.totalMeals}
               mealPlanId={dashboardData.mealPlanId}
             />
 

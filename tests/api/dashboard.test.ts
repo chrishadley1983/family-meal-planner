@@ -3,7 +3,7 @@
  *
  * Tests the dashboard data aggregation including:
  * - Authentication
- * - Weekly meals display (CRITICAL: mealType case sensitivity)
+ * - Weekly meals display with expandable rows (multiple meals per day)
  * - Shopping list summary
  * - Expiring items
  * - User counts
@@ -57,7 +57,13 @@ import {
 
 const mockGetServerSession = getServerSession as jest.MockedFunction<typeof getServerSession>
 
-// Dashboard response type
+// Dashboard response type - updated for expandable meals
+interface DayMeal {
+  type: string
+  name: string
+  recipeId: string | null
+}
+
 interface DashboardResponse {
   user: {
     firstName: string
@@ -76,11 +82,10 @@ interface DashboardResponse {
     date: string
     dateDisplay: string
     isToday: boolean
-    dinner: string | null
-    recipeId: string | null
-    planned: boolean
+    meals: DayMeal[]
   }>
-  plannedCount: number
+  plannedDays: number
+  totalMeals: number
   mealPlanId: string | null
   shoppingList: {
     id: string | null
@@ -146,19 +151,16 @@ describe('Dashboard API', () => {
       })
     })
 
-    describe('Weekly Meals - mealType Case Sensitivity', () => {
+    describe('Weekly Meals - Multiple Meals Per Day', () => {
       /**
-       * CRITICAL TEST: This tests the bug where mealType was queried as 'Dinner' (uppercase)
-       * but stored as 'dinner' (lowercase) in the database.
-       *
-       * The database stores mealType in lowercase (e.g., 'dinner', 'lunch', 'breakfast')
-       * as defined in lib/meal-plan-prompt-builder.ts and used throughout the codebase.
+       * Tests the expandable meals feature where each day can have
+       * multiple meals (breakfast, lunch, dinner, etc.)
        */
-      it('should query meals with lowercase mealType "dinner"', async () => {
+      it('should return multiple meals per day', async () => {
         mockGetServerSession.mockResolvedValue(mockSession)
         setupDefaultMocks()
 
-        // Setup meal plan with LOWERCASE mealType (how database actually stores it)
+        // Setup meal plan with multiple meals per day
         const mockMealPlan = {
           id: 'mp-123',
           userId: testUserId,
@@ -169,18 +171,34 @@ describe('Dashboard API', () => {
             {
               id: 'meal-1',
               dayOfWeek: 'Sunday',
-              mealType: 'dinner', // LOWERCASE - as stored in database
+              mealType: 'breakfast',
               recipeId: 'recipe-1',
-              recipeName: 'Teriyaki Chicken',
-              recipe: { id: 'recipe-1', recipeName: 'Teriyaki Chicken' },
+              recipeName: 'Greek Yogurt Bowl',
+              recipe: { id: 'recipe-1', recipeName: 'Greek Yogurt Bowl' },
             },
             {
               id: 'meal-2',
-              dayOfWeek: 'Monday',
-              mealType: 'dinner', // LOWERCASE - as stored in database
+              dayOfWeek: 'Sunday',
+              mealType: 'lunch',
               recipeId: 'recipe-2',
+              recipeName: 'Chicken Wrap',
+              recipe: { id: 'recipe-2', recipeName: 'Chicken Wrap' },
+            },
+            {
+              id: 'meal-3',
+              dayOfWeek: 'Sunday',
+              mealType: 'dinner',
+              recipeId: 'recipe-3',
+              recipeName: 'Teriyaki Salmon',
+              recipe: { id: 'recipe-3', recipeName: 'Teriyaki Salmon' },
+            },
+            {
+              id: 'meal-4',
+              dayOfWeek: 'Monday',
+              mealType: 'dinner',
+              recipeId: 'recipe-4',
               recipeName: 'Pasta Bake',
-              recipe: { id: 'recipe-2', recipeName: 'Pasta Bake' },
+              recipe: { id: 'recipe-4', recipeName: 'Pasta Bake' },
             },
           ],
         }
@@ -193,41 +211,88 @@ describe('Dashboard API', () => {
         expect(response.status).toBe(200)
         const data = await parseJsonResponse<DashboardResponse>(response)
 
-        // Verify meals were found (wouldn't work if query used uppercase 'Dinner')
-        const sundayMeal = data.weeklyMeals.find(m => m.day === 'Sunday')
-        const mondayMeal = data.weeklyMeals.find(m => m.day === 'Monday')
+        // Sunday should have 3 meals
+        const sundayMeals = data.weeklyMeals.find(m => m.day === 'Sunday')
+        expect(sundayMeals?.meals).toHaveLength(3)
+        expect(sundayMeals?.meals[0].type).toBe('Breakfast')
+        expect(sundayMeals?.meals[0].name).toBe('Greek Yogurt Bowl')
+        expect(sundayMeals?.meals[1].type).toBe('Lunch')
+        expect(sundayMeals?.meals[2].type).toBe('Dinner')
 
-        expect(sundayMeal?.dinner).toBe('Teriyaki Chicken')
-        expect(sundayMeal?.planned).toBe(true)
-        expect(mondayMeal?.dinner).toBe('Pasta Bake')
-        expect(mondayMeal?.planned).toBe(true)
+        // Monday should have 1 meal
+        const mondayMeals = data.weeklyMeals.find(m => m.day === 'Monday')
+        expect(mondayMeals?.meals).toHaveLength(1)
+        expect(mondayMeals?.meals[0].name).toBe('Pasta Bake')
 
-        // Verify the query used lowercase 'dinner'
-        expect(mockPrisma.mealPlan.findFirst).toHaveBeenCalledWith(
-          expect.objectContaining({
-            include: expect.objectContaining({
-              meals: expect.objectContaining({
-                where: { mealType: 'dinner' }, // MUST be lowercase
-              }),
-            }),
-          })
-        )
+        // Counts should reflect multiple meals
+        expect(data.plannedDays).toBe(2) // Sunday and Monday
+        expect(data.totalMeals).toBe(4) // 3 + 1
       })
 
-      it('should NOT find meals if mealType case does not match', async () => {
+      it('should sort meals by type order (breakfast, lunch, dinner)', async () => {
         mockGetServerSession.mockResolvedValue(mockSession)
         setupDefaultMocks()
 
-        // This simulates what happened when the bug existed:
-        // The query asked for 'Dinner' but database had 'dinner'
-        // Result: empty meals array even though meals existed
+        // Meals in wrong order in database
+        const mockMealPlan = {
+          id: 'mp-123',
+          userId: testUserId,
+          weekStartDate: WEEK_START,
+          weekEndDate: WEEK_END,
+          status: 'Finalized',
+          meals: [
+            {
+              id: 'meal-1',
+              dayOfWeek: 'Sunday',
+              mealType: 'dinner', // Out of order
+              recipeId: 'recipe-3',
+              recipeName: 'Dinner Recipe',
+              recipe: { id: 'recipe-3', recipeName: 'Dinner Recipe' },
+            },
+            {
+              id: 'meal-2',
+              dayOfWeek: 'Sunday',
+              mealType: 'breakfast', // Out of order
+              recipeId: 'recipe-1',
+              recipeName: 'Breakfast Recipe',
+              recipe: { id: 'recipe-1', recipeName: 'Breakfast Recipe' },
+            },
+            {
+              id: 'meal-3',
+              dayOfWeek: 'Sunday',
+              mealType: 'lunch', // Out of order
+              recipeId: 'recipe-2',
+              recipeName: 'Lunch Recipe',
+              recipe: { id: 'recipe-2', recipeName: 'Lunch Recipe' },
+            },
+          ],
+        }
+
+        mockPrisma.mealPlan.findFirst.mockResolvedValue(mockMealPlan)
+
+        const request = createMockRequest('GET', '/api/dashboard')
+        const response = await GET(request)
+
+        const data = await parseJsonResponse<DashboardResponse>(response)
+
+        // Meals should be sorted: breakfast, lunch, dinner
+        const sundayMeals = data.weeklyMeals.find(m => m.day === 'Sunday')
+        expect(sundayMeals?.meals[0].type).toBe('Breakfast')
+        expect(sundayMeals?.meals[1].type).toBe('Lunch')
+        expect(sundayMeals?.meals[2].type).toBe('Dinner')
+      })
+
+      it('should handle days with no meals', async () => {
+        mockGetServerSession.mockResolvedValue(mockSession)
+        setupDefaultMocks()
+
         const mockMealPlanWithNoMatchingMeals = {
           id: 'mp-123',
           userId: testUserId,
           weekStartDate: WEEK_START,
           weekEndDate: WEEK_END,
           status: 'Finalized',
-          meals: [], // Empty because Prisma filter didn't match
+          meals: [],
         }
 
         mockPrisma.mealPlan.findFirst.mockResolvedValue(mockMealPlanWithNoMatchingMeals)
@@ -238,11 +303,11 @@ describe('Dashboard API', () => {
         expect(response.status).toBe(200)
         const data = await parseJsonResponse<DashboardResponse>(response)
 
-        // All meals should show as unplanned
-        expect(data.plannedCount).toBe(0)
-        data.weeklyMeals.forEach(meal => {
-          expect(meal.dinner).toBeNull()
-          expect(meal.planned).toBe(false)
+        // All days should have empty meals array
+        expect(data.plannedDays).toBe(0)
+        expect(data.totalMeals).toBe(0)
+        data.weeklyMeals.forEach(day => {
+          expect(day.meals).toEqual([])
         })
       })
     })
@@ -272,7 +337,7 @@ describe('Dashboard API', () => {
         }
       })
 
-      it('should include dayShort and dateDisplay for each meal', async () => {
+      it('should include dayShort and dateDisplay for each day', async () => {
         mockGetServerSession.mockResolvedValue(mockSession)
         setupDefaultMocks()
 
@@ -281,13 +346,15 @@ describe('Dashboard API', () => {
 
         const data = await parseJsonResponse<DashboardResponse>(response)
 
-        // Verify each meal has required display fields
-        data.weeklyMeals.forEach(meal => {
-          expect(meal.dayShort).toBeDefined()
-          expect(meal.dayShort.length).toBe(3) // 'Sun', 'Mon', etc.
-          expect(meal.dateDisplay).toBeDefined()
-          expect(meal.dateDisplay).toMatch(/^\d{1,2} \w{3}$/) // '14 Dec', '15 Dec', etc.
-          expect(meal.date).toMatch(/^\d{4}-\d{2}-\d{2}$/) // ISO date format
+        // Verify each day has required display fields
+        data.weeklyMeals.forEach(day => {
+          expect(day.dayShort).toBeDefined()
+          expect(day.dayShort.length).toBe(3) // 'Sun', 'Mon', etc.
+          expect(day.dateDisplay).toBeDefined()
+          expect(day.dateDisplay).toMatch(/^\d{1,2} \w{3}$/) // '14 Dec', '15 Dec', etc.
+          expect(day.date).toMatch(/^\d{4}-\d{2}-\d{2}$/) // ISO date format
+          expect(day.meals).toBeDefined()
+          expect(Array.isArray(day.meals)).toBe(true)
         })
       })
 
@@ -321,9 +388,10 @@ describe('Dashboard API', () => {
         const data = await parseJsonResponse<DashboardResponse>(response)
 
         // Wednesday meal should be found (3 days from Sunday)
-        const wednesdayMeal = data.weeklyMeals.find(m => m.day === 'Wednesday')
-        expect(wednesdayMeal?.dinner).toBe('Fish and Chips')
-        expect(wednesdayMeal?.planned).toBe(true)
+        const wednesdayDay = data.weeklyMeals.find(m => m.day === 'Wednesday')
+        expect(wednesdayDay?.meals).toHaveLength(1)
+        expect(wednesdayDay?.meals[0].name).toBe('Fish and Chips')
+        expect(wednesdayDay?.meals[0].type).toBe('Dinner')
       })
     })
 
@@ -347,6 +415,18 @@ describe('Dashboard API', () => {
         )
       })
 
+      it('should fetch ALL meal types (not just dinner)', async () => {
+        mockGetServerSession.mockResolvedValue(mockSession)
+        setupDefaultMocks()
+
+        const request = createMockRequest('GET', '/api/dashboard')
+        await GET(request)
+
+        // Verify query does NOT filter by mealType
+        const callArgs = mockPrisma.mealPlan.findFirst.mock.calls[0][0]
+        expect(callArgs.include.meals.where).toBeUndefined()
+      })
+
       it('should handle no meal plan gracefully', async () => {
         mockGetServerSession.mockResolvedValue(mockSession)
         setupDefaultMocks()
@@ -359,11 +439,11 @@ describe('Dashboard API', () => {
         const data = await parseJsonResponse<DashboardResponse>(response)
 
         expect(data.mealPlanId).toBeNull()
-        expect(data.plannedCount).toBe(0)
+        expect(data.plannedDays).toBe(0)
+        expect(data.totalMeals).toBe(0)
         expect(data.weeklyMeals).toHaveLength(7)
-        data.weeklyMeals.forEach(meal => {
-          expect(meal.dinner).toBeNull()
-          expect(meal.planned).toBe(false)
+        data.weeklyMeals.forEach(day => {
+          expect(day.meals).toEqual([])
         })
       })
     })
