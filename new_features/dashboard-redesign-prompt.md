@@ -34,13 +34,14 @@ Redesign the dashboard and navigation bar to improve UX and better reflect the w
 Dashboard | Recipes | Discover | Meal Plans | Shopping | Staples | Inventory | Profiles | Nutritionist
 ```
 
-**After (5 primary items + user menu):**
+**After (6 primary items + user menu):**
 ```
-[Logo] Meal Plan | Recipes | Discover | Shopping | Inventory     [Bell] [User Avatar + Settings]
+[Logo] Dashboard | Meal Plan | Recipes | Discover | Shopping | Inventory     [Bell] [User Avatar + Settings]
 ```
 
 **Implementation:**
-- Primary nav: Meal Plan, Recipes, Discover, Shopping, Inventory
+- Primary nav: Dashboard, Meal Plan, Recipes, Discover, Shopping, Inventory
+- Dashboard is the home/landing page
 - Move Profiles to user menu dropdown (top right, with avatar)
 - Move Staples under Inventory (or as secondary nav within Inventory page)
 - Nutritionist accessible from Discover card on dashboard + can remain in nav if space allows on desktop
@@ -82,14 +83,46 @@ Week of 16-22 December • Hadley Family
 
 **Left Column (lg:col-span-2):**
 
-1. **Weekly Dinners Card**
-   - Header: Calendar icon, "Weekly Dinners", "X of 7 days planned", "Edit plan →" link
-   - List all 7 days (Mon-Sun) with:
-     - Day label (Mon, Tue, etc.)
+1. **Weekly Meals Card**
+   - Header: Calendar icon, "Weekly Meals", "X meals across Y days", "Edit plan →" link
+   - List all 7 days with expandable rows:
+     - Day label (Sun, Mon, etc.) with date
      - "Today" indicator on current day (purple highlight + border)
-     - Planned meals show: Utensils icon + meal name + chevron
-     - Unplanned days show: dashed border + "No meal planned" + "Add meal" button
+     - Days with meals show: chevron + "X meals planned" (clickable to expand)
+     - Expanded view shows each meal: meal type (Breakfast/Lunch/Dinner) + recipe name
+     - Unplanned days show: dashed border + "No meals planned" + "Add meal" button
+   - Today's row expanded by default
    - Footer (if unplanned days exist): "X days still need meals - let AI suggest based on your preferences [Auto-fill →]"
+
+**Expandable Row Behaviour:**
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ SUN   ▼  3 meals planned                                        │
+│ 14 Dec   ├─ 🍽️ Breakfast    Greek Yogurt Power Bowl        →   │
+│ Today    ├─ 🍽️ Lunch        Mediterranean Chicken Wrap    →   │
+│          └─ 🍽️ Dinner       Teriyaki Salmon               →   │
+├─────────────────────────────────────────────────────────────────┤
+│ MON   ▶  1 meal planned                                         │
+│ 15 Dec                                                          │
+├─────────────────────────────────────────────────────────────────┤
+│ TUE   +  No meals planned                           [Add meal]  │
+│ 16 Dec                                                          │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Data structure for meals:**
+```typescript
+interface DayMeals {
+  day: string;        // 'Sun', 'Mon', etc.
+  date: string;       // '14 Dec'
+  today: boolean;
+  meals: {
+    type: string;     // 'Breakfast', 'Lunch', 'Dinner', 'Snack', etc.
+    name: string;     // Recipe name
+    recipeId: string;
+  }[];
+}
+```
 
 2. **Weekly Shopping Card**
    - Header: ShoppingCart icon, "Weekly Shopping", "X items for this week", "View list →" link
@@ -142,15 +175,19 @@ interface DashboardData {
     label: string; // "Week of 16-22 December"
   };
   
-  // Meal plan
+  // Meal plan - multiple meals per day
   weeklyMeals: {
-    day: string; // 'Mon', 'Tue', etc.
-    date: Date;
+    day: string;      // 'Sun', 'Mon', etc.
+    date: string;     // '14 Dec'
     isToday: boolean;
-    dinner: string | null;
-    planned: boolean;
+    meals: {
+      type: string;   // 'Breakfast', 'Lunch', 'Dinner', 'Snack', etc.
+      name: string;   // Recipe name
+      recipeId: string;
+    }[];
   }[];
-  plannedCount: number;
+  plannedDays: number;    // Days with at least 1 meal
+  totalMeals: number;     // Total meals across all days
   
   // Shopping
   shoppingList: {
@@ -235,11 +272,15 @@ components/
 
 ## Acceptance Criteria
 
-- [ ] Nav shows: Meal Plan, Recipes, Discover, Shopping, Inventory (5 items)
+- [ ] Nav shows: Dashboard, Meal Plan, Recipes, Discover, Shopping, Inventory (6 items)
+- [ ] Clicking Dashboard nav or logo goes to dashboard
 - [ ] User menu shows avatar, name, family, settings access
 - [ ] Shopping nav item shows badge with item count
 - [ ] Dashboard header shows "This Week's Plan" with dynamic date range
-- [ ] Weekly Dinners card shows all 7 days with today highlighted
+- [ ] Weekly Meals card shows all 7 days
+- [ ] Days with meals show "X meals planned" and are expandable
+- [ ] Expanded days show each meal with type (Breakfast/Lunch/Dinner) and name
+- [ ] Today's row is expanded by default and highlighted purple
 - [ ] Unplanned days show "Add meal" action
 - [ ] Weekly Shopping card shows category breakdown and status
 - [ ] Discover card promotes recipe discovery with Emilia mention
