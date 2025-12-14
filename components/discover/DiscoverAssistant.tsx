@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/Button'
 import { MasterRecipeSearchResult } from '@/lib/nutritionist/master-recipe-search'
-import Image from 'next/image'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -127,21 +126,10 @@ export function DiscoverAssistant({ profileId, onAddRecipe }: DiscoverAssistantP
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-purple-600 hover:bg-purple-500 text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-105 z-50"
+        className="fixed bottom-6 right-6 w-14 h-14 bg-purple-600 hover:bg-purple-500 text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-105 z-50 text-2xl"
         title="Ask Emilia for recipe help"
       >
-        <Image
-          src="/emilia-avatar.png"
-          alt="Emilia"
-          width={48}
-          height={48}
-          className="rounded-full"
-          onError={(e) => {
-            // Fallback to emoji if image not found
-            e.currentTarget.style.display = 'none'
-            e.currentTarget.parentElement!.innerHTML = '🍳'
-          }}
-        />
+        <span role="img" aria-label="Emilia">👩‍🍳</span>
       </button>
     )
   }
@@ -151,18 +139,8 @@ export function DiscoverAssistant({ profileId, onAddRecipe }: DiscoverAssistantP
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-zinc-700">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center overflow-hidden">
-            <Image
-              src="/emilia-avatar.png"
-              alt="Emilia"
-              width={40}
-              height={40}
-              className="rounded-full"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none'
-                e.currentTarget.parentElement!.innerHTML = '🍳'
-              }}
-            />
+          <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-xl">
+            <span role="img" aria-label="Emilia">👩‍🍳</span>
           </div>
           <div>
             <h3 className="font-semibold text-white">Emilia</h3>
