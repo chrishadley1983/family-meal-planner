@@ -894,159 +894,179 @@ export default function InventoryPage() {
         description="Track your household food items and expiry dates"
         action={
           <div className="flex gap-2">
-            <Button onClick={() => setShowCSVImport(true)} variant="secondary">
-              Import CSV
-            </Button>
-            <Button onClick={() => setShowAddForm(true)} variant="primary">
-              Add Item
-            </Button>
+            <button
+              onClick={() => setShowCSVImport(true)}
+              className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white hover:bg-gray-700 transition-colors"
+            >
+              Import
+            </button>
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="px-4 py-2 bg-gradient-to-r from-orange-500 to-purple-500 rounded-lg text-sm font-medium text-white hover:opacity-90 transition-opacity"
+            >
+              + Add Item
+            </button>
           </div>
         }
       >
-        {/* Summary Stats */}
+        {/* Summary Stats - Colour Coded */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="card p-4 text-center">
-            <div className="text-2xl font-bold text-white">{stats.totalItems}</div>
-            <div className="text-sm text-zinc-400">Total Items</div>
+          {/* Total Items - Gray/Neutral */}
+          <div className="bg-gray-900 border border-gray-700 rounded-xl p-5 text-center">
+            <div className="text-3xl font-bold text-gray-400">{stats.totalItems}</div>
+            <div className="text-sm text-zinc-500">Total Items</div>
           </div>
-          <div className="card p-4 text-center">
-            <div className="text-2xl font-bold text-green-400">{stats.activeItems}</div>
-            <div className="text-sm text-zinc-400">Active</div>
+          {/* Active - Green */}
+          <div className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border border-emerald-500/30 rounded-xl p-5 text-center">
+            <div className="text-3xl font-bold text-emerald-500">{stats.activeItems}</div>
+            <div className="text-sm text-zinc-500">Active</div>
           </div>
-          <div className="card p-4 text-center">
-            <div className="text-2xl font-bold text-amber-400">{stats.expiringSoonCount}</div>
-            <div className="text-sm text-zinc-400">Expiring Soon</div>
+          {/* Expiring Soon - Amber */}
+          <div className="bg-gradient-to-br from-amber-500/10 to-amber-500/5 border border-amber-500/30 rounded-xl p-5 text-center">
+            <div className="text-3xl font-bold text-amber-500">{stats.expiringSoonCount}</div>
+            <div className="text-sm text-zinc-500">Expiring Soon</div>
           </div>
-          <div className="card p-4 text-center">
-            <div className="text-2xl font-bold text-red-400">{stats.expiredCount}</div>
-            <div className="text-sm text-zinc-400">Expired</div>
+          {/* Expired - Red */}
+          <div className="bg-gradient-to-br from-red-500/10 to-red-500/5 border border-red-500/30 rounded-xl p-5 text-center">
+            <div className="text-3xl font-bold text-red-500">{stats.expiredCount}</div>
+            <div className="text-sm text-zinc-500">Expired</div>
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="card p-4 mb-6">
-          <div className="flex flex-wrap items-center gap-4">
-            {/* Search */}
-            <div className="flex-1 min-w-[200px]">
-              <Input
-                type="text"
-                placeholder="Search items..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
+        {/* Search & Filters - Unified Row */}
+        <div className="bg-gray-900/50 rounded-xl p-2 mb-4 flex flex-wrap items-center gap-2">
+          {/* Search */}
+          <div className="flex-1 min-w-[200px] relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">🔍</span>
+            <input
+              type="text"
+              placeholder="Search items..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-transparent border-none pl-10 pr-3 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none"
+            />
+          </div>
 
-            {/* Category filter */}
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-zinc-300">Category:</label>
-              <select
-                value={filters.category || ''}
-                onChange={(e) => setFilters({ ...filters, category: e.target.value || undefined })}
-                className="px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-              >
-                <option value="">All</option>
-                {categories.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-            </div>
+          {/* Divider */}
+          <div className="w-px h-6 bg-gray-700" />
 
-            {/* Location filter */}
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-zinc-300">Location:</label>
-              <select
-                value={filters.location || ''}
-                onChange={(e) => setFilters({ ...filters, location: e.target.value as StorageLocation || undefined })}
-                className="px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-              >
-                <option value="">All</option>
-                {STORAGE_LOCATIONS.map(loc => (
-                  <option key={loc.value} value={loc.value}>{loc.label}</option>
-                ))}
-              </select>
-            </div>
+          {/* Category filter */}
+          <select
+            value={filters.category || ''}
+            onChange={(e) => setFilters({ ...filters, category: e.target.value || undefined })}
+            className="bg-transparent border-none px-3 py-2.5 text-sm text-zinc-400 focus:outline-none cursor-pointer"
+          >
+            <option value="">All Categories</option>
+            {categories.map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
 
-            {/* Expiry Status filter */}
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-zinc-300">Status:</label>
-              <select
-                value={filters.expiryStatus || ''}
-                onChange={(e) => setFilters({ ...filters, expiryStatus: e.target.value as ExpiryStatus || undefined })}
-                className="px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-              >
-                <option value="">All</option>
-                <option value="expired">Expired</option>
-                <option value="expiringSoon">Expiring Soon</option>
-                <option value="fresh">Fresh</option>
-              </select>
-            </div>
+          {/* Divider */}
+          <div className="w-px h-6 bg-gray-700" />
 
-            {/* Active filter */}
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-zinc-300">Active:</label>
-              <select
-                value={filters.isActive === undefined ? '' : filters.isActive ? 'active' : 'inactive'}
-                onChange={(e) => {
-                  const value = e.target.value
-                  setFilters({
-                    ...filters,
-                    isActive: value === '' ? undefined : value === 'active',
-                  })
-                }}
-                className="px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-              >
-                <option value="">All</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
+          {/* Location filter */}
+          <select
+            value={filters.location || ''}
+            onChange={(e) => setFilters({ ...filters, location: e.target.value as StorageLocation || undefined })}
+            className="bg-transparent border-none px-3 py-2.5 text-sm text-zinc-400 focus:outline-none cursor-pointer"
+          >
+            <option value="">All Locations</option>
+            {STORAGE_LOCATIONS.map(loc => (
+              <option key={loc.value} value={loc.value}>{loc.label}</option>
+            ))}
+          </select>
 
-            {/* Clear filters */}
-            {(filters.category || filters.location || filters.expiryStatus || filters.isActive !== undefined || searchQuery) && (
+          {/* Divider */}
+          <div className="w-px h-6 bg-gray-700" />
+
+          {/* Expiry Status filter */}
+          <select
+            value={filters.expiryStatus || ''}
+            onChange={(e) => setFilters({ ...filters, expiryStatus: e.target.value as ExpiryStatus || undefined })}
+            className="bg-transparent border-none px-3 py-2.5 text-sm text-zinc-400 focus:outline-none cursor-pointer"
+          >
+            <option value="">All Status</option>
+            <option value="expired">Expired</option>
+            <option value="expiringSoon">Expiring Soon</option>
+            <option value="fresh">Fresh</option>
+          </select>
+
+          {/* Divider */}
+          <div className="w-px h-6 bg-gray-700" />
+
+          {/* Active filter */}
+          <select
+            value={filters.isActive === undefined ? '' : filters.isActive ? 'active' : 'inactive'}
+            onChange={(e) => {
+              const value = e.target.value
+              setFilters({
+                ...filters,
+                isActive: value === '' ? undefined : value === 'active',
+              })
+            }}
+            className="bg-transparent border-none px-3 py-2.5 text-sm text-zinc-400 focus:outline-none cursor-pointer"
+          >
+            <option value="">All Active</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+
+          {/* Clear filters */}
+          {(filters.category || filters.location || filters.expiryStatus || filters.isActive !== undefined || searchQuery) && (
+            <>
+              <div className="w-px h-6 bg-gray-700" />
               <button
                 onClick={() => {
                   setFilters({})
                   setSearchQuery('')
                 }}
-                className="text-sm text-zinc-400 hover:text-white"
+                className="px-3 py-2.5 text-sm text-zinc-400 hover:text-white transition-colors"
               >
-                Clear filters
+                Clear
               </button>
-            )}
-          </div>
+            </>
+          )}
         </div>
 
         {/* Bulk Actions Bar */}
         {selectedIds.size > 0 && (
-          <div className="card p-3 mb-4 flex items-center justify-between bg-purple-900/20 border-purple-500/30">
-            <span className="text-sm text-purple-300">
+          <div className="bg-gradient-to-r from-purple-500/10 to-purple-500/5 border border-purple-500/30 rounded-xl p-3 mb-4 flex items-center justify-between">
+            <span className="text-sm text-purple-400">
               {selectedIds.size} item{selectedIds.size !== 1 ? 's' : ''} selected
             </span>
             <div className="flex gap-2">
-              <Button
+              <button
                 onClick={() => setShowBulkExpiryModal(true)}
-                variant="secondary"
-                size="sm"
                 disabled={processingBulk}
+                className="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white hover:bg-gray-700 disabled:opacity-50 transition-colors"
               >
                 Update Expiry
-              </Button>
-              <Button
+              </button>
+              <button
                 onClick={handleBulkMarkInactive}
-                variant="secondary"
-                size="sm"
                 disabled={processingBulk}
+                className="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white hover:bg-gray-700 disabled:opacity-50 transition-colors"
               >
                 Mark Inactive
-              </Button>
-              <Button
-                onClick={handleBulkDelete}
-                variant="danger"
-                size="sm"
+              </button>
+              <button
+                onClick={() => {
+                  // TODO: Implement Add to Staples functionality when Staples feature exists
+                  warning('Add to Staples feature coming soon!')
+                }}
                 disabled={processingBulk}
+                className="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-sm text-emerald-500 hover:bg-gray-700 disabled:opacity-50 transition-colors"
+              >
+                Add to Staples
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                disabled={processingBulk}
+                className="px-3 py-1.5 bg-red-500/20 rounded-lg text-sm text-red-500 hover:bg-red-500/30 disabled:opacity-50 transition-colors"
               >
                 Delete
-              </Button>
+              </button>
             </div>
           </div>
         )}
@@ -1198,10 +1218,10 @@ export default function InventoryPage() {
                       <td className="px-4 py-3">
                         <button
                           onClick={() => handleToggleActive(item)}
-                          className={`px-2 py-1 text-xs font-medium rounded-full transition-colors ${
+                          className={`px-2 py-0.5 text-xs font-medium rounded-full transition-colors ${
                             item.isActive
-                              ? 'bg-green-900/50 text-green-400 hover:bg-green-900/70'
-                              : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'
+                              ? 'bg-emerald-500/20 text-emerald-500 hover:bg-emerald-500/30'
+                              : 'bg-gray-500/20 text-gray-500 hover:bg-gray-500/30'
                           }`}
                         >
                           {item.isActive ? 'Active' : 'Inactive'}
@@ -1337,7 +1357,15 @@ export default function InventoryPage() {
                   value={newItem.expiryDate}
                   onChange={(e) => setNewItem({ ...newItem, expiryDate: e.target.value })}
                 />
-                <p className="text-xs text-zinc-500 mt-1">Leave blank to auto-calculate</p>
+              </div>
+            </div>
+
+            {/* Smart Expiry Callout */}
+            <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3 flex items-center gap-3">
+              <span className="text-xl">✨</span>
+              <div>
+                <div className="text-sm font-medium text-purple-400">Smart Expiry</div>
+                <div className="text-xs text-zinc-400">Leave expiry blank and we'll calculate based on typical shelf life</div>
               </div>
             </div>
 
@@ -1644,34 +1672,34 @@ export default function InventoryPage() {
         >
           <div className="p-6 space-y-6">
             {/* Step 1: Download Template */}
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-600 text-xs">1</span>
-                Download Template
-              </h3>
-              <p className="text-sm text-zinc-400 ml-8">
-                Start with our template to ensure your data is formatted correctly.
-              </p>
-              <div className="ml-8">
-                <Button onClick={handleDownloadTemplate} variant="secondary" size="sm">
+            <div className="flex gap-4">
+              <div className="w-8 h-8 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center flex-shrink-0 font-medium">1</div>
+              <div className="flex-1 space-y-2">
+                <div className="font-medium text-white">Download Template</div>
+                <p className="text-sm text-zinc-400">
+                  Start with our template to ensure your data is formatted correctly.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleDownloadTemplate}
+                  className="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white hover:bg-gray-700 transition-colors"
+                >
                   Download CSV Template
-                </Button>
+                </button>
               </div>
             </div>
 
             {/* Step 2: Upload File */}
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-600 text-xs">2</span>
-                Upload Your File
-              </h3>
-              <p className="text-sm text-zinc-400 ml-8">
-                Upload your completed CSV file for validation.
-              </p>
-              <div className="ml-8">
+            <div className="flex gap-4">
+              <div className="w-8 h-8 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center flex-shrink-0 font-medium">2</div>
+              <div className="flex-1 space-y-2">
+                <div className="font-medium text-white">Upload Your File</div>
+                <p className="text-sm text-zinc-400">
+                  Upload your completed CSV file for validation.
+                </p>
                 <div className="flex items-center gap-3">
                   <label className="cursor-pointer">
-                    <span className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white text-sm rounded-lg transition-colors">
+                    <span className="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white hover:bg-gray-700 transition-colors inline-block">
                       Choose File
                     </span>
                     <input
@@ -1690,101 +1718,101 @@ export default function InventoryPage() {
 
             {/* Step 3: Preview & Import */}
             {csvSummary && (
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-600 text-xs">3</span>
-                  Preview & Import
-                </h3>
+              <div className="flex gap-4">
+                <div className="w-8 h-8 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center flex-shrink-0 font-medium">3</div>
+                <div className="flex-1 space-y-3">
+                  <div className="font-medium text-white">Preview & Import</div>
 
-                {/* Summary Stats */}
-                <div className="ml-8 grid grid-cols-4 gap-3">
-                  <div className="bg-zinc-800/50 p-3 rounded-lg text-center">
-                    <div className="text-xl font-bold text-white">{csvSummary.totalRows}</div>
-                    <div className="text-xs text-zinc-400">Total Rows</div>
+                  {/* Summary Stats */}
+                  <div className="grid grid-cols-4 gap-3">
+                    <div className="bg-zinc-800/50 p-3 rounded-lg text-center">
+                      <div className="text-xl font-bold text-white">{csvSummary.totalRows}</div>
+                      <div className="text-xs text-zinc-400">Total Rows</div>
+                    </div>
+                    <div className="bg-zinc-800/50 p-3 rounded-lg text-center">
+                      <div className="text-xl font-bold text-green-400">{csvSummary.validCount}</div>
+                      <div className="text-xs text-zinc-400">Valid</div>
+                    </div>
+                    <div className="bg-zinc-800/50 p-3 rounded-lg text-center">
+                      <div className="text-xl font-bold text-amber-400">{csvSummary.warningCount}</div>
+                      <div className="text-xs text-zinc-400">Warnings</div>
+                    </div>
+                    <div className="bg-zinc-800/50 p-3 rounded-lg text-center">
+                      <div className="text-xl font-bold text-red-400">{csvSummary.errorCount}</div>
+                      <div className="text-xs text-zinc-400">Errors</div>
+                    </div>
                   </div>
-                  <div className="bg-zinc-800/50 p-3 rounded-lg text-center">
-                    <div className="text-xl font-bold text-green-400">{csvSummary.validCount}</div>
-                    <div className="text-xs text-zinc-400">Valid</div>
-                  </div>
-                  <div className="bg-zinc-800/50 p-3 rounded-lg text-center">
-                    <div className="text-xl font-bold text-amber-400">{csvSummary.warningCount}</div>
-                    <div className="text-xs text-zinc-400">Warnings</div>
-                  </div>
-                  <div className="bg-zinc-800/50 p-3 rounded-lg text-center">
-                    <div className="text-xl font-bold text-red-400">{csvSummary.errorCount}</div>
-                    <div className="text-xs text-zinc-400">Errors</div>
-                  </div>
-                </div>
 
-                {/* Preview Table */}
-                <div className="ml-8 max-h-64 overflow-y-auto border border-zinc-700 rounded-lg">
-                  <table className="w-full text-sm">
-                    <thead className="bg-zinc-800 sticky top-0">
-                      <tr>
-                        <th className="px-3 py-2 text-left text-zinc-300">Row</th>
-                        <th className="px-3 py-2 text-left text-zinc-300">Status</th>
-                        <th className="px-3 py-2 text-left text-zinc-300">Name</th>
-                        <th className="px-3 py-2 text-left text-zinc-300">Qty</th>
-                        <th className="px-3 py-2 text-left text-zinc-300">Category</th>
-                        <th className="px-3 py-2 text-left text-zinc-300">Issues</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-700">
-                      {csvSummary.results.map((result) => (
-                        <tr
-                          key={result.row}
-                          className={
-                            result.status === 'error'
-                              ? 'bg-red-900/20'
-                              : result.status === 'warning'
-                              ? 'bg-amber-900/20'
-                              : ''
-                          }
-                        >
-                          <td className="px-3 py-2 text-zinc-400">{result.row}</td>
-                          <td className="px-3 py-2">
-                            <span
-                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                                result.status === 'valid'
-                                  ? 'bg-green-900/50 text-green-400'
-                                  : result.status === 'warning'
-                                  ? 'bg-amber-900/50 text-amber-400'
-                                  : 'bg-red-900/50 text-red-400'
-                              }`}
-                            >
-                              {result.status}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2 text-white">{result.data.name}</td>
-                          <td className="px-3 py-2 text-zinc-300">
-                            {result.data.quantity} {result.data.unit}
-                          </td>
-                          <td className="px-3 py-2 text-zinc-300">{result.data.category}</td>
-                          <td className="px-3 py-2">
-                            {result.errors.length > 0 && (
-                              <span className="text-red-400 text-xs">{result.errors.join(', ')}</span>
-                            )}
-                            {result.warnings.length > 0 && (
-                              <span className="text-amber-400 text-xs">{result.warnings.join(', ')}</span>
-                            )}
-                          </td>
+                  {/* Preview Table */}
+                  <div className="max-h-64 overflow-y-auto border border-zinc-700 rounded-lg">
+                    <table className="w-full text-sm">
+                      <thead className="bg-zinc-800 sticky top-0">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-zinc-300">Row</th>
+                          <th className="px-3 py-2 text-left text-zinc-300">Status</th>
+                          <th className="px-3 py-2 text-left text-zinc-300">Name</th>
+                          <th className="px-3 py-2 text-left text-zinc-300">Qty</th>
+                          <th className="px-3 py-2 text-left text-zinc-300">Category</th>
+                          <th className="px-3 py-2 text-left text-zinc-300">Issues</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-700">
+                        {csvSummary.results.map((result) => (
+                          <tr
+                            key={result.row}
+                            className={
+                              result.status === 'error'
+                                ? 'bg-red-900/20'
+                                : result.status === 'warning'
+                                ? 'bg-amber-900/20'
+                                : ''
+                            }
+                          >
+                            <td className="px-3 py-2 text-zinc-400">{result.row}</td>
+                            <td className="px-3 py-2">
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                  result.status === 'valid'
+                                    ? 'bg-green-900/50 text-green-400'
+                                    : result.status === 'warning'
+                                    ? 'bg-amber-900/50 text-amber-400'
+                                    : 'bg-red-900/50 text-red-400'
+                                }`}
+                              >
+                                {result.status}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 text-white">{result.data.name}</td>
+                            <td className="px-3 py-2 text-zinc-300">
+                              {result.data.quantity} {result.data.unit}
+                            </td>
+                            <td className="px-3 py-2 text-zinc-300">{result.data.category}</td>
+                            <td className="px-3 py-2">
+                              {result.errors.length > 0 && (
+                                <span className="text-red-400 text-xs">{result.errors.join(', ')}</span>
+                              )}
+                              {result.warnings.length > 0 && (
+                                <span className="text-amber-400 text-xs">{result.warnings.join(', ')}</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
 
-                {/* Import Info */}
-                <div className="ml-8 text-sm text-zinc-400">
-                  {csvSummary.validCount + csvSummary.warningCount > 0 ? (
-                    <p>
-                      {csvSummary.validCount + csvSummary.warningCount} item(s) will be imported.
-                      {csvSummary.warningCount > 0 && ' Items with warnings will use auto-calculated expiry dates.'}
-                      {csvSummary.errorCount > 0 && ` ${csvSummary.errorCount} item(s) with errors will be skipped.`}
-                    </p>
-                  ) : (
-                    <p className="text-red-400">No valid items to import. Please fix the errors and try again.</p>
-                  )}
+                  {/* Import Info */}
+                  <div className="text-sm text-zinc-400">
+                    {csvSummary.validCount + csvSummary.warningCount > 0 ? (
+                      <p>
+                        {csvSummary.validCount + csvSummary.warningCount} item(s) will be imported.
+                        {csvSummary.warningCount > 0 && ' Items with warnings will use auto-calculated expiry dates.'}
+                        {csvSummary.errorCount > 0 && ` ${csvSummary.errorCount} item(s) with errors will be skipped.`}
+                      </p>
+                    ) : (
+                      <p className="text-red-400">No valid items to import. Please fix the errors and try again.</p>
+                    )}
+                  </div>
                 </div>
               </div>
             )}

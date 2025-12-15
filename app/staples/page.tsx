@@ -31,6 +31,7 @@ import { COMMON_UNITS } from '@/lib/unit-conversion'
 import { SHELF_LIFE_SEED_DATA } from '@/lib/inventory'
 import type { ShelfLifeSeedItem } from '@/lib/inventory'
 import { STORAGE_LOCATION_LABELS } from '@/lib/types/inventory'
+import { ImportButtons } from '@/components/shared/ImportButtons'
 
 // Shopping list category from API
 interface ShoppingListCategory {
@@ -761,27 +762,27 @@ export default function StaplesPage() {
     switch (status) {
       case 'overdue':
         return (
-          <Badge variant="error" size="sm">
+          <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-500/20 text-red-500">
             {formatDueStatus(status, daysUntilDue)}
-          </Badge>
+          </span>
         )
       case 'dueToday':
         return (
-          <Badge variant="warning" size="sm">
+          <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-500/20 text-red-500">
             Due today
-          </Badge>
+          </span>
         )
       case 'dueSoon':
         return (
-          <Badge variant="warning" size="sm">
+          <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-amber-500/20 text-amber-500">
             {formatDueStatus(status, daysUntilDue)}
-          </Badge>
+          </span>
         )
       case 'upcoming':
         return (
-          <Badge variant="default" size="sm">
+          <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-500/20 text-gray-400">
             {formatDueStatus(status, daysUntilDue)}
-          </Badge>
+          </span>
         )
       case 'notDue':
       default:
@@ -826,48 +827,55 @@ export default function StaplesPage() {
         description="Recurring household items that get suggested for shopping lists"
         action={
           <div className="flex gap-2">
-            <Button onClick={() => setShowCSVImport(true)} variant="secondary">
+            <button
+              onClick={() => setShowCSVImport(true)}
+              className="px-4 py-2 text-sm font-medium bg-gray-800 border border-gray-700 rounded-lg text-white hover:bg-gray-700 transition-colors"
+            >
               Import CSV
-            </Button>
-            <Button onClick={() => setShowAddForm(true)} variant="primary">
-              Add Staple
-            </Button>
+            </button>
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="px-4 py-2 text-sm font-medium bg-gradient-to-r from-orange-500 to-purple-500 rounded-lg text-white hover:opacity-90 transition-opacity"
+            >
+              + Add Staple
+            </button>
           </div>
         }
       >
         {/* Filters */}
-        <div className="card p-4 mb-6">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-zinc-300">Category:</label>
+        <div className="bg-gray-900/50 rounded-lg p-2 mb-6">
+          <div className="flex flex-wrap items-center">
+            <div className="flex items-center px-3">
               <select
                 value={filters.category || ''}
                 onChange={(e) => setFilters({ ...filters, category: e.target.value || undefined })}
-                className="px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="bg-transparent border-none text-white text-sm focus:outline-none focus:ring-0 cursor-pointer"
               >
-                <option value="">All</option>
+                <option value="" className="bg-zinc-800">Category: All</option>
                 {categories.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
+                  <option key={cat} value={cat} className="bg-zinc-800">Category: {cat}</option>
                 ))}
               </select>
             </div>
 
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-zinc-300">Frequency:</label>
+            <div className="w-px h-6 bg-gray-700" />
+
+            <div className="flex items-center px-3">
               <select
                 value={filters.frequency || ''}
                 onChange={(e) => setFilters({ ...filters, frequency: e.target.value as StapleFrequency || undefined })}
-                className="px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="bg-transparent border-none text-white text-sm focus:outline-none focus:ring-0 cursor-pointer"
               >
-                <option value="">All</option>
+                <option value="" className="bg-zinc-800">Frequency: All</option>
                 {STAPLE_FREQUENCIES.map(f => (
-                  <option key={f.value} value={f.value}>{f.label}</option>
+                  <option key={f.value} value={f.value} className="bg-zinc-800">Frequency: {f.label}</option>
                 ))}
               </select>
             </div>
 
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-zinc-300">Status:</label>
+            <div className="w-px h-6 bg-gray-700" />
+
+            <div className="flex items-center px-3">
               <select
                 value={filters.isActive === undefined ? '' : filters.isActive ? 'active' : 'inactive'}
                 onChange={(e) => {
@@ -877,61 +885,65 @@ export default function StaplesPage() {
                     isActive: value === '' ? undefined : value === 'active',
                   })
                 }}
-                className="px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="bg-transparent border-none text-white text-sm focus:outline-none focus:ring-0 cursor-pointer"
               >
-                <option value="">All</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
+                <option value="" className="bg-zinc-800">Status: All</option>
+                <option value="active" className="bg-zinc-800">Status: Active</option>
+                <option value="inactive" className="bg-zinc-800">Status: Inactive</option>
               </select>
             </div>
 
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-zinc-300">Due:</label>
+            <div className="w-px h-6 bg-gray-700" />
+
+            <div className="flex items-center px-3">
               <select
                 value={filters.dueStatus || ''}
                 onChange={(e) => setFilters({ ...filters, dueStatus: e.target.value as StapleDueStatus || undefined })}
-                className="px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="bg-transparent border-none text-white text-sm focus:outline-none focus:ring-0 cursor-pointer"
               >
-                <option value="">All</option>
-                <option value="overdue">Overdue</option>
-                <option value="dueToday">Due Today</option>
-                <option value="dueSoon">Due Soon</option>
-                <option value="upcoming">Upcoming</option>
-                <option value="notDue">Not Due</option>
+                <option value="" className="bg-zinc-800">Due: All</option>
+                <option value="overdue" className="bg-zinc-800">Due: Overdue</option>
+                <option value="dueToday" className="bg-zinc-800">Due: Today</option>
+                <option value="dueSoon" className="bg-zinc-800">Due: Soon</option>
+                <option value="upcoming" className="bg-zinc-800">Due: Upcoming</option>
+                <option value="notDue" className="bg-zinc-800">Due: Not Due</option>
               </select>
             </div>
 
             {(filters.category || filters.frequency || filters.isActive !== undefined || filters.dueStatus) && (
-              <button
-                onClick={() => setFilters({})}
-                className="text-sm text-zinc-400 hover:text-white"
-              >
-                Clear filters
-              </button>
+              <>
+                <div className="w-px h-6 bg-gray-700" />
+                <button
+                  onClick={() => setFilters({})}
+                  className="px-3 text-sm text-zinc-400 hover:text-white"
+                >
+                  Clear
+                </button>
+              </>
             )}
           </div>
         </div>
 
         {/* Summary Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="card p-4 text-center">
+          <div className="p-4 text-center rounded-lg border bg-gray-900 border-gray-700">
             <div className="text-2xl font-bold text-white">{staples.length}</div>
             <div className="text-sm text-zinc-400">Total Staples</div>
           </div>
-          <div className="card p-4 text-center">
-            <div className="text-2xl font-bold text-green-400">
+          <div className="p-4 text-center rounded-lg border bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border-emerald-500/30">
+            <div className="text-2xl font-bold text-emerald-500">
               {staples.filter(s => s.isActive).length}
             </div>
             <div className="text-sm text-zinc-400">Active</div>
           </div>
-          <div className="card p-4 text-center">
-            <div className="text-2xl font-bold text-yellow-400">
+          <div className="p-4 text-center rounded-lg border bg-gradient-to-br from-amber-500/10 to-amber-500/5 border-amber-500/30">
+            <div className="text-2xl font-bold text-amber-500">
               {staples.filter(s => s.dueStatus === 'dueToday' || s.dueStatus === 'dueSoon').length}
             </div>
             <div className="text-sm text-zinc-400">Due Soon</div>
           </div>
-          <div className="card p-4 text-center">
-            <div className="text-2xl font-bold text-red-400">
+          <div className="p-4 text-center rounded-lg border bg-gradient-to-br from-red-500/10 to-red-500/5 border-red-500/30">
+            <div className="text-2xl font-bold text-red-500">
               {staples.filter(s => s.dueStatus === 'overdue').length}
             </div>
             <div className="text-sm text-zinc-400">Overdue</div>
@@ -1048,8 +1060,8 @@ export default function StaplesPage() {
                           onClick={() => handleToggleActive(staple)}
                           className={`px-2 py-1 text-xs font-medium rounded-full transition-colors ${
                             staple.isActive
-                              ? 'bg-green-900/50 text-green-400 hover:bg-green-900/70'
-                              : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'
+                              ? 'bg-emerald-500/20 text-emerald-500 hover:bg-emerald-500/30'
+                              : 'bg-gray-500/20 text-gray-500 hover:bg-gray-500/30'
                           }`}
                         >
                           {staple.isActive ? 'Active' : 'Inactive'}
@@ -1091,32 +1103,18 @@ export default function StaplesPage() {
         >
           <form onSubmit={handleAddStaple} className="p-6 space-y-4">
             {/* Import buttons */}
-            <div className="flex gap-2 pb-2 border-b border-zinc-700">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  setShowAddForm(false)
-                  setShelfLifeSuggestion(null)
-                  setShowUrlModal(true)
-                }}
-              >
-                Import URL
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  setShowAddForm(false)
-                  setShelfLifeSuggestion(null)
-                  setShowPhotoModal(true)
-                }}
-              >
-                Import Photo
-              </Button>
-            </div>
+            <ImportButtons
+              onUrlClick={() => {
+                setShowAddForm(false)
+                setShelfLifeSuggestion(null)
+                setShowUrlModal(true)
+              }}
+              onPhotoClick={() => {
+                setShowAddForm(false)
+                setShelfLifeSuggestion(null)
+                setShowPhotoModal(true)
+              }}
+            />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -1414,38 +1412,49 @@ export default function StaplesPage() {
         >
           <div className="p-6 space-y-6">
             {/* Step 1: Download Template */}
-            <div className="flex items-center justify-between p-4 bg-zinc-800/50 rounded-lg">
-              <div>
-                <h4 className="font-medium text-white">Step 1: Download Template</h4>
+            <div className="flex items-start gap-4 p-4 bg-zinc-800/50 rounded-lg">
+              <div className="w-8 h-8 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center flex-shrink-0 font-medium">
+                1
+              </div>
+              <div className="flex-1">
+                <h4 className="font-medium text-white">Download Template</h4>
                 <p className="text-sm text-zinc-400 mt-1">
                   Start with our template CSV for the correct format
                 </p>
+                <button
+                  onClick={handleDownloadTemplate}
+                  className="mt-3 px-4 py-2 text-sm font-medium bg-gray-800 border border-gray-700 rounded-lg text-white hover:bg-gray-700 transition-colors"
+                >
+                  Download Template
+                </button>
               </div>
-              <Button onClick={handleDownloadTemplate} variant="secondary" size="sm">
-                Download Template
-              </Button>
             </div>
 
             {/* Step 2: Upload File */}
-            <div className="p-4 bg-zinc-800/50 rounded-lg">
-              <h4 className="font-medium text-white mb-2">Step 2: Upload Your CSV</h4>
-              <div className="flex items-center gap-4">
-                <label className="flex-1 flex items-center justify-center px-4 py-8 border-2 border-dashed border-zinc-600 rounded-lg cursor-pointer hover:border-purple-500 hover:bg-zinc-800/50 transition-colors">
-                  <div className="text-center">
-                    <svg className="mx-auto h-12 w-12 text-zinc-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                    </svg>
-                    <span className="text-zinc-400">
-                      {csvFileName ? csvFileName : 'Click to select a CSV file'}
-                    </span>
-                  </div>
-                  <input
-                    type="file"
-                    accept=".csv,text/csv"
-                    onChange={handleFileSelect}
-                    className="hidden"
-                  />
-                </label>
+            <div className="flex items-start gap-4 p-4 bg-zinc-800/50 rounded-lg">
+              <div className="w-8 h-8 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center flex-shrink-0 font-medium">
+                2
+              </div>
+              <div className="flex-1">
+                <h4 className="font-medium text-white mb-2">Upload Your CSV</h4>
+                <div className="flex items-center gap-4">
+                  <label className="flex-1 flex items-center justify-center px-4 py-8 border-2 border-dashed border-zinc-600 rounded-lg cursor-pointer hover:border-purple-500 hover:bg-zinc-800/50 transition-colors">
+                    <div className="text-center">
+                      <svg className="mx-auto h-12 w-12 text-zinc-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                      <span className="text-zinc-400">
+                        {csvFileName ? csvFileName : 'Click to select a CSV file'}
+                      </span>
+                    </div>
+                    <input
+                      type="file"
+                      accept=".csv,text/csv"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
               </div>
             </div>
 
