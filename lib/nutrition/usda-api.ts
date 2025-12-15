@@ -14,6 +14,7 @@ import {
   USDA_NUTRIENT_IDS,
   UNIT_TO_GRAMS
 } from './types'
+import { getIngredientWeight, GENERIC_UNITS } from './ingredient-weights'
 
 const USDA_API_BASE = 'https://api.nal.usda.gov/fdc/v1'
 
@@ -133,22 +134,43 @@ export function normalizeIngredientName(ingredientName: string): string {
 
 /**
  * Convert quantity and unit to grams
+ *
+ * If ingredientName is provided and unit is generic (whole, piece, etc.),
+ * uses smart ingredient-specific weight lookup for more accurate conversion.
  */
-export function convertToGrams(quantity: number, unit: string): number {
+export function convertToGrams(quantity: number, unit: string, ingredientName?: string): number {
   const normalizedUnit = unit.toLowerCase().trim()
+
+  // If unit is generic AND we have an ingredient name, try smart lookup
+  if (ingredientName && GENERIC_UNITS.includes(normalizedUnit)) {
+    const smartWeight = getIngredientWeight(ingredientName)
+    if (smartWeight !== null) {
+      console.log(`🎯 Smart weight: "${ingredientName}" (${quantity} ${unit}) → ${quantity * smartWeight}g (not default ${quantity * (UNIT_TO_GRAMS[normalizedUnit] || 100)}g)`)
+      return quantity * smartWeight
+    } else {
+      console.warn(`⚠️ No smart weight for "${ingredientName}" with unit "${unit}" - using default ${UNIT_TO_GRAMS[normalizedUnit] || 100}g per ${unit}`)
+    }
+  }
+
   const factor = UNIT_TO_GRAMS[normalizedUnit] || 100 // Default to 100g if unknown
   return quantity * factor
 }
 
 /**
  * Calculate nutrition for an ingredient based on quantity and unit
+ *
+ * @param nutrientsPer100g - Nutrition data per 100g
+ * @param quantity - Amount of the ingredient
+ * @param unit - Unit of measurement
+ * @param ingredientName - Optional ingredient name for smart weight lookup
  */
 export function calculateIngredientNutrition(
   nutrientsPer100g: NutrientsPer100g,
   quantity: number,
-  unit: string
+  unit: string,
+  ingredientName?: string
 ): NutrientsPer100g {
-  const grams = convertToGrams(quantity, unit)
+  const grams = convertToGrams(quantity, unit, ingredientName)
   const factor = grams / 100
 
   return {
@@ -181,7 +203,7 @@ export async function lookupIngredientNutrition(
   // Use the first (best) match
   const bestMatch = results[0]
   const nutrientsPer100g = extractNutrientsPer100g(bestMatch)
-  const nutrition = calculateIngredientNutrition(nutrientsPer100g, quantity, unit)
+  const nutrition = calculateIngredientNutrition(nutrientsPer100g, quantity, unit, ingredientName)
 
   console.log(`✅ USDA match: "${ingredientName}" → "${bestMatch.description}" (FDC: ${bestMatch.fdcId})`)
 
