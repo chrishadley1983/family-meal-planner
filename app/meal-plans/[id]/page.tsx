@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { formatDate, formatDateRange } from '@/lib/date-utils'
@@ -329,8 +329,8 @@ export default function MealPlanDetailPage() {
   const [recipeSlotToFill, setRecipeSlotToFill] = useState<{ day: string; mealType: string } | null>(null)
   const [addingMeal, setAddingMeal] = useState(false)
 
-  // View mode state (meals vs cooking plan)
-  const [viewMode, setViewMode] = useState<'meals' | 'cooking'>('meals')
+  // View mode state (week overview, day detail, or cooking plan)
+  const [viewMode, setViewMode] = useState<'week' | 'meals' | 'cooking'>('week')
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -1521,18 +1521,28 @@ export default function MealPlanDetailPage() {
         <div className="card p-2 mb-4">
           <div className="flex justify-center gap-2">
             <button
+              onClick={() => setViewMode('week')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                viewMode === 'week'
+                  ? 'bg-purple-500 text-white'
+                  : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+              }`}
+            >
+              📅 Week Overview
+            </button>
+            <button
               onClick={() => setViewMode('meals')}
-              className={`px-6 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 viewMode === 'meals'
                   ? 'bg-purple-500 text-white'
                   : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
               }`}
             >
-              📋 Meals View
+              📋 Day Detail
             </button>
             <button
               onClick={() => setViewMode('cooking')}
-              className={`px-6 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 viewMode === 'cooking'
                   ? 'bg-purple-500 text-white'
                   : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
@@ -1543,7 +1553,130 @@ export default function MealPlanDetailPage() {
           </div>
         </div>
 
-        {/* Day Navigation Controls */}
+        {/* Week Overview Table - shows when viewMode === 'week' */}
+        {viewMode === 'week' && (
+          <div className="card p-4 mb-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-white">Week of {formatDate(mealPlan.weekStartDate)}</h2>
+              <Badge
+                variant={mealPlan.status === 'Finalized' ? 'success' : mealPlan.status === 'Archived' ? 'default' : 'warning'}
+                size="sm"
+              >
+                {mealPlan.status}
+              </Badge>
+            </div>
+
+            {/* Week Grid - Table Structure with Fixed Rows */}
+            <div className="bg-zinc-900 border border-zinc-700 rounded-lg overflow-hidden">
+              <table className="w-full text-xs border-collapse">
+                {/* Day Headers */}
+                <thead>
+                  <tr className="border-b border-zinc-700">
+                    {DAYS_OF_WEEK.map((day, index) => {
+                      const weekStartDate = new Date(mealPlan.weekStartDate)
+                      const dayDate = new Date(weekStartDate)
+                      dayDate.setDate(weekStartDate.getDate() + index)
+                      const shortDate = `${dayDate.getDate()} ${dayDate.toLocaleDateString('en-GB', { month: 'short' })}`
+
+                      return (
+                        <th
+                          key={day}
+                          className={`py-3 px-2 text-center ${index < DAYS_OF_WEEK.length - 1 ? 'border-r border-zinc-700' : ''}`}
+                          style={{ width: '14.28%' }}
+                        >
+                          <div className="font-semibold text-white">{day}</div>
+                          <div className="font-normal text-zinc-500 text-[10px]">{shortDate}</div>
+                        </th>
+                      )
+                    })}
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* Render each meal type as a row */}
+                  {MEAL_TYPE_ORDER.map((mealTypeKey) => {
+                    const mealTypeLabel = MEAL_TYPES.find(mt => mt.key === mealTypeKey)?.label || mealTypeKey
+
+                    return (
+                      <React.Fragment key={mealTypeKey}>
+                        {/* Meal Type Header Row */}
+                        <tr className="border-b border-zinc-700" style={{ background: 'rgba(139, 92, 246, 0.05)' }}>
+                          <td
+                            colSpan={7}
+                            className="py-2 px-3 text-[10px] uppercase tracking-wider font-semibold text-zinc-500"
+                          >
+                            {mealTypeLabel}
+                          </td>
+                        </tr>
+                        {/* Meal Content Row */}
+                        <tr className="border-b border-zinc-700 last:border-b-0">
+                          {DAYS_OF_WEEK.map((day, idx) => {
+                            const meal = mealPlan.meals.find(m =>
+                              m.dayOfWeek === day &&
+                              m.mealType.toLowerCase().replace(/\s+/g, '-') === mealTypeKey
+                            )
+
+                            return (
+                              <td
+                                key={`${day}-${mealTypeKey}`}
+                                className={`py-2 px-2 align-top min-h-[60px] ${idx < DAYS_OF_WEEK.length - 1 ? 'border-r border-zinc-700' : ''}`}
+                              >
+                                {meal ? (
+                                  <div
+                                    className="cursor-pointer hover:bg-zinc-800/50 rounded p-1 -m-1 transition-colors"
+                                    onClick={() => {
+                                      setCurrentDayIndex(idx)
+                                      setViewMode('meals')
+                                    }}
+                                  >
+                                    <div className="flex items-start gap-1 flex-wrap">
+                                      <span className="font-medium text-purple-400 break-words leading-tight text-[11px]">
+                                        {meal.recipeName || 'No recipe'}
+                                      </span>
+                                      {/* Batch cook indicator */}
+                                      {!meal.isLeftover && meal.notes?.toLowerCase().includes('batch') && (
+                                        <span className="text-amber-500 flex-shrink-0" title="Batch cook">⚡</span>
+                                      )}
+                                      {/* Reheat/leftover indicator */}
+                                      {meal.isLeftover && (
+                                        <span className="text-emerald-500 flex-shrink-0" title="Reheat (from batch)">🔄</span>
+                                      )}
+                                    </div>
+                                    {meal.servings && (
+                                      <div className="text-zinc-500 mt-0.5 text-[10px]">{meal.servings} servings</div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div
+                                    className="text-zinc-600 text-[10px] italic cursor-pointer hover:text-purple-400 transition-colors"
+                                    onClick={() => {
+                                      setCurrentDayIndex(idx)
+                                      openRecipeSelector(day, mealTypeKey)
+                                    }}
+                                  >
+                                    + Add
+                                  </div>
+                                )}
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      </React.Fragment>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Legend */}
+            <div className="flex gap-6 mt-3 text-xs text-zinc-500">
+              <span><span className="text-amber-500">⚡</span> Batch cook</span>
+              <span><span className="text-emerald-500">🔄</span> Reheat (from batch)</span>
+            </div>
+          </div>
+        )}
+
+        {/* Day Navigation Controls - only show for meals and cooking views */}
+        {(viewMode === 'meals' || viewMode === 'cooking') && (
         <div className="card p-4 mb-4">
           <div className="flex items-center justify-between">
             <button
@@ -1602,6 +1735,7 @@ export default function MealPlanDetailPage() {
             Click a day or use arrow keys to navigate
           </div>
         </div>
+        )}
 
         {/* Cooking Plan View */}
         {viewMode === 'cooking' && (
@@ -1610,146 +1744,172 @@ export default function MealPlanDetailPage() {
               const day = DAYS_OF_WEEK[currentDayIndex]
               const dayMeals = mealPlan.meals.filter(m => m.dayOfWeek === day)
 
-              // Group meals by cooking time of day
-              const morningMeals = dayMeals.filter(m =>
-                ['breakfast', 'morning-snack'].includes(m.mealType.toLowerCase().replace(/\s+/g, '-'))
-              )
-              const middayMeals = dayMeals.filter(m =>
-                ['lunch', 'afternoon-snack'].includes(m.mealType.toLowerCase().replace(/\s+/g, '-'))
-              )
-              const eveningMeals = dayMeals.filter(m =>
-                ['dinner', 'dessert', 'evening-snack'].includes(m.mealType.toLowerCase().replace(/\s+/g, '-'))
-              )
+              // Group meals by cooking action (Cook vs Reheat) as per design spec
+              const mealsToCook = dayMeals.filter(m => !m.isLeftover)
+              const mealsToReheat = dayMeals.filter(m => m.isLeftover)
 
-              // Calculate total cooking time (estimate based on meal types)
+              // Calculate cooking time with recipe data if available
               const estimateCookTime = (meal: Meal): number => {
-                if (meal.isLeftover) return 5 // Just reheating
-                // Use recipe prepTime/cookTime if available, else estimate
+                if (meal.isLeftover) return 10 // Reheat time
+                // Use recipe times if available
+                const recipe = recipes.find(r => r.id === meal.recipeId)
+                if (recipe?.prepTimeMinutes || recipe?.cookTimeMinutes) {
+                  return (recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0)
+                }
+                // Fallback estimates
                 const mealType = meal.mealType.toLowerCase()
-                if (mealType.includes('snack') || mealType.includes('dessert')) return 10
-                if (mealType === 'breakfast') return 15
-                if (mealType === 'lunch') return 20
-                return 30 // dinner
+                if (mealType.includes('snack') || mealType.includes('dessert')) return 15
+                if (mealType === 'breakfast') return 20
+                if (mealType === 'lunch') return 25
+                return 35 // dinner
               }
 
-              const totalCookTime = dayMeals.reduce((sum, meal) => sum + estimateCookTime(meal), 0)
+              const totalCookTime = mealsToCook.reduce((sum, meal) => sum + estimateCookTime(meal), 0)
+              const totalReheatTime = mealsToReheat.length * 10 // ~10 min per reheat
 
-              const renderCookingSection = (title: string, emoji: string, meals: Meal[]) => {
-                if (meals.length === 0) return null
-
-                return (
-                  <div key={title} className="mb-6">
-                    <h3 className="text-lg font-semibold text-white flex items-center gap-2 mb-3">
-                      <span>{emoji}</span> {title}
-                    </h3>
-                    <div className="space-y-3">
-                      {meals.map(meal => (
-                        <div
-                          key={meal.id}
-                          className="flex items-center gap-4 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700"
-                        >
-                          {/* Checkbox */}
-                          <input
-                            type="checkbox"
-                            checked={meal.isCooked || false}
-                            onChange={() => {
-                              if (!meal.isCooked) {
-                                handleMarkCooked(meal.id)
-                              } else {
-                                handleMarkCooked(meal.id, true)
-                              }
-                            }}
-                            className="w-5 h-5 rounded border-zinc-600 text-purple-500 focus:ring-purple-500"
-                          />
-
-                          {/* Recipe Info */}
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-white">
-                                {meal.recipeName || 'No recipe assigned'}
-                              </span>
-                              {/* Badges */}
-                              {!meal.isLeftover && meal.notes?.toLowerCase().includes('batch') && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-500 font-medium">
-                                  ⚡ BATCH COOK
-                                </span>
-                              )}
-                              {meal.isLeftover && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-500 font-medium">
-                                  🔄 REHEAT ONLY
-                                </span>
-                              )}
-                              {meal.isCooked && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-500 font-medium">
-                                  ✓ DONE
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-xs text-zinc-500 mt-1">
-                              {MEAL_TYPES.find(mt => mt.key === meal.mealType.toLowerCase().replace(/\s+/g, '-'))?.label || meal.mealType}
-                              {meal.servings && (
-                                <>
-                                  {' · '}
-                                  {!meal.isLeftover && meal.notes?.toLowerCase().includes('batch') ? (
-                                    <span className="text-amber-400 font-medium">
-                                      {/* For batch cook, show total servings prominently */}
-                                      {(() => {
-                                        // Calculate total batch servings: this meal + all leftover meals using this recipe
-                                        const leftoverMeals = mealPlan?.meals.filter(m =>
-                                          m.isLeftover &&
-                                          m.recipeId === meal.recipeId &&
-                                          m.leftoverFromMealId === meal.id
-                                        ) || []
-                                        const leftoverServings = leftoverMeals.reduce((sum, m) => sum + (m.servings || 0), 0)
-                                        const totalBatch = (meal.servings || 0) + leftoverServings
-                                        return `${totalBatch} servings total (batch)`
-                                      })()}
-                                    </span>
-                                  ) : (
-                                    `${meal.servings} servings`
-                                  )}
-                                </>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Cooking Time */}
-                          <div className="text-right">
-                            <div className="text-purple-400 font-mono text-sm">
-                              {estimateCookTime(meal)} min
-                            </div>
-                            <div className="text-xs text-zinc-500">
-                              {meal.isLeftover ? 'reheat' : 'cook'}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )
+              const formatTime = (mins: number): string => {
+                if (mins < 60) return `${mins} min`
+                const hrs = Math.floor(mins / 60)
+                const remainingMins = mins % 60
+                return remainingMins > 0 ? `${hrs} hr ${remainingMins} min` : `${hrs} hr`
               }
 
               return (
                 <>
-                  {/* Total Time Header */}
-                  <div className="flex items-center justify-between mb-6 pb-4 border-b border-zinc-700">
-                    <div>
-                      <h3 className="text-lg font-semibold text-white">Cooking Plan</h3>
-                      <p className="text-sm text-zinc-400">What to cook and when</p>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-purple-400">{totalCookTime} min</div>
-                      <div className="text-xs text-zinc-500">Total cooking time</div>
-                    </div>
-                  </div>
-
                   {dayMeals.length === 0 ? (
                     <p className="text-center text-zinc-400 py-8">No meals planned for this day</p>
                   ) : (
                     <>
-                      {renderCookingSection('Morning', '🌅', morningMeals)}
-                      {renderCookingSection('Midday', '☀️', middayMeals)}
-                      {renderCookingSection('Evening', '🌙', eveningMeals)}
+                      {/* TODAY'S COOKING Section */}
+                      {mealsToCook.length > 0 && (
+                        <div className="mb-6">
+                          <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-purple-500/10 rounded-lg border border-purple-500/30">
+                            <span className="text-lg">🍳</span>
+                            <span className="text-sm font-semibold text-purple-400 uppercase tracking-wider">Today's Cooking</span>
+                            <span className="text-xs text-zinc-500 ml-auto">{mealsToCook.length} meals</span>
+                          </div>
+                          <div className="space-y-3">
+                            {mealsToCook.map(meal => {
+                              const recipe = recipes.find(r => r.id === meal.recipeId)
+                              const isBatch = meal.notes?.toLowerCase().includes('batch')
+
+                              return (
+                                <div
+                                  key={meal.id}
+                                  className="flex items-center gap-4 p-4 bg-zinc-800/50 rounded-lg border border-zinc-700"
+                                >
+                                  {/* Checkbox */}
+                                  <input
+                                    type="checkbox"
+                                    checked={meal.isCooked || false}
+                                    onChange={() => handleMarkCooked(meal.id, meal.isCooked)}
+                                    className="w-5 h-5 rounded border-zinc-600 text-purple-500 focus:ring-purple-500"
+                                  />
+
+                                  {/* Recipe Info */}
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className={`font-medium ${meal.isCooked ? 'text-zinc-500 line-through' : 'text-white'}`}>
+                                        {meal.recipeName || 'No recipe assigned'}
+                                      </span>
+                                      {isBatch && (
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-500 font-medium">
+                                          ⚡ BATCH
+                                        </span>
+                                      )}
+                                      {meal.isCooked && (
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-500 font-medium">
+                                          ✓ DONE
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-3 text-xs text-zinc-500 mt-1">
+                                      <span>{MEAL_TYPES.find(mt => mt.key === meal.mealType.toLowerCase().replace(/\s+/g, '-'))?.label || meal.mealType}</span>
+                                      {meal.servings && <span>· {meal.servings} servings</span>}
+                                      {recipe?.prepTimeMinutes && <span>· Prep: {recipe.prepTimeMinutes}m</span>}
+                                      {recipe?.cookTimeMinutes && <span>· Cook: {recipe.cookTimeMinutes}m</span>}
+                                    </div>
+                                  </div>
+
+                                  {/* Cooking Time */}
+                                  <div className="text-right">
+                                    <div className="text-purple-400 font-mono text-sm font-semibold">
+                                      {estimateCookTime(meal)} min
+                                    </div>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* REHEAT ONLY Section */}
+                      {mealsToReheat.length > 0 && (
+                        <div className="mb-6">
+                          <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-emerald-500/10 rounded-lg border border-emerald-500/30">
+                            <span className="text-lg">🔄</span>
+                            <span className="text-sm font-semibold text-emerald-400 uppercase tracking-wider">Reheat Only</span>
+                            <span className="text-xs text-zinc-500 ml-auto">{mealsToReheat.length} meals</span>
+                          </div>
+                          <div className="space-y-3">
+                            {mealsToReheat.map(meal => (
+                              <div
+                                key={meal.id}
+                                className="flex items-center gap-4 p-4 bg-zinc-800/50 rounded-lg border border-zinc-700"
+                              >
+                                {/* Checkbox */}
+                                <input
+                                  type="checkbox"
+                                  checked={meal.isCooked || false}
+                                  onChange={() => handleMarkCooked(meal.id, meal.isCooked)}
+                                  className="w-5 h-5 rounded border-zinc-600 text-emerald-500 focus:ring-emerald-500"
+                                />
+
+                                {/* Recipe Info */}
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className={`font-medium ${meal.isCooked ? 'text-zinc-500 line-through' : 'text-white'}`}>
+                                      {meal.recipeName || 'No recipe assigned'}
+                                    </span>
+                                    {meal.isCooked && (
+                                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-500 font-medium">
+                                        ✓ DONE
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-3 text-xs text-zinc-500 mt-1">
+                                    <span>{MEAL_TYPES.find(mt => mt.key === meal.mealType.toLowerCase().replace(/\s+/g, '-'))?.label || meal.mealType}</span>
+                                    {meal.servings && <span>· {meal.servings} servings</span>}
+                                  </div>
+                                </div>
+
+                                {/* Reheat Time */}
+                                <div className="text-right">
+                                  <div className="text-emerald-400 font-mono text-sm font-semibold">
+                                    ~10 min
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Total Cooking Time Footer */}
+                      <div className="mt-4 p-4 bg-purple-500/10 rounded-lg border border-purple-500/30">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-zinc-300">Total cooking time:</span>
+                          <span className="text-lg font-bold text-purple-400">
+                            {formatTime(totalCookTime + totalReheatTime)}
+                          </span>
+                        </div>
+                        {mealsToReheat.length > 0 && (
+                          <div className="text-xs text-zinc-500 mt-1">
+                            ({formatTime(totalCookTime)} cooking + {formatTime(totalReheatTime)} reheating)
+                          </div>
+                        )}
+                      </div>
                     </>
                   )}
 

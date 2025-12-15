@@ -114,7 +114,7 @@ export default function MealPlanningSettingsPage() {
         <div className="mb-8">
           <button
             onClick={() => router.back()}
-            className="text-blue-400 hover:text-blue-300 mb-4"
+            className="text-purple-400 hover:text-purple-300 mb-4"
           >
             ← Back
           </button>
@@ -559,7 +559,7 @@ export default function MealPlanningSettingsPage() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
+            className="px-6 py-3 bg-gradient-to-r from-orange-500 to-purple-500 text-white rounded-lg hover:from-orange-600 hover:to-purple-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
           >
             {saving ? 'Saving...' : 'Save Settings'}
           </button>
