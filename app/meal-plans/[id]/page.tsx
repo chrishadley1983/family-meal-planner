@@ -171,6 +171,18 @@ function SortableMealCard({ meal, recipes, onUpdate, onDelete, onToggleLock, onM
             <span className={`font-medium text-sm ${meal.isCooked ? 'text-green-400' : 'text-zinc-300'}`}>
               {MEAL_TYPES.find(mt => mt.key === meal.mealType.toLowerCase())?.label || meal.mealType}
             </span>
+            {/* Batch Cook Badge */}
+            {!meal.isLeftover && meal.notes?.toLowerCase().includes('batch') && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-500 font-medium">
+                ⚡ BATCH
+              </span>
+            )}
+            {/* Reheat Badge */}
+            {meal.isLeftover && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-500 font-medium">
+                🔄 REHEAT
+              </span>
+            )}
             {meal.isCooked && (
               <span className="text-xs px-1.5 py-0.5 rounded bg-green-900/50 text-green-400">
                 Cooked
@@ -303,6 +315,12 @@ export default function MealPlanDetailPage() {
   const [loadingCookingPreview, setLoadingCookingPreview] = useState(false)
   const [confirmingCook, setConfirmingCook] = useState(false)
   const [itemsToRemove, setItemsToRemove] = useState<Set<string>>(new Set())
+
+  // Export modal state
+  const [showExportModal, setShowExportModal] = useState(false)
+
+  // View mode state (meals vs cooking plan)
+  const [viewMode, setViewMode] = useState<'meals' | 'cooking'>('meals')
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -1000,6 +1018,12 @@ export default function MealPlanDetailPage() {
             >
               Edit Schedule
             </Button>
+            <button
+              onClick={() => setShowExportModal(true)}
+              className="px-4 py-2 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg text-sm font-medium hover:from-red-600 hover:to-orange-600 transition-all"
+            >
+              ↗ Export & Share
+            </button>
             <Button
               onClick={handleDelete}
               disabled={saving}
@@ -1026,6 +1050,32 @@ export default function MealPlanDetailPage() {
               </option>
             ))}
           </Select>
+        </div>
+
+        {/* View Mode Toggle */}
+        <div className="card p-2 mb-4">
+          <div className="flex justify-center gap-2">
+            <button
+              onClick={() => setViewMode('meals')}
+              className={`px-6 py-2 rounded-lg text-sm font-medium transition-colors ${
+                viewMode === 'meals'
+                  ? 'bg-purple-500 text-white'
+                  : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+              }`}
+            >
+              📋 Meals View
+            </button>
+            <button
+              onClick={() => setViewMode('cooking')}
+              className={`px-6 py-2 rounded-lg text-sm font-medium transition-colors ${
+                viewMode === 'cooking'
+                  ? 'bg-purple-500 text-white'
+                  : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+              }`}
+            >
+              🍳 Cooking Plan
+            </button>
+          </div>
         </div>
 
         {/* Day Navigation Controls */}
@@ -1057,12 +1107,180 @@ export default function MealPlanDetailPage() {
             </button>
           </div>
 
+          {/* Mini Calendar */}
+          <div className="flex justify-center gap-2 mt-4">
+            {DAYS_OF_WEEK.map((day, index) => {
+              // Calculate the date for each day
+              const weekStartDate = mealPlan ? new Date(mealPlan.weekStartDate) : new Date()
+              const dayDate = new Date(weekStartDate)
+              dayDate.setDate(weekStartDate.getDate() + index)
+              const isActive = currentDayIndex === index
+
+              return (
+                <button
+                  key={day}
+                  onClick={() => setCurrentDayIndex(index)}
+                  className={`w-12 py-2 rounded-lg text-center transition-colors ${
+                    isActive
+                      ? 'bg-purple-500 text-white'
+                      : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-300'
+                  }`}
+                >
+                  <div className="text-[10px] opacity-70">{day.slice(0, 3)}</div>
+                  <div className="font-semibold">{dayDate.getDate()}</div>
+                </button>
+              )
+            })}
+          </div>
+
           <div className="mt-3 text-xs text-center text-zinc-500">
-            Swipe left/right or use arrow keys to navigate
+            Click a day or use arrow keys to navigate
           </div>
         </div>
 
-        {/* Single Day View with Swipe Support */}
+        {/* Cooking Plan View */}
+        {viewMode === 'cooking' && (
+          <div className="card p-6">
+            {(() => {
+              const day = DAYS_OF_WEEK[currentDayIndex]
+              const dayMeals = mealPlan.meals.filter(m => m.dayOfWeek === day)
+
+              // Group meals by cooking time of day
+              const morningMeals = dayMeals.filter(m =>
+                ['breakfast', 'morning-snack'].includes(m.mealType.toLowerCase().replace(/\s+/g, '-'))
+              )
+              const middayMeals = dayMeals.filter(m =>
+                ['lunch', 'afternoon-snack'].includes(m.mealType.toLowerCase().replace(/\s+/g, '-'))
+              )
+              const eveningMeals = dayMeals.filter(m =>
+                ['dinner', 'dessert', 'evening-snack'].includes(m.mealType.toLowerCase().replace(/\s+/g, '-'))
+              )
+
+              // Calculate total cooking time (estimate based on meal types)
+              const estimateCookTime = (meal: Meal): number => {
+                if (meal.isLeftover) return 5 // Just reheating
+                // Use recipe prepTime/cookTime if available, else estimate
+                const mealType = meal.mealType.toLowerCase()
+                if (mealType.includes('snack') || mealType.includes('dessert')) return 10
+                if (mealType === 'breakfast') return 15
+                if (mealType === 'lunch') return 20
+                return 30 // dinner
+              }
+
+              const totalCookTime = dayMeals.reduce((sum, meal) => sum + estimateCookTime(meal), 0)
+
+              const renderCookingSection = (title: string, emoji: string, meals: Meal[]) => {
+                if (meals.length === 0) return null
+
+                return (
+                  <div key={title} className="mb-6">
+                    <h3 className="text-lg font-semibold text-white flex items-center gap-2 mb-3">
+                      <span>{emoji}</span> {title}
+                    </h3>
+                    <div className="space-y-3">
+                      {meals.map(meal => (
+                        <div
+                          key={meal.id}
+                          className="flex items-center gap-4 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700"
+                        >
+                          {/* Checkbox */}
+                          <input
+                            type="checkbox"
+                            checked={meal.isCooked || false}
+                            onChange={() => {
+                              if (!meal.isCooked) {
+                                handleMarkCooked(meal.id)
+                              } else {
+                                handleMarkCooked(meal.id, true)
+                              }
+                            }}
+                            className="w-5 h-5 rounded border-zinc-600 text-purple-500 focus:ring-purple-500"
+                          />
+
+                          {/* Recipe Info */}
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-white">
+                                {meal.recipeName || 'No recipe assigned'}
+                              </span>
+                              {/* Badges */}
+                              {!meal.isLeftover && meal.notes?.toLowerCase().includes('batch') && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-500 font-medium">
+                                  ⚡ BATCH COOK
+                                </span>
+                              )}
+                              {meal.isLeftover && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-500 font-medium">
+                                  🔄 REHEAT ONLY
+                                </span>
+                              )}
+                              {meal.isCooked && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-500 font-medium">
+                                  ✓ DONE
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-zinc-500 mt-1">
+                              {MEAL_TYPES.find(mt => mt.key === meal.mealType.toLowerCase().replace(/\s+/g, '-'))?.label || meal.mealType}
+                              {meal.servings && ` · ${meal.servings} servings`}
+                            </div>
+                          </div>
+
+                          {/* Cooking Time */}
+                          <div className="text-right">
+                            <div className="text-purple-400 font-mono text-sm">
+                              {estimateCookTime(meal)} min
+                            </div>
+                            <div className="text-xs text-zinc-500">
+                              {meal.isLeftover ? 'reheat' : 'cook'}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              }
+
+              return (
+                <>
+                  {/* Total Time Header */}
+                  <div className="flex items-center justify-between mb-6 pb-4 border-b border-zinc-700">
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">Cooking Plan</h3>
+                      <p className="text-sm text-zinc-400">What to cook and when</p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-purple-400">{totalCookTime} min</div>
+                      <div className="text-xs text-zinc-500">Total cooking time</div>
+                    </div>
+                  </div>
+
+                  {dayMeals.length === 0 ? (
+                    <p className="text-center text-zinc-400 py-8">No meals planned for this day</p>
+                  ) : (
+                    <>
+                      {renderCookingSection('Morning', '🌅', morningMeals)}
+                      {renderCookingSection('Midday', '☀️', middayMeals)}
+                      {renderCookingSection('Evening', '🌙', eveningMeals)}
+                    </>
+                  )}
+
+                  {/* Legend */}
+                  <div className="mt-6 pt-4 border-t border-zinc-700">
+                    <div className="flex gap-6 text-xs text-zinc-500">
+                      <span><span className="text-amber-500">⚡</span> Batch cook = Make extra portions</span>
+                      <span><span className="text-emerald-500">🔄</span> Reheat = From earlier batch</span>
+                    </div>
+                  </div>
+                </>
+              )
+            })()}
+          </div>
+        )}
+
+        {/* Meals View - Single Day View with Swipe Support */}
+        {viewMode === 'meals' && (
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -1180,12 +1398,20 @@ export default function MealPlanDetailPage() {
                         MEAL_TYPE_ORDER.map((mealTypeKey) => {
                           const meal = mealsByType.get(mealTypeKey)
                           if (!meal) {
-                            // Empty slot for missing meal type
+                            // Empty slot for missing meal type - clickable
                             return (
-                              <div key={`${day}-${mealTypeKey}`} className="py-4 px-4 border border-dashed border-zinc-700 rounded-lg bg-zinc-900/30 flex items-center justify-center">
-                                <span className="text-sm text-zinc-500 italic">
+                              <div
+                                key={`${day}-${mealTypeKey}`}
+                                className="py-4 px-4 border border-dashed border-zinc-700 rounded-lg bg-zinc-900/30 hover:border-purple-500/50 hover:bg-zinc-800/50 cursor-pointer transition-colors text-center"
+                                onClick={() => {
+                                  // TODO: Open recipe selector modal for this meal slot
+                                  console.log('Add meal:', mealTypeKey, day)
+                                }}
+                              >
+                                <span className="text-sm text-zinc-500 italic block">
                                   {MEAL_TYPES.find(mt => mt.key === mealTypeKey)?.label || ''} not scheduled
                                 </span>
+                                <span className="text-sm text-purple-400 mt-1 block">+ Click to add</span>
                               </div>
                             )
                           }
@@ -1211,6 +1437,7 @@ export default function MealPlanDetailPage() {
             })()}
           </div>
         </DndContext>
+        )}
 
         {/* Edit Schedule Modal */}
         {showEditSchedule && (
@@ -1505,6 +1732,113 @@ export default function MealPlanDetailPage() {
                 </div>
               </div>
             ) : null}
+          </div>
+        </Modal>
+
+        {/* Export & Share Modal */}
+        <Modal
+          isOpen={showExportModal}
+          onClose={() => setShowExportModal(false)}
+          title="Export & Share"
+          maxWidth="sm"
+        >
+          <div className="p-4">
+            <p className="text-sm text-zinc-400 mb-4">
+              Week of {mealPlan ? formatDateRange(mealPlan.weekStartDate, mealPlan.weekEndDate) : ''}
+            </p>
+
+            <div className="space-y-3">
+              {/* Weekly Plan PDF */}
+              <button
+                onClick={() => {
+                  // TODO: Implement PDF export
+                  console.log('Export Weekly Plan PDF')
+                }}
+                className="w-full flex items-center gap-4 p-4 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition-colors text-left"
+              >
+                <div className="w-10 h-10 bg-red-500 rounded-lg flex items-center justify-center">
+                  <span className="text-white">📄</span>
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium text-white">Weekly Plan PDF</div>
+                  <div className="text-xs text-zinc-500">Landscape format, 1 page for printing</div>
+                </div>
+                <span className="text-zinc-500">↓</span>
+              </button>
+
+              {/* Cooking Plan PDF */}
+              <button
+                onClick={() => {
+                  // TODO: Implement Cooking Plan PDF export
+                  console.log('Export Cooking Plan PDF')
+                }}
+                className="w-full flex items-center gap-4 p-4 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition-colors text-left"
+              >
+                <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center">
+                  <span className="text-white">🍳</span>
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium text-white">Cooking Plan PDF</div>
+                  <div className="text-xs text-zinc-500">Daily cooking schedule with times</div>
+                </div>
+                <span className="text-zinc-500">↓</span>
+              </button>
+
+              {/* Share via WhatsApp */}
+              <button
+                onClick={() => {
+                  if (!mealPlan) return
+                  const text = `Meal Plan for ${formatDateRange(mealPlan.weekStartDate, mealPlan.weekEndDate)}\n\n` +
+                    DAYS_OF_WEEK.map(day => {
+                      const dayMeals = mealPlan.meals.filter(m => m.dayOfWeek === day)
+                      const mealsList = dayMeals.map(m => `• ${m.mealType}: ${m.recipeName || 'Not set'}`).join('\n')
+                      return `${day}:\n${mealsList || '• No meals'}`
+                    }).join('\n\n')
+                  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
+                }}
+                className="w-full flex items-center gap-4 p-4 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition-colors text-left"
+              >
+                <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
+                  <span className="text-white">💬</span>
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium text-white">Share via WhatsApp</div>
+                  <div className="text-xs text-zinc-500">Send meal plan summary</div>
+                </div>
+                <span className="text-zinc-500">↗</span>
+              </button>
+
+              {/* Share via Email */}
+              <button
+                onClick={() => {
+                  if (!mealPlan) return
+                  const subject = `Meal Plan for ${formatDateRange(mealPlan.weekStartDate, mealPlan.weekEndDate)}`
+                  const body = DAYS_OF_WEEK.map(day => {
+                    const dayMeals = mealPlan.meals.filter(m => m.dayOfWeek === day)
+                    const mealsList = dayMeals.map(m => `  • ${m.mealType}: ${m.recipeName || 'Not set'}`).join('\n')
+                    return `${day}:\n${mealsList || '  • No meals'}`
+                  }).join('\n\n')
+                  window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+                }}
+                className="w-full flex items-center gap-4 p-4 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition-colors text-left"
+              >
+                <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
+                  <span className="text-white">✉️</span>
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium text-white">Share via Email</div>
+                  <div className="text-xs text-zinc-500">Compose email with plan details</div>
+                </div>
+                <span className="text-zinc-500">›</span>
+              </button>
+            </div>
+
+            <button
+              onClick={() => setShowExportModal(false)}
+              className="w-full mt-4 px-4 py-3 bg-zinc-700 text-white rounded-lg hover:bg-zinc-600 transition-colors"
+            >
+              Close
+            </button>
           </div>
         </Modal>
       </PageContainer>

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { startOfWeek, format, addWeeks } from 'date-fns'
 import { RecipeDetailsModal } from '@/components/RecipeDetailsModal'
 import { AppLayout, PageContainer } from '@/components/layout'
-import { Button, Badge, Input, Select } from '@/components/ui'
+import { Button, Badge, Input, Select, Modal } from '@/components/ui'
 import { useSession } from 'next-auth/react'
 import { getWeekDaysWithDates } from '@/lib/date-utils'
 import { useAILoading } from '@/components/providers/AILoadingProvider'
@@ -319,7 +319,15 @@ export default function MealPlansPage() {
       >
 
         <div className="card p-6 mb-6">
-          <h3 className="text-lg font-medium text-white mb-4">Generate New Meal Plan</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium text-white">Generate New Meal Plan</h3>
+            <Link
+              href="/settings/meal-planning"
+              className="flex items-center gap-2 px-3 py-2 bg-zinc-700 text-zinc-400 rounded-lg text-sm hover:bg-zinc-600 hover:text-zinc-300 transition-colors"
+            >
+              ⚙️ Settings
+            </Link>
+          </div>
           <div className="flex gap-4 items-end flex-wrap">
             <div className="flex-1 min-w-[200px]">
               <label className="block text-sm font-medium text-zinc-300 mb-2">
@@ -347,18 +355,23 @@ export default function MealPlansPage() {
                 ))}
               </Select>
             </div>
-            <Button
+            <button
               onClick={handleGeneratePlan}
               disabled={generating}
-              variant="primary"
-              isLoading={generating}
+              className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-purple-500 text-white rounded-lg text-sm font-medium hover:from-orange-600 hover:to-purple-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
             >
               {generating ? (
-                copyFromPlanId ? 'Copying...' : 'Generating with AI...'
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                  </svg>
+                  {copyFromPlanId ? 'Copying...' : 'Generating...'}
+                </span>
               ) : (
                 copyFromPlanId ? 'Copy Plan' : 'Generate with AI'
               )}
-            </Button>
+            </button>
           </div>
 
           {generatedSummary && (
@@ -425,112 +438,132 @@ export default function MealPlansPage() {
           <div className="mt-4">
             <button
               type="button"
-              onClick={() => setShowScheduleOverride(!showScheduleOverride)}
+              onClick={() => setShowScheduleOverride(true)}
               className="text-sm text-purple-400 hover:text-purple-300 underline"
             >
-              {showScheduleOverride ? '▼ Hide' : '▶'} Customize meals for this week
+              ▶ Customize meals for this week
             </button>
           </div>
         </div>
 
-        {/* Per-Person Schedule Override Section */}
-        {showScheduleOverride && (
-          <div className="card p-6 mb-6 space-y-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="text-lg font-medium text-white">Customize Week Schedules</h3>
-                <p className="text-sm text-zinc-400 mt-1">
-                  Adjust individual schedules for this week. Servings will be calculated based on how many people need each meal.
-                </p>
-              </div>
+        {/* Customize Week Schedule Modal */}
+        <Modal
+          isOpen={showScheduleOverride}
+          onClose={() => setShowScheduleOverride(false)}
+          title="Customize Week Schedules"
+          maxWidth="4xl"
+        >
+          <div className="p-5">
+            <p className="text-sm text-zinc-400 mb-4">
+              Adjust individual schedules for this week. Servings will be calculated based on how many people need each meal.
+            </p>
+
+            {/* Per-Person Schedules */}
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+              {weekProfileSchedules.map((personSchedule) => (
+                <div key={personSchedule.profileId} className="border border-zinc-700 rounded-lg p-4 bg-zinc-800/30">
+                  {/* Person Header with Include/Exclude Toggle */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center space-x-3">
+                      <input
+                        type="checkbox"
+                        checked={personSchedule.included}
+                        onChange={() => toggleProfileInclusion(personSchedule.profileId)}
+                        className="h-5 w-5 text-purple-600 focus:ring-purple-500 border-zinc-600 rounded"
+                      />
+                      <div>
+                        <h4 className="font-medium text-white">{personSchedule.profileName}</h4>
+                        <p className="text-xs text-zinc-400">
+                          {personSchedule.included ? '✓ Included in meal plan' : '✗ Excluded from meal plan'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Person's Meal Grid */}
+                  {personSchedule.included && (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-zinc-700 text-sm">
+                        <thead className="bg-zinc-800">
+                          <tr>
+                            <th className="px-2 py-2 text-left text-xs font-medium text-zinc-400 uppercase w-28">
+                              Meal
+                            </th>
+                            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                              <th key={day} className="px-1 py-2 text-center text-xs font-medium text-zinc-400 uppercase">
+                                {day}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="bg-zinc-900/50 divide-y divide-zinc-700">
+                          {[
+                            { key: 'breakfast', label: 'Breakfast' },
+                            { key: 'morning-snack', label: 'M. Snack' },
+                            { key: 'lunch', label: 'Lunch' },
+                            { key: 'afternoon-snack', label: 'A. Snack' },
+                            { key: 'dinner', label: 'Dinner' },
+                            { key: 'dessert', label: 'Dessert' },
+                            { key: 'evening-snack', label: 'E. Snack' },
+                          ].map(meal => (
+                            <tr key={meal.key} className="hover:bg-zinc-800/50">
+                              <td className="px-2 py-2 whitespace-nowrap text-xs font-medium text-zinc-300">
+                                {meal.label}
+                              </td>
+                              {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => {
+                                const isChecked = personSchedule.schedule[day as keyof MealSchedule]?.includes(meal.key) || false
+                                return (
+                                  <td key={day} className="px-1 py-2 whitespace-nowrap text-center">
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={() => togglePersonMeal(personSchedule.profileId, day as keyof MealSchedule, meal.key)}
+                                      className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-zinc-600 rounded cursor-pointer"
+                                    />
+                                  </td>
+                                )
+                              })}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Footer with Actions */}
+            <div className="flex justify-between items-center mt-6 pt-4 border-t border-zinc-700">
               <Button
                 type="button"
                 onClick={resetToDefaultSchedules}
                 variant="secondary"
-                size="sm"
               >
                 Reset All to Defaults
               </Button>
-            </div>
-
-            {/* Per-Person Schedules */}
-            {weekProfileSchedules.map((personSchedule) => (
-              <div key={personSchedule.profileId} className="border border-zinc-700 rounded-lg p-4 bg-zinc-800/30">
-                {/* Person Header with Include/Exclude Toggle */}
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center space-x-3">
-                    <input
-                      type="checkbox"
-                      checked={personSchedule.included}
-                      onChange={() => toggleProfileInclusion(personSchedule.profileId)}
-                      className="h-5 w-5 text-purple-600 focus:ring-purple-500 border-zinc-600 rounded"
-                    />
-                    <div>
-                      <h4 className="font-medium text-white">{personSchedule.profileName}</h4>
-                      <p className="text-xs text-zinc-400">
-                        {personSchedule.included ? '✓ Included in meal plan' : '✗ Excluded from meal plan'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Person's Meal Grid */}
-                {personSchedule.included && (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-zinc-700 text-sm">
-                      <thead className="bg-zinc-800">
-                        <tr>
-                          <th className="px-2 py-2 text-left text-xs font-medium text-zinc-400 uppercase w-28">
-                            Meal
-                          </th>
-                          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
-                            <th key={day} className="px-1 py-2 text-center text-xs font-medium text-zinc-400 uppercase">
-                              {day}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="bg-zinc-900/50 divide-y divide-zinc-700">
-                        {[
-                          { key: 'breakfast', label: 'Breakfast' },
-                          { key: 'morning-snack', label: 'M. Snack' },
-                          { key: 'lunch', label: 'Lunch' },
-                          { key: 'afternoon-snack', label: 'A. Snack' },
-                          { key: 'dinner', label: 'Dinner' },
-                          { key: 'dessert', label: 'Dessert' },
-                          { key: 'evening-snack', label: 'E. Snack' },
-                        ].map(meal => (
-                          <tr key={meal.key} className="hover:bg-zinc-800/50">
-                            <td className="px-2 py-2 whitespace-nowrap text-xs font-medium text-zinc-300">
-                              {meal.label}
-                            </td>
-                            {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => {
-                              const isChecked = personSchedule.schedule[day as keyof MealSchedule]?.includes(meal.key) || false
-                              return (
-                                <td key={day} className="px-1 py-2 whitespace-nowrap text-center">
-                                  <input
-                                    type="checkbox"
-                                    checked={isChecked}
-                                    onChange={() => togglePersonMeal(personSchedule.profileId, day as keyof MealSchedule, meal.key)}
-                                    className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-zinc-600 rounded cursor-pointer"
-                                  />
-                                </td>
-                              )
-                            })}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  onClick={() => {
+                    resetToDefaultSchedules()
+                    setShowScheduleOverride(false)
+                  }}
+                  variant="ghost"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => setShowScheduleOverride(false)}
+                  variant="primary"
+                >
+                  Save Schedule
+                </Button>
               </div>
-            ))}
-
-            <p className="text-xs text-zinc-500 italic">
-              💡 Tip: These changes only apply to this week's meal plan. Profile defaults remain unchanged.
-            </p>
+            </div>
           </div>
-        )}
+        </Modal>
 
         {/* Filters */}
         <div className="card p-4 mb-6">
@@ -601,95 +634,131 @@ export default function MealPlansPage() {
             </div>
           ) : (
             <div className="space-y-6">
-              {filteredPlans.map((plan) => (
-              <div
-                key={plan.id}
-                onClick={() => router.push(`/meal-plans/${plan.id}`)}
-                className="card-interactive overflow-hidden"
-              >
-                <div className="bg-zinc-800/50 px-6 py-4 border-b border-zinc-700">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-medium text-white">
-                      Week of {new Date(plan.weekStartDate).toLocaleDateString('en-GB')}
-                    </h3>
-                    <Badge
-                      variant={plan.status === 'Finalized' ? 'success' : plan.status === 'Archived' ? 'default' : 'warning'}
-                      size="sm"
-                    >
-                      {plan.status}
-                    </Badge>
-                  </div>
-                </div>
+              {filteredPlans.map((plan) => {
+                // Create lookup maps for all days
+                const weekDays = getWeekDaysWithDates(plan.weekStartDate)
+                const mealsByDayAndType = new Map<string, Map<string, any>>()
 
-                <div className="p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
-                    {getWeekDaysWithDates(plan.weekStartDate).map(({ day, dayLower, shortDate }) => {
-                      const dayMeals = plan.meals.filter(m => m.dayOfWeek === day)
+                weekDays.forEach(({ day }) => {
+                  const dayMeals = plan.meals.filter(m => m.dayOfWeek === day)
+                  const mealsByType = new Map<string, any>()
+                  dayMeals.forEach(meal => {
+                    const normalizedType = meal.mealType.toLowerCase().replace(/\s+/g, '-')
+                    mealsByType.set(normalizedType, meal)
+                  })
+                  mealsByDayAndType.set(day, mealsByType)
+                })
 
-                      // Create a map of existing meals by meal type for quick lookup
-                      const mealsByType = new Map<string, any>()
-                      dayMeals.forEach(meal => {
-                        const normalizedType = meal.mealType.toLowerCase().replace(/\s+/g, '-')
-                        mealsByType.set(normalizedType, meal)
-                      })
+                return (
+                  <div
+                    key={plan.id}
+                    onClick={() => router.push(`/meal-plans/${plan.id}`)}
+                    className="card-interactive overflow-hidden"
+                  >
+                    <div className="bg-zinc-800/50 px-6 py-4 border-b border-zinc-700">
+                      <div className="flex justify-between items-center">
+                        <h3 className="text-lg font-medium text-white">
+                          Week of {new Date(plan.weekStartDate).toLocaleDateString('en-GB')}
+                        </h3>
+                        <Badge
+                          variant={plan.status === 'Finalized' ? 'success' : plan.status === 'Archived' ? 'default' : 'warning'}
+                          size="sm"
+                        >
+                          {plan.status}
+                        </Badge>
+                      </div>
+                    </div>
 
-                      return (
-                        <div key={day} className="border border-zinc-700 rounded-lg p-3 flex flex-col bg-zinc-800/30">
-                          <div className="mb-2">
-                            <h4 className="font-medium text-white text-sm">{day}</h4>
-                            <p className="text-xs text-zinc-400">{shortDate}</p>
-                          </div>
-                          {dayMeals.length === 0 ? (
-                            <p className="text-xs text-zinc-500">No meals</p>
-                          ) : (
-                            <div className="grid grid-rows-5 gap-2 flex-1">
-                              {/* Render meals in consistent chronological order with fixed heights */}
-                              {MEAL_TYPE_ORDER.map((mealTypeKey) => {
-                                const meal = mealsByType.get(mealTypeKey)
-                                if (!meal) {
-                                  // Empty slot for missing meal type - same height as meal rows
-                                  return (
-                                    <div key={`${day}-${mealTypeKey}`} className="text-xs py-2 border-b border-dashed border-zinc-700 last:border-0 min-h-[60px] flex flex-col justify-center">
-                                      <p className="font-medium text-zinc-500">{MEAL_TYPE_LABELS[mealTypeKey]}</p>
-                                      <p className="text-zinc-600">-</p>
-                                    </div>
-                                  )
-                                }
-                                return (
-                                  <div
-                                    key={meal.id}
-                                    className="text-xs py-2 border-b border-zinc-700 last:border-0 min-h-[60px] flex flex-col justify-center cursor-pointer hover:bg-zinc-700/30 rounded transition-colors"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      if (meal.recipe?.id) {
-                                        setSelectedRecipeId(meal.recipe.id)
-                                      }
-                                    }}
+                    <div className="p-4">
+                      {/* Week Grid - Table Structure with Fixed Rows */}
+                      <div className="bg-zinc-900 border border-zinc-700 rounded-lg overflow-hidden">
+                        <table className="w-full text-xs border-collapse">
+                          {/* Day Headers */}
+                          <thead>
+                            <tr className="border-b border-zinc-700">
+                              {weekDays.map(({ day, shortDate }, idx) => (
+                                <th
+                                  key={day}
+                                  className={`py-3 px-2 text-center ${idx < weekDays.length - 1 ? 'border-r border-zinc-700' : ''}`}
+                                  style={{ width: '14.28%' }}
+                                >
+                                  <div className="font-semibold text-white">{day}</div>
+                                  <div className="font-normal text-zinc-500 text-[10px]">{shortDate}</div>
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {/* Render each meal type as a row */}
+                            {MEAL_TYPE_ORDER.map((mealTypeKey) => (
+                              <>
+                                {/* Meal Type Header Row */}
+                                <tr key={`header-${mealTypeKey}`} className="border-b border-zinc-700" style={{ background: 'rgba(139, 92, 246, 0.05)' }}>
+                                  <td
+                                    colSpan={7}
+                                    className="py-2 px-3 text-[10px] uppercase tracking-wider font-semibold text-zinc-500"
                                   >
-                                    <p className="font-medium text-zinc-400">{MEAL_TYPE_LABELS[mealTypeKey] || meal.mealType}</p>
-                                    <div className="flex items-start gap-1">
-                                      {meal.isLeftover && (
-                                        <span className="text-sm flex-shrink-0" title="Batch cooked / Leftover">🍲</span>
-                                      )}
-                                      <p className="text-zinc-300 break-words whitespace-normal hover:text-white">
-                                        {meal.recipeName || 'No recipe'}
-                                      </p>
-                                    </div>
-                                    {meal.servings && (
-                                      <p className="text-zinc-500">{meal.servings} servings</p>
-                                    )}
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
+                                    {MEAL_TYPE_LABELS[mealTypeKey]}
+                                  </td>
+                                </tr>
+                                {/* Meal Content Row */}
+                                <tr key={`row-${mealTypeKey}`} className="border-b border-zinc-700 last:border-b-0">
+                                  {weekDays.map(({ day }, idx) => {
+                                    const mealsByType = mealsByDayAndType.get(day)
+                                    const meal = mealsByType?.get(mealTypeKey)
+
+                                    return (
+                                      <td
+                                        key={`${day}-${mealTypeKey}`}
+                                        className={`py-2 px-2 align-top ${idx < weekDays.length - 1 ? 'border-r border-zinc-700' : ''}`}
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          if (meal?.recipe?.id) {
+                                            setSelectedRecipeId(meal.recipe.id)
+                                          }
+                                        }}
+                                      >
+                                        {meal ? (
+                                          <div className="cursor-pointer hover:bg-zinc-800/50 rounded p-1 -m-1 transition-colors">
+                                            <div className="flex items-start gap-1">
+                                              <span className="font-medium text-purple-400 break-words leading-tight">
+                                                {meal.recipeName || 'No recipe'}
+                                              </span>
+                                              {/* Batch cook indicator */}
+                                              {!meal.isLeftover && meal.notes?.toLowerCase().includes('batch') && (
+                                                <span className="text-amber-500 flex-shrink-0" title="Batch cook">⚡</span>
+                                              )}
+                                              {/* Reheat/leftover indicator */}
+                                              {meal.isLeftover && (
+                                                <span className="text-emerald-500 flex-shrink-0" title="Reheat (from batch)">🔄</span>
+                                              )}
+                                            </div>
+                                            {meal.servings && (
+                                              <div className="text-zinc-500 mt-0.5">{meal.servings} servings</div>
+                                            )}
+                                          </div>
+                                        ) : (
+                                          <div className="text-zinc-600 italic">-</div>
+                                        )}
+                                      </td>
+                                    )
+                                  })}
+                                </tr>
+                              </>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Legend */}
+                      <div className="flex gap-4 mt-2 text-xs text-zinc-500">
+                        <span><span className="text-amber-500">⚡</span> Batch cook</span>
+                        <span><span className="text-emerald-500">🔄</span> Reheat (from batch)</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-              ))}
+                )
+              })}
             </div>
           )
         })()}

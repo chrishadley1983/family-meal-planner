@@ -197,58 +197,70 @@ export default function MealPlanningSettingsPage() {
                   <>
                     <div>
                       <label className="block text-sm font-medium text-zinc-300 mb-2">
-                        Dinner Cooldown: {settings.dinnerCooldown} days
+                        Dinners: days until repeat
                       </label>
-                      <input
-                        type="range"
-                        min="7"
-                        max="30"
-                        value={settings.dinnerCooldown}
-                        onChange={(e) => setSettings({ ...settings, dinnerCooldown: parseInt(e.target.value) })}
-                        className="w-full"
-                      />
+                      <div className="flex items-center gap-4">
+                        <input
+                          type="range"
+                          min="7"
+                          max="30"
+                          value={settings.dinnerCooldown}
+                          onChange={(e) => setSettings({ ...settings, dinnerCooldown: parseInt(e.target.value) })}
+                          className="flex-1 accent-purple-500"
+                        />
+                        <span className="w-12 text-right font-mono text-purple-400">{settings.dinnerCooldown}d</span>
+                      </div>
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-zinc-300 mb-2">
-                        Lunch Cooldown: {settings.lunchCooldown} days
+                        Lunches: days until repeat
                       </label>
-                      <input
-                        type="range"
-                        min="3"
-                        max="21"
-                        value={settings.lunchCooldown}
-                        onChange={(e) => setSettings({ ...settings, lunchCooldown: parseInt(e.target.value) })}
-                        className="w-full"
-                      />
+                      <div className="flex items-center gap-4">
+                        <input
+                          type="range"
+                          min="3"
+                          max="21"
+                          value={settings.lunchCooldown}
+                          onChange={(e) => setSettings({ ...settings, lunchCooldown: parseInt(e.target.value) })}
+                          className="flex-1 accent-purple-500"
+                        />
+                        <span className="w-12 text-right font-mono text-purple-400">{settings.lunchCooldown}d</span>
+                      </div>
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-zinc-300 mb-2">
-                        Breakfast Cooldown: {settings.breakfastCooldown} days
+                        Breakfasts: days until repeat
                       </label>
-                      <input
-                        type="range"
-                        min="1"
-                        max="14"
-                        value={settings.breakfastCooldown}
-                        onChange={(e) => setSettings({ ...settings, breakfastCooldown: parseInt(e.target.value) })}
-                        className="w-full"
-                      />
+                      <div className="flex items-center gap-4">
+                        <input
+                          type="range"
+                          min="1"
+                          max="14"
+                          value={settings.breakfastCooldown}
+                          onChange={(e) => setSettings({ ...settings, breakfastCooldown: parseInt(e.target.value) })}
+                          className="flex-1 accent-purple-500"
+                        />
+                        <span className="w-12 text-right font-mono text-purple-400">{settings.breakfastCooldown}d</span>
+                      </div>
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-zinc-300 mb-2">
-                        Snack Cooldown: {settings.snackCooldown} days
+                        Snacks: days until repeat
                       </label>
-                      <input
-                        type="range"
-                        min="1"
-                        max="7"
-                        value={settings.snackCooldown}
-                        onChange={(e) => setSettings({ ...settings, snackCooldown: parseInt(e.target.value) })}
-                        className="w-full"
-                      />
+                      <div className="flex items-center gap-4">
+                        <input
+                          type="range"
+                          min="1"
+                          max="7"
+                          value={settings.snackCooldown}
+                          onChange={(e) => setSettings({ ...settings, snackCooldown: parseInt(e.target.value) })}
+                          className="flex-1 accent-purple-500"
+                        />
+                        <span className="w-12 text-right font-mono text-purple-400">{settings.snackCooldown}d</span>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -303,22 +315,32 @@ export default function MealPlanningSettingsPage() {
 
             {expandedSections.has('shopping') && (
               <div className="px-6 pb-6 space-y-4">
-                {(['mild', 'moderate', 'aggressive'] as ShoppingMode[]).map(mode => (
-                  <label key={mode} className="flex items-start gap-3 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="shoppingMode"
-                      value={mode}
-                      checked={settings.shoppingMode === mode}
-                      onChange={(e) => setSettings({ ...settings, shoppingMode: e.target.value as ShoppingMode })}
-                      className="mt-1"
-                    />
-                    <div>
-                      <div className="font-medium text-white capitalize">{mode}</div>
-                      <div className="text-sm text-zinc-400">{SHOPPING_MODE_DESCRIPTIONS[mode]}</div>
-                    </div>
-                  </label>
-                ))}
+                <div>
+                  <div className="flex justify-between text-sm mb-3">
+                    <span className="text-zinc-400">More variety</span>
+                    <span className="text-zinc-400">Simpler shopping</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="2"
+                    value={settings.shoppingMode === 'mild' ? 0 : settings.shoppingMode === 'moderate' ? 1 : 2}
+                    onChange={(e) => {
+                      const modes: ShoppingMode[] = ['mild', 'moderate', 'aggressive']
+                      setSettings({ ...settings, shoppingMode: modes[parseInt(e.target.value)] })
+                    }}
+                    className="w-full accent-purple-500"
+                  />
+                  <div className="flex justify-between text-xs text-zinc-500 mt-1">
+                    <span>Mild</span>
+                    <span>Moderate</span>
+                    <span>Aggressive</span>
+                  </div>
+                </div>
+                <div className="p-3 bg-zinc-900/50 rounded-lg border border-zinc-700">
+                  <div className="font-medium text-purple-400 capitalize mb-1">{settings.shoppingMode}</div>
+                  <div className="text-sm text-zinc-400">{SHOPPING_MODE_DESCRIPTIONS[settings.shoppingMode]}</div>
+                </div>
               </div>
             )}
           </div>
