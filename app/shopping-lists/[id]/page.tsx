@@ -161,11 +161,16 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
   // Deduplication
   const [showDedupeModal, setShowDedupeModal] = useState(false)
   const [duplicateGroups, setDuplicateGroups] = useState<DuplicateGroup[]>([])
+  const [dismissedGroups, setDismissedGroups] = useState<Set<string>>(new Set()) // Track dismissed groups
   const [combiningGroups, setCombiningGroups] = useState<Set<string>>(new Set()) // Track which groups are being combined
   const [combiningAll, setCombiningAll] = useState(false) // Track "Combine All" operation
 
   // Export & Share
   const [showExportModal, setShowExportModal] = useState(false)
+
+  // Mark All Purchased
+  const [showMarkAllModal, setShowMarkAllModal] = useState(false)
+  const [markingAll, setMarkingAll] = useState(false)
 
   // Convert to Inventory
   const [showConvertModal, setShowConvertModal] = useState(false)
@@ -425,6 +430,39 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
       error('Failed to undo last purchased item')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleMarkAllPurchased = async () => {
+    if (!shoppingList || markingAll) return
+
+    const unpurchasedItemsList = shoppingList.items.filter((i) => !i.isPurchased)
+    if (unpurchasedItemsList.length === 0) return
+
+    setMarkingAll(true)
+    try {
+      console.log('🔷 Marking all items as purchased:', unpurchasedItemsList.length)
+
+      // Update all unpurchased items to purchased
+      await Promise.all(
+        unpurchasedItemsList.map((item) =>
+          fetch(`/api/shopping-lists/${id}/items?itemId=${item.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ isPurchased: true }),
+          })
+        )
+      )
+
+      console.log('🟢 All items marked as purchased')
+      success(`Marked ${unpurchasedItemsList.length} items as purchased`)
+      setShowMarkAllModal(false)
+      await fetchShoppingList()
+    } catch (err) {
+      console.error('❌ Error marking all purchased:', err)
+      error('Failed to mark all items as purchased')
+    } finally {
+      setMarkingAll(false)
     }
   }
 
@@ -780,6 +818,10 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
 
   // Deduplication
   const handleOpenDedupeModal = async () => {
+    // Reset dismissed groups when opening modal
+    setDismissedGroups(new Set())
+    setLastCombineResult(null)
+
     try {
       console.log('🔷 Finding duplicates with AI semantic matching')
       // Use AI matching for comprehensive duplicate detection
@@ -860,12 +902,14 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
     }
   }
 
-  // Combine all duplicate groups at once
+  // Combine all duplicate groups at once (only non-dismissed)
   const handleCombineAll = async () => {
-    if (combiningAll || combiningGroups.size > 0 || duplicateGroups.length === 0) return
+    // Use visible groups (filter out dismissed) - we access visibleDuplicateGroups at call time
+    const groupsToCombine = duplicateGroups.filter((g) => !dismissedGroups.has(g.normalizedName))
+    if (combiningAll || combiningGroups.size > 0 || groupsToCombine.length === 0) return
 
     const previousTotal = shoppingList?.items.length || 0
-    const groupCount = duplicateGroups.length
+    const groupCount = groupsToCombine.length
 
     setCombiningAll(true)
     setLastCombineResult(null)
@@ -873,10 +917,10 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
     let totalItemsCombined = 0
 
     try {
-      console.log('🔷 Combining all', groupCount, 'duplicate groups')
+      console.log('🔷 Combining all', groupCount, 'duplicate groups (excluding dismissed)')
 
       // Process each group sequentially
-      for (const group of duplicateGroups) {
+      for (const group of groupsToCombine) {
         const itemIds = group.items.map((i) => i.id)
         console.log('🔷 Combining group:', group.normalizedName, 'with', itemIds.length, 'items')
 
@@ -923,6 +967,17 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
       setCombiningAll(false)
     }
   }
+
+  // Dismiss a duplicate group (removes from current suggestions)
+  const handleDismissGroup = (normalizedName: string) => {
+    setDismissedGroups((prev) => new Set([...prev, normalizedName]))
+    console.log('🔷 Dismissed duplicate group:', normalizedName)
+  }
+
+  // Get visible (non-dismissed) duplicate groups
+  const visibleDuplicateGroups = duplicateGroups.filter(
+    (group) => !dismissedGroups.has(group.normalizedName)
+  )
 
   // Convert to Inventory
   const handleOpenConvertModal = async () => {
@@ -1058,7 +1113,7 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-6">
-          <Link href="/shopping-lists" className="text-blue-400 hover:text-blue-300 mb-4 inline-block">
+          <Link href="/shopping-lists" className="text-purple-400 hover:text-purple-300 mb-4 inline-block text-sm">
             ← Back to Shopping Lists
           </Link>
 
@@ -1113,13 +1168,10 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
               {/* Export & Share - always visible */}
               <button
                 onClick={() => setShowExportModal(true)}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm flex items-center gap-2"
+                className="px-4 py-2 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg hover:opacity-90 text-sm flex items-center gap-2"
                 title="Export & Share"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                </svg>
-                Export & Share
+                ↗ Export & Share
               </button>
 
               {shoppingList.status === 'Draft' && (
@@ -1146,36 +1198,37 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
                     <>
                       <button
                         onClick={handleOpenConvertModal}
-                        className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 text-sm flex items-center gap-2"
+                        className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm flex items-center gap-2"
                         title="Add purchased items to inventory"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                        </svg>
-                        Add to Inventory
-                      </button>
-                      <button
-                        onClick={handleUndoLastPurchased}
-                        disabled={saving}
-                        className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50"
-                        title="Undo the most recently purchased item"
-                      >
-                        Undo Last
-                      </button>
-                      <button
-                        onClick={handleUndoAllPurchased}
-                        disabled={saving}
-                        className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50"
-                        title="Undo all purchased items"
-                      >
-                        Undo All ({purchasedItems})
+                        📦 Add to Inventory
                       </button>
                     </>
+                  )}
+                  {/* Mark All Purchased button - only show when there are unpurchased items */}
+                  {totalItems > purchasedItems && (
+                    <button
+                      onClick={() => setShowMarkAllModal(true)}
+                      className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 text-sm flex items-center gap-2"
+                      title="Mark all remaining items as purchased"
+                    >
+                      ✓ Mark All Purchased
+                    </button>
+                  )}
+                  {purchasedItems > 0 && (
+                    <button
+                      onClick={handleUndoLastPurchased}
+                      disabled={saving}
+                      className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 text-sm"
+                      title="Undo the most recently purchased item"
+                    >
+                      Undo Last
+                    </button>
                   )}
                   <button
                     onClick={() => handleUpdateStatus('Archived')}
                     disabled={saving}
-                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
+                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50 text-sm"
                   >
                     Archive
                   </button>
@@ -1365,18 +1418,54 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
 
         {/* Shopping Items by Category */}
         {Object.keys(unpurchasedItemsByCategory).length === 0 ? (
-          <div className="bg-gray-800 rounded-lg p-12 text-center">
-            <svg className="mx-auto h-12 w-12 text-gray-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            <h3 className="text-xl font-medium text-white mb-2">
-              {totalItems === 0 ? 'No items yet' : 'All done!'}
-            </h3>
-            <p className="text-gray-400">
-              {totalItems === 0
-                ? 'Add items or import from staples/meal plans'
-                : `You've purchased all ${totalItems} items`}
-            </p>
+          <div className="bg-gray-800 border border-gray-700 rounded-lg p-12 text-center">
+            {totalItems === 0 ? (
+              <>
+                {/* Empty list state with emojis */}
+                <div className="mb-4">
+                  <div className="text-5xl mb-2">🛒</div>
+                  <div className="flex justify-center gap-2 opacity-50">
+                    <span className="text-2xl">🥕</span>
+                    <span className="text-2xl">🥛</span>
+                    <span className="text-2xl">🍞</span>
+                    <span className="text-2xl">🧀</span>
+                  </div>
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">
+                  Your shopping list is empty
+                </h3>
+                <p className="text-sm text-gray-400 mb-6">
+                  Add items manually or import from your meal plans and staples
+                </p>
+                {shoppingList.status === 'Draft' && (
+                  <div className="flex justify-center gap-3">
+                    <button
+                      onClick={() => setShowAddItem(true)}
+                      className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 text-sm"
+                    >
+                      + Add First Item
+                    </button>
+                    <button
+                      onClick={handleOpenMealPlanModal}
+                      className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 text-sm"
+                    >
+                      Import from Meal Plan
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                {/* All done state */}
+                <div className="text-5xl mb-4">✨</div>
+                <h3 className="text-lg font-semibold text-emerald-400 mb-2">
+                  All done!
+                </h3>
+                <p className="text-sm text-gray-400">
+                  You&apos;ve purchased all {totalItems} items
+                </p>
+              </>
+            )}
           </div>
         ) : (
           <div className="space-y-4">
@@ -2009,52 +2098,51 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
             )}
 
             <div className="p-4 flex-1 overflow-y-auto">
-              {duplicateGroups.length === 0 ? (
-                <p className="text-gray-400 text-center py-4">
-                  {lastCombineResult ? 'All duplicates have been combined!' : 'No duplicates found!'}
-                </p>
+              {visibleDuplicateGroups.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="text-4xl mb-4">✨</div>
+                  <p className="text-emerald-400 font-medium mb-1">
+                    {lastCombineResult ? 'All duplicates have been combined!' : 'No duplicates found!'}
+                  </p>
+                  <p className="text-sm text-gray-400">Your shopping list is already optimized</p>
+                </div>
               ) : (
                 <div className="space-y-4">
-                  {duplicateGroups.map((group) => (
-                    <div key={group.normalizedName} className={`bg-gray-750 rounded-lg p-4 ${
-                      group.confidence === 'MEDIUM' ? 'border border-yellow-600/50' : ''
-                    }`}>
-                      <div className="flex justify-between items-start mb-2">
+                  {visibleDuplicateGroups.map((group) => (
+                    <div key={group.normalizedName} className="bg-gray-750 rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-3">
                         <div className="flex items-center gap-2">
-                          <h4 className="text-white font-medium capitalize">{group.normalizedName}</h4>
-                          {/* Confidence badge */}
+                          <h4 className="text-white font-semibold">{group.normalizedName}</h4>
+                          {/* Confidence badge with updated colors */}
                           {group.confidence && (
-                            <span className={`text-xs px-1.5 py-0.5 rounded ${
+                            <span className={`text-xs px-1.5 py-0.5 rounded font-semibold ${
                               group.confidence === 'HIGH'
-                                ? 'bg-green-900/50 text-green-400'
-                                : 'bg-yellow-900/50 text-yellow-400'
+                                ? 'bg-red-500/20 text-red-500'
+                                : group.confidence === 'MEDIUM'
+                                ? 'bg-amber-500/20 text-amber-500'
+                                : 'bg-gray-500/20 text-gray-500'
                             }`}>
                               {group.confidence}
                             </span>
                           )}
                         </div>
-                        <button
-                          onClick={() => handleDeduplicate(group.items.map((i) => i.id), true, group.normalizedName)}
-                          disabled={combiningGroups.has(group.normalizedName) || combiningAll}
-                          className={`px-3 py-1 text-sm rounded-lg disabled:opacity-50 transition-colors ${
-                            group.canCombine
-                              ? 'bg-green-600 hover:bg-green-700 text-white'
-                              : 'bg-purple-600 hover:bg-purple-700 text-white'
-                          }`}
-                        >
-                          {combiningGroups.has(group.normalizedName) ? 'Combining...' : (group.canCombine ? 'Combine' : 'AI Combine')}
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleDeduplicate(group.items.map((i) => i.id), true, group.normalizedName)}
+                            disabled={combiningGroups.has(group.normalizedName) || combiningAll}
+                            className="px-3 py-1 text-xs rounded-md bg-emerald-500 hover:bg-emerald-600 text-white disabled:opacity-50 transition-colors"
+                          >
+                            {combiningGroups.has(group.normalizedName) ? 'Combining...' : 'Combine'}
+                          </button>
+                          <button
+                            onClick={() => handleDismissGroup(group.normalizedName)}
+                            className="px-3 py-1 text-xs rounded-md bg-gray-600 hover:bg-gray-500 text-gray-300 transition-colors"
+                          >
+                            Dismiss
+                          </button>
+                        </div>
                       </div>
-                      {/* Show reason for MEDIUM confidence items */}
-                      {group.confidence === 'MEDIUM' && group.reason && (
-                        <p className="text-xs text-yellow-400/80 mb-2 flex items-center gap-1">
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                          </svg>
-                          {group.reason}
-                        </p>
-                      )}
-                      <ul className="text-sm text-gray-400 space-y-1">
+                      <ul className="text-sm text-gray-400 space-y-0.5 mb-2">
                         {group.items.map((item) => (
                           <li key={item.id}>
                             {item.itemName}: {item.quantity} {item.unit}
@@ -2062,12 +2150,12 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
                         ))}
                       </ul>
                       {group.canCombine && group.combinedResult && (
-                        <p className="text-sm text-green-400 mt-2">
+                        <p className="text-sm text-emerald-400">
                           → Combined: {group.combinedResult.quantity} {group.combinedResult.unit}
                         </p>
                       )}
                       {!group.canCombine && (
-                        <p className="text-sm text-purple-400 mt-2">AI will determine the best unit</p>
+                        <p className="text-sm text-emerald-400">→ AI will determine best combination</p>
                       )}
                     </div>
                   ))}
@@ -2076,10 +2164,10 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
             </div>
             <div className="px-6 py-4 bg-gray-750 flex justify-between">
               <div className="text-sm text-gray-400">
-                {duplicateGroups.length > 0 && `${duplicateGroups.length} duplicate group${duplicateGroups.length !== 1 ? 's' : ''} found`}
+                {visibleDuplicateGroups.length > 0 && `${visibleDuplicateGroups.length} duplicate group${visibleDuplicateGroups.length !== 1 ? 's' : ''} found`}
               </div>
               <div className="flex gap-3">
-                {duplicateGroups.length > 0 && (
+                {visibleDuplicateGroups.length > 0 && (
                   <button
                     onClick={handleCombineAll}
                     disabled={combiningAll || combiningGroups.size > 0}
@@ -2347,6 +2435,38 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
                   className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50"
                 >
                   {converting ? 'Adding...' : `Add ${selectedConvertItems.size} to Inventory`}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mark All Purchased Confirmation Modal */}
+      {showMarkAllModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-lg shadow-xl max-w-sm w-full">
+            <div className="p-8 text-center">
+              <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-3xl">✓</span>
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-2">Mark All as Purchased?</h3>
+              <p className="text-sm text-gray-400 mb-6">
+                This will mark all <strong className="text-white">{totalItems - purchasedItems} remaining items</strong> as purchased.
+              </p>
+              <div className="flex justify-center gap-3">
+                <button
+                  onClick={() => setShowMarkAllModal(false)}
+                  className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleMarkAllPurchased}
+                  disabled={markingAll}
+                  className="px-6 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 disabled:opacity-50 font-medium"
+                >
+                  {markingAll ? 'Marking...' : 'Yes, Mark All'}
                 </button>
               </div>
             </div>
