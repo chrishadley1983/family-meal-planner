@@ -40,25 +40,7 @@ const BW_COLORS = {
   white: '#FFFFFF',
 }
 
-// Category emojis for PDF headers
-const CATEGORY_EMOJIS: Record<string, string> = {
-  'Fresh Produce': '🥬',
-  'Meat & Seafood': '🥩',
-  'Meat & Fish': '🥩',
-  'Dairy & Eggs': '🧀',
-  'Bakery': '🥖',
-  'Frozen': '🧊',
-  'Pantry': '🥫',
-  'Cupboard Staples': '🥫',
-  'Baking & Cooking Ingredients': '🥄',
-  'Baking Ingredients': '🥄',
-  'Canned & Jarred': '🥫',
-  'Condiments & Sauces': '🍯',
-  'Beverages': '🥤',
-  'Snacks': '🍿',
-  'Household': '🧹',
-  'Other': '📦',
-}
+// Note: jsPDF cannot render Unicode emojis, so we don't use them in the PDF
 
 // Maximum items to show per category before truncation
 const MAX_ITEMS_PER_CATEGORY = 8
@@ -214,7 +196,6 @@ async function generateTwoColumnPDF(
 
   interface CategoryCard {
     name: string
-    emoji: string
     items: ShoppingListItem[]
     truncatedCount: number
   }
@@ -235,7 +216,6 @@ async function generateTwoColumnPDF(
 
     categoryCards.push({
       name: category,
-      emoji: CATEGORY_EMOJIS[category] || '📦',
       items: displayItems,
       truncatedCount,
     })
@@ -305,7 +285,7 @@ async function generateTwoColumnPDF(
  */
 function renderCategoryCard(
   doc: jsPDF,
-  card: { name: string; emoji: string; items: ShoppingListItem[]; truncatedCount: number },
+  card: { name: string; items: ShoppingListItem[]; truncatedCount: number },
   x: number,
   y: number,
   width: number,
@@ -330,13 +310,11 @@ function renderCategoryCard(
   doc.setFillColor(38, 38, 38)
   doc.rect(x, y + headerHeight - 2, width, 2, 'F')
 
-  // Category name with emoji in header
+  // Category name in header (no emojis - jsPDF cannot render Unicode)
   doc.setFontSize(9)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(255, 255, 255)
-  // Note: jsPDF has limited emoji support, so we use text representation
-  const headerText = `${card.emoji} ${card.name.toUpperCase()}`
-  doc.text(headerText, x + 3, y + 5.5)
+  doc.text(card.name.toUpperCase(), x + 3, y + 5.5)
 
   // Items
   let itemY = y + headerHeight + 2
