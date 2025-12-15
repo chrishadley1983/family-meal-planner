@@ -1201,7 +1201,7 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
                     <>
                       <button
                         onClick={handleOpenConvertModal}
-                        className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm flex items-center gap-2"
+                        className="px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 text-sm flex items-center gap-2"
                         title="Add purchased items to inventory"
                       >
                         📦 Add to Inventory
@@ -1212,7 +1212,7 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
                   {totalItems > purchasedItems && (
                     <button
                       onClick={() => setShowMarkAllModal(true)}
-                      className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 text-sm flex items-center gap-2"
+                      className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 text-sm flex items-center gap-2"
                       title="Mark all remaining items as purchased"
                     >
                       ✓ Mark All Purchased

@@ -1000,6 +1000,16 @@ export default function MealPlanDetailPage() {
             >
               Edit Schedule
             </Button>
+            <button
+              onClick={() => {
+                // Download PDF directly
+                window.open(`/api/meal-plans/${mealPlanId}/pdf`, '_blank')
+              }}
+              className="px-4 py-2 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg hover:opacity-90 text-sm flex items-center gap-2"
+              title="Export as PDF"
+            >
+              ↗ Export PDF
+            </button>
             <Button
               onClick={handleDelete}
               disabled={saving}
