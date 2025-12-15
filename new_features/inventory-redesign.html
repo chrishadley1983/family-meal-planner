@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventory - Redesign</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: #030712; color: white; font-family: system-ui, -apple-system, sans-serif; }
+  </style>
+</head>
+<body>
+  <!-- Navigation -->
+  <div style="border-bottom: 1px solid #1f2937; background: #111827;">
+    <div style="max-width: 80rem; margin: 0 auto; padding: 0 1.5rem; display: flex; align-items: center; justify-content: space-between; height: 64px;">
+      <div style="display: flex; align-items: center; gap: 2rem;">
+        <div style="width: 40px; height: 40px; background: linear-gradient(to bottom right, #f97316, #8b5cf6); border-radius: 0.5rem;"></div>
+        <nav style="display: flex; gap: 0.5rem;">
+          <a href="#" style="padding: 0.5rem 1rem; color: #9ca3af; font-size: 0.875rem; text-decoration: none;">Dashboard</a>
+          <a href="#" style="padding: 0.5rem 1rem; color: #9ca3af; font-size: 0.875rem; text-decoration: none;">Meal Plan</a>
+          <a href="#" style="padding: 0.5rem 1rem; color: #9ca3af; font-size: 0.875rem; text-decoration: none;">Recipes</a>
+          <a href="#" style="padding: 0.5rem 1rem; color: #9ca3af; font-size: 0.875rem; text-decoration: none;">Discover</a>
+          <a href="#" style="padding: 0.5rem 1rem; color: #9ca3af; font-size: 0.875rem; text-decoration: none; display: flex; align-items: center; gap: 0.5rem;">Shopping <span style="background: #8b5cf6; padding: 0.125rem 0.5rem; border-radius: 9999px; font-size: 0.75rem;">156</span></a>
+          <a href="#" style="padding: 0.5rem 1rem; background: rgba(139,92,246,0.2); color: #a78bfa; border-radius: 0.5rem; font-size: 0.875rem; text-decoration: none;">Inventory</a>
+        </nav>
+      </div>
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <button style="position: relative; padding: 0.5rem;">
+          🔔
+          <span style="position: absolute; top: 0.25rem; right: 0.25rem; width: 0.5rem; height: 0.5rem; background: #ef4444; border-radius: 9999px;"></span>
+        </button>
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <div style="width: 36px; height: 36px; background: linear-gradient(to bottom right, #8b5cf6, #ec4899); border-radius: 9999px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 600;">CF</div>
+          <div>
+            <div style="font-size: 0.875rem; font-weight: 500;">Chris</div>
+            <div style="font-size: 0.75rem; color: #6b7280;">Family</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="max-width: 80rem; margin: 0 auto; padding: 1.5rem;">
+    
+    <!-- Header -->
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1.5rem;">
+      <div>
+        <h1 style="font-size: 1.5rem; font-weight: bold; margin-bottom: 0.25rem;">Inventory</h1>
+        <p style="color: #6b7280; font-size: 0.875rem;">Track your household food items and expiry dates</p>
+      </div>
+      <div style="display: flex; gap: 0.5rem;">
+        <button style="padding: 0.5rem 1rem; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; font-size: 0.875rem; color: white;">
+          Import
+        </button>
+        <button style="padding: 0.5rem 1rem; background: linear-gradient(to right, #f97316, #8b5cf6); border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; color: white;">
+          + Add Item
+        </button>
+      </div>
+    </div>
+
+    <!-- Stats Cards - NOW WITH COLOURS -->
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+      <!-- Total Items - Gray -->
+      <div style="background: #111827; border: 1px solid #374151; border-radius: 0.75rem; padding: 1.25rem; text-align: center;">
+        <div style="font-size: 2rem; font-weight: bold; color: #9ca3af;">12</div>
+        <div style="font-size: 0.875rem; color: #6b7280;">Total Items</div>
+      </div>
+      
+      <!-- Active - Green -->
+      <div style="background: linear-gradient(to bottom right, rgba(16,185,129,0.1), rgba(16,185,129,0.05)); border: 1px solid rgba(16,185,129,0.3); border-radius: 0.75rem; padding: 1.25rem; text-align: center;">
+        <div style="font-size: 2rem; font-weight: bold; color: #10b981;">8</div>
+        <div style="font-size: 0.875rem; color: #6b7280;">Active</div>
+      </div>
+      
+      <!-- Expiring Soon - Amber -->
+      <div style="background: linear-gradient(to bottom right, rgba(245,158,11,0.1), rgba(245,158,11,0.05)); border: 1px solid rgba(245,158,11,0.3); border-radius: 0.75rem; padding: 1.25rem; text-align: center;">
+        <div style="font-size: 2rem; font-weight: bold; color: #f59e0b;">3</div>
+        <div style="font-size: 0.875rem; color: #6b7280;">Expiring Soon</div>
+      </div>
+      
+      <!-- Expired - Red -->
+      <div style="background: linear-gradient(to bottom right, rgba(239,68,68,0.1), rgba(239,68,68,0.05)); border: 1px solid rgba(239,68,68,0.3); border-radius: 0.75rem; padding: 1.25rem; text-align: center;">
+        <div style="font-size: 2rem; font-weight: bold; color: #ef4444;">1</div>
+        <div style="font-size: 0.875rem; color: #6b7280;">Expired</div>
+      </div>
+    </div>
+
+    <!-- Search & Filters - Unified Row -->
+    <div style="background: rgba(17,24,39,0.5); border-radius: 0.75rem; padding: 0.5rem; margin-bottom: 1rem; display: flex; gap: 0.5rem; align-items: center;">
+      <div style="flex: 1; position: relative;">
+        <span style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: #6b7280;">🔍</span>
+        <input type="text" placeholder="Search items..." style="width: 100%; background: transparent; border: none; padding: 0.625rem 0.75rem 0.625rem 2.5rem; font-size: 0.875rem; color: white; outline: none;">
+      </div>
+      <div style="height: 1.5rem; width: 1px; background: #374151;"></div>
+      <select style="background: transparent; border: none; padding: 0.625rem 0.75rem; font-size: 0.875rem; color: #9ca3af; outline: none; cursor: pointer;">
+        <option>All Categories</option>
+      </select>
+      <div style="height: 1.5rem; width: 1px; background: #374151;"></div>
+      <select style="background: transparent; border: none; padding: 0.625rem 0.75rem; font-size: 0.875rem; color: #9ca3af; outline: none; cursor: pointer;">
+        <option>All Locations</option>
+      </select>
+      <div style="height: 1.5rem; width: 1px; background: #374151;"></div>
+      <select style="background: transparent; border: none; padding: 0.625rem 0.75rem; font-size: 0.875rem; color: #9ca3af; outline: none; cursor: pointer;">
+        <option>All Status</option>
+      </select>
+      <div style="height: 1.5rem; width: 1px; background: #374151;"></div>
+      <select style="background: transparent; border: none; padding: 0.625rem 0.75rem; font-size: 0.875rem; color: #9ca3af; outline: none; cursor: pointer;">
+        <option>All Active</option>
+      </select>
+    </div>
+
+    <!-- Bulk Actions Bar (shown when items selected) -->
+    <div style="background: linear-gradient(to right, rgba(139,92,246,0.1), rgba(139,92,246,0.05)); border: 1px solid rgba(139,92,246,0.3); border-radius: 0.75rem; padding: 0.75rem 1rem; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
+      <span style="font-size: 0.875rem; color: #a78bfa;">2 items selected</span>
+      <div style="display: flex; gap: 0.5rem;">
+        <button style="padding: 0.375rem 0.75rem; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; font-size: 0.875rem; color: white;">Update Expiry</button>
+        <button style="padding: 0.375rem 0.75rem; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; font-size: 0.875rem; color: white;">Mark Inactive</button>
+        <button style="padding: 0.375rem 0.75rem; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; font-size: 0.875rem; color: #10b981;">Add to Staples</button>
+        <button style="padding: 0.375rem 0.75rem; background: rgba(239,68,68,0.2); border-radius: 0.5rem; font-size: 0.875rem; color: #ef4444;">Delete</button>
+      </div>
+    </div>
+
+    <!-- Inventory Table -->
+    <div style="background: #111827; border-radius: 0.75rem; border: 1px solid #1f2937; overflow: hidden;">
+      <!-- Table Header -->
+      <div style="display: grid; grid-template-columns: 40px 2fr 1fr 1.5fr 1.5fr 1fr 1.5fr 1fr 1fr 1.5fr; gap: 1rem; padding: 0.75rem 1rem; border-bottom: 1px solid #1f2937; font-size: 0.75rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">
+        <div><input type="checkbox" style="width: 1rem; height: 1rem;"></div>
+        <div>Name</div>
+        <div>Qty</div>
+        <div>Category</div>
+        <div>Location</div>
+        <div>Added</div>
+        <div>Expiry ↑</div>
+        <div>Status</div>
+        <div>Active</div>
+        <div>Actions</div>
+      </div>
+      
+      <!-- Table Rows -->
+      <div style="display: grid; grid-template-columns: 40px 2fr 1fr 1.5fr 1.5fr 1fr 1.5fr 1fr 1fr 1.5fr; gap: 1rem; padding: 1rem; border-bottom: 1px solid #1f2937; align-items: center; font-size: 0.875rem;">
+        <div><input type="checkbox" style="width: 1rem; height: 1rem;"></div>
+        <div style="font-weight: 500;">Milk</div>
+        <div>4 L</div>
+        <div style="color: #9ca3af;">Dairy & Eggs</div>
+        <div style="color: #9ca3af;">Fridge</div>
+        <div style="color: #9ca3af;">15 Dec</div>
+        <div style="color: #9ca3af;">18 Dec 2025</div>
+        <div><span style="padding: 0.25rem 0.5rem; background: rgba(16,185,129,0.2); color: #10b981; border-radius: 9999px; font-size: 0.75rem;">Fresh</span></div>
+        <div><span style="padding: 0.25rem 0.5rem; background: rgba(16,185,129,0.2); color: #10b981; border-radius: 9999px; font-size: 0.75rem;">Active</span></div>
+        <div style="display: flex; gap: 0.75rem;">
+          <button style="color: #a78bfa; font-size: 0.875rem; background: none; border: none; cursor: pointer;">Edit</button>
+          <button style="color: #ef4444; font-size: 0.875rem; background: none; border: none; cursor: pointer;">Delete</button>
+        </div>
+      </div>
+      
+      <div style="display: grid; grid-template-columns: 40px 2fr 1fr 1.5fr 1.5fr 1fr 1.5fr 1fr 1fr 1.5fr; gap: 1rem; padding: 1rem; border-bottom: 1px solid #1f2937; align-items: center; font-size: 0.875rem;">
+        <div><input type="checkbox" style="width: 1rem; height: 1rem;"></div>
+        <div style="font-weight: 500;">Chicken Breast</div>
+        <div>500 g</div>
+        <div style="color: #9ca3af;">Meat & Fish</div>
+        <div style="color: #9ca3af;">Fridge</div>
+        <div style="color: #9ca3af;">14 Dec</div>
+        <div style="color: #f59e0b;">16 Dec 2025</div>
+        <div><span style="padding: 0.25rem 0.5rem; background: rgba(245,158,11,0.2); color: #f59e0b; border-radius: 9999px; font-size: 0.75rem;">Expiring</span></div>
+        <div><span style="padding: 0.25rem 0.5rem; background: rgba(16,185,129,0.2); color: #10b981; border-radius: 9999px; font-size: 0.75rem;">Active</span></div>
+        <div style="display: flex; gap: 0.75rem;">
+          <button style="color: #a78bfa; font-size: 0.875rem; background: none; border: none; cursor: pointer;">Edit</button>
+          <button style="color: #ef4444; font-size: 0.875rem; background: none; border: none; cursor: pointer;">Delete</button>
+        </div>
+      </div>
+      
+      <div style="display: grid; grid-template-columns: 40px 2fr 1fr 1.5fr 1.5fr 1fr 1.5fr 1fr 1fr 1.5fr; gap: 1rem; padding: 1rem; border-bottom: 1px solid #1f2937; align-items: center; font-size: 0.875rem;">
+        <div><input type="checkbox" style="width: 1rem; height: 1rem;"></div>
+        <div style="font-weight: 500;">Eggs</div>
+        <div>12 each</div>
+        <div style="color: #9ca3af;">Dairy & Eggs</div>
+        <div style="color: #9ca3af;">Fridge</div>
+        <div style="color: #9ca3af;">10 Dec</div>
+        <div style="color: #9ca3af;">24 Dec 2025</div>
+        <div><span style="padding: 0.25rem 0.5rem; background: rgba(16,185,129,0.2); color: #10b981; border-radius: 9999px; font-size: 0.75rem;">Fresh</span></div>
+        <div><span style="padding: 0.25rem 0.5rem; background: rgba(16,185,129,0.2); color: #10b981; border-radius: 9999px; font-size: 0.75rem;">Active</span></div>
+        <div style="display: flex; gap: 0.75rem;">
+          <button style="color: #a78bfa; font-size: 0.875rem; background: none; border: none; cursor: pointer;">Edit</button>
+          <button style="color: #ef4444; font-size: 0.875rem; background: none; border: none; cursor: pointer;">Delete</button>
+        </div>
+      </div>
+      
+      <div style="display: grid; grid-template-columns: 40px 2fr 1fr 1.5fr 1.5fr 1fr 1.5fr 1fr 1fr 1.5fr; gap: 1rem; padding: 1rem; align-items: center; font-size: 0.875rem;">
+        <div><input type="checkbox" style="width: 1rem; height: 1rem;"></div>
+        <div style="font-weight: 500;">Yogurt</div>
+        <div>2 pack</div>
+        <div style="color: #9ca3af;">Dairy & Eggs</div>
+        <div style="color: #9ca3af;">Fridge</div>
+        <div style="color: #9ca3af;">8 Dec</div>
+        <div style="color: #ef4444;">12 Dec 2025</div>
+        <div><span style="padding: 0.25rem 0.5rem; background: rgba(239,68,68,0.2); color: #ef4444; border-radius: 9999px; font-size: 0.75rem;">Expired</span></div>
+        <div><span style="padding: 0.25rem 0.5rem; background: rgba(107,114,128,0.2); color: #6b7280; border-radius: 9999px; font-size: 0.75rem;">Inactive</span></div>
+        <div style="display: flex; gap: 0.75rem;">
+          <button style="color: #a78bfa; font-size: 0.875rem; background: none; border: none; cursor: pointer;">Edit</button>
+          <button style="color: #ef4444; font-size: 0.875rem; background: none; border: none; cursor: pointer;">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Item Modal -->
+  <div style="position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 50; display: none;" id="addModal">
+    <div style="background: #111827; border: 1px solid #1f2937; border-radius: 1rem; width: 480px; max-height: 90vh; overflow-y: auto;">
+      <div style="padding: 1.25rem; border-bottom: 1px solid #1f2937; display: flex; align-items: center; justify-content: space-between;">
+        <h2 style="font-size: 1.125rem; font-weight: 600;">Add Inventory Item</h2>
+        <button style="color: #6b7280; font-size: 1.5rem;">×</button>
+      </div>
+      
+      <div style="padding: 1.25rem;">
+        <!-- Import Buttons - More Prominent -->
+        <div style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem;">
+          <button style="flex: 1; padding: 0.75rem; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; font-size: 0.875rem; color: white; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+            🔗 Import URL
+          </button>
+          <button style="flex: 1; padding: 0.75rem; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; font-size: 0.875rem; color: white; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+            📷 Import Photo
+          </button>
+        </div>
+        
+        <!-- Form -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+          <div>
+            <label style="font-size: 0.75rem; color: #9ca3af; display: block; margin-bottom: 0.25rem;">Item Name *</label>
+            <input type="text" placeholder="e.g., Milk" style="width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.625rem 0.75rem; font-size: 0.875rem; color: white; outline: none;">
+          </div>
+          <div>
+            <label style="font-size: 0.75rem; color: #9ca3af; display: block; margin-bottom: 0.25rem;">Category</label>
+            <select style="width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.625rem 0.75rem; font-size: 0.875rem; color: white; outline: none;">
+              <option>Select category...</option>
+            </select>
+          </div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+          <div>
+            <label style="font-size: 0.75rem; color: #9ca3af; display: block; margin-bottom: 0.25rem;">Quantity *</label>
+            <input type="number" value="1" style="width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.625rem 0.75rem; font-size: 0.875rem; color: white; outline: none;">
+          </div>
+          <div>
+            <label style="font-size: 0.75rem; color: #9ca3af; display: block; margin-bottom: 0.25rem;">Unit *</label>
+            <select style="width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.625rem 0.75rem; font-size: 0.875rem; color: white; outline: none;">
+              <option>Select unit...</option>
+            </select>
+          </div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+          <div>
+            <label style="font-size: 0.75rem; color: #9ca3af; display: block; margin-bottom: 0.25rem;">Location</label>
+            <select style="width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.625rem 0.75rem; font-size: 0.875rem; color: white; outline: none;">
+              <option>Select location...</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size: 0.75rem; color: #9ca3af; display: block; margin-bottom: 0.25rem;">Expiry Date</label>
+            <input type="text" placeholder="dd/mm/yyyy" style="width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.625rem 0.75rem; font-size: 0.875rem; color: white; outline: none;">
+          </div>
+        </div>
+        
+        <!-- Auto-calculate callout - More Prominent -->
+        <div style="background: rgba(139,92,246,0.1); border: 1px solid rgba(139,92,246,0.3); border-radius: 0.5rem; padding: 0.75rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.75rem;">
+          <span style="font-size: 1.25rem;">✨</span>
+          <div>
+            <div style="font-size: 0.875rem; font-weight: 500; color: #a78bfa;">Smart Expiry</div>
+            <div style="font-size: 0.75rem; color: #9ca3af;">Leave expiry blank and we'll calculate based on typical shelf life</div>
+          </div>
+        </div>
+        
+        <!-- AI Suggestion Box -->
+        <div style="background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3); border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+            <span style="color: #60a5fa;">ℹ️</span>
+            <span style="font-weight: 500; color: #60a5fa;">Matched: Milk</span>
+          </div>
+          <div style="font-size: 0.875rem; color: #9ca3af; margin-bottom: 0.5rem;">
+            Typical shelf life: 3 days | Store in: Fridge | Category: Dairy & Eggs
+          </div>
+          <div style="font-size: 0.875rem; color: #9ca3af; margin-bottom: 0.5rem;">
+            Suggested expiry: 18 Dec 2025
+          </div>
+          <div style="font-size: 0.75rem; color: #f59e0b; font-style: italic; margin-bottom: 0.75rem;">
+            Door storage fluctuates temp too much
+          </div>
+          <button style="padding: 0.375rem 0.75rem; background: #8b5cf6; border-radius: 0.5rem; font-size: 0.875rem; color: white;">
+            Apply Suggestions
+          </button>
+        </div>
+        
+        <div style="margin-bottom: 1rem;">
+          <label style="font-size: 0.75rem; color: #9ca3af; display: block; margin-bottom: 0.25rem;">Notes</label>
+          <input type="text" placeholder="Optional notes..." style="width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.625rem 0.75rem; font-size: 0.875rem; color: white; outline: none;">
+        </div>
+        
+        <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: #9ca3af; margin-bottom: 1.5rem;">
+          <input type="checkbox" checked style="width: 1rem; height: 1rem;">
+          Active (include in inventory checks)
+        </label>
+        
+        <!-- Actions -->
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+          <button style="padding: 0.5rem 1rem; background: #374151; border-radius: 0.5rem; font-size: 0.875rem; color: white;">
+            Cancel
+          </button>
+          <button style="padding: 0.5rem 1rem; background: #8b5cf6; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; color: white;">
+            Add Item
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import CSV Modal -->
+  <div style="position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 50; display: none;" id="importModal">
+    <div style="background: #111827; border: 1px solid #1f2937; border-radius: 1rem; width: 440px;">
+      <div style="padding: 1.25rem; border-bottom: 1px solid #1f2937; display: flex; align-items: center; justify-content: space-between;">
+        <h2 style="font-size: 1.125rem; font-weight: 600;">Import Inventory from CSV</h2>
+        <button style="color: #6b7280; font-size: 1.5rem;">×</button>
+      </div>
+      
+      <div style="padding: 1.25rem;">
+        <!-- Step 1 -->
+        <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+          <div style="width: 2rem; height: 2rem; border-radius: 9999px; background: rgba(139,92,246,0.2); color: #a78bfa; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-weight: 500;">1</div>
+          <div>
+            <div style="font-weight: 500; margin-bottom: 0.25rem;">Download Template</div>
+            <div style="font-size: 0.875rem; color: #9ca3af; margin-bottom: 0.75rem;">Start with our template to ensure your data is formatted correctly.</div>
+            <button style="padding: 0.5rem 0.75rem; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; font-size: 0.875rem; color: white;">
+              Download CSV Template
+            </button>
+          </div>
+        </div>
+        
+        <!-- Step 2 -->
+        <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+          <div style="width: 2rem; height: 2rem; border-radius: 9999px; background: rgba(139,92,246,0.2); color: #a78bfa; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-weight: 500;">2</div>
+          <div>
+            <div style="font-weight: 500; margin-bottom: 0.25rem;">Upload Your File</div>
+            <div style="font-size: 0.875rem; color: #9ca3af; margin-bottom: 0.75rem;">Upload your completed CSV file for validation.</div>
+            <button style="padding: 0.5rem 0.75rem; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; font-size: 0.875rem; color: white;">
+              Choose File
+            </button>
+          </div>
+        </div>
+        
+        <!-- Actions -->
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem; padding-top: 1rem; border-top: 1px solid #1f2937;">
+          <button style="padding: 0.5rem 1rem; background: #374151; border-radius: 0.5rem; font-size: 0.875rem; color: white;">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
