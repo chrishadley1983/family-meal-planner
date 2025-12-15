@@ -13,6 +13,8 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
 interface Recipe {
   id: string
@@ -318,6 +320,12 @@ export default function MealPlanDetailPage() {
 
   // Export modal state
   const [showExportModal, setShowExportModal] = useState(false)
+  const [exportingPdf, setExportingPdf] = useState(false)
+
+  // Recipe selector modal state (for adding meals to empty slots)
+  const [showRecipeSelector, setShowRecipeSelector] = useState(false)
+  const [recipeSlotToFill, setRecipeSlotToFill] = useState<{ day: string; mealType: string } | null>(null)
+  const [addingMeal, setAddingMeal] = useState(false)
 
   // View mode state (meals vs cooking plan)
   const [viewMode, setViewMode] = useState<'meals' | 'cooking'>('meals')
@@ -905,6 +913,267 @@ export default function MealPlanDetailPage() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
+  // PDF Export Functions
+  const generateWeeklyPlanPDF = async () => {
+    if (!mealPlan) return
+    setExportingPdf(true)
+
+    try {
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+      const pageWidth = doc.internal.pageSize.getWidth()
+      const pageHeight = doc.internal.pageSize.getHeight()
+
+      // Title
+      doc.setFontSize(18)
+      doc.setTextColor(80, 80, 80)
+      doc.text('Weekly Meal Plan', pageWidth / 2, 15, { align: 'center' })
+
+      // Date range
+      doc.setFontSize(12)
+      doc.setTextColor(100, 100, 100)
+      doc.text(formatDateRange(mealPlan.weekStartDate, mealPlan.weekEndDate), pageWidth / 2, 22, { align: 'center' })
+
+      // Prepare table data - rows are meal types, columns are days
+      const tableHead = [['', ...DAYS_OF_WEEK.map(d => d.slice(0, 3))]]
+
+      const mealTypeLabels = ['Breakfast', 'Lunch', 'Afternoon Snack', 'Dinner', 'Dessert']
+      const mealTypeKeys = ['breakfast', 'lunch', 'afternoon-snack', 'dinner', 'dessert']
+
+      const tableBody = mealTypeKeys.map((mealTypeKey, index) => {
+        const row = [mealTypeLabels[index]]
+        DAYS_OF_WEEK.forEach(day => {
+          const meal = mealPlan.meals.find(m =>
+            m.dayOfWeek === day &&
+            m.mealType.toLowerCase().replace(/\s+/g, '-') === mealTypeKey
+          )
+          let cellText = meal?.recipeName || '-'
+          // Add indicators for batch/leftover
+          if (meal?.isLeftover) {
+            cellText = '🔄 ' + cellText
+          } else if (meal?.notes?.toLowerCase().includes('batch')) {
+            cellText = '⚡ ' + cellText
+          }
+          row.push(cellText)
+        })
+        return row
+      })
+
+      autoTable(doc, {
+        head: tableHead,
+        body: tableBody,
+        startY: 28,
+        theme: 'grid',
+        styles: {
+          fontSize: 8,
+          cellPadding: 3,
+          overflow: 'linebreak',
+          cellWidth: 'wrap',
+        },
+        headStyles: {
+          fillColor: [128, 90, 213],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          halign: 'center',
+        },
+        columnStyles: {
+          0: { cellWidth: 25, fontStyle: 'bold', fillColor: [240, 240, 245] },
+          1: { cellWidth: 35 },
+          2: { cellWidth: 35 },
+          3: { cellWidth: 35 },
+          4: { cellWidth: 35 },
+          5: { cellWidth: 35 },
+          6: { cellWidth: 35 },
+          7: { cellWidth: 35 },
+        },
+        alternateRowStyles: {
+          fillColor: [250, 250, 255]
+        },
+        margin: { left: 10, right: 10 },
+      })
+
+      // Legend
+      const legendY = (doc as any).lastAutoTable?.finalY + 10 || pageHeight - 20
+      doc.setFontSize(8)
+      doc.setTextColor(100, 100, 100)
+      doc.text('⚡ Batch Cook    🔄 Reheat (leftover)', 10, legendY)
+
+      // Footer
+      doc.setFontSize(8)
+      doc.text(`Generated ${new Date().toLocaleDateString()}`, pageWidth - 10, pageHeight - 10, { align: 'right' })
+
+      // Download
+      doc.save(`meal-plan-${mealPlan.weekStartDate}.pdf`)
+      success('Weekly Plan PDF downloaded!')
+    } catch (err) {
+      console.error('❌ Error generating PDF:', err)
+      error('Failed to generate PDF')
+    } finally {
+      setExportingPdf(false)
+    }
+  }
+
+  const generateCookingPlanPDF = async () => {
+    if (!mealPlan) return
+    setExportingPdf(true)
+
+    try {
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+      const pageWidth = doc.internal.pageSize.getWidth()
+
+      // Title
+      doc.setFontSize(18)
+      doc.setTextColor(80, 80, 80)
+      doc.text('Cooking Plan', pageWidth / 2, 15, { align: 'center' })
+
+      // Date range
+      doc.setFontSize(12)
+      doc.setTextColor(100, 100, 100)
+      doc.text(formatDateRange(mealPlan.weekStartDate, mealPlan.weekEndDate), pageWidth / 2, 22, { align: 'center' })
+
+      let yPosition = 32
+
+      // For each day, show what needs to be cooked
+      DAYS_OF_WEEK.forEach((day, dayIndex) => {
+        const dayMeals = mealPlan.meals.filter(m => m.dayOfWeek === day)
+        if (dayMeals.length === 0) return
+
+        // Check if we need a new page
+        if (yPosition > 260) {
+          doc.addPage()
+          yPosition = 15
+        }
+
+        // Day header
+        const weekStartDate = new Date(mealPlan.weekStartDate)
+        const dayDate = new Date(weekStartDate)
+        dayDate.setDate(weekStartDate.getDate() + dayIndex)
+
+        doc.setFontSize(12)
+        doc.setTextColor(128, 90, 213)
+        doc.text(`${day}, ${dayDate.getDate()} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][dayDate.getMonth()]}`, 10, yPosition)
+        yPosition += 6
+
+        // Group meals by time of day
+        const morningMeals = dayMeals.filter(m =>
+          ['breakfast', 'morning-snack'].includes(m.mealType.toLowerCase().replace(/\s+/g, '-'))
+        )
+        const middayMeals = dayMeals.filter(m =>
+          ['lunch', 'afternoon-snack'].includes(m.mealType.toLowerCase().replace(/\s+/g, '-'))
+        )
+        const eveningMeals = dayMeals.filter(m =>
+          ['dinner', 'dessert', 'evening-snack'].includes(m.mealType.toLowerCase().replace(/\s+/g, '-'))
+        )
+
+        const renderSection = (sectionName: string, meals: Meal[]) => {
+          if (meals.length === 0) return
+
+          doc.setFontSize(9)
+          doc.setTextColor(100, 100, 100)
+          doc.text(sectionName, 12, yPosition)
+          yPosition += 4
+
+          meals.forEach(meal => {
+            const mealLabel = MEAL_TYPES.find(mt => mt.key === meal.mealType.toLowerCase().replace(/\s+/g, '-'))?.label || meal.mealType
+            let recipeName = meal.recipeName || 'Not assigned'
+
+            // Add cooking indicators
+            let indicator = ''
+            if (meal.isLeftover) {
+              indicator = '🔄 REHEAT: '
+            } else if (meal.notes?.toLowerCase().includes('batch')) {
+              indicator = '⚡ BATCH: '
+            }
+
+            doc.setFontSize(9)
+            doc.setTextColor(60, 60, 60)
+            doc.text(`☐ ${mealLabel}: ${indicator}${recipeName}`, 14, yPosition)
+            yPosition += 5
+          })
+        }
+
+        renderSection('Morning', morningMeals)
+        renderSection('Midday', middayMeals)
+        renderSection('Evening', eveningMeals)
+
+        yPosition += 4
+      })
+
+      // Legend
+      doc.setFontSize(8)
+      doc.setTextColor(100, 100, 100)
+      const finalY = Math.min(yPosition + 5, 280)
+      doc.text('⚡ BATCH = Cook extra portions    🔄 REHEAT = From earlier batch', 10, finalY)
+
+      // Download
+      doc.save(`cooking-plan-${mealPlan.weekStartDate}.pdf`)
+      success('Cooking Plan PDF downloaded!')
+    } catch (err) {
+      console.error('❌ Error generating PDF:', err)
+      error('Failed to generate PDF')
+    } finally {
+      setExportingPdf(false)
+    }
+  }
+
+  // Add meal to empty slot
+  const handleAddMealToSlot = async (recipeId: string) => {
+    if (!mealPlan || !recipeSlotToFill) return
+
+    setAddingMeal(true)
+    try {
+      const recipe = recipes.find(r => r.id === recipeId)
+      if (!recipe) throw new Error('Recipe not found')
+
+      console.log('🔷 Adding meal to slot:', recipeSlotToFill, 'recipe:', recipe.recipeName)
+
+      const response = await fetch('/api/meals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mealPlanId: mealPlan.id,
+          dayOfWeek: recipeSlotToFill.day,
+          mealType: recipeSlotToFill.mealType,
+          recipeId: recipe.id,
+          recipeName: recipe.recipeName,
+          servings: 1,
+          isLocked: false,
+        }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to add meal')
+      }
+
+      const data = await response.json()
+      console.log('🟢 Meal added:', data.meal)
+
+      // Update local state
+      setMealPlan(prev => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          meals: [...prev.meals, data.meal]
+        }
+      })
+
+      setShowRecipeSelector(false)
+      setRecipeSlotToFill(null)
+      success(`Added ${recipe.recipeName} to ${recipeSlotToFill.day} ${recipeSlotToFill.mealType}`)
+    } catch (err) {
+      console.error('❌ Error adding meal:', err)
+      error(err instanceof Error ? err.message : 'Failed to add meal')
+    } finally {
+      setAddingMeal(false)
+    }
+  }
+
+  // Open recipe selector for a specific slot
+  const openRecipeSelector = (day: string, mealTypeKey: string) => {
+    setRecipeSlotToFill({ day, mealType: mealTypeKey })
+    setShowRecipeSelector(true)
+  }
+
   if (loading) {
     return (
       <AppLayout userEmail={session?.user?.email}>
@@ -1403,10 +1672,7 @@ export default function MealPlanDetailPage() {
                               <div
                                 key={`${day}-${mealTypeKey}`}
                                 className="py-4 px-4 border border-dashed border-zinc-700 rounded-lg bg-zinc-900/30 hover:border-purple-500/50 hover:bg-zinc-800/50 cursor-pointer transition-colors text-center"
-                                onClick={() => {
-                                  // TODO: Open recipe selector modal for this meal slot
-                                  console.log('Add meal:', mealTypeKey, day)
-                                }}
+                                onClick={() => openRecipeSelector(day, mealTypeKey)}
                               >
                                 <span className="text-sm text-zinc-500 italic block">
                                   {MEAL_TYPES.find(mt => mt.key === mealTypeKey)?.label || ''} not scheduled
@@ -1750,11 +2016,9 @@ export default function MealPlanDetailPage() {
             <div className="space-y-3">
               {/* Weekly Plan PDF */}
               <button
-                onClick={() => {
-                  // TODO: Implement PDF export
-                  console.log('Export Weekly Plan PDF')
-                }}
-                className="w-full flex items-center gap-4 p-4 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition-colors text-left"
+                onClick={generateWeeklyPlanPDF}
+                disabled={exportingPdf}
+                className="w-full flex items-center gap-4 p-4 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="w-10 h-10 bg-red-500 rounded-lg flex items-center justify-center">
                   <span className="text-white">📄</span>
@@ -1763,16 +2027,14 @@ export default function MealPlanDetailPage() {
                   <div className="font-medium text-white">Weekly Plan PDF</div>
                   <div className="text-xs text-zinc-500">Landscape format, 1 page for printing</div>
                 </div>
-                <span className="text-zinc-500">↓</span>
+                <span className="text-zinc-500">{exportingPdf ? '...' : '↓'}</span>
               </button>
 
               {/* Cooking Plan PDF */}
               <button
-                onClick={() => {
-                  // TODO: Implement Cooking Plan PDF export
-                  console.log('Export Cooking Plan PDF')
-                }}
-                className="w-full flex items-center gap-4 p-4 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition-colors text-left"
+                onClick={generateCookingPlanPDF}
+                disabled={exportingPdf}
+                className="w-full flex items-center gap-4 p-4 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center">
                   <span className="text-white">🍳</span>
@@ -1781,7 +2043,7 @@ export default function MealPlanDetailPage() {
                   <div className="font-medium text-white">Cooking Plan PDF</div>
                   <div className="text-xs text-zinc-500">Daily cooking schedule with times</div>
                 </div>
-                <span className="text-zinc-500">↓</span>
+                <span className="text-zinc-500">{exportingPdf ? '...' : '↓'}</span>
               </button>
 
               {/* Share via WhatsApp */}
@@ -1839,6 +2101,87 @@ export default function MealPlanDetailPage() {
             >
               Close
             </button>
+          </div>
+        </Modal>
+
+        {/* Recipe Selector Modal */}
+        <Modal
+          isOpen={showRecipeSelector}
+          onClose={() => {
+            setShowRecipeSelector(false)
+            setRecipeSlotToFill(null)
+          }}
+          title={recipeSlotToFill ? `Add ${MEAL_TYPES.find(mt => mt.key === recipeSlotToFill.mealType)?.label || recipeSlotToFill.mealType} for ${recipeSlotToFill.day}` : 'Select Recipe'}
+          maxWidth="lg"
+        >
+          <div className="p-4">
+            {recipeSlotToFill && (
+              <>
+                <p className="text-sm text-zinc-400 mb-4">
+                  Choose a recipe to add to your meal plan
+                </p>
+
+                {/* Recipe list filtered by meal type */}
+                <div className="max-h-96 overflow-y-auto space-y-2">
+                  {(() => {
+                    // Filter recipes that match this meal type
+                    const filteredRecipes = recipes.filter(recipe =>
+                      recipe.mealType.some(mt =>
+                        mt.toLowerCase().replace(/\s+/g, '-') === recipeSlotToFill.mealType.toLowerCase()
+                      )
+                    )
+
+                    if (filteredRecipes.length === 0) {
+                      return (
+                        <div className="text-center py-8">
+                          <p className="text-zinc-400">No recipes found for this meal type.</p>
+                          <p className="text-sm text-zinc-500 mt-2">
+                            Add recipes with the "{MEAL_TYPES.find(mt => mt.key === recipeSlotToFill.mealType)?.label}" meal type to see them here.
+                          </p>
+                        </div>
+                      )
+                    }
+
+                    return filteredRecipes.map(recipe => (
+                      <button
+                        key={recipe.id}
+                        onClick={() => handleAddMealToSlot(recipe.id)}
+                        disabled={addingMeal}
+                        className="w-full flex items-center gap-4 p-4 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition-colors text-left disabled:opacity-50"
+                      >
+                        <div className="flex-1">
+                          <div className="font-medium text-white">{recipe.recipeName}</div>
+                          {(recipe.caloriesPerServing || recipe.proteinPerServing) && (
+                            <div className="text-xs text-zinc-500 mt-1 flex gap-3">
+                              {recipe.caloriesPerServing && (
+                                <span>{recipe.caloriesPerServing} cal</span>
+                              )}
+                              {recipe.proteinPerServing && (
+                                <span>{recipe.proteinPerServing}g protein</span>
+                              )}
+                              {recipe.carbsPerServing && (
+                                <span>{recipe.carbsPerServing}g carbs</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <span className="text-purple-400 text-lg">+</span>
+                      </button>
+                    ))
+                  })()}
+                </div>
+
+                <button
+                  onClick={() => {
+                    setShowRecipeSelector(false)
+                    setRecipeSlotToFill(null)
+                  }}
+                  className="w-full mt-4 px-4 py-3 bg-zinc-700 text-white rounded-lg hover:bg-zinc-600 transition-colors"
+                >
+                  Cancel
+                </button>
+              </>
+            )}
           </div>
         </Modal>
       </PageContainer>
