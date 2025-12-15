@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meal Plan - Redesign</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: #030712; color: white; font-family: system-ui, -apple-system, sans-serif; }
+  </style>
+</head>
+<body>
+
+  <!-- ============================================== -->
+  <!-- 1. GENERATE NEW MEAL PLAN PAGE -->
+  <!-- ============================================== -->
+  
+  <div style="max-width: 64rem; margin: 0 auto; padding: 1.5rem;">
+    <p style="text-align: center; color: #6b7280; margin-bottom: 2rem; font-size: 0.875rem; border-bottom: 2px dashed #374151; padding-bottom: 1rem;">— 1. Generate New Meal Plan Page —</p>
+    
+    <!-- Header -->
+    <div style="margin-bottom: 1.5rem;">
+      <h1 style="font-size: 1.5rem; font-weight: bold; margin-bottom: 0.25rem;">Meal Plans</h1>
+      <p style="color: #6b7280; font-size: 0.875rem;">Generate AI-powered weekly meal plans</p>
+    </div>
+
+    <!-- Generate Card -->
+    <div style="background: #111827; border: 1px solid #1f2937; border-radius: 0.75rem; padding: 1.5rem; margin-bottom: 1.5rem;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem;">
+        <h2 style="font-size: 1.125rem; font-weight: 600;">Generate New Meal Plan</h2>
+        <!-- Settings Button -->
+        <button style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; background: #374151; border-radius: 0.5rem; font-size: 0.875rem; color: #9ca3af;">
+          ⚙️ Settings
+        </button>
+      </div>
+      
+      <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 1rem; align-items: end; margin-bottom: 1.25rem;">
+        <div>
+          <label style="font-size: 0.75rem; color: #9ca3af; display: block; margin-bottom: 0.25rem;">Week Starting</label>
+          <input type="text" value="14/12/2025" style="width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.625rem 0.75rem; font-size: 0.875rem; color: white;">
+        </div>
+        <div>
+          <label style="font-size: 0.75rem; color: #9ca3af; display: block; margin-bottom: 0.25rem;">Copy From Previous Week (Optional)</label>
+          <select style="width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.625rem 0.75rem; font-size: 0.875rem; color: white;">
+            <option>Generate new plan with AI</option>
+          </select>
+        </div>
+        <button style="padding: 0.625rem 1.25rem; background: linear-gradient(to right, #f97316, #8b5cf6); border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; color: white; white-space: nowrap;">
+          Generate with AI
+        </button>
+      </div>
+      
+      <!-- Quick Options -->
+      <div style="margin-bottom: 1rem;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+          <span style="font-size: 0.875rem; font-weight: 500;">Quick Options</span>
+          <a href="#" style="font-size: 0.875rem; color: #a78bfa; text-decoration: none;">Customize Settings →</a>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+          <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: #9ca3af;">
+            <input type="checkbox" style="width: 1rem; height: 1rem;">
+            Prioritize shopping efficiency (minimize unique ingredients)
+          </label>
+          <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: #9ca3af;">
+            <input type="checkbox" style="width: 1rem; height: 1rem;">
+            Use expiring inventory items
+          </label>
+          <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: #9ca3af;">
+            <input type="checkbox" style="width: 1rem; height: 1rem;">
+            Maximize batch cooking opportunities
+          </label>
+        </div>
+      </div>
+      
+      <p style="font-size: 0.75rem; color: #6b7280; margin-bottom: 1rem;">Claude AI will analyze your family profiles, recipes, and preferences to generate a personalized weekly meal plan.</p>
+      
+      <button style="color: #a78bfa; font-size: 0.875rem; background: none; border: none; cursor: pointer;">
+        ▶ Customize meals for this week
+      </button>
+    </div>
+
+    <!-- Filter Pills - Purple when active -->
+    <div style="background: #111827; border-radius: 0.75rem; padding: 0.75rem 1rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+      <span style="font-size: 0.875rem; color: #6b7280; margin-right: 0.5rem;">Filter:</span>
+      <button style="padding: 0.375rem 0.75rem; background: #8b5cf6; color: white; border-radius: 0.5rem; font-size: 0.875rem;">All</button>
+      <button style="padding: 0.375rem 0.75rem; background: #374151; color: #9ca3af; border-radius: 0.5rem; font-size: 0.875rem;">Draft</button>
+      <button style="padding: 0.375rem 0.75rem; background: #374151; color: #9ca3af; border-radius: 0.5rem; font-size: 0.875rem;">Finalized</button>
+      <button style="padding: 0.375rem 0.75rem; background: #374151; color: #9ca3af; border-radius: 0.5rem; font-size: 0.875rem;">Archived</button>
+    </div>
+
+    <!-- Meal Plan Cards would go here -->
+    <div style="background: #111827; border: 1px solid #1f2937; border-radius: 0.75rem; padding: 1rem; opacity: 0.5; text-align: center; color: #6b7280;">
+      [Existing meal plan cards...]
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- 2. WEEK OVERVIEW (with dates) -->
+  <!-- ============================================== -->
+  
+  <div style="max-width: 80rem; margin: 4rem auto; padding: 1.5rem; border-top: 2px dashed #374151;">
+    <p style="text-align: center; color: #6b7280; margin-bottom: 2rem; font-size: 0.875rem;">— 2. Week Overview (with dates under day headers) —</p>
+    
+    <!-- Header -->
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+      <h2 style="font-size: 1.25rem; font-weight: 600;">Week of 15/12/2025</h2>
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <span style="padding: 0.25rem 0.5rem; background: rgba(16,185,129,0.2); color: #10b981; border-radius: 9999px; font-size: 0.75rem;">Finalized</span>
+        <button style="padding: 0.375rem 0.75rem; background: #374151; border-radius: 0.5rem; font-size: 0.75rem; color: white;">List View</button>
+      </div>
+    </div>
+    
+    <!-- Week Grid - Fixed Rows (meals align horizontally) -->
+    <div style="background: #111827; border: 1px solid #1f2937; border-radius: 0.75rem; overflow: hidden;">
+      <!-- Using table for proper row alignment -->
+      <table style="width: 100%; border-collapse: collapse; font-size: 0.75rem;">
+        <!-- Day Headers -->
+        <thead>
+          <tr style="border-bottom: 1px solid #1f2937;">
+            <th style="padding: 0.75rem; text-align: center; border-right: 1px solid #1f2937; width: 14.28%;">
+              <div style="font-weight: 600;">Monday</div>
+              <div style="font-weight: normal; color: #6b7280;">15 Dec</div>
+            </th>
+            <th style="padding: 0.75rem; text-align: center; border-right: 1px solid #1f2937; width: 14.28%;">
+              <div style="font-weight: 600;">Tuesday</div>
+              <div style="font-weight: normal; color: #6b7280;">16 Dec</div>
+            </th>
+            <th style="padding: 0.75rem; text-align: center; border-right: 1px solid #1f2937; width: 14.28%;">
+              <div style="font-weight: 600;">Wednesday</div>
+              <div style="font-weight: normal; color: #6b7280;">17 Dec</div>
+            </th>
+            <th style="padding: 0.75rem; text-align: center; border-right: 1px solid #1f2937; width: 14.28%;">
+              <div style="font-weight: 600;">Thursday</div>
+              <div style="font-weight: normal; color: #6b7280;">18 Dec</div>
+            </th>
+            <th style="padding: 0.75rem; text-align: center; border-right: 1px solid #1f2937; width: 14.28%;">
+              <div style="font-weight: 600;">Friday</div>
+              <div style="font-weight: normal; color: #6b7280;">19 Dec</div>
+            </th>
+            <th style="padding: 0.75rem; text-align: center; border-right: 1px solid #1f2937; width: 14.28%;">
+              <div style="font-weight: 600;">Saturday</div>
+              <div style="font-weight: normal; color: #6b7280;">20 Dec</div>
+            </th>
+            <th style="padding: 0.75rem; text-align: center; width: 14.28%;">
+              <div style="font-weight: 600;">Sunday</div>
+              <div style="font-weight: normal; color: #6b7280;">21 Dec</div>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- BREAKFAST ROW -->
+          <tr style="border-bottom: 1px solid #1f2937; background: rgba(139,92,246,0.05);">
+            <td colspan="7" style="padding: 0.5rem 0.75rem; font-weight: 600; color: #6b7280; font-size: 0.625rem; text-transform: uppercase; letter-spacing: 0.05em;">Breakfast</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #1f2937;">
+            <td style="padding: 0.5rem; border-right: 1px solid #1f2937; vertical-align: top;">
+              <div style="font-weight: 500; color: #a78bfa; margin-bottom: 0.25rem;">Easy protein pancakes</div>
+              <div style="color: #6b7280;">4 servings</div>
+            </td>
+            <td style="padding: 0.5rem; border-right: 1px solid #1f2937; vertical-align: top;">
+              <div style="font-weight: 500; color: #a78bfa; margin-bottom: 0.25rem;">Budget porridge</div>
+              <div style="color: #6b7280;">4 servings</div>
+            </td>
+            <td style="padding: 0.5rem; border-right: 1px solid #1f2937; vertical-align: top;">
+              <div style="font-weight: 500; color: #a78bfa; margin-bottom: 0.25rem;">Breakfast muffins</div>
+              <div style="color: #6b7280;">4 servings</div>
+            </td>
+            <td style="padding: 0.5rem; border-right: 1px solid #1f2937; vertical-align: top;">
+              <div style="font-weight: 500; color: #a78bfa; margin-bottom: 0.25rem;">Chocolate Banana Oat Bake</div>
+              <div style="color: #6b7280;">4 servings</div>
+            </td>
+            <td style="padding: 0.5rem; border-right: 1px solid #1f2937; vertical-align: top;">
+              <div style="font-weight: 500; color: #a78bfa; margin-bottom: 0.25rem;">Spaghetti Carbonara</div>
+              <div style="color: #6b7280;">4 servings</div>
+            </td>
+            <td style="padding: 0.5rem; border-right: 1px solid #1f2937; vertical-align: top;">
+              <div style="font-weight: 500; color: #a78bfa; margin-bottom: 0.25rem;">Chicken stroganoff</div>
+              <div style="color: #6b7280;">4 servings</div>
+            </td>
+            <td style="padding: 0.5rem; vertical-align: top;">
+              <div style="font-weight: 500; color: #a78bfa; margin-bottom: 0.25rem;">Chicken alfredo</div>
+              <div style="color: #6b7280;">4 servings</div>
+            </td>
+          </tr>
+          
+          <!-- LUNCH ROW -->
+          <tr style="border-bottom: 1px solid #1f2937; background: rgba(139,92,246,0.05);">
+            <td colspan="7" style="padding: 0.5rem 0.75rem; font-weight: 600; color: #6b7280; font-size: 0.625rem; text-transform: uppercase; letter-spacing: 0.05em;">Lunch</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #1f2937;">
+            <td style="padding: 0.5rem; border-right: 1px solid #1f2937; vertical-align: top;">
+              <div style="font-weight: 500; color: #a78bfa; margin-bottom: 0.25rem;">Chicken satay salad</div>
+              <div style="color: #6b7280;">3 servings</div>
+            </td>
+            <td style="padding: 0.5rem; border-right: 1px solid #1f2937; vertical-align: top;">
+              <div style="font-weight: 500; color: #a78bfa; margin-bottom: 0.25rem;">Turkey enchiladas</div>
+              <div style="color: #6b7280;">3 servings</div>
+            </td>
+            <td style="padding: 0.5rem; border-right: 1px solid #1f2937; vertical-align: top;">
+              <div style="display: flex; align-items: center; gap: 0.25rem; margin-bottom: 0.25rem;">
+                <span style="font-weight: 500; color: #a78bfa;">Easy chicken casserole</span>
+                <span style="color: #10b981;">🔄</span>
+              </div>
+              <div style="color: #6b7280;">3 servings</div>
+            </td>
+            <td style="padding: 0.5rem; border-right: 1px solid #1f2937; vertical-align: top;">
+              <div style="font-weight: 500; color: #a78bfa; margin-bottom: 0.25rem;">Chicken and Spinach Gnocchi Bake</div>
+              <div style="color: #6b7280;">3 servings</div>
+            </td>
+            <td style="padding: 0.5rem; border-right: 1px solid #1f2937; vertical-align: top;">
+              <div style="font-weight: 500; color: #a78bfa; margin-bottom: 0.25rem;">One-Pot Pasta With Ricotta and Lemon</div>
+              <div style="color: #6b7280;">3 servings</div>
+            </td>
+            <td style="padding: 0.5rem; border-right: 1px solid #1f2937; vertical-align: top;">
+              <div style="font-weight: 500; color: #a78bfa; margin-bottom: 0.25rem;">Chicken souvlaki</div>
+              <div style="color: #6b7280;">4 servings</div>
+            </td>
+            <td style="padding: 0.5rem; vertical-align: top;">
+              <div style="font-weight: 500; color: #a78bfa; margin-bottom: 0.25rem;">Beef goulash</div>
+              <div style="color: #6b7280;">4 servings</div>
+            </td>
+          </tr>
+          
+          <!-- DINNER ROW -->
+          <tr style="border-bottom: 1px solid #1f2937; background: rgba(139,92,246,0.05);">
+            <td colspan="7" style="padding: 0.5rem 0.75rem; font-weight: 600; color: #6b7280; font-size: 0.625rem; text-transform: uppercase; letter-spacing: 0.05em;">Dinner</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.5rem; border-right: 1px solid #1f2937; vertical-align: top;">
+              <div style="display: flex; align-items: center; gap: 0.25rem; margin-bottom: 0.25rem;">
+                <span style="font-weight: 500; color: #a78bfa;">Easy chicken casserole</span>
+                <span style="color: #f59e0b;">⚡</span>
+              </div>
+              <div style="color: #6b7280;">4 servings</div>
+            </td>
+            <td style="padding: 0.5rem; border-right: 1px solid #1f2937; vertical-align: top;">
+              <div style="font-weight: 500; color: #a78bfa; margin-bottom: 0.25rem;">Panang chicken curry (kaeng panang gai)</div>
+              <div style="color: #6b7280;">4 servings</div>
+            </td>
+            <td style="padding: 0.5rem; border-right: 1px solid #1f2937; vertical-align: top;">
+              <div style="font-weight: 500; color: #a78bfa; margin-bottom: 0.25rem;">Chinese chicken curry</div>
+              <div style="color: #6b7280;">4 servings</div>
+            </td>
+            <td style="padding: 0.5rem; border-right: 1px solid #1f2937; vertical-align: top;">
+              <div style="font-weight: 500; color: #a78bfa; margin-bottom: 0.25rem;">Air-fryer fish tacos</div>
+              <div style="color: #6b7280;">4 servings</div>
+            </td>
+            <td style="padding: 0.5rem; border-right: 1px solid #1f2937; vertical-align: top;">
+              <div style="font-weight: 500; color: #a78bfa; margin-bottom: 0.25rem;">Tonkatsu pork</div>
+              <div style="color: #6b7280;">4 servings</div>
+            </td>
+            <td style="padding: 0.5rem; border-right: 1px solid #1f2937; vertical-align: top;">
+              <div style="font-weight: 500; color: #a78bfa; margin-bottom: 0.25rem;">Creamy Smoked Paprika Chicken and Gnocchi</div>
+              <div style="color: #6b7280;">4 servings</div>
+            </td>
+            <td style="padding: 0.5rem; vertical-align: top;">
+              <div style="font-weight: 500; color: #a78bfa; margin-bottom: 0.25rem;">Creamy pork & pear cassoulet</div>
+              <div style="color: #6b7280;">4 servings</div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    
+    <!-- Legend -->
+    <div style="display: flex; gap: 1.5rem; margin-top: 0.75rem; font-size: 0.75rem; color: #6b7280;">
+      <span><span style="color: #f59e0b;">⚡</span> Batch cook</span>
+      <span><span style="color: #10b981;">🔄</span> Reheat (from batch)</span>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- 3. DAY DETAIL VIEW (with mini calendar) -->
+  <!-- ============================================== -->
+  
+  <div style="max-width: 64rem; margin: 4rem auto; padding: 1.5rem; border-top: 2px dashed #374151;">
+    <p style="text-align: center; color: #6b7280; margin-bottom: 2rem; font-size: 0.875rem;">— 3. Day Detail View (with mini calendar + export) —</p>
+    
+    <!-- Back Link -->
+    <a href="#" style="color: #a78bfa; font-size: 0.875rem; text-decoration: none; display: inline-block; margin-bottom: 1rem;">
+      ← Back to Meal Plans
+    </a>
+    
+    <!-- Header -->
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 0.5rem;">
+      <div>
+        <h1 style="font-size: 1.5rem; font-weight: bold; margin-bottom: 0.25rem;">15/12/2025 - 21/12/2025</h1>
+        <p style="color: #6b7280; font-size: 0.875rem;">View and edit your meal plan</p>
+      </div>
+      <span style="padding: 0.25rem 0.5rem; background: rgba(16,185,129,0.2); color: #10b981; border-radius: 9999px; font-size: 0.75rem;">Finalized</span>
+    </div>
+    
+    <!-- Action Buttons -->
+    <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+      <button style="padding: 0.5rem 0.75rem; background: #374151; border-radius: 0.5rem; font-size: 0.875rem; color: white;">Reopen for Editing</button>
+      <button style="padding: 0.5rem 0.75rem; background: #374151; border-radius: 0.5rem; font-size: 0.875rem; color: white;">Archive Plan</button>
+      <button style="padding: 0.5rem 0.75rem; background: #374151; border-radius: 0.5rem; font-size: 0.875rem; color: white;">Edit Schedule</button>
+      <button style="padding: 0.5rem 0.75rem; background: linear-gradient(to right, #ef4444, #f97316); border-radius: 0.5rem; font-size: 0.875rem; color: white;">↗ Export & Share</button>
+      <button style="padding: 0.5rem 0.75rem; background: #ef4444; border-radius: 0.5rem; font-size: 0.875rem; color: white;">Delete Plan</button>
+    </div>
+    
+    <!-- View Macros For -->
+    <div style="background: #111827; border: 1px solid #1f2937; border-radius: 0.5rem; padding: 0.75rem 1rem; margin-bottom: 1rem; display: inline-block;">
+      <label style="font-size: 0.75rem; color: #6b7280; display: block; margin-bottom: 0.25rem;">View Macros For:</label>
+      <select style="background: #1f2937; border: 1px solid #374151; border-radius: 0.375rem; padding: 0.375rem 0.5rem; font-size: 0.875rem; color: white;">
+        <option>Chris (Main User)</option>
+      </select>
+    </div>
+    
+    <!-- Day Navigation with Mini Calendar -->
+    <div style="background: #111827; border: 1px solid #1f2937; border-radius: 0.75rem; padding: 1rem; margin-bottom: 1rem;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+        <button style="padding: 0.5rem 1rem; background: #374151; border-radius: 0.5rem; font-size: 0.875rem; color: white;">← Previous</button>
+        <div style="text-align: center;">
+          <div style="font-size: 1.25rem; font-weight: 600;">Monday, 15 Dec</div>
+          <div style="font-size: 0.75rem; color: #6b7280;">Day 1 of 7</div>
+        </div>
+        <button style="padding: 0.5rem 1rem; background: #374151; border-radius: 0.5rem; font-size: 0.875rem; color: white;">Next →</button>
+      </div>
+      
+      <!-- Mini Calendar -->
+      <div style="display: flex; justify-content: center; gap: 0.5rem;">
+        <button style="width: 3rem; padding: 0.5rem; background: #8b5cf6; border-radius: 0.5rem; text-align: center;">
+          <div style="font-size: 0.625rem; color: rgba(255,255,255,0.7);">Mon</div>
+          <div style="font-weight: 600;">15</div>
+        </button>
+        <button style="width: 3rem; padding: 0.5rem; background: #374151; border-radius: 0.5rem; text-align: center;">
+          <div style="font-size: 0.625rem; color: #9ca3af;">Tue</div>
+          <div style="font-weight: 600;">16</div>
+        </button>
+        <button style="width: 3rem; padding: 0.5rem; background: #374151; border-radius: 0.5rem; text-align: center;">
+          <div style="font-size: 0.625rem; color: #9ca3af;">Wed</div>
+          <div style="font-weight: 600;">17</div>
+        </button>
+        <button style="width: 3rem; padding: 0.5rem; background: #374151; border-radius: 0.5rem; text-align: center;">
+          <div style="font-size: 0.625rem; color: #9ca3af;">Thu</div>
+          <div style="font-weight: 600;">18</div>
+        </button>
+        <button style="width: 3rem; padding: 0.5rem; background: #374151; border-radius: 0.5rem; text-align: center;">
+          <div style="font-size: 0.625rem; color: #9ca3af;">Fri</div>
+          <div style="font-weight: 600;">19</div>
+        </button>
+        <button style="width: 3rem; padding: 0.5rem; background: #374151; border-radius: 0.5rem; text-align: center;">
+          <div style="font-size: 0.625rem; color: #9ca3af;">Sat</div>
+          <div style="font-weight: 600;">20</div>
+        </button>
+        <button style="width: 3rem; padding: 0.5rem; background: #374151; border-radius: 0.5rem; text-align: center;">
+          <div style="font-size: 0.625rem; color: #9ca3af;">Sun</div>
+          <div style="font-weight: 600;">21</div>
+        </button>
+      </div>
+      <p style="text-align: center; font-size: 0.75rem; color: #6b7280; margin-top: 0.5rem;">Click a day or use arrow keys to navigate</p>
+    </div>
+    
+    <!-- Daily Macros -->
+    <div style="background: #111827; border: 1px solid #1f2937; border-radius: 0.75rem; padding: 1rem; margin-bottom: 1rem;">
+      <h3 style="font-weight: 600; margin-bottom: 1rem;">Daily Macros</h3>
+      
+      <div style="margin-bottom: 0.75rem;">
+        <div style="display: flex; justify-content: space-between; font-size: 0.875rem; margin-bottom: 0.25rem;">
+          <span>Calories</span>
+          <span>1002 / 2050</span>
+        </div>
+        <div style="height: 0.5rem; background: #374151; border-radius: 9999px; overflow: hidden;">
+          <div style="width: 49%; height: 100%; background: #f97316; border-radius: 9999px;"></div>
+        </div>
+      </div>
+      
+      <div style="margin-bottom: 0.75rem;">
+        <div style="display: flex; justify-content: space-between; font-size: 0.875rem; margin-bottom: 0.25rem;">
+          <span>Protein</span>
+          <span>85.8g / 177g</span>
+        </div>
+        <div style="height: 0.5rem; background: #374151; border-radius: 9999px; overflow: hidden;">
+          <div style="width: 48%; height: 100%; background: #f97316; border-radius: 9999px;"></div>
+        </div>
+      </div>
+      
+      <div style="margin-bottom: 0.75rem;">
+        <div style="display: flex; justify-content: space-between; font-size: 0.875rem; margin-bottom: 0.25rem;">
+          <span>Carbs</span>
+          <span>78.6g / 205g</span>
+        </div>
+        <div style="height: 0.5rem; background: #374151; border-radius: 9999px; overflow: hidden;">
+          <div style="width: 38%; height: 100%; background: #f97316; border-radius: 9999px;"></div>
+        </div>
+      </div>
+      
+      <div>
+        <div style="display: flex; justify-content: space-between; font-size: 0.875rem; margin-bottom: 0.25rem;">
+          <span>Fat</span>
+          <span>35.8g / 68g</span>
+        </div>
+        <div style="height: 0.5rem; background: #374151; border-radius: 9999px; overflow: hidden;">
+          <div style="width: 53%; height: 100%; background: #f97316; border-radius: 9999px;"></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Meals -->
+    <h3 style="font-weight: 600; margin-bottom: 0.75rem;">Meals</h3>
+    
+    <!-- Breakfast -->
+    <div style="background: #111827; border: 1px solid #1f2937; border-radius: 0.75rem; padding: 1rem; margin-bottom: 0.75rem;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span style="color: #6b7280;">⋮⋮</span>
+          <span style="font-weight: 500;">Breakfast</span>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <button style="color: #6b7280; font-size: 0.875rem;">🔍</button>
+          <button style="color: #6b7280; font-size: 0.875rem;">📋</button>
+          <button style="color: #ef4444; font-size: 0.875rem;">✕</button>
+        </div>
+      </div>
+      <div style="font-weight: 500; margin-bottom: 0.25rem;">Easy protein pancakes</div>
+      <select style="width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.5rem; font-size: 0.875rem; color: white; margin-bottom: 0.5rem;">
+        <option>Easy protein pancakes</option>
+      </select>
+      <div style="font-size: 0.875rem; color: #6b7280; margin-bottom: 0.5rem;">4 servings</div>
+      <div style="background: rgba(245,158,11,0.1); border-left: 3px solid #f59e0b; padding: 0.75rem; border-radius: 0 0.5rem 0.5rem 0;">
+        <div style="font-size: 0.75rem; color: #f59e0b; margin-bottom: 0.25rem;">📝 Note:</div>
+        <div style="font-size: 0.875rem; color: #d1d5db;">Quick, protein-rich start to the week. Uses eggs and milk from pantry staples.</div>
+      </div>
+    </div>
+    
+    <!-- Lunch -->
+    <div style="background: #111827; border: 1px solid #1f2937; border-radius: 0.75rem; padding: 1rem; margin-bottom: 0.75rem;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span style="color: #6b7280;">⋮⋮</span>
+          <span style="font-weight: 500;">Lunch</span>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <button style="color: #6b7280; font-size: 0.875rem;">🔍</button>
+          <button style="color: #6b7280; font-size: 0.875rem;">📋</button>
+          <button style="color: #ef4444; font-size: 0.875rem;">✕</button>
+        </div>
+      </div>
+      <div style="font-weight: 500; margin-bottom: 0.25rem;">Chicken satay salad</div>
+      <select style="width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.5rem; font-size: 0.875rem; color: white; margin-bottom: 0.5rem;">
+        <option>Chicken satay salad</option>
+      </select>
+      <div style="font-size: 0.875rem; color: #6b7280;">3 servings</div>
+    </div>
+    
+    <!-- Afternoon Snack - Not Scheduled (Clickable) -->
+    <div style="background: #111827; border: 1px dashed #374151; border-radius: 0.75rem; padding: 1rem; margin-bottom: 0.75rem; text-align: center; cursor: pointer;">
+      <span style="color: #6b7280; font-style: italic;">Afternoon Snack not scheduled</span>
+      <div style="color: #a78bfa; font-size: 0.875rem; margin-top: 0.25rem;">+ Click to add</div>
+    </div>
+    
+    <!-- Dinner with Batch Cook indicator -->
+    <div style="background: #111827; border: 1px solid #1f2937; border-radius: 0.75rem; padding: 1rem; margin-bottom: 0.75rem;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span style="color: #6b7280;">⋮⋮</span>
+          <span style="font-weight: 500;">Dinner</span>
+          <span style="padding: 0.125rem 0.375rem; background: rgba(245,158,11,0.2); color: #f59e0b; border-radius: 0.25rem; font-size: 0.625rem;">⚡ BATCH</span>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <button style="color: #6b7280; font-size: 0.875rem;">🔍</button>
+          <button style="color: #6b7280; font-size: 0.875rem;">📋</button>
+          <button style="color: #ef4444; font-size: 0.875rem;">✕</button>
+        </div>
+      </div>
+      <div style="font-weight: 500; margin-bottom: 0.25rem;">Easy chicken casserole</div>
+      <select style="width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.5rem; font-size: 0.875rem; color: white; margin-bottom: 0.5rem;">
+        <option>Easy chicken casserole</option>
+      </select>
+      <div style="font-size: 0.875rem; color: #6b7280; margin-bottom: 0.5rem;">4 servings</div>
+      <div style="background: rgba(245,158,11,0.1); border-left: 3px solid #f59e0b; padding: 0.75rem; border-radius: 0 0.5rem 0.5rem 0;">
+        <div style="font-size: 0.75rem; color: #f59e0b; margin-bottom: 0.25rem;">📝 Note:</div>
+        <div style="font-size: 0.875rem; color: #d1d5db;">Batch cook 8 servings total—covers Monday (4) + Wednesday (4). One-pot comfort meal; reheat Wednesday.</div>
+      </div>
+    </div>
+    
+    <!-- Dessert - Not Scheduled -->
+    <div style="background: #111827; border: 1px dashed #374151; border-radius: 0.75rem; padding: 1rem; text-align: center; cursor: pointer;">
+      <span style="color: #6b7280; font-style: italic;">Dessert not scheduled</span>
+      <div style="color: #a78bfa; font-size: 0.875rem; margin-top: 0.25rem;">+ Click to add</div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- 4. CUSTOMIZE WEEK SCHEDULE MODAL -->
+  <!-- ============================================== -->
+  
+  <div style="max-width: 64rem; margin: 4rem auto; padding: 1.5rem; border-top: 2px dashed #374151;">
+    <p style="text-align: center; color: #6b7280; margin-bottom: 2rem; font-size: 0.875rem;">— 4. Customize Week Schedule Modal —</p>
+    
+    <div style="max-width: 800px; margin: 0 auto; background: #111827; border: 1px solid #1f2937; border-radius: 1rem; overflow: hidden;">
+      <!-- Header -->
+      <div style="padding: 1.25rem; border-bottom: 1px solid #1f2937; display: flex; align-items: center; justify-content: space-between;">
+        <div>
+          <h2 style="font-size: 1.125rem; font-weight: 600;">Customize Week Schedules</h2>
+          <p style="font-size: 0.875rem; color: #6b7280;">Adjust individual schedules for this week</p>
+        </div>
+        <button style="color: #6b7280; font-size: 1.5rem; background: none; border: none; cursor: pointer;">×</button>
+      </div>
+      
+      <!-- Content -->
+      <div style="padding: 1.25rem; max-height: 60vh; overflow-y: auto;">
+        <p style="font-size: 0.875rem; color: #9ca3af; margin-bottom: 1.5rem;">Servings will be calculated based on how many people need each meal.</p>
+        
+        <!-- Person 1: Chris -->
+        <div style="background: #1f2937; border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+            <input type="checkbox" checked style="width: 1rem; height: 1rem;">
+            <span style="font-weight: 600;">Chris</span>
+          </div>
+          <div style="font-size: 0.75rem; color: #10b981; margin-bottom: 0.75rem;">✓ Included in meal plan</div>
+          
+          <!-- Schedule Grid -->
+          <div style="overflow-x: auto;">
+            <table style="width: 100%; font-size: 0.75rem; border-collapse: collapse;">
+              <thead>
+                <tr style="color: #6b7280;">
+                  <th style="text-align: left; padding: 0.5rem;">MEAL</th>
+                  <th style="padding: 0.5rem;">MON</th>
+                  <th style="padding: 0.5rem;">TUE</th>
+                  <th style="padding: 0.5rem;">WED</th>
+                  <th style="padding: 0.5rem;">THU</th>
+                  <th style="padding: 0.5rem;">FRI</th>
+                  <th style="padding: 0.5rem;">SAT</th>
+                  <th style="padding: 0.5rem;">SUN</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="border-top: 1px solid #374151;">
+                  <td style="padding: 0.5rem; color: #9ca3af;">Breakfast</td>
+                  <td style="padding: 0.5rem; text-align: center;"><input type="checkbox" checked></td>
+                  <td style="padding: 0.5rem; text-align: center;"><input type="checkbox" checked></td>
+                  <td style="padding: 0.5rem; text-align: center;"><input type="checkbox" checked></td>
+                  <td style="padding: 0.5rem; text-align: center;"><input type="checkbox" checked></td>
+                  <td style="padding: 0.5rem; text-align: center;"><input type="checkbox" checked></td>
+                  <td style="padding: 0.5rem; text-align: center;"><input type="checkbox" checked></td>
+                  <td style="padding: 0.5rem; text-align: center;"><input type="checkbox" checked></td>
+                </tr>
+                <tr style="border-top: 1px solid #374151;">
+                  <td style="padding: 0.5rem; color: #9ca3af;">Lunch</td>
+                  <td style="padding: 0.5rem; text-align: center;"><input type="checkbox" checked></td>
+                  <td style="padding: 0.5rem; text-align: center;"><input type="checkbox" checked></td>
+                  <td style="padding: 0.5rem; text-align: center;"><input type="checkbox" checked></td>
+                  <td style="padding: 0.5rem; text-align: center;"><input type="checkbox" checked></td>
+                  <td style="padding: 0.5rem; text-align: center;"><input type="checkbox"></td>
+                  <td style="padding: 0.5rem; text-align: center;"><input type="checkbox"></td>
+                  <td style="padding: 0.5rem; text-align: center;"><input type="checkbox" checked></td>
+                </tr>
+                <tr style="border-top: 1px solid #374151;">
+                  <td style="padding: 0.5rem; color: #9ca3af;">Dinner</td>
+                  <td style="padding: 0.5rem; text-align: center;"><input type="checkbox" checked></td>
+                  <td style="padding: 0.5rem; text-align: center;"><input type="checkbox" checked></td>
+                  <td style="padding: 0.5rem; text-align: center;"><input type="checkbox" checked></td>
+                  <td style="padding: 0.5rem; text-align: center;"><input type="checkbox" checked></td>
+                  <td style="padding: 0.5rem; text-align: center;"><input type="checkbox" checked></td>
+                  <td style="padding: 0.5rem; text-align: center;"><input type="checkbox" checked></td>
+                  <td style="padding: 0.5rem; text-align: center;"><input type="checkbox" checked></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        <!-- Person 2: Emmie (abbreviated) -->
+        <div style="background: #1f2937; border-radius: 0.5rem; padding: 1rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+            <input type="checkbox" checked style="width: 1rem; height: 1rem;">
+            <span style="font-weight: 600;">Emmie</span>
+          </div>
+          <div style="font-size: 0.75rem; color: #10b981; margin-bottom: 0.75rem;">✓ Included in meal plan</div>
+          <div style="color: #6b7280; font-size: 0.75rem;">[Schedule grid same as above...]</div>
+        </div>
+      </div>
+      
+      <!-- Footer -->
+      <div style="padding: 1rem 1.25rem; border-top: 1px solid #1f2937; display: flex; justify-content: space-between; align-items: center;">
+        <button style="padding: 0.5rem 0.75rem; background: #374151; border-radius: 0.5rem; font-size: 0.875rem; color: white;">Reset All to Defaults</button>
+        <div style="display: flex; gap: 0.5rem;">
+          <button style="padding: 0.5rem 1rem; background: #374151; border-radius: 0.5rem; font-size: 0.875rem; color: white;">Cancel</button>
+          <button style="padding: 0.5rem 1rem; background: #8b5cf6; border-radius: 0.5rem; font-size: 0.875rem; color: white; font-weight: 500;">Save Schedule</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- 5. COOKING PLAN VIEW -->
+  <!-- ============================================== -->
+  
+  <div style="max-width: 64rem; margin: 4rem auto; padding: 1.5rem; border-top: 2px dashed #374151;">
+    <p style="text-align: center; color: #6b7280; margin-bottom: 2rem; font-size: 0.875rem;">— 5. Cooking Plan View —</p>
+    
+    <!-- Header -->
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
+      <div>
+        <a href="#" style="color: #a78bfa; font-size: 0.875rem; text-decoration: none; display: inline-block; margin-bottom: 0.5rem;">← Back to Meal Plan</a>
+        <h1 style="font-size: 1.5rem; font-weight: bold;">Cooking Plan</h1>
+        <p style="color: #6b7280; font-size: 0.875rem;">Week of 15/12/2025 - 21/12/2025</p>
+      </div>
+      <button style="padding: 0.5rem 1rem; background: linear-gradient(to right, #ef4444, #f97316); border-radius: 0.5rem; font-size: 0.875rem; color: white;">
+        📄 Export to PDF
+      </button>
+    </div>
+    
+    <!-- Day Tabs -->
+    <div style="display: flex; gap: 0.25rem; margin-bottom: 1.5rem; overflow-x: auto;">
+      <button style="padding: 0.5rem 1rem; background: #8b5cf6; border-radius: 0.5rem; font-size: 0.875rem; color: white; white-space: nowrap;">Mon 15</button>
+      <button style="padding: 0.5rem 1rem; background: #374151; border-radius: 0.5rem; font-size: 0.875rem; color: #9ca3af; white-space: nowrap;">Tue 16</button>
+      <button style="padding: 0.5rem 1rem; background: #374151; border-radius: 0.5rem; font-size: 0.875rem; color: #9ca3af; white-space: nowrap;">Wed 17</button>
+      <button style="padding: 0.5rem 1rem; background: #374151; border-radius: 0.5rem; font-size: 0.875rem; color: #9ca3af; white-space: nowrap;">Thu 18</button>
+      <button style="padding: 0.5rem 1rem; background: #374151; border-radius: 0.5rem; font-size: 0.875rem; color: #9ca3af; white-space: nowrap;">Fri 19</button>
+      <button style="padding: 0.5rem 1rem; background: #374151; border-radius: 0.5rem; font-size: 0.875rem; color: #9ca3af; white-space: nowrap;">Sat 20</button>
+      <button style="padding: 0.5rem 1rem; background: #374151; border-radius: 0.5rem; font-size: 0.875rem; color: #9ca3af; white-space: nowrap;">Sun 21</button>
+    </div>
+    
+    <!-- Monday Cooking Plan -->
+    <div style="background: #111827; border: 1px solid #1f2937; border-radius: 0.75rem; overflow: hidden; margin-bottom: 1rem;">
+      <div style="background: linear-gradient(to right, rgba(139,92,246,0.2), rgba(139,92,246,0.1)); padding: 1rem; border-bottom: 1px solid #1f2937;">
+        <h2 style="font-size: 1.125rem; font-weight: 600;">Monday, 15 December</h2>
+      </div>
+      
+      <!-- Today's Cooking -->
+      <div style="padding: 1.25rem; border-bottom: 1px solid #1f2937;">
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+          <span style="font-size: 1.25rem;">🍳</span>
+          <h3 style="font-weight: 600;">Today's Cooking</h3>
+        </div>
+        
+        <!-- Breakfast -->
+        <div style="display: flex; gap: 1rem; padding: 0.75rem; background: #1f2937; border-radius: 0.5rem; margin-bottom: 0.5rem;">
+          <div style="width: 5rem; flex-shrink: 0;">
+            <div style="font-size: 0.75rem; color: #6b7280;">Breakfast</div>
+          </div>
+          <div style="flex: 1;">
+            <div style="font-weight: 500; margin-bottom: 0.25rem;">Easy protein pancakes</div>
+            <div style="font-size: 0.875rem; color: #9ca3af;">4 servings</div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 0.875rem; color: #f59e0b;">15 min prep</div>
+            <div style="font-size: 0.875rem; color: #9ca3af;">10 min cook</div>
+          </div>
+        </div>
+        
+        <!-- Lunch -->
+        <div style="display: flex; gap: 1rem; padding: 0.75rem; background: #1f2937; border-radius: 0.5rem; margin-bottom: 0.5rem;">
+          <div style="width: 5rem; flex-shrink: 0;">
+            <div style="font-size: 0.75rem; color: #6b7280;">Lunch</div>
+          </div>
+          <div style="flex: 1;">
+            <div style="font-weight: 500; margin-bottom: 0.25rem;">Chicken satay salad</div>
+            <div style="font-size: 0.875rem; color: #9ca3af;">3 servings</div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 0.875rem; color: #f59e0b;">20 min prep</div>
+            <div style="font-size: 0.875rem; color: #9ca3af;">0 min cook</div>
+          </div>
+        </div>
+        
+        <!-- Dinner - Batch Cook -->
+        <div style="display: flex; gap: 1rem; padding: 0.75rem; background: linear-gradient(to right, rgba(245,158,11,0.1), transparent); border: 1px solid rgba(245,158,11,0.3); border-radius: 0.5rem;">
+          <div style="width: 5rem; flex-shrink: 0;">
+            <div style="font-size: 0.75rem; color: #6b7280;">Dinner</div>
+            <span style="padding: 0.125rem 0.375rem; background: rgba(245,158,11,0.2); color: #f59e0b; border-radius: 0.25rem; font-size: 0.625rem;">⚡ BATCH</span>
+          </div>
+          <div style="flex: 1;">
+            <div style="font-weight: 500; margin-bottom: 0.25rem;">Easy chicken casserole</div>
+            <div style="font-size: 0.875rem; color: #9ca3af;">8 servings (covers Wed lunch too)</div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 0.875rem; color: #f59e0b;">10 min prep</div>
+            <div style="font-size: 0.875rem; color: #9ca3af;">45 min cook</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Prep Ahead -->
+      <div style="padding: 1.25rem; border-bottom: 1px solid #1f2937;">
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+          <span style="font-size: 1.25rem;">📋</span>
+          <h3 style="font-weight: 600;">Prep Ahead</h3>
+          <span style="font-size: 0.875rem; color: #6b7280;">(for later in the week)</span>
+        </div>
+        
+        <div style="padding: 0.75rem; background: #1f2937; border-radius: 0.5rem;">
+          <div style="font-weight: 500; color: #a78bfa; margin-bottom: 0.5rem;">For Thursday's Air-fryer fish tacos:</div>
+          <ul style="font-size: 0.875rem; color: #9ca3af; margin: 0; padding-left: 1.25rem;">
+            <li style="margin-bottom: 0.25rem;">Make chipotle mayo (5 min)</li>
+            <li>Slice cabbage for slaw (10 min)</li>
+          </ul>
+        </div>
+      </div>
+      
+      <!-- Total Time -->
+      <div style="padding: 1rem 1.25rem; background: rgba(139,92,246,0.1); display: flex; align-items: center; justify-content: space-between;">
+        <span style="font-weight: 500;">Total cooking time today:</span>
+        <span style="font-size: 1.25rem; font-weight: bold; color: #a78bfa;">~1hr 55min</span>
+      </div>
+    </div>
+    
+    <!-- Wednesday Example (with Reheat) -->
+    <div style="background: #111827; border: 1px solid #1f2937; border-radius: 0.75rem; overflow: hidden; opacity: 0.7;">
+      <div style="background: rgba(55,65,81,0.5); padding: 1rem; border-bottom: 1px solid #1f2937;">
+        <h2 style="font-size: 1.125rem; font-weight: 600; color: #9ca3af;">Wednesday, 17 December</h2>
+      </div>
+      
+      <div style="padding: 1.25rem;">
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+          <span style="font-size: 1.25rem;">🔄</span>
+          <h3 style="font-weight: 600;">Reheat Only</h3>
+        </div>
+        
+        <div style="display: flex; gap: 1rem; padding: 0.75rem; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); border-radius: 0.5rem;">
+          <div style="width: 5rem; flex-shrink: 0;">
+            <div style="font-size: 0.75rem; color: #6b7280;">Lunch</div>
+            <span style="padding: 0.125rem 0.375rem; background: rgba(16,185,129,0.2); color: #10b981; border-radius: 0.25rem; font-size: 0.625rem;">🔄 REHEAT</span>
+          </div>
+          <div style="flex: 1;">
+            <div style="font-weight: 500; margin-bottom: 0.25rem;">Easy chicken casserole</div>
+            <div style="font-size: 0.875rem; color: #9ca3af;">Batch cooked Monday</div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 0.875rem; color: #10b981;">10 min reheat</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- 6. EXPORT & SHARE MODAL -->
+  <!-- ============================================== -->
+  
+  <div style="max-width: 64rem; margin: 4rem auto; padding: 1.5rem; border-top: 2px dashed #374151;">
+    <p style="text-align: center; color: #6b7280; margin-bottom: 2rem; font-size: 0.875rem;">— 6. Export & Share Modal —</p>
+    
+    <div style="max-width: 400px; margin: 0 auto; background: #111827; border: 1px solid #1f2937; border-radius: 1rem; overflow: hidden;">
+      <!-- Header -->
+      <div style="padding: 1.25rem; border-bottom: 1px solid #1f2937; display: flex; align-items: center; justify-content: space-between;">
+        <div>
+          <h2 style="font-size: 1.125rem; font-weight: 600;">Export & Share</h2>
+          <p style="font-size: 0.875rem; color: #6b7280;">Week of 15/12/2025</p>
+        </div>
+        <button style="color: #6b7280; font-size: 1.5rem; background: none; border: none; cursor: pointer;">×</button>
+      </div>
+      
+      <!-- Options -->
+      <div style="padding: 1rem;">
+        <!-- Weekly Plan PDF -->
+        <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: #1f2937; border-radius: 0.5rem; margin-bottom: 0.75rem; cursor: pointer;">
+          <div style="width: 2.5rem; height: 2.5rem; background: #ef4444; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center;">
+            <span style="color: white;">📄</span>
+          </div>
+          <div style="flex: 1;">
+            <div style="font-weight: 500;">Weekly Plan PDF</div>
+            <div style="font-size: 0.75rem; color: #6b7280;">Landscape format, 1 page for printing</div>
+          </div>
+          <span style="color: #6b7280;">↓</span>
+        </div>
+        
+        <!-- Cooking Plan PDF -->
+        <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: #1f2937; border-radius: 0.5rem; margin-bottom: 0.75rem; cursor: pointer;">
+          <div style="width: 2.5rem; height: 2.5rem; background: #f97316; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center;">
+            <span style="color: white;">🍳</span>
+          </div>
+          <div style="flex: 1;">
+            <div style="font-weight: 500;">Cooking Plan PDF</div>
+            <div style="font-size: 0.75rem; color: #6b7280;">Daily cooking schedule with times</div>
+          </div>
+          <span style="color: #6b7280;">↓</span>
+        </div>
+        
+        <!-- Share via WhatsApp -->
+        <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: #1f2937; border-radius: 0.5rem; margin-bottom: 0.75rem; cursor: pointer;">
+          <div style="width: 2.5rem; height: 2.5rem; background: #22c55e; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center;">
+            <span style="color: white;">💬</span>
+          </div>
+          <div style="flex: 1;">
+            <div style="font-weight: 500;">Share via WhatsApp</div>
+            <div style="font-size: 0.75rem; color: #6b7280;">Send meal plan summary</div>
+          </div>
+          <span style="color: #6b7280;">↗</span>
+        </div>
+        
+        <!-- Share via Email -->
+        <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: #1f2937; border-radius: 0.5rem; cursor: pointer;">
+          <div style="width: 2.5rem; height: 2.5rem; background: #8b5cf6; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center;">
+            <span style="color: white;">✉️</span>
+          </div>
+          <div style="flex: 1;">
+            <div style="font-weight: 500;">Share via Email</div>
+            <div style="font-size: 0.75rem; color: #6b7280;">Compose email with plan details</div>
+          </div>
+          <span style="color: #6b7280;">›</span>
+        </div>
+      </div>
+      
+      <!-- Footer -->
+      <div style="padding: 1rem; border-top: 1px solid #1f2937;">
+        <button style="width: 100%; padding: 0.75rem; background: #374151; border-radius: 0.5rem; font-size: 0.875rem; color: white;">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- 7. RECIPE POPUP (smaller, overlay) -->
+  <!-- ============================================== -->
+  
+  <div style="max-width: 64rem; margin: 4rem auto; padding: 1.5rem; border-top: 2px dashed #374151;">
+    <p style="text-align: center; color: #6b7280; margin-bottom: 2rem; font-size: 0.875rem;">— 7. Recipe Popup (smaller, keeps schedule visible) —</p>
+    
+    <div style="position: relative; height: 500px; background: #1f2937; border-radius: 0.75rem; overflow: hidden;">
+      <!-- Background (blurred schedule) -->
+      <div style="position: absolute; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(2px);"></div>
+      
+      <!-- Popup -->
+      <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90%; max-width: 500px; background: #111827; border: 1px solid #1f2937; border-radius: 1rem; max-height: 80%; overflow-y: auto;">
+        <!-- Header with close -->
+        <div style="padding: 1rem; border-bottom: 1px solid #1f2937; display: flex; align-items: flex-start; justify-content: space-between;">
+          <div>
+            <span style="padding: 0.125rem 0.375rem; background: #374151; border-radius: 0.25rem; font-size: 0.625rem; margin-bottom: 0.5rem; display: inline-block;">BBC Good Food</span>
+            <h2 style="font-size: 1.125rem; font-weight: 600;">Easy chicken casserole</h2>
+            <p style="font-size: 0.875rem; color: #6b7280;">One-pot comfort food perfect for batch cooking</p>
+          </div>
+          <button style="color: #6b7280; font-size: 1.25rem; background: none; border: none; cursor: pointer;">×</button>
+        </div>
+        
+        <!-- Quick Stats -->
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; padding: 1rem; border-bottom: 1px solid #1f2937;">
+          <div style="text-align: center;">
+            <div style="font-weight: 600;">4</div>
+            <div style="font-size: 0.625rem; color: #6b7280;">Servings</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-weight: 600;">10</div>
+            <div style="font-size: 0.625rem; color: #6b7280;">Prep (min)</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-weight: 600;">45</div>
+            <div style="font-size: 0.625rem; color: #6b7280;">Cook (min)</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-weight: 600; color: #a78bfa;">55</div>
+            <div style="font-size: 0.625rem; color: #6b7280;">Total (min)</div>
+          </div>
+        </div>
+        
+        <!-- Nutrition -->
+        <div style="padding: 1rem; border-bottom: 1px solid #1f2937;">
+          <div style="font-size: 0.75rem; color: #6b7280; margin-bottom: 0.5rem;">Per serving</div>
+          <div style="display: flex; gap: 0.5rem;">
+            <span style="padding: 0.25rem 0.5rem; background: rgba(249,115,22,0.2); color: #fb923c; border-radius: 0.25rem; font-size: 0.75rem;">285 kcal</span>
+            <span style="padding: 0.25rem 0.5rem; background: rgba(59,130,246,0.2); color: #60a5fa; border-radius: 0.25rem; font-size: 0.75rem;">38g protein</span>
+            <span style="padding: 0.25rem 0.5rem; background: rgba(245,158,11,0.2); color: #fbbf24; border-radius: 0.25rem; font-size: 0.75rem;">8g carbs</span>
+            <span style="padding: 0.25rem 0.5rem; background: rgba(139,92,246,0.2); color: #a78bfa; border-radius: 0.25rem; font-size: 0.75rem;">11g fat</span>
+          </div>
+        </div>
+        
+        <!-- Ingredients Preview -->
+        <div style="padding: 1rem; border-bottom: 1px solid #1f2937;">
+          <div style="font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">Ingredients (8)</div>
+          <div style="font-size: 0.875rem; color: #9ca3af;">Chicken breast, onion, garlic, chicken stock, tinned tomatoes, mixed herbs, olive oil, seasoning</div>
+        </div>
+        
+        <!-- Actions -->
+        <div style="padding: 1rem; display: flex; gap: 0.5rem;">
+          <button style="flex: 1; padding: 0.625rem; background: #374151; border-radius: 0.5rem; font-size: 0.875rem; color: white;">View Full Recipe</button>
+          <button style="flex: 1; padding: 0.625rem; background: #8b5cf6; border-radius: 0.5rem; font-size: 0.875rem; color: white; font-weight: 500;">Change Recipe</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
