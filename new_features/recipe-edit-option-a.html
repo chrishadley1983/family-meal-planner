@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recipe Edit - Option A (With Preview Column)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: #030712; color: white; font-family: system-ui, -apple-system, sans-serif; }
+  </style>
+</head>
+<body>
+  <!-- Top Navigation -->
+  <div style="border-bottom: 1px solid #1f2937; background: rgba(17,24,39,0.5); position: sticky; top: 0; z-index: 10;">
+    <div style="max-width: 80rem; margin: 0 auto; padding: 0.75rem 1.5rem; display: flex; align-items: center; justify-content: space-between;">
+      <button style="display: flex; align-items: center; gap: 0.5rem; color: #a78bfa; font-size: 0.875rem;">
+        ← Back to Recipes
+      </button>
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <button style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; color: #9ca3af; font-size: 0.875rem;">
+          ↶ Undo
+        </button>
+        <button style="padding: 0.5rem 1rem; background: #8b5cf6; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500;">
+          Save
+        </button>
+        <button style="padding: 0.5rem 0.75rem; color: #9ca3af; font-size: 0.875rem;">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div style="max-width: 80rem; margin: 0 auto; padding: 1.5rem;">
+    
+    <!-- Hero Section -->
+    <div style="background: #111827; border-radius: 1rem; border: 1px solid #1f2937; overflow: hidden; margin-bottom: 1.5rem; display: flex;">
+      <!-- Image Preview -->
+      <div style="width: 12rem; height: 12rem; background: linear-gradient(to bottom right, rgba(245,158,11,0.8), rgba(202,138,4,0.8)); position: relative; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
+        <span style="font-size: 4rem; opacity: 0.9;">🥚</span>
+        <span style="position: absolute; top: 0.75rem; left: 0.75rem; padding: 0.25rem 0.625rem; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); border-radius: 0.5rem; font-size: 0.75rem; font-weight: 500;">
+          Mexican
+        </span>
+      </div>
+      
+      <!-- Title & Description -->
+      <div style="flex: 1; padding: 1.25rem;">
+        <input type="text" value="Breakfast burrito" style="width: 100%; background: transparent; border: none; font-size: 1.5rem; font-weight: bold; color: white; margin-bottom: 0.75rem; outline: none;">
+        <textarea style="width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.75rem; font-size: 0.875rem; color: #d1d5db; min-height: 80px; resize: none; outline: none;">Fill a nutritious wholemeal wrap with lots of healthy breakfast ingredients to make this veggie burrito. We've included protein-rich eggs and avocado to add good fats</textarea>
+        
+        <div style="margin-top: 0.75rem; display: flex; align-items: center; gap: 0.75rem;">
+          <button style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; background: #8b5cf6; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; cursor: pointer;">
+            🖼️ Choose Image
+          </button>
+          <span style="font-size: 0.875rem; color: #6b7280;">Recommended: 800x600px</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recipe Details -->
+    <div style="background: #111827; border-radius: 0.75rem; border: 1px solid #1f2937; padding: 1.25rem; margin-bottom: 1.5rem;">
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem;">
+        <div>
+          <label style="font-size: 0.75rem; color: #6b7280; display: block; margin-bottom: 0.25rem;">Servings</label>
+          <input type="number" value="1" style="width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: white; outline: none;">
+          <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; font-size: 0.75rem; color: #6b7280;">
+            <input type="checkbox" style="border-radius: 0.25rem;">
+            Scale ingredients
+          </label>
+        </div>
+        <div>
+          <label style="font-size: 0.75rem; color: #6b7280; display: block; margin-bottom: 0.25rem;">Prep Time (min)</label>
+          <input type="number" value="5" style="width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: white; outline: none;">
+        </div>
+        <div>
+          <label style="font-size: 0.75rem; color: #6b7280; display: block; margin-bottom: 0.25rem;">Cook Time (min)</label>
+          <input type="number" value="10" style="width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: white; outline: none;">
+        </div>
+      </div>
+      
+      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1rem;">
+        <div>
+          <label style="font-size: 0.75rem; color: #6b7280; display: block; margin-bottom: 0.25rem;">Cuisine Type</label>
+          <select style="width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: white; outline: none;">
+            <option>Mexican</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size: 0.75rem; color: #6b7280; display: block; margin-bottom: 0.25rem;">Difficulty</label>
+          <select style="width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: white; outline: none;">
+            <option>Select...</option>
+          </select>
+        </div>
+      </div>
+      
+      <!-- Meal Categories -->
+      <div>
+        <label style="font-size: 0.75rem; color: #6b7280; display: block; margin-bottom: 0.5rem;">Meal Categories</label>
+        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+          <button style="padding: 0.375rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; background: #8b5cf6; color: white;">Breakfast</button>
+          <button style="padding: 0.375rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; background: #1f2937; color: #9ca3af;">Lunch</button>
+          <button style="padding: 0.375rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; background: #1f2937; color: #9ca3af;">Dinner</button>
+          <button style="padding: 0.375rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; background: #1f2937; color: #9ca3af;">Snack</button>
+          <button style="padding: 0.375rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; background: #1f2937; color: #9ca3af;">Dessert</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ingredients WITH PREVIEW COLUMN -->
+    <div style="background: #111827; border-radius: 0.75rem; border: 1px solid #1f2937; padding: 1.25rem; margin-bottom: 1.5rem;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+        <h2 style="font-weight: 600;">Ingredients</h2>
+        <button style="display: flex; align-items: center; gap: 0.5rem; padding: 0.375rem 0.75rem; background: #8b5cf6; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500;">
+          + Add Ingredient
+        </button>
+      </div>
+      
+      <!-- Column Headers -->
+      <div style="display: grid; grid-template-columns: 4fr 1fr 2fr 4fr 1fr; gap: 0.5rem; padding: 0 0.5rem; margin-bottom: 0.5rem; font-size: 0.75rem; color: #6b7280;">
+        <div>Ingredient</div>
+        <div>Qty</div>
+        <div>Unit</div>
+        <div>Preview / Notes</div>
+        <div></div>
+      </div>
+      
+      <!-- Ingredient Rows -->
+      <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+        <div style="display: grid; grid-template-columns: 4fr 1fr 2fr 4fr 1fr; gap: 0.5rem; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <div style="width: 0.625rem; height: 0.625rem; border-radius: 9999px; background: #f59e0b;"></div>
+            <input type="text" value="Chipotle paste" style="width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: white; outline: none;">
+          </div>
+          <input type="text" value="1" style="width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: white; text-align: center; outline: none;">
+          <select style="width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.5rem; font-size: 0.875rem; color: white; outline: none;">
+            <option>tsp</option>
+          </select>
+          <input type="text" value="1 tsp Chipotle paste" style="width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: #9ca3af; outline: none;">
+          <button style="padding: 0.25rem; color: #f87171; text-align: center;">✕</button>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 4fr 1fr 2fr 4fr 1fr; gap: 0.5rem; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <div style="width: 0.625rem; height: 0.625rem; border-radius: 9999px; background: #10b981;"></div>
+            <input type="text" value="Egg" style="width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: white; outline: none;">
+          </div>
+          <input type="text" value="1" style="width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: white; text-align: center; outline: none;">
+          <select style="width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.5rem; font-size: 0.875rem; color: white; outline: none;">
+            <option>whole</option>
+          </select>
+          <input type="text" value="1 whole Egg" style="width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: #9ca3af; outline: none;">
+          <button style="padding: 0.25rem; color: #f87171; text-align: center;">✕</button>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 4fr 1fr 2fr 4fr 1fr; gap: 0.5rem; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <div style="width: 0.625rem; height: 0.625rem; border-radius: 9999px; background: #10b981;"></div>
+            <input type="text" value="Cherry tomatoes" style="width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: white; outline: none;">
+          </div>
+          <input type="text" value="7" style="width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: white; text-align: center; outline: none;">
+          <select style="width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.5rem; font-size: 0.875rem; color: white; outline: none;">
+            <option>whole</option>
+          </select>
+          <input type="text" value="halved" style="width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: #9ca3af; outline: none;">
+          <button style="padding: 0.25rem; color: #f87171; text-align: center;">✕</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Nutritional Analysis -->
+    <div style="background: #111827; border-radius: 0.75rem; border: 1px solid #1f2937; padding: 1.25rem; margin-bottom: 1.5rem;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+        <h2 style="font-weight: 600;">Nutritional Analysis</h2>
+        <button style="padding: 0.375rem 0.75rem; background: #8b5cf6; border-radius: 0.5rem; font-size: 0.875rem;">Refresh</button>
+      </div>
+      
+      <!-- Overall Rating -->
+      <div style="background: rgba(31,41,55,0.5); border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem; display: flex; gap: 0.75rem;">
+        <div style="width: 1.25rem; height: 1.25rem; border-radius: 9999px; background: #f59e0b; flex-shrink: 0;"></div>
+        <div>
+          <h3 style="font-weight: 500; margin-bottom: 0.25rem;">Overall Rating</h3>
+          <p style="font-size: 0.875rem; color: #9ca3af;">This meal is calorie-dense (690 kcal) and exceeds fat targets (32.4g vs 68g daily), though it provides excellent protein and fiber for muscle building and satiety.</p>
+        </div>
+      </div>
+      
+      <!-- Macro Cards -->
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; margin-bottom: 1rem;">
+        <div style="background: linear-gradient(to bottom right, rgba(249,115,22,0.2), rgba(234,88,12,0.2)); border: 1px solid rgba(249,115,22,0.3); border-radius: 0.75rem; padding: 1rem; text-align: center;">
+          <div style="font-size: 1.5rem; font-weight: bold; color: #fb923c;">690</div>
+          <div style="font-size: 0.75rem; color: #9ca3af;">Calories</div>
+        </div>
+        <div style="background: linear-gradient(to bottom right, rgba(59,130,246,0.2), rgba(37,99,235,0.2)); border: 1px solid rgba(59,130,246,0.3); border-radius: 0.75rem; padding: 1rem; text-align: center;">
+          <div style="font-size: 1.5rem; font-weight: bold; color: #60a5fa;">29g</div>
+          <div style="font-size: 0.75rem; color: #9ca3af;">Protein</div>
+        </div>
+        <div style="background: linear-gradient(to bottom right, rgba(245,158,11,0.2), rgba(217,119,6,0.2)); border: 1px solid rgba(245,158,11,0.3); border-radius: 0.75rem; padding: 1rem; text-align: center;">
+          <div style="font-size: 1.5rem; font-weight: bold; color: #fbbf24;">80g</div>
+          <div style="font-size: 0.75rem; color: #9ca3af;">Carbs</div>
+        </div>
+        <div style="background: linear-gradient(to bottom right, rgba(139,92,246,0.2), rgba(124,58,237,0.2)); border: 1px solid rgba(139,92,246,0.3); border-radius: 0.75rem; padding: 1rem; text-align: center;">
+          <div style="font-size: 1.5rem; font-weight: bold; color: #a78bfa;">32g</div>
+          <div style="font-size: 0.75rem; color: #9ca3af;">Fat</div>
+        </div>
+      </div>
+      
+      <!-- Secondary -->
+      <div style="display: flex; justify-content: center; gap: 2rem; font-size: 0.875rem; color: #6b7280;">
+        <span><strong style="color: #d1d5db;">17g</strong> Fiber</span>
+        <span><strong style="color: #d1d5db;">25g</strong> Sugar</span>
+        <span><strong style="color: #d1d5db;">657mg</strong> Sodium</span>
+      </div>
+    </div>
+
+    <!-- Emilia's Tips -->
+    <div style="background: linear-gradient(to bottom right, rgba(88,28,135,0.3), rgba(131,24,67,0.3)); border-radius: 0.75rem; border: 1px solid rgba(126,34,206,0.3); padding: 1.25rem; margin-bottom: 1.5rem;">
+      <div style="display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 9999px; background: linear-gradient(to bottom right, #8b5cf6, #ec4899); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <span style="font-size: 1.25rem;">👩‍⚕️</span>
+        </div>
+        <div style="flex: 1;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+            <h3 style="font-weight: 600; color: #e9d5ff;">Emilia's Nutritionist Tips</h3>
+            <span style="padding: 0.125rem 0.5rem; background: rgba(139,92,246,0.3); color: #c4b5fd; border-radius: 0.25rem; font-size: 0.75rem;">Interactive</span>
+          </div>
+          <p style="font-size: 0.875rem; color: rgba(233,213,255,0.8); line-height: 1.6;">
+            Hi Chris! This breakfast burrito is a brilliant choice for you – at 690 kcal and nearly 30g of protein, it'll give you a really satisfying start to the day. The fat content is on the higher side at 32g, so just keep an eye on how many of these you're having across the week.
+          </p>
+        </div>
+      </div>
+      
+      <!-- Quick Actions -->
+      <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; margin-left: 4rem;">
+        <button style="padding: 0.375rem 0.75rem; background: rgba(31,41,55,0.5); border: 1px solid #374151; border-radius: 0.5rem; font-size: 0.875rem; color: white;">What can I improve?</button>
+        <button style="padding: 0.375rem 0.75rem; background: rgba(31,41,55,0.5); border: 1px solid #374151; border-radius: 0.5rem; font-size: 0.875rem; color: white;">How can I add more protein?</button>
+      </div>
+      
+      <!-- Chat Input -->
+      <div style="display: flex; gap: 0.5rem; margin-left: 4rem;">
+        <input type="text" placeholder="Tweak this recipe (e.g. add protein, reduce fat)..." style="flex: 1; background: rgba(31,41,55,0.5); border: 1px solid #374151; border-radius: 0.5rem; padding: 0.5rem 1rem; font-size: 0.875rem; color: white; outline: none;">
+        <button style="padding: 0.5rem 1rem; background: #374151; border-radius: 0.5rem; font-size: 0.875rem;">Send</button>
+      </div>
+    </div>
+
+    <!-- Instructions -->
+    <div style="background: #111827; border-radius: 0.75rem; border: 1px solid #1f2937; padding: 1.25rem; margin-bottom: 1.5rem;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+        <h2 style="font-weight: 600;">Instructions</h2>
+        <button style="display: flex; align-items: center; gap: 0.5rem; padding: 0.375rem 0.75rem; background: #8b5cf6; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500;">
+          + Add Step
+        </button>
+      </div>
+      
+      <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+        <div style="display: flex; gap: 0.75rem;">
+          <div style="width: 2rem; height: 2rem; border-radius: 9999px; background: rgba(139,92,246,0.2); color: #a78bfa; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-weight: 500;">1</div>
+          <textarea style="flex: 1; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.75rem; font-size: 0.875rem; color: #d1d5db; min-height: 60px; resize: none; outline: none;">Whisk the chipotle paste with the egg and some seasoning in a jug. Heat the oil in a large frying pan, add the kale and tomatoes.</textarea>
+          <button style="padding: 0.25rem; color: #f87171; align-self: flex-start; margin-top: 0.5rem;">✕</button>
+        </div>
+        <div style="display: flex; gap: 0.75rem;">
+          <div style="width: 2rem; height: 2rem; border-radius: 9999px; background: rgba(139,92,246,0.2); color: #a78bfa; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-weight: 500;">2</div>
+          <textarea style="flex: 1; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.75rem; font-size: 0.875rem; color: #d1d5db; min-height: 60px; resize: none; outline: none;">Cook until the kale is wilted and the tomatoes have softened, then push everything to the side of the pan.</textarea>
+          <button style="padding: 0.25rem; color: #f87171; align-self: flex-start; margin-top: 0.5rem;">✕</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notes -->
+    <div style="background: #111827; border-radius: 0.75rem; border: 1px solid #1f2937; padding: 1.25rem; margin-bottom: 6rem;">
+      <h2 style="font-weight: 600; margin-bottom: 0.75rem;">Notes</h2>
+      <textarea style="width: 100%; background: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; padding: 0.75rem; font-size: 0.875rem; color: #d1d5db; min-height: 100px; resize: none; outline: none;" placeholder="Add any notes about this recipe..."></textarea>
+    </div>
+  </div>
+  
+  <!-- Sticky Bottom Bar -->
+  <div style="position: fixed; bottom: 0; left: 0; right: 0; background: rgba(17,24,39,0.95); backdrop-filter: blur(4px); border-top: 1px solid #1f2937; padding: 1rem 0; z-index: 20;">
+    <div style="max-width: 80rem; margin: 0 auto; padding: 0 1.5rem; display: flex; align-items: center; justify-content: space-between;">
+      <span style="font-size: 0.875rem; color: #9ca3af;">Unsaved changes</span>
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <button style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; color: #9ca3af; font-size: 0.875rem;">↶ Undo</button>
+        <button style="padding: 0.5rem 1rem; background: #374151; border-radius: 0.5rem; font-size: 0.875rem;">Cancel</button>
+        <button style="padding: 0.5rem 1.25rem; background: #8b5cf6; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500;">Save Recipe</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

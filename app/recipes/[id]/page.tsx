@@ -5,13 +5,28 @@ import { use } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { generateRecipeSVG } from '@/lib/generate-recipe-image'
 import { AppLayout, PageContainer } from '@/components/layout'
 import { Button, Badge, Input, Select } from '@/components/ui'
 import { useSession } from 'next-auth/react'
 import { useAILoading } from '@/components/providers/AILoadingProvider'
 import { useNotification } from '@/components/providers/NotificationProvider'
 import { ChatMessage, IngredientModification, InstructionModification, ProjectedNutrition, ValidatedNutrition } from '@/lib/types/nutritionist'
+import {
+  RecipeDetailHeader,
+  RecipeDetailHero,
+  RecipeIngredients,
+  RecipeInstructions,
+  RecipeNotes,
+  RecipeNutrition,
+  RecipeEmiliaTips,
+  RecipeEditHeader,
+  RecipeEditHero,
+  RecipeEditSaveBar,
+  RecipeEditIngredients,
+  RecipeEditInstructions,
+  RecipeEditDetails,
+  RecipeEditEmilia,
+} from '@/components/recipes'
 
 interface RecipePageProps {
   params: Promise<{ id: string }>
@@ -87,6 +102,9 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
 
   // Ingredient scaling state
   const [scaleIngredients, setScaleIngredients] = useState(false)
+
+  // Unsaved changes tracking
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [baseServings, setBaseServings] = useState(4)
   const [baseIngredients, setBaseIngredients] = useState<any[]>([])
 
@@ -522,6 +540,26 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
     }
   }, [servings, scaleIngredients, baseServings, baseIngredients])
 
+  // Track unsaved changes while editing
+  useEffect(() => {
+    if (isEditing && recipe) {
+      const changed =
+        recipeName !== (recipe.recipeName || '') ||
+        description !== (recipe.description || '') ||
+        servings !== (recipe.servings || 4) ||
+        prepTimeMinutes !== (recipe.prepTimeMinutes || '') ||
+        cookTimeMinutes !== (recipe.cookTimeMinutes || '') ||
+        cuisineType !== (recipe.cuisineType || '') ||
+        difficultyLevel !== (recipe.difficultyLevel || '') ||
+        notes !== (recipe.notes || '') ||
+        imageUrl !== (recipe.imageUrl || '') ||
+        JSON.stringify(mealType) !== JSON.stringify(recipe.mealType || []) ||
+        JSON.stringify(ingredients) !== JSON.stringify(recipe.ingredients || []) ||
+        JSON.stringify(instructions) !== JSON.stringify(recipe.instructions || [])
+      setHasUnsavedChanges(changed)
+    }
+  }, [isEditing, recipe, recipeName, description, servings, prepTimeMinutes, cookTimeMinutes, cuisineType, difficultyLevel, mealType, notes, ingredients, instructions, imageUrl])
+
   const fetchRecipe = async () => {
     console.log('📥 fetchRecipe called for id:', id)
     try {
@@ -842,6 +880,10 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
     }
   }
 
+  const handleNotesChange = (newNotes: string) => {
+    setNotes(newNotes)
+  }
+
   if (loading) {
     return (
       <AppLayout userEmail={session?.user?.email}>
@@ -858,738 +900,226 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
     return null
   }
 
+  // View Mode - New redesigned layout
+  if (!isEditing) {
+    return (
+      <AppLayout userEmail={session?.user?.email}>
+        <PageContainer maxWidth="7xl">
+          <Link href="/recipes" className="text-purple-400 hover:text-purple-300 mb-6 inline-block">
+            ← Back to Recipes
+          </Link>
+
+          {/* Header with actions */}
+          <RecipeDetailHeader
+            mealCategories={recipe.mealType || []}
+            onEdit={() => setIsEditing(true)}
+            onDuplicate={handleDuplicate}
+            duplicating={duplicating}
+          />
+
+          {/* Hero Section */}
+          <RecipeDetailHero
+            name={recipe.recipeName}
+            description={recipe.description}
+            cuisine={recipe.cuisineType}
+            difficulty={recipe.difficultyLevel}
+            servings={recipe.servings}
+            prepTimeMinutes={recipe.prepTimeMinutes}
+            cookTimeMinutes={recipe.cookTimeMinutes}
+            totalTimeMinutes={recipe.totalTimeMinutes}
+            ingredients={recipe.ingredients}
+            rating={rating}
+            onRatingChange={handleRating}
+            className="mb-6"
+          />
+
+          {/* Nutritional Analysis */}
+          {macroAnalysis && (
+            <RecipeNutrition
+              macroAnalysis={macroAnalysis}
+              onRefresh={() => fetchAIAnalysis(recipe)}
+              loading={loadingAI}
+              className="mb-6"
+            />
+          )}
+
+          {/* Loading AI Analysis */}
+          {loadingAI && !macroAnalysis && (
+            <div className="mb-6 p-4 bg-blue-900/20 rounded-lg border border-blue-800/30 text-center">
+              <p className="text-sm text-zinc-300">Analyzing nutritional content...</p>
+            </div>
+          )}
+
+          {/* Emilia's Tips */}
+          {nutritionistFeedback && (
+            <RecipeEmiliaTips
+              tips={nutritionistFeedback}
+              className="mb-6"
+            />
+          )}
+
+          {/* Two Column Layout: Ingredients & Instructions */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Ingredients */}
+            <div className="lg:col-span-1">
+              <RecipeIngredients
+                ingredients={recipe.ingredients}
+                ingredientRatings={macroAnalysis?.ingredientRatings}
+              />
+            </div>
+
+            {/* Instructions & Notes */}
+            <div className="lg:col-span-2 space-y-6">
+              <RecipeInstructions
+                instructions={recipe.instructions}
+              />
+              <RecipeNotes
+                notes={recipe.notes || ''}
+                onChange={handleNotesChange}
+                editable={false}
+              />
+            </div>
+          </div>
+
+          {/* Recipe metadata */}
+          <div className="mt-6 text-sm text-zinc-500 border-t border-zinc-800 pt-4">
+            Used {recipe.timesUsed} times
+            {recipe.lastUsedDate && ` • Last used ${new Date(recipe.lastUsedDate).toLocaleDateString()}`}
+          </div>
+        </PageContainer>
+      </AppLayout>
+    )
+  }
+
+  // Edit Mode - Redesigned layout
   return (
     <AppLayout userEmail={session?.user?.email}>
-      <PageContainer maxWidth="7xl">
-        <Link href="/recipes" className="text-purple-400 hover:text-purple-300 mb-6 inline-block">
-          ← Back to Recipes
-        </Link>
+      {/* Sticky Top Navigation */}
+      <RecipeEditHeader
+        onUndo={undo}
+        onSave={handleSaveEdit}
+        onCancel={handleCancelEdit}
+        canUndo={history.length > 0}
+        saving={saving}
+      />
 
-        <div className="card overflow-hidden">
-          <div className="p-6">
-            {/* Header with title, edit button, duplicate, and rating */}
-            <div className="flex justify-between items-start mb-6">
-              <div className="flex-1">
-                {isEditing ? (
-                  <Input
-                    type="text"
-                    value={recipeName}
-                    onChange={(e) => setRecipeName(e.target.value)}
-                    className="text-3xl font-bold text-white mb-2 w-full bg-transparent border-none border-b-2 border-purple-500 rounded-none px-0 focus:ring-0 focus:border-purple-400"
-                  />
-                ) : (
-                  <h1 className="text-3xl font-bold text-white mb-2">{recipe.recipeName}</h1>
-                )}
-                {isEditing ? (
-                  <textarea
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    rows={4}
-                    placeholder="Description..."
-                    className="input w-full mt-2"
-                  />
-                ) : (
-                  recipe.description && <p className="text-zinc-400">{recipe.description}</p>
-                )}
+      <PageContainer maxWidth="7xl" className="pb-24">
+        {/* Hero Section - Emoji preview + image upload + title + description */}
+        <RecipeEditHero
+          recipeName={recipeName}
+          description={description}
+          cuisineType={cuisineType}
+          imageUrl={imageUrl}
+          imagePreview={imagePreview}
+          ingredients={ingredients}
+          onNameChange={setRecipeName}
+          onDescriptionChange={setDescription}
+          onImageChange={handleRecipeImageChange}
+          className="mb-6"
+        />
 
-                {/* Recipe Image */}
-                {isEditing ? (
-                  <div className="mt-4">
-                    <label className="block text-sm font-medium text-white mb-2">Recipe Image</label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleRecipeImageChange}
-                      className="block w-full text-sm text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-700 file:cursor-pointer cursor-pointer"
-                    />
-                    {imagePreview && (
-                      <div className="mt-2 relative h-48 w-full bg-zinc-800 rounded-md overflow-hidden">
-                        <Image
-                          src={imagePreview}
-                          alt="Recipe preview"
-                          fill
-                          className="object-cover"
-                          unoptimized={imagePreview.startsWith('data:')}
-                        />
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="mt-4 relative h-64 w-full bg-zinc-800 rounded-md overflow-hidden">
-                    <Image
-                      src={(() => {
-                        const hasValidImage = recipe.imageUrl && (
-                          recipe.imageUrl.startsWith('http://') ||
-                          recipe.imageUrl.startsWith('https://') ||
-                          (recipe.imageUrl.startsWith('data:image/') && recipe.imageUrl.length > 100)
-                        )
-                        return hasValidImage ? recipe.imageUrl : generateRecipeSVG(recipe.recipeName, recipe.mealType)
-                      })()}
-                      alt={recipe.recipeName}
-                      fill
-                      className="object-cover"
-                      unoptimized={(recipe.imageUrl || '').startsWith('data:')}
-                    />
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center space-x-3 ml-4">
-                {!isEditing && (
-                  <>
-                    <Button
-                      onClick={handleToggleFavorite}
-                      disabled={togglingFavorite}
-                      variant="ghost"
-                      size="sm"
-                      title={isFavorite ? "Remove from favorites" : "Add to favorites"}
-                    >
-                      <span className={`text-xl ${isFavorite ? 'text-yellow-400' : 'text-zinc-600'}`}>
-                        {isFavorite ? '★' : '☆'}
-                      </span>
-                    </Button>
-                    <Button
-                      onClick={() => setIsEditing(true)}
-                      variant="secondary"
-                      size="sm"
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      onClick={handleDuplicate}
-                      disabled={duplicating}
-                      variant="ghost"
-                      size="sm"
-                      isLoading={duplicating}
-                      title="Duplicate this recipe"
-                    >
-                      {duplicating ? 'Duplicating...' : 'Duplicate'}
-                    </Button>
-                  </>
-                )}
-                {isEditing ? (
-                  <div className="flex space-x-2">
-                    <Button
-                      onClick={undo}
-                      disabled={history.length === 0 || saving}
-                      variant="secondary"
-                      size="sm"
-                      title="Undo last change"
-                    >
-                      ↶ Undo
-                    </Button>
-                    <Button
-                      onClick={handleSaveEdit}
-                      disabled={saving}
-                      variant="primary"
-                      size="sm"
-                      isLoading={saving}
-                    >
-                      {saving ? 'Saving...' : 'Save'}
-                    </Button>
-                    <Button
-                      onClick={handleCancelEdit}
-                      disabled={saving}
-                      variant="ghost"
-                      size="sm"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex items-center space-x-2">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        onClick={() => handleRating(star)}
-                        className="focus:outline-none transition-colors"
-                      >
-                        <svg
-                          className={`h-6 w-6 ${
-                            rating && star <= rating ? 'text-yellow-400' : 'text-zinc-600'
-                          }`}
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                        </svg>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+        {/* Recipe Details - Servings, times, cuisine, difficulty, categories */}
+        <RecipeEditDetails
+          servings={servings}
+          prepTimeMinutes={prepTimeMinutes}
+          cookTimeMinutes={cookTimeMinutes}
+          cuisineType={cuisineType}
+          difficultyLevel={difficultyLevel}
+          mealCategories={mealType}
+          scaleIngredients={scaleIngredients}
+          onServingsChange={setServings}
+          onPrepTimeChange={setPrepTimeMinutes}
+          onCookTimeChange={setCookTimeMinutes}
+          onCuisineChange={setCuisineType}
+          onDifficultyChange={setDifficultyLevel}
+          onCategoryToggle={toggleCategory}
+          onScaleIngredientsChange={(checked, currentServings) => {
+            setScaleIngredients(checked)
+            if (checked) {
+              setBaseServings(currentServings)
+              setBaseIngredients(JSON.parse(JSON.stringify(ingredients)))
+            }
+          }}
+          className="mb-6"
+        />
 
-            {/* Times and servings */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 p-4 bg-zinc-800/50 rounded-lg border border-zinc-700">
-              <div>
-                <p className="text-sm text-zinc-400">Servings</p>
-                {isEditing ? (
-                  <>
-                    <Input
-                      type="number"
-                      value={servings}
-                      onChange={(e) => setServings(parseInt(e.target.value) || 1)}
-                      min="1"
-                      className="text-lg font-semibold w-full mt-1"
-                    />
-                    <label className="flex items-center mt-2 text-xs text-zinc-400 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={scaleIngredients}
-                        onChange={(e) => {
-                          const checked = e.target.checked
-                          setScaleIngredients(checked)
-                          if (checked) {
-                            // Save current state as baseline
-                            setBaseServings(servings)
-                            setBaseIngredients(JSON.parse(JSON.stringify(ingredients)))
-                          }
-                        }}
-                        className="mr-1"
-                      />
-                      Scale ingredients
-                    </label>
-                  </>
-                ) : (
-                  <p className="text-lg font-semibold text-white">{recipe.servings}</p>
-                )}
-              </div>
-              <div>
-                <p className="text-sm text-zinc-400">Prep Time (min)</p>
-                {isEditing ? (
-                  <Input
-                    type="number"
-                    value={prepTimeMinutes}
-                    onChange={(e) => setPrepTimeMinutes(e.target.value ? parseInt(e.target.value) : '')}
-                    min="0"
-                    className="text-lg font-semibold w-full mt-1"
-                  />
-                ) : (
-                  recipe.prepTimeMinutes && <p className="text-lg font-semibold text-white">{recipe.prepTimeMinutes} min</p>
-                )}
-              </div>
-              <div>
-                <p className="text-sm text-zinc-400">Cook Time (min)</p>
-                {isEditing ? (
-                  <Input
-                    type="number"
-                    value={cookTimeMinutes}
-                    onChange={(e) => setCookTimeMinutes(e.target.value ? parseInt(e.target.value) : '')}
-                    min="0"
-                    className="text-lg font-semibold w-full mt-1"
-                  />
-                ) : (
-                  recipe.cookTimeMinutes && <p className="text-lg font-semibold text-white">{recipe.cookTimeMinutes} min</p>
-                )}
-              </div>
-              {recipe.totalTimeMinutes && !isEditing && (
-                <div>
-                  <p className="text-sm text-zinc-400">Total Time</p>
-                  <p className="text-lg font-semibold text-white">{recipe.totalTimeMinutes} min</p>
-                </div>
-              )}
-            </div>
+        {/* Ingredients Section - 5 columns with headers */}
+        <RecipeEditIngredients
+          ingredients={ingredients}
+          ingredientRatings={macroAnalysis?.ingredientRatings}
+          availableUnits={availableUnits}
+          onAdd={addIngredient}
+          onRemove={removeIngredient}
+          onUpdate={updateIngredient}
+          onAnalyzeNutrition={() => fetchAIAnalysis({ recipeName, servings, ingredients, mealType })}
+          showAnalyzeButton={!macroAnalysis && !loadingAI}
+          className="mb-6"
+        />
 
-            {/* Cuisine, Difficulty, Categories */}
-            <div className="mb-6 pb-6 border-b border-zinc-800">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <p className="text-sm text-zinc-400 mb-1">Cuisine Type</p>
-                  {isEditing ? (
-                    <Input
-                      type="text"
-                      value={cuisineType}
-                      onChange={(e) => setCuisineType(e.target.value)}
-                      placeholder="e.g., Italian, Mexican"
-                    />
-                  ) : (
-                    recipe.cuisineType && <p className="text-sm font-medium text-white">{recipe.cuisineType}</p>
-                  )}
-                </div>
-                <div>
-                  <p className="text-sm text-zinc-400 mb-1">Difficulty</p>
-                  {isEditing ? (
-                    <Select
-                      value={difficultyLevel}
-                      onChange={(e) => setDifficultyLevel(e.target.value)}
-                    >
-                      <option value="">Select...</option>
-                      <option value="Easy">Easy</option>
-                      <option value="Medium">Medium</option>
-                      <option value="Hard">Hard</option>
-                    </Select>
-                  ) : (
-                    recipe.difficultyLevel && <p className="text-sm font-medium text-white">{recipe.difficultyLevel}</p>
-                  )}
-                </div>
-              </div>
+        {/* Nutritional Analysis */}
+        {macroAnalysis && (
+          <RecipeNutrition
+            macroAnalysis={macroAnalysis}
+            onRefresh={() => fetchAIAnalysis({ recipeName, servings, ingredients, mealType })}
+            loading={loadingAI}
+            className="mb-6"
+          />
+        )}
 
-              <div>
-                <p className="text-sm text-zinc-400 mb-2">Meal Categories</p>
-                {isEditing ? (
-                  <div className="flex flex-wrap gap-2">
-                    {mealCategories.map(cat => (
-                      <button
-                        key={cat}
-                        type="button"
-                        onClick={() => toggleCategory(cat)}
-                        className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                          mealType.includes(cat)
-                            ? 'bg-purple-600 text-white'
-                            : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
-                        }`}
-                      >
-                        {cat}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  recipe.mealType.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {recipe.mealType.map((cat: string) => (
-                        <Badge key={cat} variant="purple" size="sm">
-                          {cat}
-                        </Badge>
-                      ))}
-                    </div>
-                  )
-                )}
-              </div>
-            </div>
-
-            {/* Ingredients */}
-            <div className="mb-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-white">Ingredients</h2>
-                <div className="flex gap-2">
-                  {!macroAnalysis && !loadingAI && (
-                    <Button
-                      onClick={() => fetchAIAnalysis(isEditing ? { recipeName, servings, ingredients, mealType } : recipe)}
-                      variant="secondary"
-                      size="sm"
-                      className="bg-green-600 hover:bg-green-700 text-white"
-                    >
-                      Analyze Nutrition
-                    </Button>
-                  )}
-                  {isEditing && (
-                    <Button
-                      onClick={addIngredient}
-                      variant="primary"
-                      size="sm"
-                    >
-                      Add Ingredient
-                    </Button>
-                  )}
-                </div>
-              </div>
-              {isEditing ? (
-                <div className="space-y-2">
-                  {ingredients.map((ing, index) => {
-                    const rating = getIngredientRating(ing.ingredientName)
-                    return (
-                      <div key={index} className="flex items-center gap-2">
-                        {rating && (
-                          <div className="flex items-center" title={rating.reason}>
-                            <div className={`w-3 h-3 rounded-full ${getTrafficLightClass(rating.rating)}`}></div>
-                          </div>
-                        )}
-                        <div className="flex-1 grid grid-cols-12 gap-2 items-center">
-                          <Input
-                            type="text"
-                            placeholder="Ingredient"
-                            value={ing.ingredientName}
-                            onChange={(e) => updateIngredient(index, 'ingredientName', e.target.value)}
-                            className="col-span-5 text-sm"
-                          />
-                          <Input
-                            type="number"
-                            placeholder="Qty"
-                            value={ing.quantity}
-                            onChange={(e) => updateIngredient(index, 'quantity', parseFloat(e.target.value))}
-                            step="0.01"
-                            className="col-span-2 text-sm"
-                          />
-                          <select
-                            className="col-span-2 text-sm rounded-md bg-zinc-800 border-zinc-700 text-white focus:border-purple-500 focus:ring-purple-500 px-3 py-2 border"
-                            value={ing.unit}
-                            onChange={(e) => updateIngredient(index, 'unit', e.target.value)}
-                          >
-                            <option value="">Unit</option>
-                            {Object.entries(availableUnits).map(([category, units]) => (
-                              <optgroup key={category} label={category.charAt(0).toUpperCase() + category.slice(1)}>
-                                {units.map((unit) => (
-                                  <option key={unit.code} value={unit.abbreviation}>
-                                    {unit.abbreviation} ({unit.name})
-                                  </option>
-                                ))}
-                              </optgroup>
-                            ))}
-                          </select>
-                          <Input
-                            type="text"
-                            placeholder="Notes"
-                            value={ing.notes || ''}
-                            onChange={(e) => updateIngredient(index, 'notes', e.target.value)}
-                            className="col-span-2 text-sm"
-                          />
-                          <button
-                            onClick={() => removeIngredient(index)}
-                            className="col-span-1 text-red-500 hover:text-red-400 text-2xl"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {recipe.ingredients.map((ing: any, index: number) => {
-                    const rating = getIngredientRating(ing.ingredientName)
-                    return (
-                      <div key={index} className="flex items-center gap-3 text-zinc-300">
-                        <div className="flex-shrink-0 w-3 flex items-center justify-center">
-                          {rating && (
-                            <div
-                              className={`w-3 h-3 rounded-full ${getTrafficLightClass(rating.rating)}`}
-                              title={rating.reason}
-                            ></div>
-                          )}
-                        </div>
-                        <span>
-                          <strong className="text-white">{ing.quantity} {ing.unit}</strong> {ing.ingredientName}
-                          {ing.notes && <span className="text-zinc-500 text-sm"> ({ing.notes})</span>}
-                        </span>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* AI Nutritional Analysis */}
-            {macroAnalysis && (
-              <>
-                {/* Macro Breakdown */}
-                <div className="card p-6 space-y-4 mb-6">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-medium text-white">Nutritional Analysis</h3>
-                    <button
-                      type="button"
-                      onClick={() => fetchAIAnalysis(isEditing ? { recipeName, servings, ingredients, mealType } : recipe)}
-                      disabled={loadingAI}
-                      className="px-3 py-1 bg-purple-600 text-white rounded-md text-sm hover:bg-purple-700 disabled:opacity-50"
-                    >
-                      {loadingAI ? 'Analyzing...' : 'Refresh'}
-                    </button>
-                  </div>
-
-                  {/* Overall Rating */}
-                  <div className="flex items-start gap-4 p-4 bg-zinc-800/50 rounded-lg border border-zinc-700">
-                    <div className={`w-8 h-8 rounded-full ${getTrafficLightClass(macroAnalysis.overallRating)} flex-shrink-0`} />
-                    <div className="flex-1">
-                      <p className="font-medium text-white">Overall Rating</p>
-                      <p className="text-sm text-zinc-400 mt-1">{macroAnalysis.overallExplanation}</p>
-                    </div>
-                  </div>
-
-                  {/* Macro Summary - Colorful boxes */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="text-center p-3 bg-gradient-to-br from-orange-900/40 to-pink-900/40 rounded-lg border border-orange-700/50">
-                      <p className="text-2xl font-bold text-orange-400">{Math.round(macroAnalysis.perServing.calories)}</p>
-                      <p className="text-xs text-zinc-400 mt-1">Calories</p>
-                    </div>
-                    <div className="text-center p-3 bg-gradient-to-br from-green-900/40 to-emerald-900/40 rounded-lg border border-green-700/50">
-                      <p className="text-2xl font-bold text-green-400">{Math.round(macroAnalysis.perServing.protein)}g</p>
-                      <p className="text-xs text-zinc-400 mt-1">Protein</p>
-                    </div>
-                    <div className="text-center p-3 bg-gradient-to-br from-cyan-900/40 to-blue-900/40 rounded-lg border border-cyan-700/50">
-                      <p className="text-2xl font-bold text-cyan-400">{Math.round(macroAnalysis.perServing.carbs)}g</p>
-                      <p className="text-xs text-zinc-400 mt-1">Carbs</p>
-                    </div>
-                    <div className="text-center p-3 bg-gradient-to-br from-purple-900/40 to-pink-900/40 rounded-lg border border-purple-700/50">
-                      <p className="text-2xl font-bold text-purple-400">{Math.round(macroAnalysis.perServing.fat)}g</p>
-                      <p className="text-xs text-zinc-400 mt-1">Fat</p>
-                    </div>
-                  </div>
-
-                  {/* Secondary macros row */}
-                  <div className="grid grid-cols-3 gap-4 text-sm">
-                    <div className="text-center">
-                      <p className="font-medium text-zinc-300">{Math.round(macroAnalysis.perServing.fiber)}g</p>
-                      <p className="text-xs text-zinc-500">Fiber</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="font-medium text-zinc-300">{Math.round(macroAnalysis.perServing.sugar)}g</p>
-                      <p className="text-xs text-zinc-500">Sugar</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="font-medium text-zinc-300">{Math.round(macroAnalysis.perServing.sodium)}mg</p>
-                      <p className="text-xs text-zinc-500">Sodium</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Emilia's Nutritionist Feedback - Interactive in Edit Mode */}
-                {nutritionistFeedback && (
-                  <div className="bg-gradient-to-r from-green-900/20 to-blue-900/20 border border-green-800/50 rounded-lg p-6 mb-6">
-                    <div className="flex items-start gap-4">
-                      {/* Emilia Avatar */}
-                      <div className="flex-shrink-0">
-                        <Image
-                          src="/sarah-nutritionist.png"
-                          alt="Emilia - Your AI Nutritionist"
-                          width={80}
-                          height={80}
-                          className="rounded-full border-4 border-zinc-700 shadow-md"
-                        />
-                      </div>
-
-                      {/* Feedback Content */}
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="text-lg font-semibold text-white">Emilia&apos;s Nutritionist Tips</h3>
-                          {isEditing && (
-                            <span className="text-xs text-green-400 bg-green-900/30 px-2 py-0.5 rounded-full">
-                              Interactive
-                            </span>
-                          )}
-                        </div>
-
-                        {/* View Mode - Static Feedback */}
-                        {!isEditing && (
-                          <p className="text-zinc-300 leading-relaxed">{nutritionistFeedback}</p>
-                        )}
-
-                        {/* Edit Mode - Interactive Chat */}
-                        {isEditing && (
-                          <div className="space-y-4">
-                            {/* Initial Feedback */}
-                            <div className="text-sm text-zinc-300 leading-relaxed whitespace-pre-line">
-                              {nutritionistFeedback}
-                            </div>
-
-                            {/* Suggested Prompts - shown after initial feedback */}
-                            {suggestedPrompts.length > 0 && !chatLoading && (
-                              <div className="flex flex-wrap gap-2">
-                                {suggestedPrompts.map((prompt, index) => (
-                                  <button
-                                    key={index}
-                                    onClick={() => sendChatMessage(prompt)}
-                                    className="text-xs bg-zinc-700/50 hover:bg-zinc-600/50 text-zinc-300 px-3 py-1.5 rounded-full border border-zinc-600 transition-colors"
-                                  >
-                                    {prompt}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-
-                            {/* Chat Messages */}
-                            {chatMessages.length > 0 && (
-                              <div className="space-y-3 max-h-64 overflow-y-auto">
-                                {chatMessages.map((msg) => (
-                                  <div
-                                    key={msg.id}
-                                    className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                                  >
-                                    <div
-                                      className={`max-w-[85%] rounded-lg px-4 py-2 ${
-                                        msg.role === 'user'
-                                          ? 'bg-purple-600 text-white'
-                                          : 'bg-zinc-700/50 text-zinc-200'
-                                      }`}
-                                    >
-                                      <p className="text-sm leading-relaxed">{msg.content}</p>
-                                    </div>
-                                  </div>
-                                ))}
-                                {chatLoading && (
-                                  <div className="flex justify-start">
-                                    <div className="bg-zinc-700/50 text-zinc-400 rounded-lg px-4 py-2">
-                                      <p className="text-sm">Emilia is typing...</p>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-
-                            {/* Projected Nutrition (shown when Emilia suggests changes) */}
-                            {projectedNutrition && (
-                              <div className={`rounded-lg p-3 ${validatedNutrition?.isValidated ? 'bg-green-900/30 border border-green-600/50' : 'bg-zinc-800/50 border border-zinc-600/50'}`}>
-                                <div className="flex items-center gap-2 mb-2">
-                                  <span className={`text-xs font-medium ${validatedNutrition?.isValidated ? 'text-green-400' : 'text-zinc-400'}`}>
-                                    {validatedNutrition?.isValidated ? '✓ Validated Nutrition Impact' : 'Estimated (will recalculate)'}
-                                  </span>
-                                  <button
-                                    onClick={() => { setProjectedNutrition(null); setValidatedNutrition(null); }}
-                                    className="text-xs text-zinc-500 hover:text-zinc-400"
-                                  >
-                                    ✕
-                                  </button>
-                                </div>
-                                <div className="grid grid-cols-4 gap-2 text-center text-xs">
-                                  <div>
-                                    <p className="text-zinc-400">Calories</p>
-                                    <p className="text-blue-400 font-semibold">{Math.round(projectedNutrition.calories)}</p>
-                                    {validatedNutrition?.impact && (
-                                      <p className={`text-[10px] ${validatedNutrition.impact.calories <= 0 ? 'text-green-500' : 'text-red-400'}`}>
-                                        {validatedNutrition.impact.calories > 0 ? '+' : ''}{validatedNutrition.impact.calories}
-                                      </p>
-                                    )}
-                                  </div>
-                                  <div>
-                                    <p className="text-zinc-400">Protein</p>
-                                    <p className="text-purple-400 font-semibold">{Math.round(projectedNutrition.protein)}g</p>
-                                    {validatedNutrition?.impact && (
-                                      <p className={`text-[10px] ${validatedNutrition.impact.protein >= 0 ? 'text-green-500' : 'text-red-400'}`}>
-                                        {validatedNutrition.impact.protein > 0 ? '+' : ''}{validatedNutrition.impact.protein}g
-                                      </p>
-                                    )}
-                                  </div>
-                                  <div>
-                                    <p className="text-zinc-400">Carbs</p>
-                                    <p className="text-green-400 font-semibold">{Math.round(projectedNutrition.carbs)}g</p>
-                                    {validatedNutrition?.impact && (
-                                      <p className={`text-[10px] ${validatedNutrition.impact.carbs <= 0 ? 'text-green-500' : 'text-yellow-500'}`}>
-                                        {validatedNutrition.impact.carbs > 0 ? '+' : ''}{validatedNutrition.impact.carbs}g
-                                      </p>
-                                    )}
-                                  </div>
-                                  <div>
-                                    <p className="text-zinc-400">Fat</p>
-                                    <p className="text-yellow-400 font-semibold">{Math.round(projectedNutrition.fat)}g</p>
-                                    {validatedNutrition?.impact && (
-                                      <p className={`text-[10px] ${validatedNutrition.impact.fat <= 0 ? 'text-green-500' : 'text-red-400'}`}>
-                                        {validatedNutrition.impact.fat > 0 ? '+' : ''}{validatedNutrition.impact.fat}g
-                                      </p>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Chat Input */}
-                            <div className="flex gap-2">
-                              <input
-                                type="text"
-                                value={chatInput}
-                                onChange={(e) => setChatInput(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter' && !e.shiftKey) {
-                                    e.preventDefault()
-                                    sendChatMessage(chatInput)
-                                  }
-                                }}
-                                placeholder="Tweak this recipe (e.g. add protein, reduce fat)..."
-                                className="flex-1 bg-zinc-800 border border-zinc-600 rounded-lg px-4 py-2 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-green-500"
-                                disabled={chatLoading}
-                              />
-                              <button
-                                onClick={() => sendChatMessage(chatInput)}
-                                disabled={chatLoading || !chatInput.trim()}
-                                className="bg-green-600 hover:bg-green-700 disabled:bg-zinc-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                              >
-                                Send
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-
-            {/* Loading AI Analysis */}
-            {loadingAI && (
-              <div className="mb-6 p-4 bg-blue-900/20 rounded-lg border border-blue-800/30 text-center">
-                <p className="text-sm text-zinc-300">Analyzing nutritional content...</p>
-              </div>
-            )}
-
-            {/* Instructions */}
-            <div className="mb-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-white">Instructions</h2>
-                {isEditing && (
-                  <Button
-                    onClick={addInstruction}
-                    variant="primary"
-                    size="sm"
-                  >
-                    Add Step
-                  </Button>
-                )}
-              </div>
-              {isEditing ? (
-                <div className="space-y-2">
-                  {instructions.map((inst, index) => (
-                    <div key={index} className="flex gap-2 items-start">
-                      <span className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-purple-900/50 text-purple-300 border border-purple-700 font-medium text-sm">
-                        {inst.stepNumber}
-                      </span>
-                      <textarea
-                        rows={2}
-                        placeholder="Describe this step..."
-                        value={inst.instruction}
-                        onChange={(e) => updateInstruction(index, e.target.value)}
-                        className="input flex-1 text-sm"
-                      />
-                      <button
-                        onClick={() => removeInstruction(index)}
-                        className="text-red-500 hover:text-red-400 text-2xl"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <ol className="space-y-4">
-                  {recipe.instructions.map((inst: any, index: number) => (
-                    <li key={index} className="flex">
-                      <span className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-purple-900/50 text-purple-300 border border-purple-700 font-semibold mr-4">
-                        {inst.stepNumber}
-                      </span>
-                      <p className="flex-1 pt-1 text-zinc-300">{inst.instruction}</p>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </div>
-
-            {/* Notes */}
-            <div className="mb-6">
-              <h3 className="font-semibold text-white mb-2">Notes</h3>
-              {isEditing ? (
-                <textarea
-                  rows={3}
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Add any notes about this recipe..."
-                  className="input w-full"
-                />
-              ) : (
-                recipe.notes && (
-                  <div className="p-4 bg-yellow-900/20 rounded-lg border border-yellow-800/30">
-                    <p className="text-sm text-zinc-300">{recipe.notes}</p>
-                  </div>
-                )
-              )}
-            </div>
-
-            {!isEditing && (
-              <div className="text-sm text-zinc-500 border-t border-zinc-800 pt-4">
-                Used {recipe.timesUsed} times
-                {recipe.lastUsedDate && ` • Last used ${new Date(recipe.lastUsedDate).toLocaleDateString()}`}
-              </div>
-            )}
+        {/* Loading AI Analysis */}
+        {loadingAI && !macroAnalysis && (
+          <div className="mb-6 p-4 bg-blue-900/20 rounded-lg border border-blue-800/30 text-center">
+            <p className="text-sm text-zinc-300">Analyzing nutritional content...</p>
           </div>
-        </div>
+        )}
+
+        {/* Emilia's Interactive Nutritionist Tips */}
+        {nutritionistFeedback && (
+          <RecipeEditEmilia
+            nutritionistFeedback={nutritionistFeedback}
+            chatMessages={chatMessages}
+            chatInput={chatInput}
+            suggestedPrompts={suggestedPrompts}
+            chatLoading={chatLoading}
+            projectedNutrition={projectedNutrition}
+            validatedNutrition={validatedNutrition}
+            onChatInputChange={setChatInput}
+            onSendMessage={sendChatMessage}
+            onClearProjectedNutrition={() => {
+              setProjectedNutrition(null)
+              setValidatedNutrition(null)
+            }}
+            className="mb-6"
+          />
+        )}
+
+        {/* Instructions Section */}
+        <RecipeEditInstructions
+          instructions={instructions}
+          onAdd={addInstruction}
+          onRemove={removeInstruction}
+          onUpdate={updateInstruction}
+          className="mb-6"
+        />
+
+        {/* Notes Section */}
+        <RecipeNotes
+          notes={notes}
+          onChange={setNotes}
+          editable={true}
+          className="mb-6"
+        />
       </PageContainer>
+
+      {/* Sticky Bottom Save Bar */}
+      <RecipeEditSaveBar
+        hasChanges={hasUnsavedChanges}
+        onUndo={undo}
+        onCancel={handleCancelEdit}
+        onSave={handleSaveEdit}
+        canUndo={history.length > 0}
+        saving={saving}
+      />
     </AppLayout>
   )
 }
