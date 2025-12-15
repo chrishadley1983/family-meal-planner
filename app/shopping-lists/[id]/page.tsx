@@ -1197,17 +1197,18 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
               )}
               {shoppingList.status === 'Finalized' && (
                 <>
-                  {/* Add to Inventory - purple */}
                   {purchasedItems > 0 && (
-                    <button
-                      onClick={handleOpenConvertModal}
-                      className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 text-sm flex items-center gap-2"
-                      title="Add purchased items to inventory"
-                    >
-                      📦 Add to Inventory
-                    </button>
+                    <>
+                      <button
+                        onClick={handleOpenConvertModal}
+                        className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 text-sm flex items-center gap-2"
+                        title="Add purchased items to inventory"
+                      >
+                        📦 Add to Inventory
+                      </button>
+                    </>
                   )}
-                  {/* Mark All Purchased - green */}
+                  {/* Mark All Purchased button - only show when there are unpurchased items */}
                   {totalItems > purchasedItems && (
                     <button
                       onClick={() => setShowMarkAllModal(true)}
@@ -1217,7 +1218,6 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
                       ✓ Mark All Purchased
                     </button>
                   )}
-                  {/* Undo Last - amber */}
                   {purchasedItems > 0 && (
                     <button
                       onClick={handleUndoLastPurchased}
@@ -1228,7 +1228,6 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
                       Undo Last
                     </button>
                   )}
-                  {/* Archive - gray */}
                   <button
                     onClick={() => handleUpdateStatus('Archived')}
                     disabled={saving}

@@ -1,5 +1,4 @@
 import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable'
 import { format } from 'date-fns'
 
 // Types matching the shopping list page
@@ -24,26 +23,17 @@ interface ItemsByCategory {
 // Brand colors (print-friendly versions)
 const BRAND_COLORS = {
   purple: '#8B5CF6',
+  purpleRGB: [139, 92, 246] as [number, number, number],
   purpleLight: '#A78BFA',
   gray: '#6B7280',
+  grayRGB: [107, 114, 128] as [number, number, number],
   grayLight: '#9CA3AF',
+  grayLightRGB: [156, 163, 175] as [number, number, number],
   black: '#1F2937',
-}
-
-// B&W print-friendly colors
-const BW_COLORS = {
-  black: '#000000',
-  darkGray: '#333333',
-  gray: '#666666',
-  lightGray: '#999999',
-  veryLightGray: '#CCCCCC',
+  blackRGB: [31, 41, 55] as [number, number, number],
   white: '#FFFFFF',
+  whiteRGB: [255, 255, 255] as [number, number, number],
 }
-
-// Note: jsPDF cannot render Unicode emojis, so we don't use them in the PDF
-
-// Maximum items to show per category before truncation
-const MAX_ITEMS_PER_CATEGORY = 8
 
 // Category order for consistent display
 const CATEGORY_ORDER = [
@@ -95,9 +85,15 @@ function formatQuantity(quantity: number, unit: string): string {
   return `${formattedQty} ${unit}`
 }
 
+// Row type for 2-column layout
+interface PDFRow {
+  type: 'category' | 'item'
+  category?: string
+  item?: ShoppingListItem
+}
+
 /**
- * Generates a printable PDF shopping list
- * @param options.twoColumn - Use two-column B&W layout for better printing (default: true)
+ * Generates a printable PDF shopping list with 2-column newspaper layout
  */
 export async function generateShoppingListPDF(
   shoppingList: ShoppingListData,
@@ -105,30 +101,10 @@ export async function generateShoppingListPDF(
   options: {
     includeQRCode?: boolean
     qrCodeDataUrl?: string
-    twoColumn?: boolean
   } = {}
 ): Promise<jsPDF> {
   console.log('🔷 Generating PDF for shopping list:', shoppingList.name)
 
-  // Default to two-column B&W layout
-  const useTwoColumn = options.twoColumn !== false
-
-  if (useTwoColumn) {
-    return generateTwoColumnPDF(shoppingList, itemsByCategory, options)
-  }
-
-  // Original single-column colored layout
-  return generateSingleColumnPDF(shoppingList, itemsByCategory, options)
-}
-
-/**
- * Two-column card-based layout matching the visual design
- */
-async function generateTwoColumnPDF(
-  shoppingList: ShoppingListData,
-  itemsByCategory: ItemsByCategory,
-  options: { includeQRCode?: boolean; qrCodeDataUrl?: string }
-): Promise<jsPDF> {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -138,279 +114,110 @@ async function generateTwoColumnPDF(
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
   const margin = 12
-  const columnGap = 6
-  const columnWidth = (pageWidth - margin * 2 - columnGap) / 2
-  let currentY = margin
+  const columnGap = 8
+  const columnWidth = (pageWidth - 2 * margin - columnGap) / 2
+  const footerHeight = 12
+  const contentHeight = pageHeight - margin - footerHeight
 
-  // Count total items
-  const totalItems = shoppingList.items.length
-  const dateStr = format(new Date(), 'd MMM yyyy')
-  const weekStr = `Week of ${dateStr}`
+  // Row heights
+  const categoryRowHeight = 6
+  const itemRowHeight = 5
+  const categorySpacing = 2
+
+  let currentY = margin
+  let currentPage = 1
 
   // === HEADER ===
-  // Shopping List title (left)
-  doc.setFontSize(22)
-  doc.setFont('helvetica', 'bold')
-  doc.setTextColor(BW_COLORS.black)
-  doc.text('Shopping List', margin, currentY + 7)
+  function drawHeader() {
+    // Text logo (left side) - styled "FamilyFuel"
+    doc.setFontSize(20)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(...BRAND_COLORS.purpleRGB)
+    doc.text('FamilyFuel', margin, currentY + 6)
 
-  // Subtitle: Week of X · Y items
-  doc.setFontSize(10)
-  doc.setFont('helvetica', 'normal')
-  doc.setTextColor(BW_COLORS.gray)
-  doc.text(`${weekStr} · ${totalItems} items`, margin, currentY + 13)
+    // Title and date (right side)
+    const dateStr = format(new Date(), 'd MMM yyyy')
+    doc.setFontSize(16)
+    doc.setTextColor(...BRAND_COLORS.blackRGB)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Shopping List', pageWidth - margin, currentY + 4, { align: 'right' })
 
-  // FamilyFuel logo (right side)
-  // Draw a small gradient-like square (purple to pink)
-  const logoX = pageWidth - margin - 8
-  const logoY = currentY + 2
-  doc.setFillColor(139, 92, 246) // Purple
-  doc.roundedRect(logoX, logoY, 8, 8, 1.5, 1.5, 'F')
-  // Add a pink gradient overlay effect
-  doc.setFillColor(236, 72, 153) // Pink
-  doc.roundedRect(logoX + 4, logoY, 4, 8, 0, 1.5, 'F')
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(...BRAND_COLORS.grayRGB)
+    doc.text(dateStr, pageWidth - margin, currentY + 10, { align: 'right' })
 
-  // FamilyFuel text
-  doc.setFontSize(12)
-  doc.setFont('helvetica', 'bold')
-  doc.setTextColor(BW_COLORS.black)
-  doc.text('FamilyFuel', logoX - 2, currentY + 6, { align: 'right' })
+    currentY += 16
 
-  // Generated date
-  doc.setFontSize(8)
-  doc.setFont('helvetica', 'normal')
-  doc.setTextColor(BW_COLORS.lightGray)
-  doc.text(`Generated ${dateStr}`, pageWidth - margin, currentY + 12, { align: 'right' })
+    // Divider line
+    doc.setDrawColor(...BRAND_COLORS.purpleRGB)
+    doc.setLineWidth(0.5)
+    doc.line(margin, currentY, pageWidth - margin, currentY)
 
-  currentY += 20
-
-  // Divider line
-  doc.setDrawColor(BW_COLORS.veryLightGray)
-  doc.setLineWidth(0.3)
-  doc.line(margin, currentY, pageWidth - margin, currentY)
-
-  currentY += 8
-
-  // === PREPARE CATEGORY CARDS ===
-  const categories = sortCategories(Object.keys(itemsByCategory))
-
-  interface CategoryCard {
-    name: string
-    items: ShoppingListItem[]
-    truncatedCount: number
+    currentY += 5
   }
 
-  const categoryCards: CategoryCard[] = []
-
-  for (const category of categories) {
-    const items = itemsByCategory[category]
-    if (!items || items.length === 0) continue
-
-    // Sort items alphabetically
-    const sortedItems = [...items].sort((a, b) =>
-      a.itemName.toLowerCase().localeCompare(b.itemName.toLowerCase())
-    )
-
-    const displayItems = sortedItems.slice(0, MAX_ITEMS_PER_CATEGORY)
-    const truncatedCount = Math.max(0, sortedItems.length - MAX_ITEMS_PER_CATEGORY)
-
-    categoryCards.push({
-      name: category,
-      items: displayItems,
-      truncatedCount,
-    })
+  // === FOOTER ===
+  function drawFooter() {
+    const footerY = pageHeight - 8
+    doc.setFontSize(7)
+    doc.setTextColor(...BRAND_COLORS.grayLightRGB)
+    doc.text('Powered by FamilyFuel', pageWidth / 2, footerY, { align: 'center' })
+    doc.text(`Page ${currentPage}`, pageWidth - margin, footerY, { align: 'right' })
   }
 
-  // === RENDER TWO COLUMNS OF CARDS ===
-  const cardPadding = 3
-  const headerHeight = 8
-  const itemHeight = 5
-  const cardGap = 6
-  const startY = currentY
-  const maxY = pageHeight - 15
+  // === DRAW CATEGORY HEADER ===
+  function drawCategoryHeader(x: number, y: number, width: number, category: string) {
+    // Purple background
+    doc.setFillColor(...BRAND_COLORS.purpleRGB)
+    doc.rect(x, y, width, categoryRowHeight, 'F')
 
-  // Calculate card heights and split into columns
-  function getCardHeight(card: CategoryCard): number {
-    const itemsHeight = card.items.length * itemHeight
-    const truncationHeight = card.truncatedCount > 0 ? 5 : 0
-    return headerHeight + itemsHeight + truncationHeight + cardPadding * 2
+    // White text
+    doc.setFontSize(8)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(...BRAND_COLORS.whiteRGB)
+    doc.text(category, x + 2, y + 4)
   }
 
-  // Split cards into two columns trying to balance heights
-  const leftCards: CategoryCard[] = []
-  const rightCards: CategoryCard[] = []
-  let leftHeight = 0
-  let rightHeight = 0
-
-  for (const card of categoryCards) {
-    const cardHeight = getCardHeight(card)
-    if (leftHeight <= rightHeight) {
-      leftCards.push(card)
-      leftHeight += cardHeight + cardGap
-    } else {
-      rightCards.push(card)
-      rightHeight += cardHeight + cardGap
-    }
-  }
-
-  // Render left column
-  let leftY = startY
-  for (const card of leftCards) {
-    leftY = renderCategoryCard(doc, card, margin, leftY, columnWidth, itemHeight, headerHeight, cardPadding)
-    leftY += cardGap
-    if (leftY > maxY) {
-      doc.addPage()
-      leftY = margin
-    }
-  }
-
-  // Render right column
-  let rightY = startY
-  const rightX = margin + columnWidth + columnGap
-  for (const card of rightCards) {
-    rightY = renderCategoryCard(doc, card, rightX, rightY, columnWidth, itemHeight, headerHeight, cardPadding)
-    rightY += cardGap
-    if (rightY > maxY) {
-      doc.addPage()
-      rightY = margin
-    }
-  }
-
-  console.log('🟢 Two-column card PDF generated successfully')
-  return doc
-}
-
-/**
- * Renders a category card with dark header and white item area
- */
-function renderCategoryCard(
-  doc: jsPDF,
-  card: { name: string; items: ShoppingListItem[]; truncatedCount: number },
-  x: number,
-  y: number,
-  width: number,
-  itemHeight: number,
-  headerHeight: number,
-  padding: number
-): number {
-  const itemsHeight = card.items.length * itemHeight
-  const truncationHeight = card.truncatedCount > 0 ? 5 : 0
-  const totalHeight = headerHeight + itemsHeight + truncationHeight + padding
-
-  // Card background (white with border)
-  doc.setFillColor(255, 255, 255)
-  doc.setDrawColor(220, 220, 220)
-  doc.setLineWidth(0.3)
-  doc.roundedRect(x, y, width, totalHeight, 2, 2, 'FD')
-
-  // Dark header
-  doc.setFillColor(38, 38, 38) // Dark gray almost black
-  doc.roundedRect(x, y, width, headerHeight, 2, 0, 'F')
-  // Fix bottom corners of header (they shouldn't be rounded)
-  doc.setFillColor(38, 38, 38)
-  doc.rect(x, y + headerHeight - 2, width, 2, 'F')
-
-  // Category name in header (no emojis - jsPDF cannot render Unicode)
-  doc.setFontSize(9)
-  doc.setFont('helvetica', 'bold')
-  doc.setTextColor(255, 255, 255)
-  doc.text(card.name.toUpperCase(), x + 3, y + 5.5)
-
-  // Items
-  let itemY = y + headerHeight + 2
-  doc.setFontSize(8)
-  doc.setFont('helvetica', 'normal')
-
-  for (const item of card.items) {
-    // Rounded checkbox
-    doc.setDrawColor(180, 180, 180)
-    doc.setLineWidth(0.2)
-    doc.roundedRect(x + 3, itemY, 3, 3, 0.5, 0.5, 'S')
+  // === DRAW ITEM ROW ===
+  function drawItemRow(x: number, y: number, width: number, item: ShoppingListItem) {
+    // Checkbox
+    const checkboxSize = 3
+    const checkboxY = y + 1
+    doc.setDrawColor(...BRAND_COLORS.grayRGB)
+    doc.setLineWidth(0.3)
+    doc.circle(x + checkboxSize / 2 + 1, checkboxY + checkboxSize / 2, checkboxSize / 2, 'S')
 
     if (item.isPurchased) {
       // Draw checkmark
-      doc.setDrawColor(100, 100, 100)
-      doc.line(x + 3.5, itemY + 1.5, x + 4.2, itemY + 2.3)
-      doc.line(x + 4.2, itemY + 2.3, x + 5.5, itemY + 0.8)
+      doc.setFillColor(...BRAND_COLORS.purpleRGB)
+      doc.circle(x + checkboxSize / 2 + 1, checkboxY + checkboxSize / 2, checkboxSize / 2 - 0.5, 'F')
     }
 
     // Item name
-    doc.setTextColor(item.isPurchased ? 180 : 50, item.isPurchased ? 180 : 50, item.isPurchased ? 180 : 50)
-    doc.text(item.itemName, x + 8, itemY + 2.3)
+    doc.setFontSize(8)
+    doc.setFont('helvetica', 'normal')
+    if (item.isPurchased) {
+      doc.setTextColor(...BRAND_COLORS.grayLightRGB)
+    } else {
+      doc.setTextColor(...BRAND_COLORS.blackRGB)
+    }
 
-    // Quantity (right-aligned)
-    const qtyStr = formatQuantity(item.quantity, item.unit)
-    doc.setTextColor(120, 120, 120)
-    doc.text(qtyStr, x + width - 3, itemY + 2.3, { align: 'right' })
+    const nameX = x + checkboxSize + 3
+    const maxNameWidth = width - checkboxSize - 30 // Leave space for quantity
+    const itemName = doc.splitTextToSize(item.itemName, maxNameWidth)[0] // Take first line only
+    doc.text(itemName, nameX, y + 3.5)
 
-    itemY += itemHeight
+    // Quantity (right aligned)
+    doc.setTextColor(...BRAND_COLORS.grayRGB)
+    const quantityStr = formatQuantity(item.quantity, item.unit)
+    doc.text(quantityStr, x + width - 2, y + 3.5, { align: 'right' })
   }
 
-  // Truncation text
-  if (card.truncatedCount > 0) {
-    doc.setFontSize(7)
-    doc.setTextColor(BRAND_COLORS.purple)
-    doc.text(`+ ${card.truncatedCount} more items`, x + width - 3, itemY + 2, { align: 'right' })
-  }
-
-  return y + totalHeight
-}
-
-/**
- * Original single-column colored layout
- */
-async function generateSingleColumnPDF(
-  shoppingList: ShoppingListData,
-  itemsByCategory: ItemsByCategory,
-  options: { includeQRCode?: boolean; qrCodeDataUrl?: string }
-): Promise<jsPDF> {
-  const doc = new jsPDF({
-    orientation: 'portrait',
-    unit: 'mm',
-    format: 'a4',
-  })
-
-  const pageWidth = doc.internal.pageSize.getWidth()
-  const pageHeight = doc.internal.pageSize.getHeight()
-  const margin = 12
-  let currentY = margin
-
-  // === HEADER ===
-
-  // Text logo (left side) - styled "FamilyFuel"
-  doc.setFontSize(20)
-  doc.setFont('helvetica', 'bold')
-  doc.setTextColor(BRAND_COLORS.purple)
-  doc.text('FamilyFuel', margin, currentY + 6)
-
-  // Title and date (right side)
-  const dateStr = format(new Date(), 'd MMM yyyy')
-  doc.setFontSize(16)
-  doc.setTextColor(BRAND_COLORS.black)
-  doc.setFont('helvetica', 'bold')
-  doc.text('Shopping List', pageWidth - margin, currentY + 4, { align: 'right' })
-
-  doc.setFontSize(9)
-  doc.setFont('helvetica', 'normal')
-  doc.setTextColor(BRAND_COLORS.gray)
-  doc.text(dateStr, pageWidth - margin, currentY + 10, { align: 'right' })
-
-  currentY += 16
-
-  // Divider line
-  doc.setDrawColor(BRAND_COLORS.purpleLight)
-  doc.setLineWidth(0.5)
-  doc.line(margin, currentY, pageWidth - margin, currentY)
-
-  currentY += 5
-
-  // === ITEMS BY CATEGORY ===
-
-  // Get sorted categories
+  // === BUILD ROW LIST ===
+  // Build a flat list of rows (category headers + items)
+  const rows: PDFRow[] = []
   const categories = sortCategories(Object.keys(itemsByCategory))
-
-  // Prepare table data for all categories
-  const tableData: (string | { content: string; styles: object })[][] = []
 
   for (const category of categories) {
     const items = itemsByCategory[category]
@@ -421,119 +228,99 @@ async function generateSingleColumnPDF(
       a.itemName.toLowerCase().localeCompare(b.itemName.toLowerCase())
     )
 
-    // Category header row
-    tableData.push([
-      {
-        content: category,
-        styles: {
-          fontStyle: 'bold',
-          fillColor: [139, 92, 246], // Purple
-          textColor: [255, 255, 255],
-          fontSize: 8,
-          cellPadding: { top: 2, bottom: 2, left: 4, right: 4 },
-        },
-      },
-      {
-        content: '',
-        styles: {
-          fillColor: [139, 92, 246],
-        },
-      },
-    ])
+    // Add category header row
+    rows.push({ type: 'category', category })
 
-    // Item rows - sorted alphabetically
+    // Add item rows
     for (const item of sortedItems) {
-      // Use simple ASCII checkbox that renders correctly
-      const checkbox = item.isPurchased ? '[x]' : '[  ]'
-      const quantityStr = formatQuantity(item.quantity, item.unit)
-
-      tableData.push([
-        {
-          content: `${checkbox}  ${item.itemName}`,
-          styles: {
-            fontStyle: 'normal',
-            textColor: item.isPurchased ? [156, 163, 175] : [31, 41, 55],
-            fontSize: 8,
-            cellPadding: { top: 1.5, bottom: 1.5, left: 6, right: 4 },
-          },
-        },
-        {
-          content: quantityStr,
-          styles: {
-            fontStyle: 'normal',
-            textColor: [107, 114, 128],
-            fontSize: 8,
-            halign: 'right',
-            cellPadding: { top: 1.5, bottom: 1.5, left: 4, right: 4 },
-          },
-        },
-      ])
+      rows.push({ type: 'item', item })
     }
-
-    // Add small spacing between categories
-    tableData.push([
-      { content: '', styles: { cellPadding: 0.5, minCellHeight: 1 } },
-      { content: '', styles: { cellPadding: 0.5, minCellHeight: 1 } },
-    ])
   }
 
-  // Generate table
-  autoTable(doc, {
-    startY: currentY,
-    head: [], // No header row
-    body: tableData,
-    theme: 'plain',
-    styles: {
-      font: 'helvetica',
-      overflow: 'linebreak',
-      cellWidth: 'wrap',
-    },
-    columnStyles: {
-      0: { cellWidth: 'auto' },
-      1: { cellWidth: 28 },
-    },
-    margin: { left: margin, right: margin },
-    didDrawPage: (data) => {
-      // Add footer on each page
-      const footerY = pageHeight - 8
+  // === CALCULATE ROW HEIGHTS FOR LAYOUT ===
+  function getRowHeight(row: PDFRow): number {
+    if (row.type === 'category') {
+      return categoryRowHeight + categorySpacing
+    }
+    return itemRowHeight
+  }
 
-      doc.setFontSize(7)
-      doc.setTextColor(BRAND_COLORS.grayLight)
-      doc.text('Powered by FamilyFuel', pageWidth / 2, footerY, { align: 'center' })
+  // === SPLIT INTO PAGES AND COLUMNS ===
+  // Each page has 2 columns. We need to figure out how many rows fit per column.
 
-      // Page number
-      const pageNum = doc.getCurrentPageInfo().pageNumber
-      const totalPages = doc.getNumberOfPages()
-      doc.text(`Page ${pageNum} of ${totalPages}`, pageWidth - margin, footerY, { align: 'right' })
-    },
-  })
+  drawHeader()
+  drawFooter()
+
+  const startY = currentY
+  const availableHeight = contentHeight - startY
+
+  // Column positions
+  const leftColumnX = margin
+  const rightColumnX = margin + columnWidth + columnGap
+
+  // Current drawing position
+  let columnIndex = 0 // 0 = left, 1 = right
+  let columnY = startY
+  let rowIndex = 0
+
+  while (rowIndex < rows.length) {
+    const row = rows[rowIndex]
+    const rowHeight = getRowHeight(row)
+
+    // Check if row fits in current column
+    if (columnY + rowHeight > contentHeight) {
+      // Move to next column or page
+      if (columnIndex === 0) {
+        // Move to right column
+        columnIndex = 1
+        columnY = startY
+      } else {
+        // New page
+        doc.addPage()
+        currentPage++
+        currentY = margin
+
+        // Draw header and footer on new page
+        drawHeader()
+        drawFooter()
+
+        columnIndex = 0
+        columnY = currentY
+      }
+    }
+
+    // Draw the row
+    const x = columnIndex === 0 ? leftColumnX : rightColumnX
+
+    if (row.type === 'category' && row.category) {
+      drawCategoryHeader(x, columnY, columnWidth, row.category)
+      columnY += categoryRowHeight + categorySpacing
+    } else if (row.type === 'item' && row.item) {
+      drawItemRow(x, columnY, columnWidth, row.item)
+      columnY += itemRowHeight
+    }
+
+    rowIndex++
+  }
 
   // === QR CODE (if provided) ===
   if (options.includeQRCode && options.qrCodeDataUrl) {
-    const finalY = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable?.finalY || currentY + 50
-
-    // Check if QR code fits on current page
-    const qrSize = 25
-    const qrY = finalY + 10
-
-    if (qrY + qrSize > pageHeight - 20) {
-      doc.addPage()
-    }
-
     try {
+      const qrSize = 20
       const qrX = pageWidth - margin - qrSize
-      const qrYPos = qrY > pageHeight - 40 ? 20 : qrY
-      doc.addImage(options.qrCodeDataUrl, 'PNG', qrX, qrYPos, qrSize, qrSize)
+      const qrY = pageHeight - footerHeight - qrSize - 5
 
-      doc.setFontSize(7)
-      doc.setTextColor(BRAND_COLORS.grayLight)
-      doc.text('Scan to view list', qrX + qrSize / 2, qrYPos + qrSize + 3, { align: 'center' })
+      doc.addImage(options.qrCodeDataUrl, 'PNG', qrX, qrY, qrSize, qrSize)
+
+      doc.setFontSize(6)
+      doc.setTextColor(...BRAND_COLORS.grayLightRGB)
+      doc.text('Scan to view', qrX + qrSize / 2, qrY + qrSize + 2, { align: 'center' })
     } catch (error) {
       console.warn('⚠️ Could not add QR code to PDF:', error)
     }
   }
 
-  console.log('🟢 Single-column PDF generated successfully')
+  console.log('🟢 PDF generated successfully with 2-column layout')
   return doc
 }
 
