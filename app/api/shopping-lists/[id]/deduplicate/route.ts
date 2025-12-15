@@ -22,6 +22,51 @@ const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 })
 
+/**
+ * Attempts to extract and parse valid JSON from AI response
+ * Handles common issues like trailing commas, incomplete arrays, etc.
+ */
+function extractAndParseJSON<T>(responseText: string): T | null {
+  // Try to find JSON object
+  const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+  if (!jsonMatch) return null
+
+  let jsonStr = jsonMatch[0]
+
+  // Common cleanups for AI-generated JSON:
+  // 1. Remove trailing commas before ] or }
+  jsonStr = jsonStr.replace(/,\s*([\]}])/g, '$1')
+
+  // 2. Fix unescaped quotes in strings (common AI mistake)
+  // This is a best-effort fix - replace straight quotes in obvious string contexts
+  jsonStr = jsonStr.replace(/"([^"]*)"([^,:}\]\s])([^"]*?)"/g, '"$1\\"$2$3"')
+
+  try {
+    return JSON.parse(jsonStr) as T
+  } catch (firstError) {
+    // If that failed, try more aggressive cleanup
+    console.log('⚠️ First JSON parse attempt failed, trying cleanup...')
+
+    try {
+      // Try to extract just the groups array if the outer object is malformed
+      const groupsMatch = jsonStr.match(/"groups"\s*:\s*(\[[\s\S]*?\])/);
+      if (groupsMatch) {
+        let groupsStr = groupsMatch[1]
+        // Clean up trailing commas in the array
+        groupsStr = groupsStr.replace(/,\s*([\]}])/g, '$1')
+        const groups = JSON.parse(groupsStr)
+        return { groups } as T
+      }
+    } catch (secondError) {
+      // Log the problematic JSON for debugging
+      console.log('⚠️ Raw AI response (first 500 chars):', responseText.substring(0, 500))
+      console.log('⚠️ Extracted JSON (first 500 chars):', jsonStr.substring(0, 500))
+    }
+
+    return null
+  }
+}
+
 // Extended duplicate group with confidence
 interface EnhancedDuplicateGroup extends DuplicateGroup {
   confidence: MatchConfidence
@@ -102,22 +147,24 @@ If no duplicates found, return: {"groups": []}`
     })
 
     const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/)
 
-    if (jsonMatch) {
-      const result = JSON.parse(jsonMatch[0]) as {
-        groups: Array<{
-          items: string[]
-          normalizedName: string
-          confidence: MatchConfidence
-          reason: string
-        }>
-      }
+    type SemanticResult = {
+      groups: Array<{
+        items: string[]
+        normalizedName: string
+        confidence: MatchConfidence
+        reason: string
+      }>
+    }
 
+    const result = extractAndParseJSON<SemanticResult>(responseText)
+
+    if (result && result.groups) {
       console.log(`🟢 AI found ${result.groups.length} semantic duplicate groups`)
       return result.groups
     }
 
+    console.log('⚠️ AI returned no valid groups')
     return []
   } catch (error) {
     console.error('❌ AI semantic matching failed:', error)
@@ -369,10 +416,11 @@ Respond with ONLY valid JSON in this exact format:
         })
 
         const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
-        const jsonMatch = responseText.match(/\{[\s\S]*\}/)
 
-        if (jsonMatch) {
-          const aiResult = JSON.parse(jsonMatch[0]) as { quantity: number; unit: string; itemName: string }
+        type CombineResult = { quantity: number; unit: string; itemName: string }
+        const aiResult = extractAndParseJSON<CombineResult>(responseText)
+
+        if (aiResult && aiResult.quantity && aiResult.unit) {
           combinedQuantity = aiResult.quantity
           combinedUnit = aiResult.unit
 
