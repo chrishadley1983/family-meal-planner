@@ -180,15 +180,19 @@ export async function GET(
 
           // Batch cook / Reheat indicator
           if (meal.isLeftover) {
-            doc.setFontSize(6)
-            doc.setTextColor(...BRAND_COLORS.emerald)
-            doc.text('🔄', dayX + cellPadding, textY)
-            textY += 3
+            doc.setFontSize(5)
+            doc.setFillColor(...BRAND_COLORS.emerald)
+            doc.roundedRect(dayX + cellPadding, textY - 2.5, 8, 3, 0.5, 0.5, 'F')
+            doc.setTextColor(...BRAND_COLORS.white)
+            doc.text('[R]', dayX + cellPadding + 1, textY)
+            textY += 4
           } else if (meal.notes && meal.notes.toLowerCase().includes('batch')) {
-            doc.setFontSize(6)
-            doc.setTextColor(...BRAND_COLORS.amber)
-            doc.text('⚡', dayX + cellPadding, textY)
-            textY += 3
+            doc.setFontSize(5)
+            doc.setFillColor(...BRAND_COLORS.amber)
+            doc.roundedRect(dayX + cellPadding, textY - 2.5, 8, 3, 0.5, 0.5, 'F')
+            doc.setTextColor(...BRAND_COLORS.white)
+            doc.text('[B]', dayX + cellPadding + 1, textY)
+            textY += 4
           }
 
           // Recipe name (wrapped)
@@ -223,15 +227,25 @@ export async function GET(
     currentY += 5
     doc.setFontSize(7)
 
-    doc.setTextColor(...BRAND_COLORS.amber)
-    doc.text('⚡', margin, currentY)
+    // Batch cook badge
+    doc.setFillColor(...BRAND_COLORS.amber)
+    doc.roundedRect(margin, currentY - 2, 8, 3, 0.5, 0.5, 'F')
+    doc.setFontSize(5)
+    doc.setTextColor(...BRAND_COLORS.white)
+    doc.text('[B]', margin + 1, currentY)
+    doc.setFontSize(7)
     doc.setTextColor(...BRAND_COLORS.gray)
-    doc.text('Batch cook', margin + 4, currentY)
+    doc.text('Batch cook', margin + 10, currentY)
 
-    doc.setTextColor(...BRAND_COLORS.emerald)
-    doc.text('🔄', margin + 30, currentY)
+    // Reheat badge
+    doc.setFillColor(...BRAND_COLORS.emerald)
+    doc.roundedRect(margin + 35, currentY - 2, 8, 3, 0.5, 0.5, 'F')
+    doc.setFontSize(5)
+    doc.setTextColor(...BRAND_COLORS.white)
+    doc.text('[R]', margin + 36, currentY)
+    doc.setFontSize(7)
     doc.setTextColor(...BRAND_COLORS.gray)
-    doc.text('Reheat (from batch)', margin + 34, currentY)
+    doc.text('Reheat (from batch)', margin + 45, currentY)
 
     // === BATCH COOKING / PREP AHEAD SUMMARY ===
     currentY += 10
@@ -248,7 +262,7 @@ export async function GET(
       doc.setFontSize(10)
       doc.setFont('helvetica', 'bold')
       doc.setTextColor(...BRAND_COLORS.black)
-      doc.text('📋 Batch Cooking & Prep Ahead', margin, currentY)
+      doc.text('Batch Cooking & Prep Ahead', margin, currentY)
 
       currentY += 6
 
@@ -256,7 +270,7 @@ export async function GET(
         doc.setFontSize(8)
         doc.setFont('helvetica', 'bold')
         doc.setTextColor(...BRAND_COLORS.amber)
-        doc.text('⚡ Batch Cook:', margin, currentY)
+        doc.text('[B] Batch Cook:', margin, currentY)
         currentY += 4
 
         doc.setFont('helvetica', 'normal')
@@ -288,7 +302,7 @@ export async function GET(
         doc.setFontSize(8)
         doc.setFont('helvetica', 'bold')
         doc.setTextColor(...BRAND_COLORS.emerald)
-        doc.text('🔄 Reheat Days:', margin, currentY)
+        doc.text('[R] Reheat Days:', margin, currentY)
         currentY += 4
 
         doc.setFont('helvetica', 'normal')
