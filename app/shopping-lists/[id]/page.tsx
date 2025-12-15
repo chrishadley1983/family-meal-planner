@@ -1197,17 +1197,6 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
               )}
               {shoppingList.status === 'Finalized' && (
                 <>
-                  {purchasedItems > 0 && (
-                    <>
-                      <button
-                        onClick={handleOpenConvertModal}
-                        className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm flex items-center gap-2"
-                        title="Add purchased items to inventory"
-                      >
-                        📦 Add to Inventory
-                      </button>
-                    </>
-                  )}
                   {/* Mark All Purchased button - only show when there are unpurchased items */}
                   {totalItems > purchasedItems && (
                     <button
@@ -1220,12 +1209,33 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
                   )}
                   {purchasedItems > 0 && (
                     <button
+                      onClick={handleOpenConvertModal}
+                      className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm flex items-center gap-2"
+                      title="Add purchased items to inventory"
+                    >
+                      📦 Add to Inventory
+                    </button>
+                  )}
+                  {/* Divider */}
+                  <div className="w-px h-8 bg-gray-600 mx-1" />
+                  {purchasedItems > 0 && (
+                    <button
                       onClick={handleUndoLastPurchased}
                       disabled={saving}
-                      className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 text-sm"
+                      className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500 disabled:opacity-50 text-sm"
                       title="Undo the most recently purchased item"
                     >
                       Undo Last
+                    </button>
+                  )}
+                  {purchasedItems > 0 && (
+                    <button
+                      onClick={handleUndoAllPurchased}
+                      disabled={saving}
+                      className="px-4 py-2 border border-purple-500 text-purple-400 rounded-lg hover:bg-purple-500/20 disabled:opacity-50 text-sm"
+                      title="Undo all purchased items"
+                    >
+                      Undo All ({purchasedItems})
                     </button>
                   )}
                   <button
