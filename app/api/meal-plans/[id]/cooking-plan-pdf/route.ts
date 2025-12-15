@@ -43,8 +43,8 @@ interface MealWithRecipe {
   } | null
 }
 
-function getDayDate(weekStartDate: string, dayIndex: number): Date {
-  const startDate = parseISO(weekStartDate)
+function getDayDate(weekStartDate: string | Date, dayIndex: number): Date {
+  const startDate = typeof weekStartDate === 'string' ? parseISO(weekStartDate) : new Date(weekStartDate)
   return addDays(startDate, dayIndex)
 }
 
@@ -140,8 +140,8 @@ export async function GET(
     doc.text('Cooking Plan', margin, currentY + 7)
 
     // Date range
-    const startDate = parseISO(mealPlan.weekStartDate)
-    const endDate = parseISO(mealPlan.weekEndDate)
+    const startDate = new Date(mealPlan.weekStartDate)
+    const endDate = new Date(mealPlan.weekEndDate)
     doc.setFontSize(10)
     doc.setFont('helvetica', 'normal')
     doc.setTextColor(...COLORS.textMedium)

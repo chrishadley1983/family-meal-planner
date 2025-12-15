@@ -26,8 +26,8 @@ const MEAL_TYPE_LABELS: Record<string, string> = {
   dinner: 'DINNER',
 }
 
-function getDayDate(weekStartDate: string, dayIndex: number): Date {
-  const startDate = parseISO(weekStartDate)
+function getDayDate(weekStartDate: string | Date, dayIndex: number): Date {
+  const startDate = typeof weekStartDate === 'string' ? parseISO(weekStartDate) : new Date(weekStartDate)
   return addDays(startDate, dayIndex)
 }
 
@@ -91,8 +91,8 @@ export async function GET(
     doc.setFont('helvetica', 'bold')
     doc.setTextColor(...BRAND_COLORS.black)
 
-    const startDate = parseISO(mealPlan.weekStartDate)
-    const endDate = parseISO(mealPlan.weekEndDate)
+    const startDate = new Date(mealPlan.weekStartDate)
+    const endDate = new Date(mealPlan.weekEndDate)
     const dateRange = `Week of ${format(startDate, 'd/MM/yyyy')} - ${format(endDate, 'd/MM/yyyy')}`
     doc.text(dateRange, pageWidth / 2, currentY + 6, { align: 'center' })
 
