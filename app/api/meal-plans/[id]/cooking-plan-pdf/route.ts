@@ -8,9 +8,11 @@ import { format, parseISO, addDays } from 'date-fns'
 // Brand colors - matching the design
 const COLORS = {
   purple: [139, 92, 246] as [number, number, number],
-  purpleLight: [167, 139, 250] as [number, number, number],
+  purpleLight: [245, 243, 255] as [number, number, number],
   amber: [245, 158, 11] as [number, number, number],
+  amberDark: [217, 119, 6] as [number, number, number],
   emerald: [16, 185, 129] as [number, number, number],
+  emeraldDark: [5, 150, 105] as [number, number, number],
   headerBg: [31, 41, 55] as [number, number, number],
   rowBg: [249, 250, 251] as [number, number, number],
   rowAltBg: [255, 255, 255] as [number, number, number],
@@ -49,12 +51,12 @@ function getDayDate(weekStartDate: string | Date, dayIndex: number): Date {
 }
 
 function formatTime(minutes: number | null | undefined): string {
-  if (!minutes) return '—'
-  if (minutes < 60) return `${minutes} min`
+  if (!minutes) return '-'
+  if (minutes < 60) return `${minutes}m`
   const hours = Math.floor(minutes / 60)
   const mins = minutes % 60
-  if (mins === 0) return `${hours} hr`
-  return `${hours} hr ${mins} min`
+  if (mins === 0) return `${hours}h`
+  return `${hours}h ${mins}m`
 }
 
 function formatTotalTime(minutes: number): string {
@@ -63,7 +65,61 @@ function formatTotalTime(minutes: number): string {
   const mins = minutes % 60
   if (hours === 0) return `${mins} min`
   if (mins === 0) return `${hours} hr`
-  return `${hours} hr ${mins} min`
+  return `${hours}h ${mins}m`
+}
+
+// Extract batch servings from notes like "Batch cook 8 servings total"
+function extractBatchServings(notes: string | null, defaultServings: number | null): number | null {
+  if (!notes) return defaultServings
+
+  // Match patterns like "8 servings total", "batch cook 8 servings", "makes 8 servings"
+  const match = notes.match(/(\d+)\s*servings?\s*(total)?/i)
+  if (match) {
+    return parseInt(match[1], 10)
+  }
+  return defaultServings
+}
+
+// Draw a nice badge with icon
+function drawBadge(
+  doc: jsPDF,
+  x: number,
+  y: number,
+  type: 'batch' | 'reheat'
+) {
+  const colors = type === 'batch'
+    ? { bg: COLORS.amber, border: COLORS.amberDark }
+    : { bg: COLORS.emerald, border: COLORS.emeraldDark }
+
+  const text = type === 'batch' ? 'BATCH' : 'REHEAT'
+  const badgeWidth = 14
+  const badgeHeight = 3.5
+
+  // Draw badge background with slight border
+  doc.setFillColor(...colors.bg)
+  doc.roundedRect(x, y, badgeWidth, badgeHeight, 1, 1, 'F')
+
+  // Draw small icon circle
+  doc.setFillColor(...COLORS.white)
+  doc.circle(x + 2.5, y + badgeHeight / 2, 1, 'F')
+
+  // Draw icon symbol inside circle
+  doc.setFillColor(...colors.bg)
+  if (type === 'batch') {
+    // Lightning bolt shape (simplified as a small triangle)
+    doc.triangle(x + 2.2, y + 0.8, x + 2.8, y + 1.5, x + 2.2, y + 2.7, 'F')
+  } else {
+    // Circular arrow (simplified as curved line)
+    doc.setDrawColor(...colors.bg)
+    doc.setLineWidth(0.3)
+    doc.circle(x + 2.5, y + badgeHeight / 2, 0.6, 'S')
+  }
+
+  // Badge text
+  doc.setFontSize(5)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(...COLORS.white)
+  doc.text(text, x + 5, y + 2.6)
 }
 
 export async function GET(
@@ -106,7 +162,7 @@ export async function GET(
       return NextResponse.json({ error: 'Meal plan not found' }, { status: 404 })
     }
 
-    console.log('🔷 Generating Cooking Plan PDF for week:', mealPlan.weekStartDate)
+    console.log('Generating Cooking Plan PDF for week:', mealPlan.weekStartDate)
 
     const doc = new jsPDF({
       orientation: 'portrait',
@@ -116,55 +172,45 @@ export async function GET(
 
     const pageWidth = doc.internal.pageSize.getWidth()
     const pageHeight = doc.internal.pageSize.getHeight()
-    const margin = 15
+    const margin = 10
     const contentWidth = pageWidth - 2 * margin
 
     let currentY = margin
 
-    // Column widths for the table
+    // Compact column widths
     const colWidths = {
-      meal: 25,
-      recipe: contentWidth - 25 - 20 - 20 - 20,
-      prep: 20,
-      cook: 20,
-      servings: 20,
+      meal: 22,
+      recipe: contentWidth - 22 - 16 - 16 - 14,
+      prep: 16,
+      cook: 16,
+      servings: 14,
     }
 
-    const tableRowHeight = 10
+    const tableRowHeight = 8
+    const dayHeaderHeight = 9
 
-    // === HEADER ===
-    // Title
-    doc.setFontSize(22)
+    // === HEADER (compact) ===
+    doc.setFontSize(16)
     doc.setFont('helvetica', 'bold')
     doc.setTextColor(...COLORS.textDark)
-    doc.text('Cooking Plan', margin, currentY + 7)
+    doc.text('Cooking Plan', margin, currentY + 5)
 
-    // Date range
     const startDate = new Date(mealPlan.weekStartDate)
     const endDate = new Date(mealPlan.weekEndDate)
-    doc.setFontSize(10)
-    doc.setFont('helvetica', 'normal')
-    doc.setTextColor(...COLORS.textMedium)
-    doc.text(`Week of ${format(startDate, 'd MMM')} – ${format(endDate, 'd MMM yyyy')}`, margin, currentY + 13)
-
-    // FamilyFuel logo (right side)
-    doc.setFontSize(14)
-    doc.setFont('helvetica', 'bold')
-    doc.setTextColor(...COLORS.purple)
-
-    // Purple circle
-    doc.setFillColor(...COLORS.purple)
-    doc.circle(pageWidth - margin - 35, currentY + 5, 4, 'F')
-
-    doc.text('FamilyFuel', pageWidth - margin - 28, currentY + 7)
-
-    // Generated date
     doc.setFontSize(8)
     doc.setFont('helvetica', 'normal')
-    doc.setTextColor(...COLORS.textLight)
-    doc.text(`Generated ${format(new Date(), 'd MMM yyyy')}`, pageWidth - margin, currentY + 13, { align: 'right' })
+    doc.setTextColor(...COLORS.textMedium)
+    doc.text(`Week of ${format(startDate, 'd MMM')} - ${format(endDate, 'd MMM yyyy')}`, margin, currentY + 10)
 
-    currentY += 22
+    // FamilyFuel branding (right side, compact)
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(...COLORS.purple)
+    doc.setFillColor(...COLORS.purple)
+    doc.circle(pageWidth - margin - 28, currentY + 3, 2.5, 'F')
+    doc.text('FamilyFuel', pageWidth - margin - 24, currentY + 5)
+
+    currentY += 14
 
     // === DRAW EACH DAY ===
     for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
@@ -180,20 +226,34 @@ export async function GET(
         )
       }
 
-      // Calculate section height
-      const mealsWithData = MEAL_TYPES.filter(mt => mealsByType[mt]?.recipeName).length
-      const numRows = Math.max(mealsWithData, 1)
+      // Calculate actual meals with recipes
+      const mealsWithData = MEAL_TYPES.filter(mt => mealsByType[mt]?.recipeName)
+      const numRows = Math.max(mealsWithData.length, 1)
 
-      // Check for batch cooking and prep ahead
+      // Check for batch cooking
       const batchMeals = dayMeals.filter((m: MealWithRecipe) =>
         m.notes && m.notes.toLowerCase().includes('batch') && !m.isLeftover
       )
       const hasPrepAhead = batchMeals.length > 0
 
-      const sectionHeight = 15 + tableRowHeight + (numRows * tableRowHeight) + (hasPrepAhead ? 15 : 0) + 12
+      // Calculate dynamic row heights based on content
+      let estimatedRowHeights = 0
+      for (const mealType of MEAL_TYPES) {
+        const meal = mealsByType[mealType]
+        if (meal?.recipeName) {
+          const isBatch = meal.notes && meal.notes.toLowerCase().includes('batch') && !meal.isLeftover
+          // Base row + extra for batch notes
+          estimatedRowHeights += isBatch ? tableRowHeight + 4 : tableRowHeight
+        }
+      }
+      if (estimatedRowHeights === 0) estimatedRowHeights = tableRowHeight
+
+      // Section height calculation
+      const prepAheadHeight = hasPrepAhead ? 12 : 0
+      const sectionHeight = dayHeaderHeight + tableRowHeight + estimatedRowHeights + prepAheadHeight + 8
 
       // Check if we need a new page
-      if (currentY + sectionHeight > pageHeight - 15) {
+      if (currentY + sectionHeight > pageHeight - 10) {
         doc.addPage()
         currentY = margin
       }
@@ -203,37 +263,36 @@ export async function GET(
 
       // Day header background
       doc.setFillColor(...COLORS.headerBg)
-      doc.roundedRect(sectionX, currentY, sectionWidth, 12, 2, 2, 'F')
+      doc.roundedRect(sectionX, currentY, sectionWidth, dayHeaderHeight, 1.5, 1.5, 'F')
 
       // Day title
-      doc.setFontSize(11)
+      doc.setFontSize(9)
       doc.setFont('helvetica', 'bold')
       doc.setTextColor(...COLORS.white)
-      doc.text(`${dayName}, ${format(dayDate, 'd MMMM')}`, sectionX + 5, currentY + 8)
+      doc.text(`${dayName}, ${format(dayDate, 'd MMM')}`, sectionX + 4, currentY + 6)
 
-      currentY += 15
+      currentY += dayHeaderHeight + 1
 
       // Table header
-      const tableY = currentY
       doc.setFillColor(...COLORS.headerBg)
-      doc.rect(sectionX, tableY, sectionWidth, tableRowHeight, 'F')
+      doc.rect(sectionX, currentY, sectionWidth, tableRowHeight - 1, 'F')
 
-      doc.setFontSize(8)
+      doc.setFontSize(6)
       doc.setFont('helvetica', 'bold')
       doc.setTextColor(...COLORS.white)
 
-      let colX = sectionX + 3
-      doc.text('Meal', colX, tableY + 7)
+      let colX = sectionX + 2
+      doc.text('MEAL', colX, currentY + 5)
       colX += colWidths.meal
-      doc.text('Recipe', colX, tableY + 7)
+      doc.text('RECIPE', colX, currentY + 5)
       colX += colWidths.recipe
-      doc.text('Prep', colX, tableY + 7)
+      doc.text('PREP', colX, currentY + 5)
       colX += colWidths.prep
-      doc.text('Cook', colX, tableY + 7)
+      doc.text('COOK', colX, currentY + 5)
       colX += colWidths.cook
-      doc.text('Servings', colX, tableY + 7)
+      doc.text('SERVES', colX, currentY + 5)
 
-      currentY += tableRowHeight
+      currentY += tableRowHeight - 1
 
       // Table rows
       let rowIndex = 0
@@ -253,74 +312,80 @@ export async function GET(
           totalCookTime += meal.recipe.cookTimeMinutes || 0
         }
 
+        // Determine row height based on whether we need extra space for notes
+        const rowHeight = isBatch && meal.notes ? tableRowHeight + 4 : tableRowHeight
+
         // Row background
         doc.setFillColor(...(rowIndex % 2 === 0 ? COLORS.rowBg : COLORS.rowAltBg))
-        doc.rect(sectionX, currentY, sectionWidth, tableRowHeight, 'F')
+        doc.rect(sectionX, currentY, sectionWidth, rowHeight, 'F')
 
         // Row border
         doc.setDrawColor(...COLORS.border)
-        doc.setLineWidth(0.2)
-        doc.rect(sectionX, currentY, sectionWidth, tableRowHeight, 'S')
+        doc.setLineWidth(0.1)
+        doc.rect(sectionX, currentY, sectionWidth, rowHeight, 'S')
 
-        colX = sectionX + 3
+        colX = sectionX + 2
 
-        // Meal type
-        doc.setFontSize(7)
+        // Meal type label
+        doc.setFontSize(6)
         doc.setFont('helvetica', 'bold')
         doc.setTextColor(...COLORS.textDark)
         doc.text(MEAL_TYPE_LABELS[mealType] || mealType.toUpperCase(), colX, currentY + 4)
 
         // BATCH or REHEAT badge
         if (isBatch) {
-          doc.setFillColor(...COLORS.amber)
-          doc.roundedRect(colX, currentY + 5, 16, 4, 1, 1, 'F')
-          doc.setFontSize(5)
-          doc.setTextColor(...COLORS.white)
-          doc.text('[B] BATCH', colX + 1, currentY + 8)
+          drawBadge(doc, colX, currentY + 5, 'batch')
         } else if (isReheat) {
-          doc.setFillColor(...COLORS.emerald)
-          doc.roundedRect(colX, currentY + 5, 16, 4, 1, 1, 'F')
-          doc.setFontSize(5)
-          doc.setTextColor(...COLORS.white)
-          doc.text('[R] REHEAT', colX + 0.5, currentY + 8)
+          drawBadge(doc, colX, currentY + 5, 'reheat')
         }
 
         colX += colWidths.meal
 
-        // Recipe name
-        doc.setFontSize(8)
+        // Recipe name (full, with wrapping if needed)
+        doc.setFontSize(7)
         doc.setFont('helvetica', 'normal')
         doc.setTextColor(...COLORS.textDark)
         const recipeName = meal.recipeName || ''
-        const truncatedName = recipeName.length > 45 ? recipeName.substring(0, 42) + '...' : recipeName
-        doc.text(truncatedName, colX, currentY + 6)
-
-        // Add batch note under recipe name if applicable
-        if (isBatch && meal.notes) {
+        const recipeColWidth = colWidths.recipe - 4
+        const recipeLines = doc.splitTextToSize(recipeName, recipeColWidth)
+        doc.text(recipeLines[0], colX, currentY + 4)
+        if (recipeLines.length > 1) {
           doc.setFontSize(6)
+          doc.text(recipeLines[1], colX, currentY + 7)
+        }
+
+        // Add batch note under recipe name if applicable (wrapped, not truncated)
+        if (isBatch && meal.notes) {
+          doc.setFontSize(5.5)
           doc.setTextColor(...COLORS.textMedium)
-          const noteText = meal.notes.length > 55 ? meal.notes.substring(0, 52) + '...' : meal.notes
-          doc.text(noteText, colX, currentY + 9)
+          const noteLines = doc.splitTextToSize(meal.notes, recipeColWidth)
+          // Show up to 2 lines of notes
+          doc.text(noteLines.slice(0, 2).join('\n'), colX, currentY + (recipeLines.length > 1 ? 10 : 8))
         }
 
         colX += colWidths.recipe
 
         // Prep time
-        doc.setFontSize(8)
+        doc.setFontSize(7)
         doc.setTextColor(...COLORS.textMedium)
-        const prepTime = isReheat ? '—' : formatTime(meal.recipe?.prepTimeMinutes)
-        doc.text(prepTime, colX, currentY + 6)
+        const prepTime = isReheat ? '-' : formatTime(meal.recipe?.prepTimeMinutes)
+        doc.text(prepTime, colX, currentY + 4)
         colX += colWidths.prep
 
         // Cook time
-        const cookTime = isReheat ? '10 min' : formatTime(meal.recipe?.cookTimeMinutes)
-        doc.text(cookTime, colX, currentY + 6)
+        const cookTime = isReheat ? '10m' : formatTime(meal.recipe?.cookTimeMinutes)
+        doc.text(cookTime, colX, currentY + 4)
         colX += colWidths.cook
 
-        // Servings
-        doc.text(meal.servings?.toString() || '—', colX + 5, currentY + 6)
+        // Servings - for batch cooking, extract total from notes
+        const displayServings = isBatch
+          ? extractBatchServings(meal.notes, meal.servings)
+          : meal.servings
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(...COLORS.textDark)
+        doc.text(displayServings?.toString() || '-', colX + 2, currentY + 4)
 
-        currentY += tableRowHeight
+        currentY += rowHeight
         rowIndex++
       }
 
@@ -328,59 +393,61 @@ export async function GET(
       if (rowIndex === 0) {
         doc.setFillColor(...COLORS.rowBg)
         doc.rect(sectionX, currentY, sectionWidth, tableRowHeight, 'F')
-        doc.setFontSize(8)
+        doc.setFontSize(7)
         doc.setFont('helvetica', 'italic')
         doc.setTextColor(...COLORS.textLight)
-        doc.text('No meals scheduled', sectionX + sectionWidth / 2, currentY + 6, { align: 'center' })
+        doc.text('No meals scheduled', sectionX + sectionWidth / 2, currentY + 5, { align: 'center' })
         currentY += tableRowHeight
       }
 
-      // PREP AHEAD section (if applicable)
+      // PREP AHEAD section (if applicable) - more compact
       if (hasPrepAhead) {
-        currentY += 3
+        currentY += 2
 
         // Prep ahead header
-        doc.setFillColor(245, 243, 255) // Light purple
-        doc.rect(sectionX, currentY, sectionWidth, 5, 'F')
+        doc.setFillColor(...COLORS.purpleLight)
+        doc.rect(sectionX, currentY, sectionWidth, 4, 'F')
 
-        doc.setFontSize(7)
+        doc.setFontSize(6)
         doc.setFont('helvetica', 'bold')
         doc.setTextColor(...COLORS.purple)
-        doc.text('PREP AHEAD (for later this week)', sectionX + 3, currentY + 3.5)
-        currentY += 6
+        doc.text('PREP AHEAD', sectionX + 2, currentY + 2.8)
+        currentY += 5
 
-        // Prep tasks
-        doc.setFontSize(7)
+        // Prep tasks with full text wrapping
+        doc.setFontSize(6)
         doc.setFont('helvetica', 'normal')
         doc.setTextColor(...COLORS.textMedium)
 
         batchMeals.forEach((m: MealWithRecipe) => {
           if (m.notes) {
-            const prepText = `For ${m.recipeName}: ${m.notes.substring(0, 80)}${m.notes.length > 80 ? '...' : ''}`
-            doc.text(prepText, sectionX + 3, currentY + 3)
-            currentY += 4
+            const prepText = `${m.recipeName}: ${m.notes}`
+            const wrappedLines = doc.splitTextToSize(prepText, sectionWidth - 6)
+            // Show up to 2 lines
+            wrappedLines.slice(0, 2).forEach((line: string, i: number) => {
+              doc.text(line, sectionX + 3, currentY + 2.5 + (i * 3))
+            })
+            currentY += Math.min(wrappedLines.length, 2) * 3
           }
         })
-
-        currentY += 2
       }
 
-      // Total cooking time
+      // Total cooking time (compact)
       const totalTime = totalPrepTime + totalCookTime
-      currentY += 3
-      doc.setFontSize(8)
+      currentY += 2
+      doc.setFontSize(6)
       doc.setFont('helvetica', 'bold')
       doc.setTextColor(...COLORS.textDark)
-      doc.text(`Total cooking time: ${formatTotalTime(totalTime)}`, sectionX + sectionWidth - 3, currentY, { align: 'right' })
+      doc.text(`Total: ${formatTotalTime(totalTime)}`, sectionX + sectionWidth - 2, currentY, { align: 'right' })
 
-      currentY += 12 // Space before next day
+      currentY += 6 // Reduced space before next day
     }
 
     // Convert to buffer
     const pdfBuffer = Buffer.from(doc.output('arraybuffer'))
     const filename = `FamilyFuel-CookingPlan-${format(startDate, 'yyyy-MM-dd')}.pdf`
 
-    console.log('🟢 Cooking Plan PDF generated successfully')
+    console.log('Cooking Plan PDF generated successfully')
 
     return new NextResponse(pdfBuffer, {
       headers: {
@@ -389,7 +456,7 @@ export async function GET(
       },
     })
   } catch (error) {
-    console.error('❌ Error generating cooking plan PDF:', error)
+    console.error('Error generating cooking plan PDF:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
