@@ -563,40 +563,40 @@ export default function MealPlansPage() {
             <div className="flex gap-2">
               <button
                 onClick={() => setFilterStatus('all')}
-                className={`px-3 py-1 rounded text-sm transition-colors ${
+                className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
                   filterStatus === 'all'
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
+                    ? 'bg-purple-500 text-white'
+                    : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'
                 }`}
               >
                 All
               </button>
               <button
                 onClick={() => setFilterStatus('Draft')}
-                className={`px-3 py-1 rounded text-sm transition-colors ${
+                className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
                   filterStatus === 'Draft'
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
+                    ? 'bg-purple-500 text-white'
+                    : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'
                 }`}
               >
                 Draft
               </button>
               <button
                 onClick={() => setFilterStatus('Finalized')}
-                className={`px-3 py-1 rounded text-sm transition-colors ${
+                className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
                   filterStatus === 'Finalized'
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
+                    ? 'bg-purple-500 text-white'
+                    : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'
                 }`}
               >
                 Finalized
               </button>
               <button
                 onClick={() => setFilterStatus('Archived')}
-                className={`px-3 py-1 rounded text-sm transition-colors ${
+                className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
                   filterStatus === 'Archived'
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
+                    ? 'bg-purple-500 text-white'
+                    : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'
                 }`}
               >
                 Archived
