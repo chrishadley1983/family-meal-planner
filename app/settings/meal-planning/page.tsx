@@ -332,13 +332,15 @@ export default function MealPlanningSettingsPage() {
                     className="w-full accent-purple-500"
                   />
                   <div className="flex justify-between text-xs text-zinc-500 mt-1">
-                    <span>Mild</span>
-                    <span>Moderate</span>
-                    <span>Aggressive</span>
+                    <span>Low</span>
+                    <span>Medium</span>
+                    <span>High</span>
                   </div>
                 </div>
                 <div className="p-3 bg-zinc-900/50 rounded-lg border border-zinc-700">
-                  <div className="font-medium text-purple-400 capitalize mb-1">{settings.shoppingMode}</div>
+                  <div className="font-medium text-purple-400 capitalize mb-1">
+                    {settings.shoppingMode === 'mild' ? 'Low' : settings.shoppingMode === 'moderate' ? 'Medium' : 'High'}
+                  </div>
                   <div className="text-sm text-zinc-400">{SHOPPING_MODE_DESCRIPTIONS[settings.shoppingMode]}</div>
                 </div>
               </div>

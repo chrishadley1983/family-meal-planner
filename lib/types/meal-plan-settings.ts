@@ -144,16 +144,16 @@ export const MACRO_MODE_DESCRIPTIONS: Record<MacroMode, string> = {
 
 // Shopping mode descriptions for UI
 export const SHOPPING_MODE_DESCRIPTIONS: Record<ShoppingMode, string> = {
-  mild: 'Slight preference for ingredient overlap (0.3 rating boost)',
-  moderate: 'Moderate preference for efficiency (0.5 rating boost)',
-  aggressive: 'Strong preference for minimal shopping (0.8 rating boost)'
+  mild: 'Slight preference for ingredient overlap',
+  moderate: 'Moderate preference for efficiency',
+  aggressive: 'Strong preference for minimal shopping'
 }
 
 // Expiry priority descriptions for UI
 export const EXPIRY_PRIORITY_DESCRIPTIONS: Record<ExpiryPriority, string> = {
-  soft: 'Consider expiring items, but don\'t force them (0.3 rating boost)',
-  moderate: 'Prioritize expiring items when possible (0.5 rating boost)',
-  strong: 'Strongly favour recipes using expiring items (1.0 rating boost)'
+  soft: 'Consider expiring items, but don\'t force them',
+  moderate: 'Prioritize expiring items when possible',
+  strong: 'Strongly favour recipes using expiring items'
 }
 
 // Feedback detail descriptions for UI

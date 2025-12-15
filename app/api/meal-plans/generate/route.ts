@@ -142,6 +142,11 @@ export async function POST(req: NextRequest) {
             recipeId: h.recipeId,
             usedDate: h.usedDate,
             mealType: h.mealType
+          })),
+          recipes.map((r) => ({
+            id: r.id,
+            recipeName: r.recipeName,
+            mealType: r.mealType
           }))
         )
 

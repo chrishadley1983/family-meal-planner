@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { startOfWeek, format, addWeeks } from 'date-fns'
@@ -321,12 +321,20 @@ export default function MealPlansPage() {
         <div className="card p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium text-white">Generate New Meal Plan</h3>
-            <Link
-              href="/settings/meal-planning"
-              className="flex items-center gap-2 px-3 py-2 bg-zinc-700 text-zinc-400 rounded-lg text-sm hover:bg-zinc-600 hover:text-zinc-300 transition-colors"
-            >
-              ⚙️ Settings
-            </Link>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowScheduleOverride(true)}
+                className="flex items-center gap-2 px-3 py-2 bg-zinc-700 text-zinc-400 rounded-lg text-sm hover:bg-zinc-600 hover:text-zinc-300 transition-colors"
+              >
+                📅 Customize Meal Slots
+              </button>
+              <Link
+                href="/settings/meal-planning"
+                className="flex items-center gap-2 px-3 py-2 bg-zinc-700 text-zinc-400 rounded-lg text-sm hover:bg-zinc-600 hover:text-zinc-300 transition-colors"
+              >
+                ⚙️ Settings
+              </Link>
+            </div>
           </div>
           <div className="flex gap-4 items-end flex-wrap">
             <div className="flex-1 min-w-[200px]">
@@ -383,15 +391,7 @@ export default function MealPlansPage() {
           {/* Quick Options */}
           {!copyFromPlanId && (
             <div className="mt-6 border-t border-zinc-800 pt-4">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-sm font-medium text-white">Quick Options</h4>
-                <Link
-                  href="/settings/meal-planning"
-                  className="text-sm text-purple-400 hover:text-purple-300 underline"
-                >
-                  Customize Settings →
-                </Link>
-              </div>
+              <h4 className="text-sm font-medium text-white mb-3">Quick Options</h4>
               <div className="space-y-2">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -433,17 +433,6 @@ export default function MealPlansPage() {
           <p className="mt-4 text-sm text-zinc-400">
             Claude AI will analyze your family profiles, recipes, and preferences to generate a personalized weekly meal plan.
           </p>
-
-          {/* Schedule Override Toggle */}
-          <div className="mt-4">
-            <button
-              type="button"
-              onClick={() => setShowScheduleOverride(true)}
-              className="text-sm text-purple-400 hover:text-purple-300 underline"
-            >
-              ▶ Customize meals for this week
-            </button>
-          </div>
         </div>
 
         {/* Customize Week Schedule Modal */}
@@ -691,9 +680,9 @@ export default function MealPlansPage() {
                           <tbody>
                             {/* Render each meal type as a row */}
                             {MEAL_TYPE_ORDER.map((mealTypeKey) => (
-                              <>
+                              <React.Fragment key={mealTypeKey}>
                                 {/* Meal Type Header Row */}
-                                <tr key={`header-${mealTypeKey}`} className="border-b border-zinc-700" style={{ background: 'rgba(139, 92, 246, 0.05)' }}>
+                                <tr className="border-b border-zinc-700" style={{ background: 'rgba(139, 92, 246, 0.05)' }}>
                                   <td
                                     colSpan={7}
                                     className="py-2 px-3 text-[10px] uppercase tracking-wider font-semibold text-zinc-500"
@@ -702,7 +691,7 @@ export default function MealPlansPage() {
                                   </td>
                                 </tr>
                                 {/* Meal Content Row */}
-                                <tr key={`row-${mealTypeKey}`} className="border-b border-zinc-700 last:border-b-0">
+                                <tr className="border-b border-zinc-700 last:border-b-0">
                                   {weekDays.map(({ day }, idx) => {
                                     const mealsByType = mealsByDayAndType.get(day)
                                     const meal = mealsByType?.get(mealTypeKey)
@@ -744,7 +733,7 @@ export default function MealPlansPage() {
                                     )
                                   })}
                                 </tr>
-                              </>
+                              </React.Fragment>
                             ))}
                           </tbody>
                         </table>

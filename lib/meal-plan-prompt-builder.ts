@@ -685,6 +685,11 @@ Please generate a meal plan for the week and return it as a JSON object with thi
 **CRITICAL RECIPE SELECTION RULES:**
 - **YOU MUST ONLY use recipes from the "AVAILABLE RECIPES" list above**
 - Every meal MUST have a valid recipeId from that list - do NOT suggest recipes that aren't in the database
+- **MEAL TYPE MATCHING IS MANDATORY:** Only use recipes for meal slots that match their designated "Meal Types" field:
+  * A recipe with mealType: ["Dinner"] can ONLY be used for dinner slots
+  * A recipe with mealType: ["Breakfast"] can ONLY be used for breakfast slots
+  * A recipe with mealType: ["Breakfast", "Lunch"] can be used for either breakfast OR lunch, but NOT dinner
+  * NEVER assign a dinner recipe to breakfast or vice versa - this is a critical error
 - **COOLDOWN PERIODS MUST BE RESPECTED** - Do NOT use the same recipe within its cooldown period (see "RECIPE VARIETY & COOLDOWNS" section)
 - The ONLY exception to cooldown is batch cooking - if using the same recipe multiple times, it MUST be set up as batch cooking with proper isLeftover flags
 - If you cannot create a complete meal plan with the available recipes (e.g., not enough variety, missing meal types, dietary restrictions can't be met), you MUST explain this in your summary
