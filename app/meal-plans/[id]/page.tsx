@@ -1491,7 +1491,29 @@ export default function MealPlanDetailPage() {
                             </div>
                             <div className="text-xs text-zinc-500 mt-1">
                               {MEAL_TYPES.find(mt => mt.key === meal.mealType.toLowerCase().replace(/\s+/g, '-'))?.label || meal.mealType}
-                              {meal.servings && ` · ${meal.servings} servings`}
+                              {meal.servings && (
+                                <>
+                                  {' · '}
+                                  {!meal.isLeftover && meal.notes?.toLowerCase().includes('batch') ? (
+                                    <span className="text-amber-400 font-medium">
+                                      {/* For batch cook, show total servings prominently */}
+                                      {(() => {
+                                        // Calculate total batch servings: this meal + all leftover meals using this recipe
+                                        const leftoverMeals = mealPlan?.meals.filter(m =>
+                                          m.isLeftover &&
+                                          m.recipeId === meal.recipeId &&
+                                          m.leftoverFromMealId === meal.id
+                                        ) || []
+                                        const leftoverServings = leftoverMeals.reduce((sum, m) => sum + (m.servings || 0), 0)
+                                        const totalBatch = (meal.servings || 0) + leftoverServings
+                                        return `${totalBatch} servings total (batch)`
+                                      })()}
+                                    </span>
+                                  ) : (
+                                    `${meal.servings} servings`
+                                  )}
+                                </>
+                              )}
                             </div>
                           </div>
 

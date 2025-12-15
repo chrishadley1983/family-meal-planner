@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { startOfWeek, format, addWeeks } from 'date-fns'
 import { RecipeDetailsModal } from '@/components/RecipeDetailsModal'
+import { MealPlanSettingsModal } from '@/components/MealPlanSettingsModal'
 import { AppLayout, PageContainer } from '@/components/layout'
 import { Button, Badge, Input, Select, Modal } from '@/components/ui'
 import { useSession } from 'next-auth/react'
@@ -71,6 +72,7 @@ export default function MealPlansPage() {
   const [generatedSummary, setGeneratedSummary] = useState('')
   const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null)
   const [showScheduleOverride, setShowScheduleOverride] = useState(false)
+  const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [weekProfileSchedules, setWeekProfileSchedules] = useState<WeekProfileSchedule[]>([])
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [copyFromPlanId, setCopyFromPlanId] = useState<string>('')
@@ -328,12 +330,12 @@ export default function MealPlansPage() {
               >
                 📅 Customize Meal Slots
               </button>
-              <Link
-                href="/settings/meal-planning"
+              <button
+                onClick={() => setShowSettingsModal(true)}
                 className="flex items-center gap-2 px-3 py-2 bg-zinc-700 text-zinc-400 rounded-lg text-sm hover:bg-zinc-600 hover:text-zinc-300 transition-colors"
               >
                 ⚙️ Settings
-              </Link>
+              </button>
             </div>
           </div>
           <div className="flex gap-4 items-end flex-wrap">
@@ -757,6 +759,12 @@ export default function MealPlansPage() {
           isOpen={selectedRecipeId !== null}
           onClose={() => setSelectedRecipeId(null)}
           recipeId={selectedRecipeId}
+        />
+
+        {/* Settings Modal */}
+        <MealPlanSettingsModal
+          isOpen={showSettingsModal}
+          onClose={() => setShowSettingsModal(false)}
         />
       </PageContainer>
     </AppLayout>
