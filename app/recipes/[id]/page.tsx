@@ -874,7 +874,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
   if (!isEditing) {
     return (
       <AppLayout userEmail={session?.user?.email}>
-        <PageContainer maxWidth="4xl">
+        <PageContainer maxWidth="7xl">
           <Link href="/recipes" className="text-purple-400 hover:text-purple-300 mb-6 inline-block">
             ← Back to Recipes
           </Link>
