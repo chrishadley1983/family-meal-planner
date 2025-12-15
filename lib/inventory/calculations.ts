@@ -412,13 +412,13 @@ export function calculateEstimatedExpiry(purchaseDate: Date, shelfLifeDays: numb
 export function getExpiryStatusColor(status: ExpiryStatus): string {
   switch (status) {
     case 'expired':
-      return 'bg-red-100 text-red-800'
+      return 'bg-red-500/20 text-red-500'
     case 'expiringSoon':
-      return 'bg-amber-100 text-amber-800'
+      return 'bg-amber-500/20 text-amber-500'
     case 'fresh':
-      return 'bg-green-100 text-green-800'
+      return 'bg-emerald-500/20 text-emerald-500'
     default:
-      return 'bg-gray-100 text-gray-800'
+      return 'bg-gray-500/20 text-gray-500'
   }
 }
 
