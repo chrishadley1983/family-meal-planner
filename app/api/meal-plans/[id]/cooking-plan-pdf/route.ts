@@ -38,8 +38,8 @@ interface MealWithRecipe {
   isLeftover: boolean
   notes: string | null
   recipe: {
-    prepTime: number | null
-    cookTime: number | null
+    prepTimeMinutes: number | null
+    cookTimeMinutes: number | null
   } | null
 }
 
@@ -89,8 +89,8 @@ export async function GET(
           include: {
             recipe: {
               select: {
-                prepTime: true,
-                cookTime: true,
+                prepTimeMinutes: true,
+                cookTimeMinutes: true,
               }
             }
           },
@@ -249,8 +249,8 @@ export async function GET(
 
         // Calculate time
         if (!isReheat && meal.recipe) {
-          totalPrepTime += meal.recipe.prepTime || 0
-          totalCookTime += meal.recipe.cookTime || 0
+          totalPrepTime += meal.recipe.prepTimeMinutes || 0
+          totalCookTime += meal.recipe.cookTimeMinutes || 0
         }
 
         // Row background
@@ -276,13 +276,13 @@ export async function GET(
           doc.roundedRect(colX, currentY + 5, 16, 4, 1, 1, 'F')
           doc.setFontSize(5)
           doc.setTextColor(...COLORS.white)
-          doc.text('⚡ BATCH', colX + 1, currentY + 8)
+          doc.text('[B] BATCH', colX + 1, currentY + 8)
         } else if (isReheat) {
           doc.setFillColor(...COLORS.emerald)
           doc.roundedRect(colX, currentY + 5, 16, 4, 1, 1, 'F')
           doc.setFontSize(5)
           doc.setTextColor(...COLORS.white)
-          doc.text('🔄 REHEAT', colX + 0.5, currentY + 8)
+          doc.text('[R] REHEAT', colX + 0.5, currentY + 8)
         }
 
         colX += colWidths.meal
@@ -308,12 +308,12 @@ export async function GET(
         // Prep time
         doc.setFontSize(8)
         doc.setTextColor(...COLORS.textMedium)
-        const prepTime = isReheat ? '—' : formatTime(meal.recipe?.prepTime)
+        const prepTime = isReheat ? '—' : formatTime(meal.recipe?.prepTimeMinutes)
         doc.text(prepTime, colX, currentY + 6)
         colX += colWidths.prep
 
         // Cook time
-        const cookTime = isReheat ? '10 min' : formatTime(meal.recipe?.cookTime)
+        const cookTime = isReheat ? '10 min' : formatTime(meal.recipe?.cookTimeMinutes)
         doc.text(cookTime, colX, currentY + 6)
         colX += colWidths.cook
 
@@ -346,7 +346,7 @@ export async function GET(
         doc.setFontSize(7)
         doc.setFont('helvetica', 'bold')
         doc.setTextColor(...COLORS.purple)
-        doc.text('📋 PREP AHEAD (for later this week)', sectionX + 3, currentY + 3.5)
+        doc.text('PREP AHEAD (for later this week)', sectionX + 3, currentY + 3.5)
         currentY += 6
 
         // Prep tasks
