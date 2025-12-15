@@ -12,6 +12,15 @@ const syncMacrosSchema = z.object({
   fiberPerServing: z.number().positive().nullable().optional(),
   sugarPerServing: z.number().positive().nullable().optional(),
   sodiumPerServing: z.number().int().positive().nullable().optional(),
+  // AI rating fields
+  aiOverallRating: z.enum(['green', 'yellow', 'red']).optional(),
+  aiOverallExplanation: z.string().optional(),
+  aiIngredientRatings: z.array(z.object({
+    ingredientName: z.string(),
+    rating: z.enum(['green', 'yellow', 'red']),
+    reason: z.string(),
+  })).optional(),
+  aiNutritionistFeedback: z.string().optional(),
 })
 
 // PATCH - Sync macro values from AI analysis to database
@@ -48,19 +57,19 @@ export async function PATCH(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // Only update if values have actually changed
-    const hasChanges =
-      existingRecipe.caloriesPerServing !== data.caloriesPerServing
+    // Check if macros changed OR if AI ratings are being saved
+    const macrosChanged = existingRecipe.caloriesPerServing !== data.caloriesPerServing
+    const hasAIRatings = !!(data.aiOverallRating || data.aiNutritionistFeedback)
 
-    if (!hasChanges) {
-      console.log('🔄 Macros already in sync for:', existingRecipe.recipeName)
+    if (!macrosChanged && !hasAIRatings) {
+      console.log('🔄 No changes to sync for:', existingRecipe.recipeName)
       return NextResponse.json({
-        message: 'Macros already in sync',
+        message: 'No changes to sync',
         synced: false
       })
     }
 
-    // Update macro fields and tracking metadata
+    // Update macro fields, AI ratings, and tracking metadata
     await prisma.recipe.update({
       where: { id },
       data: {
@@ -71,6 +80,13 @@ export async function PATCH(
         fiberPerServing: data.fiberPerServing,
         sugarPerServing: data.sugarPerServing,
         sodiumPerServing: data.sodiumPerServing,
+        // AI rating fields (for caching)
+        ...(data.aiOverallRating && { aiOverallRating: data.aiOverallRating }),
+        ...(data.aiOverallExplanation && { aiOverallExplanation: data.aiOverallExplanation }),
+        ...(data.aiIngredientRatings && { aiIngredientRatings: data.aiIngredientRatings }),
+        ...(data.aiNutritionistFeedback && { aiNutritionistFeedback: data.aiNutritionistFeedback }),
+        // Update AI timestamp if ratings provided
+        ...(hasAIRatings && { aiAnalysisCalculatedAt: new Date() }),
         // Mark as manually synced
         nutritionSource: 'manual',
         nutritionCalculatedAt: new Date(),

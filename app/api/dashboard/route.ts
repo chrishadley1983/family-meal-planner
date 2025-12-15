@@ -122,13 +122,17 @@ export async function GET(req: NextRequest) {
       prisma.familyProfile.count({
         where: { userId: session.user.id },
       }),
-      // Get meal plan that covers today (weekStartDate <= today AND weekEndDate >= today)
-      // Get ALL meals (breakfast, lunch, dinner, etc.) for expandable view
+      // Get meal plan that covers today OR starts within the next 7 days
+      // This ensures we show upcoming meal plans even if they haven't started yet
       prisma.mealPlan.findFirst({
         where: {
           userId: session.user.id,
-          weekStartDate: { lte: today },
-          weekEndDate: { gte: today },
+          OR: [
+            // Option 1: Meal plan covers today (already started, not yet ended)
+            { weekStartDate: { lte: today }, weekEndDate: { gte: today } },
+            // Option 2: Upcoming meal plan starts within next 7 days
+            { weekStartDate: { gt: today, lte: addDays(today, 7) } }
+          ]
         },
         include: {
           meals: {
@@ -142,6 +146,7 @@ export async function GET(req: NextRequest) {
             },
           },
         },
+        orderBy: { weekStartDate: 'asc' }, // Prefer the soonest meal plan
       }),
       // Get active shopping list (most recent non-archived)
       prisma.shoppingList.findFirst({
@@ -225,7 +230,7 @@ export async function GET(req: NextRequest) {
       weekLabel = `${format(weekStart, 'd')}–${format(weekEnd, 'd MMMM yyyy')}`
     }
 
-    // Build weekly meals array - START FROM TODAY, show 7 days
+    // Build weekly meals array - use meal plan's dates if available, otherwise from today
     // Now with multiple meals per day (expandable view)
     const weeklyMeals: WeeklyMeal[] = []
 
@@ -239,11 +244,17 @@ export async function GET(req: NextRequest) {
       'dessert': 'Dessert',
     }
 
+    // Use meal plan's week dates if available, otherwise start from today
+    const displayStartDate = currentMealPlan ? weekStart : today
+
     for (let i = 0; i < 7; i++) {
-      const date = addDays(today, i)
+      const date = addDays(displayStartDate, i)
       const dayName = format(date, 'EEEE') // 'Monday', 'Tuesday', etc.
       const dayShort = format(date, 'EEE')  // 'Mon', 'Tue', etc.
       const dateDisplay = format(date, 'd MMM') // '15 Dec'
+
+      // Check if this date is today
+      const dateIsToday = format(date, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd')
 
       // Find ALL meals for this day (database stores full day names like 'Monday', 'Tuesday')
       const dayMeals = currentMealPlan?.meals
@@ -264,7 +275,7 @@ export async function GET(req: NextRequest) {
         dayShort,
         date: format(date, 'yyyy-MM-dd'),
         dateDisplay,
-        isToday: i === 0, // First day is always today
+        isToday: dateIsToday, // True if this date matches today's date
         meals: dayMeals,
       })
     }
