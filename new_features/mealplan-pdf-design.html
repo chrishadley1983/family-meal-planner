@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meal Plan PDF - Branded Design</title>
+  <style>
+    /* PDF optimized - prints well in B&W */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+      background: white;
+      color: #1a1a1a;
+      padding: 20px;
+    }
+    
+    .page {
+      max-width: 1100px;
+      margin: 0 auto;
+      background: white;
+    }
+    
+    /* Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 3px solid #1a1a1a;
+    }
+    
+    .header-left h1 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    
+    .header-left .date-range {
+      font-size: 16px;
+      color: #666;
+    }
+    
+    .header-right {
+      text-align: right;
+    }
+    
+    .logo {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+    
+    .logo-icon {
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      background: linear-gradient(135deg, #f97316, #8b5cf6);
+      border-radius: 6px;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+    
+    /* For B&W printing, logo icon becomes solid */
+    @media print {
+      .logo-icon {
+        background: #333;
+      }
+    }
+    
+    .generated-date {
+      font-size: 11px;
+      color: #999;
+      margin-top: 4px;
+    }
+    
+    /* Legend */
+    .legend {
+      display: flex;
+      gap: 24px;
+      margin-bottom: 16px;
+      font-size: 12px;
+    }
+    
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .legend-icon {
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    
+    .legend-icon.batch {
+      background: #fef3c7;
+      border: 1px solid #f59e0b;
+    }
+    
+    .legend-icon.reheat {
+      background: #d1fae5;
+      border: 1px solid #10b981;
+    }
+    
+    @media print {
+      .legend-icon.batch,
+      .legend-icon.reheat {
+        background: #f0f0f0;
+        border: 1px solid #666;
+      }
+    }
+    
+    /* Table */
+    .meal-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+    
+    .meal-table th,
+    .meal-table td {
+      border: 1px solid #d1d5db;
+      padding: 8px 10px;
+      vertical-align: top;
+    }
+    
+    /* Day headers */
+    .meal-table thead th {
+      background: #1a1a1a;
+      color: white;
+      font-weight: 600;
+      text-align: center;
+      padding: 12px 10px;
+    }
+    
+    .day-name {
+      font-size: 13px;
+      display: block;
+    }
+    
+    .day-date {
+      font-size: 11px;
+      font-weight: 400;
+      opacity: 0.8;
+    }
+    
+    /* Meal type column */
+    .meal-type {
+      background: #f9fafb;
+      font-weight: 600;
+      width: 90px;
+      text-transform: uppercase;
+      font-size: 10px;
+      letter-spacing: 0.5px;
+      color: #374151;
+    }
+    
+    /* Recipe cells */
+    .recipe-cell {
+      min-height: 50px;
+    }
+    
+    .recipe-name {
+      font-weight: 500;
+      color: #1a1a1a;
+      margin-bottom: 2px;
+    }
+    
+    .recipe-servings {
+      font-size: 10px;
+      color: #6b7280;
+    }
+    
+    .recipe-empty {
+      color: #d1d5db;
+      font-style: italic;
+    }
+    
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 9px;
+      font-weight: 600;
+      margin-left: 4px;
+      vertical-align: middle;
+    }
+    
+    .badge-batch {
+      background: #fef3c7;
+      color: #92400e;
+      border: 1px solid #f59e0b;
+    }
+    
+    .badge-reheat {
+      background: #d1fae5;
+      color: #065f46;
+      border: 1px solid #10b981;
+    }
+    
+    @media print {
+      .badge-batch,
+      .badge-reheat {
+        background: #f0f0f0;
+        color: #333;
+        border: 1px solid #666;
+      }
+    }
+    
+    /* Alternating row backgrounds for readability */
+    .meal-table tbody tr:nth-child(odd) td:not(.meal-type) {
+      background: #fafafa;
+    }
+    
+    @media print {
+      .meal-table tbody tr:nth-child(odd) td:not(.meal-type) {
+        background: #f5f5f5;
+      }
+    }
+    
+    /* Footer */
+    .footer {
+      margin-top: 20px;
+      padding-top: 12px;
+      border-top: 1px solid #e5e7eb;
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #9ca3af;
+    }
+    
+    /* Cooking Plan Notes Section */
+    .notes-section {
+      margin-top: 20px;
+      padding: 16px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+    }
+    
+    .notes-section h3 {
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .notes-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    
+    .notes-column h4 {
+      font-size: 11px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #d1d5db;
+    }
+    
+    .notes-item {
+      font-size: 10px;
+      margin-bottom: 6px;
+      padding-left: 12px;
+      position: relative;
+    }
+    
+    .notes-item:before {
+      content: "•";
+      position: absolute;
+      left: 0;
+    }
+    
+    /* Section divider for multi-section layouts */
+    .section-divider {
+      height: 40px;
+      border-bottom: 2px dashed #d1d5db;
+      margin: 40px 0;
+      text-align: center;
+    }
+    
+    .section-divider span {
+      background: white;
+      padding: 0 20px;
+      color: #9ca3af;
+      font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ============================================== -->
+  <!-- WEEKLY MEAL PLAN PDF (Landscape, 1 page) -->
+  <!-- ============================================== -->
+  
+  <div class="page">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-left">
+        <h1>Weekly Meal Plan</h1>
+        <div class="date-range">Monday 15 Dec – Sunday 21 Dec 2025</div>
+      </div>
+      <div class="header-right">
+        <div class="logo">
+          <span class="logo-icon"></span>FamilyFuel
+        </div>
+        <div class="generated-date">Generated 15 Dec 2025</div>
+      </div>
+    </div>
+    
+    <!-- Legend -->
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-icon batch">⚡</div>
+        <span>Batch cook (make extra)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-icon reheat">🔄</div>
+        <span>Reheat (from batch)</span>
+      </div>
+    </div>
+    
+    <!-- Meal Table -->
+    <table class="meal-table">
+      <thead>
+        <tr>
+          <th style="background: #374151;"></th>
+          <th>
+            <span class="day-name">Monday</span>
+            <span class="day-date">15 Dec</span>
+          </th>
+          <th>
+            <span class="day-name">Tuesday</span>
+            <span class="day-date">16 Dec</span>
+          </th>
+          <th>
+            <span class="day-name">Wednesday</span>
+            <span class="day-date">17 Dec</span>
+          </th>
+          <th>
+            <span class="day-name">Thursday</span>
+            <span class="day-date">18 Dec</span>
+          </th>
+          <th>
+            <span class="day-name">Friday</span>
+            <span class="day-date">19 Dec</span>
+          </th>
+          <th>
+            <span class="day-name">Saturday</span>
+            <span class="day-date">20 Dec</span>
+          </th>
+          <th>
+            <span class="day-name">Sunday</span>
+            <span class="day-date">21 Dec</span>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Breakfast Row -->
+        <tr>
+          <td class="meal-type">Breakfast</td>
+          <td class="recipe-cell">
+            <div class="recipe-name">Easy protein pancakes</div>
+            <div class="recipe-servings">4 servings</div>
+          </td>
+          <td class="recipe-cell">
+            <div class="recipe-name">Budget porridge</div>
+            <div class="recipe-servings">4 servings</div>
+          </td>
+          <td class="recipe-cell">
+            <div class="recipe-name">Breakfast muffins</div>
+            <div class="recipe-servings">4 servings</div>
+          </td>
+          <td class="recipe-cell">
+            <div class="recipe-name">Chocolate Banana Oat Bake</div>
+            <div class="recipe-servings">4 servings</div>
+          </td>
+          <td class="recipe-cell">
+            <div class="recipe-name">Spaghetti Carbonara</div>
+            <div class="recipe-servings">4 servings</div>
+          </td>
+          <td class="recipe-cell">
+            <div class="recipe-name">Chicken stroganoff</div>
+            <div class="recipe-servings">4 servings</div>
+          </td>
+          <td class="recipe-cell">
+            <div class="recipe-name">Chicken alfredo</div>
+            <div class="recipe-servings">4 servings</div>
+          </td>
+        </tr>
+        
+        <!-- Lunch Row -->
+        <tr>
+          <td class="meal-type">Lunch</td>
+          <td class="recipe-cell">
+            <div class="recipe-name">Chicken satay salad</div>
+            <div class="recipe-servings">3 servings</div>
+          </td>
+          <td class="recipe-cell">
+            <div class="recipe-name">Turkey enchiladas</div>
+            <div class="recipe-servings">3 servings</div>
+          </td>
+          <td class="recipe-cell">
+            <div class="recipe-name">Easy chicken casserole <span class="badge badge-reheat">🔄</span></div>
+            <div class="recipe-servings">3 servings · from Mon</div>
+          </td>
+          <td class="recipe-cell">
+            <div class="recipe-name">Chicken & Spinach Gnocchi Bake</div>
+            <div class="recipe-servings">3 servings</div>
+          </td>
+          <td class="recipe-cell">
+            <div class="recipe-name">One-Pot Pasta With Ricotta</div>
+            <div class="recipe-servings">3 servings</div>
+          </td>
+          <td class="recipe-cell">
+            <div class="recipe-name">Chicken souvlaki</div>
+            <div class="recipe-servings">4 servings</div>
+          </td>
+          <td class="recipe-cell">
+            <div class="recipe-name">Beef goulash</div>
+            <div class="recipe-servings">4 servings</div>
+          </td>
+        </tr>
+        
+        <!-- Afternoon Snack Row -->
+        <tr>
+          <td class="meal-type">Snack</td>
+          <td class="recipe-cell"><span class="recipe-empty">—</span></td>
+          <td class="recipe-cell"><span class="recipe-empty">—</span></td>
+          <td class="recipe-cell"><span class="recipe-empty">—</span></td>
+          <td class="recipe-cell"><span class="recipe-empty">—</span></td>
+          <td class="recipe-cell"><span class="recipe-empty">—</span></td>
+          <td class="recipe-cell"><span class="recipe-empty">—</span></td>
+          <td class="recipe-cell"><span class="recipe-empty">—</span></td>
+        </tr>
+        
+        <!-- Dinner Row -->
+        <tr>
+          <td class="meal-type">Dinner</td>
+          <td class="recipe-cell">
+            <div class="recipe-name">Easy chicken casserole <span class="badge badge-batch">⚡ 2x</span></div>
+            <div class="recipe-servings">8 servings · batch</div>
+          </td>
+          <td class="recipe-cell">
+            <div class="recipe-name">Panang chicken curry</div>
+            <div class="recipe-servings">4 servings</div>
+          </td>
+          <td class="recipe-cell">
+            <div class="recipe-name">Chinese chicken curry</div>
+            <div class="recipe-servings">4 servings</div>
+          </td>
+          <td class="recipe-cell">
+            <div class="recipe-name">Air-fryer fish tacos</div>
+            <div class="recipe-servings">4 servings</div>
+          </td>
+          <td class="recipe-cell">
+            <div class="recipe-name">Tonkatsu pork</div>
+            <div class="recipe-servings">4 servings</div>
+          </td>
+          <td class="recipe-cell">
+            <div class="recipe-name">Creamy Smoked Paprika Chicken</div>
+            <div class="recipe-servings">4 servings</div>
+          </td>
+          <td class="recipe-cell">
+            <div class="recipe-name">Creamy pork & pear cassoulet</div>
+            <div class="recipe-servings">4 servings</div>
+          </td>
+        </tr>
+        
+        <!-- Dessert Row -->
+        <tr>
+          <td class="meal-type">Dessert</td>
+          <td class="recipe-cell"><span class="recipe-empty">—</span></td>
+          <td class="recipe-cell"><span class="recipe-empty">—</span></td>
+          <td class="recipe-cell"><span class="recipe-empty">—</span></td>
+          <td class="recipe-cell"><span class="recipe-empty">—</span></td>
+          <td class="recipe-cell"><span class="recipe-empty">—</span></td>
+          <td class="recipe-cell"><span class="recipe-empty">—</span></td>
+          <td class="recipe-cell"><span class="recipe-empty">—</span></td>
+        </tr>
+      </tbody>
+    </table>
+    
+    <!-- Cooking Notes Section -->
+    <div class="notes-section">
+      <h3>🍳 Cooking Notes</h3>
+      <div class="notes-grid">
+        <div class="notes-column">
+          <h4>Batch Cooking</h4>
+          <div class="notes-item"><strong>Monday Dinner:</strong> Make 8 servings of Easy chicken casserole. Use 4 for dinner, refrigerate 4 for Wednesday lunch.</div>
+        </div>
+        <div class="notes-column">
+          <h4>Prep Ahead</h4>
+          <div class="notes-item"><strong>Tuesday evening:</strong> Make chipotle mayo for Thursday's fish tacos (5 min)</div>
+          <div class="notes-item"><strong>Tuesday evening:</strong> Slice cabbage for slaw (10 min)</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Footer -->
+    <div class="footer">
+      <span>Hadley Family · 4 people</span>
+      <span>familyfuel.app</span>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- COOKING PLAN PDF (Day-by-day) -->
+  <!-- ============================================== -->
+  
+  <div class="section-divider"><span>COOKING PLAN PDF</span></div>
+  
+  <div class="page" style="margin-top: 40px;">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-left">
+        <h1>Cooking Plan</h1>
+        <div class="date-range">Week of 15 Dec – 21 Dec 2025</div>
+      </div>
+      <div class="header-right">
+        <div class="logo">
+          <span class="logo-icon"></span>FamilyFuel
+        </div>
+        <div class="generated-date">Generated 15 Dec 2025</div>
+      </div>
+    </div>
+    
+    <!-- Monday -->
+    <div style="margin-bottom: 24px;">
+      <div style="background: #1a1a1a; color: white; padding: 10px 16px; font-weight: 600; font-size: 14px;">
+        Monday, 15 December
+      </div>
+      
+      <table class="meal-table" style="margin-top: 0;">
+        <thead>
+          <tr>
+            <th style="width: 100px; background: #374151;">Meal</th>
+            <th style="background: #374151;">Recipe</th>
+            <th style="width: 100px; background: #374151;">Prep</th>
+            <th style="width: 100px; background: #374151;">Cook</th>
+            <th style="width: 80px; background: #374151;">Servings</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="meal-type">Breakfast</td>
+            <td>Easy protein pancakes</td>
+            <td style="text-align: center;">15 min</td>
+            <td style="text-align: center;">10 min</td>
+            <td style="text-align: center;">4</td>
+          </tr>
+          <tr>
+            <td class="meal-type">Lunch</td>
+            <td>Chicken satay salad</td>
+            <td style="text-align: center;">20 min</td>
+            <td style="text-align: center;">—</td>
+            <td style="text-align: center;">3</td>
+          </tr>
+          <tr style="background: #fef3c7;">
+            <td class="meal-type" style="background: #fef3c7;">
+              Dinner<br>
+              <span class="badge badge-batch" style="margin-left: 0; margin-top: 4px;">⚡ BATCH</span>
+            </td>
+            <td>
+              <strong>Easy chicken casserole</strong><br>
+              <span style="font-size: 10px; color: #666;">Make 8 servings → 4 for tonight, 4 for Wed lunch</span>
+            </td>
+            <td style="text-align: center;">10 min</td>
+            <td style="text-align: center;">45 min</td>
+            <td style="text-align: center;">8</td>
+          </tr>
+        </tbody>
+      </table>
+      
+      <!-- Prep Ahead for Monday -->
+      <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-top: none; padding: 12px 16px;">
+        <div style="font-size: 11px; font-weight: 600; margin-bottom: 6px;">📋 PREP AHEAD (for later this week)</div>
+        <div style="font-size: 11px; color: #374151;">
+          <strong>For Thursday's fish tacos:</strong> Make chipotle mayo (5 min), slice cabbage for slaw (10 min)
+        </div>
+      </div>
+      
+      <div style="background: #f3f4f6; padding: 8px 16px; font-size: 12px; font-weight: 500; text-align: right;">
+        Total cooking time: <strong>1 hr 55 min</strong>
+      </div>
+    </div>
+    
+    <!-- Tuesday -->
+    <div style="margin-bottom: 24px;">
+      <div style="background: #1a1a1a; color: white; padding: 10px 16px; font-weight: 600; font-size: 14px;">
+        Tuesday, 16 December
+      </div>
+      
+      <table class="meal-table" style="margin-top: 0;">
+        <thead>
+          <tr>
+            <th style="width: 100px; background: #374151;">Meal</th>
+            <th style="background: #374151;">Recipe</th>
+            <th style="width: 100px; background: #374151;">Prep</th>
+            <th style="width: 100px; background: #374151;">Cook</th>
+            <th style="width: 80px; background: #374151;">Servings</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="meal-type">Breakfast</td>
+            <td>Budget porridge</td>
+            <td style="text-align: center;">5 min</td>
+            <td style="text-align: center;">10 min</td>
+            <td style="text-align: center;">4</td>
+          </tr>
+          <tr>
+            <td class="meal-type">Lunch</td>
+            <td>Turkey enchiladas</td>
+            <td style="text-align: center;">20 min</td>
+            <td style="text-align: center;">25 min</td>
+            <td style="text-align: center;">3</td>
+          </tr>
+          <tr>
+            <td class="meal-type">Dinner</td>
+            <td>Panang chicken curry (kaeng panang gai)</td>
+            <td style="text-align: center;">15 min</td>
+            <td style="text-align: center;">30 min</td>
+            <td style="text-align: center;">4</td>
+          </tr>
+        </tbody>
+      </table>
+      
+      <div style="background: #f3f4f6; padding: 8px 16px; font-size: 12px; font-weight: 500; text-align: right;">
+        Total cooking time: <strong>1 hr 45 min</strong>
+      </div>
+    </div>
+    
+    <!-- Wednesday (with Reheat) -->
+    <div style="margin-bottom: 24px;">
+      <div style="background: #1a1a1a; color: white; padding: 10px 16px; font-weight: 600; font-size: 14px;">
+        Wednesday, 17 December
+      </div>
+      
+      <table class="meal-table" style="margin-top: 0;">
+        <thead>
+          <tr>
+            <th style="width: 100px; background: #374151;">Meal</th>
+            <th style="background: #374151;">Recipe</th>
+            <th style="width: 100px; background: #374151;">Prep</th>
+            <th style="width: 100px; background: #374151;">Cook</th>
+            <th style="width: 80px; background: #374151;">Servings</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="meal-type">Breakfast</td>
+            <td>Breakfast muffins</td>
+            <td style="text-align: center;">10 min</td>
+            <td style="text-align: center;">25 min</td>
+            <td style="text-align: center;">4</td>
+          </tr>
+          <tr style="background: #d1fae5;">
+            <td class="meal-type" style="background: #d1fae5;">
+              Lunch<br>
+              <span class="badge badge-reheat" style="margin-left: 0; margin-top: 4px;">🔄 REHEAT</span>
+            </td>
+            <td>
+              <strong>Easy chicken casserole</strong><br>
+              <span style="font-size: 10px; color: #666;">Batch cooked Monday</span>
+            </td>
+            <td style="text-align: center;">—</td>
+            <td style="text-align: center;">10 min</td>
+            <td style="text-align: center;">3</td>
+          </tr>
+          <tr>
+            <td class="meal-type">Dinner</td>
+            <td>Chinese chicken curry</td>
+            <td style="text-align: center;">15 min</td>
+            <td style="text-align: center;">40 min</td>
+            <td style="text-align: center;">4</td>
+          </tr>
+        </tbody>
+      </table>
+      
+      <div style="background: #f3f4f6; padding: 8px 16px; font-size: 12px; font-weight: 500; text-align: right;">
+        Total cooking time: <strong>1 hr 40 min</strong> <span style="color: #10b981;">(saved 55 min with batch cooking! 🎉)</span>
+      </div>
+    </div>
+    
+    <!-- Footer -->
+    <div class="footer">
+      <span>Hadley Family · 4 people</span>
+      <span>familyfuel.app</span>
+    </div>
+  </div>
+
+</body>
+</html>

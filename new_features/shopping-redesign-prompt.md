@@ -10,11 +10,13 @@ You are a **Senior Developer** working on the FamilyFuel project. You write clea
 
 ## Task Overview
 
-Redesign the Shopping List pages with styling updates and two new features:
-1. **Dismiss duplicate suggestions** - Allow users to ignore erroneous AI duplicate matches
-2. **Mark All Purchased** - Bulk action to complete entire shopping list
+Redesign the Shopping List pages with styling updates and new features:
+1. **Button bar reorganization** - Clean up busy action buttons
+2. **Dismiss duplicate suggestions** - Allow users to ignore erroneous AI duplicate matches
+3. **Mark All Purchased** - Bulk action to complete entire shopping list
+4. **Branded PDF export** - Professional, B&W-printable shopping list PDF
 
-**Reference Design:** See `new_features/shopping-redesign.html` for the complete rendered design.
+**Reference Design:** See `new_features/shopping-redesign.html` and `new_features/shopping-list-buttons-and-pdf.html` for the complete rendered designs.
 
 ---
 
@@ -92,18 +94,58 @@ Replace plain empty state with engaging design:
 
 ---
 
-### 3. NEW FEATURE: Mark All Purchased
+### 3. Button Bar Reorganization
 
-Add a new button to the shopping list detail header:
+**Current state:** 6 buttons in a row, inconsistent styling, visually busy
+
+**New design:** Grouped into Primary (left) and Secondary (right) with divider
 
 ```
-[Export & Share] [Add to Inventory] [✓ Mark All Purchased] [Undo Last] [Archive]
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│ [↗ Export & Share] [✓ Mark All Purchased] [📦 Add to Inventory]  │  [Undo Last] [Undo All (1)] [Archive] │
+│      gradient            green                  purple           │      gray        amber text      gray   │
+└─────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Button styling:**
-- `bg-emerald-500 text-white`
-- Icon: checkmark (✓)
-- Text: "Mark All Purchased"
+**Container styling:**
+```css
+background: #111827;
+border: 1px solid #1f2937;
+border-radius: 0.75rem;
+padding: 1rem;
+display: flex;
+align-items: center;
+justify-content: space-between;
+```
+
+**Button styles:**
+
+| Button | Style | Icon |
+|--------|-------|------|
+| Export & Share | `bg-gradient-to-r from-red-500 to-orange-500` | ↗ |
+| Mark All Purchased | `bg-emerald-500` | ✓ |
+| Add to Inventory | `bg-purple-500` | 📦 |
+| Undo Last | `bg-gray-700 text-white` | (none) |
+| Undo All | `bg-gray-700 text-amber-500` | (none) |
+| Archive | `bg-gray-700 text-gray-400` | (none) |
+
+**Divider between groups:**
+```css
+width: 1px;
+height: 2rem;
+background: #374151;
+```
+
+**Undo All counter:**
+- Shows count in parentheses: "Undo All (3)"
+- Amber text to indicate pending undos
+- Hidden or disabled when count is 0
+
+---
+
+### 4. Mark All Purchased - Behaviour
+
+**Button location:** Primary actions group (left side)
 
 **Behaviour:**
 1. Click button → Show confirmation modal
@@ -130,7 +172,7 @@ Add a new button to the shopping list detail header:
 
 ---
 
-### 4. NEW FEATURE: Dismiss Duplicate Suggestions
+### 5. NEW FEATURE: Dismiss Duplicate Suggestions
 
 Update the Find Duplicates modal to allow dismissing erroneous matches:
 
@@ -185,7 +227,7 @@ Olive Oil [HIGH]                           [Combine] [Dismiss]
 
 ---
 
-### 5. No Duplicates Found State
+### 6. No Duplicates Found State
 
 Enhanced empty state for the modal:
 
@@ -210,6 +252,98 @@ Enhanced empty state for the modal:
 
 ---
 
+### 7. Branded PDF Export Design
+
+Replace the current plain PDF with a branded, B&W-printable design.
+
+**Current issues:**
+- No branding
+- Single column (wastes paper)
+- Purple header doesn't print well in B&W
+- Basic `[ ]` text checkboxes
+- No visual hierarchy
+
+**New design features:**
+
+#### Header
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Shopping List                              [logo] FamilyFuel   │
+│ Week of 15 Dec 2025 · 156 items            Generated 15 Dec    │
+├─────────────────────────────────────────────────────────────────┤
+```
+- FamilyFuel logo (gradient on screen, solid dark for print)
+- Date range and item count
+- 3px black bottom border
+
+#### Two-Column Layout
+```
+┌──────────────────────────────┬──────────────────────────────┐
+│ 🥬 FRESH PRODUCE             │ 🍞 BAKERY                    │
+│ ☐ Carrots          4 piece   │ ☐ Flour tortillas   5 piece  │
+│ ☐ Celery           3 piece   │ ☐ Panko crumbs      100 g    │
+│ ☐ Cucumber         1 piece   │ ...                          │
+│ + 28 more items              │                              │
+├──────────────────────────────┼──────────────────────────────┤
+│ 🥛 DAIRY & EGGS              │ 🥫 CUPBOARD STAPLES          │
+│ ☐ Eggs, large      15 piece  │ ☐ Chicken stock     1.2 L    │
+│ ☐ Greek yogurt     950 g     │ ☐ Coconut milk      800 ml   │
+│ ...                          │ ...                          │
+└──────────────────────────────┴──────────────────────────────┘
+```
+
+#### Category Headers
+```css
+background: #1a1a1a;
+color: white;
+padding: 8px 12px;
+font-weight: 600;
+font-size: 12px;
+text-transform: uppercase;
+letter-spacing: 0.5px;
+```
+- Include category emoji (🥬, 🥛, 🍞, etc.)
+- Black background prints well in B&W
+
+#### Item Rows
+```
+☐ Item name                           Quantity
+```
+- Styled checkbox: `16px × 16px`, `border: 1.5px solid #d1d5db`, `border-radius: 3px`
+- Item name left-aligned, quantity right-aligned
+- Font size: 11px
+- Row spacing: 6px
+
+#### Overflow Handling
+When a category has many items:
+- Show first 5-8 items
+- Add "+ X more items" in gray at bottom
+- Ensures PDF stays compact (1-2 pages)
+
+#### Footer
+```
+─────────────────────────────────────────────────────────────────
+Hadley Family · Linked to meal plan 15-21 Dec          familyfuel.app
+```
+
+#### Print Optimization
+```css
+@media print {
+  .logo-icon {
+    background: #333; /* Solid instead of gradient */
+  }
+  
+  /* Ensure good contrast */
+  .category-header {
+    background: #1a1a1a;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+```
+
+---
+
 ## Component Updates
 
 Files likely to be modified:
@@ -218,10 +352,15 @@ components/
   shopping/
     ShoppingListsPage.tsx        # Index page
     ShoppingListCard.tsx         # List cards with border accent
-    ShoppingListDetail.tsx       # Detail page header
+    ShoppingListDetail.tsx       # Detail page header + button bar
+    ShoppingListButtonBar.tsx    # New: Organized action buttons
     ShoppingListEmpty.tsx        # Enhanced empty state (new or update)
     FindDuplicatesModal.tsx      # Add dismiss button
     MarkAllPurchasedModal.tsx    # New confirmation modal
+    
+lib/
+  pdf/
+    shoppingListPdf.ts           # Updated PDF generation
 ```
 
 ---
@@ -230,13 +369,15 @@ components/
 
 1. **Read existing code** - Review current shopping list components
 2. **Update styling** - Gradient button, purple pills, card borders
-3. **Create empty state** - New component with emojis and CTAs
-4. **Add Mark All Purchased** - Button + confirmation modal + logic
-5. **Update Find Duplicates** - Add Dismiss button per group
-6. **Update no duplicates state** - Enhanced empty state
-7. **Test all flows** - Create list, add items, find duplicates, mark all
-8. **Run TypeScript check** - `npx tsc --noEmit`
-9. **Manual test** - Verify all functionality works
+3. **Reorganize button bar** - Create grouped layout with divider
+4. **Create empty state** - New component with emojis and CTAs
+5. **Add Mark All Purchased** - Button + confirmation modal + logic
+6. **Update Find Duplicates** - Add Dismiss button per group
+7. **Update no duplicates state** - Enhanced empty state
+8. **Redesign PDF export** - Two-column, branded, B&W-friendly
+9. **Test all flows** - Create list, add items, find duplicates, mark all, export PDF
+10. **Run TypeScript check** - `npx tsc --noEmit`
+11. **Manual test** - Verify all functionality works, print PDF
 
 ---
 
@@ -249,8 +390,18 @@ components/
 - [ ] Status badges use consistent pill styling
 - [ ] Empty state has emojis and friendly messaging
 
+### Button Bar
+- [ ] Buttons grouped into Primary (left) and Secondary (right)
+- [ ] Visual divider between groups
+- [ ] Export & Share: red→orange gradient
+- [ ] Mark All Purchased: green
+- [ ] Add to Inventory: purple
+- [ ] Undo buttons: gray (Undo All shows count in amber)
+- [ ] Archive: gray
+- [ ] Contained in subtle card background
+
 ### Mark All Purchased
-- [ ] Button appears in list detail header (green)
+- [ ] Button appears in primary group (green)
 - [ ] Clicking shows confirmation modal
 - [ ] Modal shows count of remaining items
 - [ ] Confirming marks all unpurchased items as purchased
@@ -263,6 +414,16 @@ components/
 - [ ] Group count updates after dismissal
 - [ ] If all dismissed, shows "No duplicates found" state
 - [ ] "Combine All" only combines non-dismissed groups
+
+### PDF Export
+- [ ] FamilyFuel branding in header
+- [ ] Two-column layout
+- [ ] Black category headers with emojis
+- [ ] Styled checkboxes (not plain [ ])
+- [ ] Quantities right-aligned
+- [ ] "+ X more items" for long categories
+- [ ] Footer with family name and website
+- [ ] Prints well in black & white
 
 ### General
 - [ ] All existing functionality still works
@@ -310,7 +471,8 @@ const visibleGroups = duplicateGroups.filter(
 
 ## Reference
 
-The complete rendered HTML design is available at:
-`new_features/shopping-redesign.html`
+The complete rendered HTML designs are available at:
+- `new_features/shopping-redesign.html` - Main UI components
+- `new_features/shopping-list-buttons-and-pdf.html` - Button bar and PDF design
 
-Use this as the definitive reference for layout, spacing, colours, and content.
+Use these as the definitive reference for layout, spacing, colours, and content.

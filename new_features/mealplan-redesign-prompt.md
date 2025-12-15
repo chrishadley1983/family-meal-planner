@@ -16,7 +16,7 @@ Major redesign of the Meal Plan pages including:
 3. **Export & Share** functionality for PDF exports
 4. Settings page updates
 
-**Reference Design:** See `new_features/mealplan-redesign.html` for the complete rendered design.
+**Reference Design:** See `new_features/mealplan-redesign.html` and `new_features/mealplan-pdf-design.html` for the complete rendered designs.
 
 ---
 
@@ -480,11 +480,86 @@ Use existing PDF generation approach (likely `jspdf` or `react-pdf`):
 - Weekly Plan: Landscape table
 - Cooking Plan: Day-by-day sections
 
+### PDF Export Design
+
+Both PDF exports should follow the branded design pattern.
+
+#### Weekly Plan PDF (Landscape)
+
+**Header:**
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Weekly Meal Plan                           [logo] FamilyFuel   │
+│ Monday 15 Dec – Sunday 21 Dec 2025         Generated 15 Dec    │
+├─────────────────────────────────────────────────────────────────┤
+```
+
+**Legend:**
+```
+⚡ Batch cook (make extra)    🔄 Reheat (from batch)
+```
+
+**Table structure:**
+- Black header row with white text
+- Day names + dates in header
+- Meal type column on left (gray background)
+- Recipe cells with name + servings
+- Batch badge: `⚡ 2x` with border
+- Reheat badge: `🔄` with "from Mon" note
+- Alternating row backgrounds for readability
+
+**Cooking Notes section:**
+```
+🍳 Cooking Notes
+├── Batch Cooking: Monday Dinner - Make 8 servings...
+└── Prep Ahead: Tuesday evening - Make chipotle mayo...
+```
+
+**Footer:**
+```
+Hadley Family · 4 people                          familyfuel.app
+```
+
+#### Cooking Plan PDF (Portrait/Landscape)
+
+**Per-day sections:**
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Monday, 15 December                                             │
+├─────────┬────────────────────────────┬──────────┬───────┬──────┤
+│ Meal    │ Recipe                     │ Prep     │ Cook  │ Serv │
+├─────────┼────────────────────────────┼──────────┼───────┼──────┤
+│Breakfast│ Easy protein pancakes      │ 15 min   │10 min │  4   │
+│Lunch    │ Chicken satay salad        │ 20 min   │  —    │  3   │
+│Dinner   │ Easy chicken casserole     │ 10 min   │45 min │  8   │
+│⚡ BATCH │ (covers Wed lunch too)     │          │       │      │
+└─────────┴────────────────────────────┴──────────┴───────┴──────┘
+│ 📋 PREP AHEAD: For Thursday's fish tacos - Make chipotle mayo  │
+├─────────────────────────────────────────────────────────────────┤
+│ Total cooking time: 1 hr 55 min                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+- Batch cook rows: yellow background (gray in B&W print)
+- Reheat rows: green background (gray in B&W print)
+- Time saved callout: "saved 55 min with batch cooking! 🎉"
+
+**Print optimization:**
+```css
+@media print {
+  .batch-row, .reheat-row {
+    background: #f0f0f0 !important;
+    -webkit-print-color-adjust: exact;
+  }
+}
+```
+
 ---
 
 ## Reference
 
-The complete rendered HTML design is available at:
-`new_features/mealplan-redesign.html`
+The complete rendered HTML designs are available at:
+- `new_features/mealplan-redesign.html` - Main UI components
+- `new_features/mealplan-pdf-design.html` - PDF export designs (Weekly Plan + Cooking Plan)
 
-Use this as the definitive reference for layout, spacing, colours, and content.
+Use these as the definitive reference for layout, spacing, colours, and content.
