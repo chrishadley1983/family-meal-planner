@@ -30,6 +30,16 @@ const BRAND_COLORS = {
   black: '#1F2937',
 }
 
+// B&W print-friendly colors
+const BW_COLORS = {
+  black: '#000000',
+  darkGray: '#333333',
+  gray: '#666666',
+  lightGray: '#999999',
+  veryLightGray: '#CCCCCC',
+  white: '#FFFFFF',
+}
+
 // Category order for consistent display
 const CATEGORY_ORDER = [
   'Fresh Produce',
@@ -82,6 +92,7 @@ function formatQuantity(quantity: number, unit: string): string {
 
 /**
  * Generates a printable PDF shopping list
+ * @param options.twoColumn - Use two-column B&W layout for better printing (default: true)
  */
 export async function generateShoppingListPDF(
   shoppingList: ShoppingListData,
@@ -89,10 +100,238 @@ export async function generateShoppingListPDF(
   options: {
     includeQRCode?: boolean
     qrCodeDataUrl?: string
+    twoColumn?: boolean
   } = {}
 ): Promise<jsPDF> {
   console.log('🔷 Generating PDF for shopping list:', shoppingList.name)
 
+  // Default to two-column B&W layout
+  const useTwoColumn = options.twoColumn !== false
+
+  if (useTwoColumn) {
+    return generateTwoColumnPDF(shoppingList, itemsByCategory, options)
+  }
+
+  // Original single-column colored layout
+  return generateSingleColumnPDF(shoppingList, itemsByCategory, options)
+}
+
+/**
+ * Two-column B&W printable layout
+ */
+async function generateTwoColumnPDF(
+  shoppingList: ShoppingListData,
+  itemsByCategory: ItemsByCategory,
+  options: { includeQRCode?: boolean; qrCodeDataUrl?: string }
+): Promise<jsPDF> {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  })
+
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  const margin = 10
+  const columnGap = 8
+  const columnWidth = (pageWidth - margin * 2 - columnGap) / 2
+  let currentY = margin
+
+  // === HEADER (B&W) ===
+  doc.setFontSize(18)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(BW_COLORS.black)
+  doc.text('FamilyFuel', margin, currentY + 5)
+
+  // Title and date
+  const dateStr = format(new Date(), 'd MMM yyyy')
+  doc.setFontSize(14)
+  doc.text('Shopping List', pageWidth - margin, currentY + 3, { align: 'right' })
+
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(BW_COLORS.gray)
+  doc.text(dateStr, pageWidth - margin, currentY + 9, { align: 'right' })
+
+  currentY += 14
+
+  // Divider line (black)
+  doc.setDrawColor(BW_COLORS.black)
+  doc.setLineWidth(0.3)
+  doc.line(margin, currentY, pageWidth - margin, currentY)
+
+  currentY += 4
+
+  // === PREPARE ALL ITEMS ===
+  const categories = sortCategories(Object.keys(itemsByCategory))
+
+  // Build a flat list of items with category headers
+  interface ItemEntry {
+    type: 'category' | 'item'
+    text: string
+    quantity?: string
+    isPurchased?: boolean
+  }
+
+  const allItems: ItemEntry[] = []
+
+  for (const category of categories) {
+    const items = itemsByCategory[category]
+    if (!items || items.length === 0) continue
+
+    // Category header
+    allItems.push({ type: 'category', text: category })
+
+    // Sort items alphabetically
+    const sortedItems = [...items].sort((a, b) =>
+      a.itemName.toLowerCase().localeCompare(b.itemName.toLowerCase())
+    )
+
+    for (const item of sortedItems) {
+      allItems.push({
+        type: 'item',
+        text: item.itemName,
+        quantity: formatQuantity(item.quantity, item.unit),
+        isPurchased: item.isPurchased,
+      })
+    }
+  }
+
+  // === RENDER TWO COLUMNS ===
+  const lineHeight = 4.5
+  const categoryHeight = 6
+  const startY = currentY
+  const maxY = pageHeight - 15 // Leave space for footer
+
+  // Calculate split point
+  let totalHeight = 0
+  for (const entry of allItems) {
+    totalHeight += entry.type === 'category' ? categoryHeight : lineHeight
+  }
+  const targetHeight = totalHeight / 2
+
+  let splitIndex = 0
+  let accumulatedHeight = 0
+  for (let i = 0; i < allItems.length; i++) {
+    const h = allItems[i].type === 'category' ? categoryHeight : lineHeight
+    if (accumulatedHeight + h > targetHeight) {
+      // Find a good break point (preferably at category boundary)
+      splitIndex = i
+      // Try to avoid splitting in middle of a category
+      for (let j = i; j >= 0 && j > i - 10; j--) {
+        if (allItems[j].type === 'category') {
+          splitIndex = j
+          break
+        }
+      }
+      break
+    }
+    accumulatedHeight += h
+  }
+
+  // Render left column
+  const leftColumnX = margin
+  let leftY = startY
+
+  for (let i = 0; i < splitIndex; i++) {
+    leftY = renderEntry(doc, allItems[i], leftColumnX, leftY, columnWidth, lineHeight, categoryHeight)
+    if (leftY > maxY) break
+  }
+
+  // Render right column
+  const rightColumnX = margin + columnWidth + columnGap
+  let rightY = startY
+
+  for (let i = splitIndex; i < allItems.length; i++) {
+    rightY = renderEntry(doc, allItems[i], rightColumnX, rightY, columnWidth, lineHeight, categoryHeight)
+    if (rightY > maxY) {
+      // Need new page
+      doc.addPage()
+      rightY = margin
+    }
+  }
+
+  // === FOOTER ===
+  const footerY = pageHeight - 6
+  doc.setFontSize(7)
+  doc.setTextColor(BW_COLORS.lightGray)
+  doc.text('Powered by FamilyFuel', pageWidth / 2, footerY, { align: 'center' })
+
+  // Page number
+  const pageNum = doc.getCurrentPageInfo().pageNumber
+  const totalPages = doc.getNumberOfPages()
+  doc.text(`Page ${pageNum} of ${totalPages}`, pageWidth - margin, footerY, { align: 'right' })
+
+  console.log('🟢 Two-column B&W PDF generated successfully')
+  return doc
+}
+
+/**
+ * Renders a single entry (category or item) in the PDF
+ */
+function renderEntry(
+  doc: jsPDF,
+  entry: { type: 'category' | 'item'; text: string; quantity?: string; isPurchased?: boolean },
+  x: number,
+  y: number,
+  columnWidth: number,
+  lineHeight: number,
+  categoryHeight: number
+): number {
+  if (entry.type === 'category') {
+    // Category header - bold with underline
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(BW_COLORS.black)
+    doc.text(entry.text.toUpperCase(), x, y + 4)
+
+    // Underline
+    doc.setDrawColor(BW_COLORS.darkGray)
+    doc.setLineWidth(0.2)
+    doc.line(x, y + 5.5, x + columnWidth, y + 5.5)
+
+    return y + categoryHeight
+  } else {
+    // Item with checkbox
+    doc.setFontSize(8)
+    doc.setFont('helvetica', 'normal')
+
+    // Checkbox
+    const checkboxSize = 2.5
+    doc.setDrawColor(BW_COLORS.gray)
+    doc.setLineWidth(0.2)
+    doc.rect(x, y + 0.5, checkboxSize, checkboxSize)
+
+    if (entry.isPurchased) {
+      // Draw checkmark
+      doc.setDrawColor(BW_COLORS.black)
+      doc.line(x + 0.5, y + 1.5, x + 1, y + 2.5)
+      doc.line(x + 1, y + 2.5, x + 2.2, y + 1)
+    }
+
+    // Item name
+    const textX = x + checkboxSize + 2
+    doc.setTextColor(entry.isPurchased ? BW_COLORS.lightGray : BW_COLORS.black)
+    doc.text(entry.text, textX, y + 2.8)
+
+    // Quantity (right-aligned)
+    if (entry.quantity) {
+      doc.setTextColor(BW_COLORS.gray)
+      doc.text(entry.quantity, x + columnWidth, y + 2.8, { align: 'right' })
+    }
+
+    return y + lineHeight
+  }
+}
+
+/**
+ * Original single-column colored layout
+ */
+async function generateSingleColumnPDF(
+  shoppingList: ShoppingListData,
+  itemsByCategory: ItemsByCategory,
+  options: { includeQRCode?: boolean; qrCodeDataUrl?: string }
+): Promise<jsPDF> {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -262,7 +501,7 @@ export async function generateShoppingListPDF(
     }
   }
 
-  console.log('🟢 PDF generated successfully')
+  console.log('🟢 Single-column PDF generated successfully')
   return doc
 }
 
