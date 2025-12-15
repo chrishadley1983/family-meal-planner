@@ -2,12 +2,26 @@
 
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
-import { generateRecipeSVG } from '@/lib/generate-recipe-image'
-import { AppLayout, PageContainer } from '@/components/layout'
-import { Button, Badge, Input, Select } from '@/components/ui'
+import { Sparkles } from 'lucide-react'
+import { AppLayout } from '@/components/layout'
+import { Button, Input, Select } from '@/components/ui'
 import { useSession } from 'next-auth/react'
 import { useNotification } from '@/components/providers/NotificationProvider'
+import {
+  RecipeCard,
+  RecipeSearchBar,
+  RecipeQuickFilters,
+  RecipeDiscoverBanner,
+} from '@/components/recipes'
+import type { QuickFilterId } from '@/lib/recipe-helpers'
+
+interface Ingredient {
+  ingredientName: string
+  quantity: number
+  unit: string
+  category?: string | null
+  notes?: string | null
+}
 
 interface Recipe {
   id: string
@@ -22,9 +36,11 @@ interface Recipe {
   cuisineType?: string
   difficultyLevel?: string
   timesUsed: number
-  ingredients: any[]
+  ingredients: Ingredient[]
   caloriesPerServing?: number
   proteinPerServing?: number
+  carbsPerServing?: number
+  fatPerServing?: number
   isVegetarian: boolean
   isVegan: boolean
   containsMeat: boolean
@@ -45,6 +61,9 @@ export default function RecipesPage() {
   const [filterCuisineType, setFilterCuisineType] = useState('')
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
 
+  // Quick filters
+  const [activeQuickFilters, setActiveQuickFilters] = useState<QuickFilterId[]>([])
+
   // Advanced filter states
   const [filterCalories, setFilterCalories] = useState('')
   const [filterProtein, setFilterProtein] = useState('')
@@ -54,7 +73,6 @@ export default function RecipesPage() {
   const [filterIngredient, setFilterIngredient] = useState('')
 
   // CSV Import states
-  const [showImportModal, setShowImportModal] = useState(false)
   const [importing, setImporting] = useState(false)
   const [importResult, setImportResult] = useState<{ success: boolean; message: string } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -68,13 +86,6 @@ export default function RecipesPage() {
       const response = await fetch('/api/recipes')
       const data = await response.json()
       console.log('📊 Total recipes loaded:', data.recipes?.length)
-      console.log('📊 Sample recipe macro data:', {
-        name: data.recipes?.[0]?.recipeName,
-        calories: data.recipes?.[0]?.caloriesPerServing,
-        protein: data.recipes?.[0]?.proteinPerServing,
-        hasCalories: data.recipes?.filter((r: Recipe) => r.caloriesPerServing).length,
-        hasProtein: data.recipes?.filter((r: Recipe) => r.proteinPerServing).length,
-      })
       setRecipes(data.recipes || [])
     } catch (error) {
       console.error('Error fetching recipes:', error)
@@ -105,60 +116,31 @@ export default function RecipesPage() {
     }
   }
 
-  const handleDownloadTemplate = () => {
-    const template = `recipeName,description,servings,prepTimeMinutes,cookTimeMinutes,cuisineType,difficultyLevel,mealCategory,ingredientName,quantity,unit,notes,stepNumber,instruction
-"Spaghetti Carbonara","Classic Italian pasta dish",4,10,15,"Italian","Easy","Dinner","spaghetti",400,"g","",1,"Cook spaghetti according to package directions"
-"Spaghetti Carbonara","Classic Italian pasta dish",4,10,15,"Italian","Easy","Dinner","bacon",200,"g","diced",2,"Fry bacon until crispy"
-"Spaghetti Carbonara","Classic Italian pasta dish",4,10,15,"Italian","Easy","Dinner","eggs",3,"whole","",3,"Whisk eggs with parmesan"
-"Spaghetti Carbonara","Classic Italian pasta dish",4,10,15,"Italian","Easy","Dinner","parmesan",100,"g","grated",4,"Combine pasta with bacon and egg mixture"`
-
-    const blob = new Blob([template], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'recipe-template.csv'
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-  }
-
   const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    console.log('📂 handleImportCSV called, file selected:', file?.name)
-    if (!file) {
-      console.log('❌ No file selected')
-      return
-    }
+    if (!file) return
 
     setImporting(true)
     setImportResult(null)
 
     try {
-      console.log('📄 Reading file content...')
       const text = await file.text()
-      console.log('📄 File content read, length:', text.length)
 
-      console.log('🔷 Calling import CSV API...')
       const response = await fetch('/api/recipes/import-csv', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ csvData: text })
       })
 
-      console.log('🟢 Import API response:', response.status, response.ok)
       const data = await response.json()
 
       if (response.ok) {
-        console.log('✅ Import successful:', data.imported, 'recipes imported')
-
-        // Build detailed message including any errors
         let message = `Successfully imported ${data.imported} recipe(s).`
 
         if (data.failed > 0 && data.errors && data.errors.length > 0) {
           message += `\n\nFailed to import ${data.failed} recipe(s):`
-          data.errors.forEach((err: any) => {
-            message += `\n• ${err.recipeName}: ${err.error}`
+          data.errors.forEach((err: { recipeName: string; error: string }) => {
+            message += `\n- ${err.recipeName}: ${err.error}`
           })
         }
 
@@ -168,25 +150,32 @@ export default function RecipesPage() {
         })
 
         if (data.imported > 0) {
-          fetchRecipes() // Refresh recipe list only if some recipes were imported
+          fetchRecipes()
         }
       } else {
-        console.error('❌ Import failed:', data.error)
         setImportResult({
           success: false,
           message: data.error || 'Failed to import recipes'
         })
       }
     } catch (error) {
-      console.error('❌ Error importing CSV:', error)
+      console.error('Error importing CSV:', error)
       setImportResult({
         success: false,
         message: 'Error importing CSV file'
       })
     } finally {
       setImporting(false)
-      e.target.value = '' // Reset file input
+      e.target.value = ''
     }
+  }
+
+  const handleQuickFilterToggle = (filterId: QuickFilterId) => {
+    setActiveQuickFilters(prev =>
+      prev.includes(filterId)
+        ? prev.filter(f => f !== filterId)
+        : [...prev, filterId]
+    )
   }
 
   // Helper function for dietary filter matching
@@ -207,17 +196,49 @@ export default function RecipesPage() {
     })
   }
 
+  // Quick filter logic
+  const matchesQuickFilters = (recipe: Recipe): boolean => {
+    if (activeQuickFilters.length === 0) return true
+
+    return activeQuickFilters.every(filterId => {
+      switch (filterId) {
+        case 'quick':
+          // Under 30 minutes
+          const totalTime = recipe.totalTimeMinutes || (recipe.prepTimeMinutes || 0)
+          return totalTime <= 30
+        case 'protein':
+          // High protein (30g+)
+          return (recipe.proteinPerServing || 0) >= 30
+        case 'favourite':
+          // Most used (3+ times)
+          return recipe.timesUsed >= 3
+        case 'veggie':
+          // Vegetarian
+          return recipe.isVegetarian || (!recipe.containsMeat && !recipe.containsSeafood)
+        default:
+          return true
+      }
+    })
+  }
+
   const filteredRecipes = recipes.filter(recipe => {
-    // Search filter
+    // Search filter - also search ingredients and cuisine
     const matchesSearch = !searchTerm ||
       recipe.recipeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      recipe.description?.toLowerCase().includes(searchTerm.toLowerCase())
+      recipe.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      recipe.cuisineType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      recipe.ingredients.some(ing =>
+        ing.ingredientName.toLowerCase().includes(searchTerm.toLowerCase())
+      )
 
     // Meal type filter
     const matchesMealType = !filterMealType || recipe.mealType.includes(filterMealType)
 
     // Cuisine type filter
     const matchesCuisineType = !filterCuisineType || recipe.cuisineType === filterCuisineType
+
+    // Quick filters
+    const matchesQuick = matchesQuickFilters(recipe)
 
     // Calorie filter
     let matchesCalories = true
@@ -261,11 +282,11 @@ export default function RecipesPage() {
 
     // Ingredient search filter
     const matchesIngredient = !filterIngredient ||
-      recipe.ingredients.some((ing: any) =>
+      recipe.ingredients.some((ing) =>
         ing.ingredientName.toLowerCase().includes(filterIngredient.toLowerCase())
       )
 
-    return matchesSearch && matchesMealType && matchesCuisineType &&
+    return matchesSearch && matchesMealType && matchesCuisineType && matchesQuick &&
            matchesCalories && matchesProtein && matchesDietary &&
            matchesPrepTime && matchesDifficulty && matchesIngredient
   })
@@ -277,6 +298,7 @@ export default function RecipesPage() {
     setSearchTerm('')
     setFilterMealType('')
     setFilterCuisineType('')
+    setActiveQuickFilters([])
     setFilterCalories('')
     setFilterProtein('')
     setFilterDietary([])
@@ -288,30 +310,32 @@ export default function RecipesPage() {
   const activeFilterCount = [
     searchTerm, filterMealType, filterCuisineType, filterCalories,
     filterProtein, filterPrepTime, filterDifficulty, filterIngredient
-  ].filter(f => f).length + filterDietary.length
+  ].filter(f => f).length + filterDietary.length + activeQuickFilters.length
 
   if (loading) {
     return (
       <AppLayout userEmail={session?.user?.email}>
-        <PageContainer>
+        <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-center py-12">
             <p className="text-zinc-400">Loading recipes...</p>
           </div>
-        </PageContainer>
+        </div>
       </AppLayout>
     )
   }
 
   return (
     <AppLayout userEmail={session?.user?.email}>
-      <PageContainer
-        title="Recipes"
-        description="Manage your family recipes"
-        action={
+      <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-white">My Recipes</h1>
+            <p className="text-zinc-400 mt-1">
+              {recipes.length} delicious meal{recipes.length !== 1 ? 's' : ''} to choose from
+            </p>
+          </div>
           <div className="flex gap-2">
-            <Button onClick={handleDownloadTemplate} variant="secondary" size="sm">
-              Download Template
-            </Button>
             <input
               ref={fileInputRef}
               type="file"
@@ -324,19 +348,19 @@ export default function RecipesPage() {
               variant="secondary"
               size="sm"
               disabled={importing}
-              onClick={() => {
-                console.log('📂 Import CSV button clicked')
-                fileInputRef.current?.click()
-              }}
+              onClick={() => fileInputRef.current?.click()}
             >
-              {importing ? 'Importing...' : 'Import CSV'}
+              {importing ? 'Importing...' : 'Import'}
             </Button>
             <Link href="/recipes/new">
-              <Button variant="primary">Add Recipe</Button>
+              <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-purple-600 hover:from-orange-600 hover:to-purple-700 rounded-lg transition-colors text-sm font-medium text-white">
+                <Sparkles className="w-4 h-4" />
+                Add Recipe
+              </button>
             </Link>
           </div>
-        }
-      >
+        </div>
+
         {/* Import Result Notification */}
         {importResult && (
           <div className={`mb-4 p-4 rounded-lg ${importResult.success ? 'bg-green-900/20 border border-green-700' : 'bg-red-900/20 border border-red-700'}`}>
@@ -352,173 +376,156 @@ export default function RecipesPage() {
           </div>
         )}
 
-        {/* Basic Filters */}
-        <div className="card p-4 mb-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <Input
-              type="text"
-              placeholder="Search recipes..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            <Select
-              value={filterMealType}
-              onChange={(e) => setFilterMealType(e.target.value)}
-            >
-              <option value="">All Meal Types</option>
-              {mealTypes.map(type => (
-                <option key={type} value={type}>{type}</option>
-              ))}
-            </Select>
-            <Select
-              value={filterCuisineType}
-              onChange={(e) => setFilterCuisineType(e.target.value)}
-            >
-              <option value="">All Cuisines</option>
-              {cuisineTypes.map(type => (
-                <option key={type} value={type}>{type}</option>
-              ))}
-            </Select>
-          </div>
+        {/* Search Bar */}
+        <RecipeSearchBar
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          mealType={filterMealType}
+          onMealTypeChange={setFilterMealType}
+          cuisineType={filterCuisineType}
+          onCuisineTypeChange={setFilterCuisineType}
+          mealTypes={mealTypes}
+          cuisineTypes={cuisineTypes}
+          onFilterClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+          className="mb-4"
+        />
 
-          {/* Advanced Filters Toggle */}
-          <div className="flex items-center justify-between">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-            >
-              <svg className={`w-4 h-4 transition-transform ${showAdvancedFilters ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-              <span>Advanced Filters</span>
+        {/* Quick Filters */}
+        <RecipeQuickFilters
+          activeFilters={activeQuickFilters}
+          onFilterToggle={handleQuickFilterToggle}
+          className="mb-6"
+        />
+
+        {/* Advanced Filters Panel */}
+        {showAdvancedFilters && (
+          <div className="bg-zinc-900 rounded-xl p-4 mb-6 border border-zinc-800">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-medium text-white">Advanced Filters</h3>
               {activeFilterCount > 0 && (
-                <Badge variant="purple" size="sm">
-                  {activeFilterCount}
-                </Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearAllFilters}
+                >
+                  Clear All
+                </Button>
               )}
-            </Button>
-            {activeFilterCount > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearAllFilters}
-              >
-                Clear All Filters
-              </Button>
-            )}
-          </div>
+            </div>
 
-          {/* Advanced Filters Panel */}
-          {showAdvancedFilters && (
-            <div className="mt-4 pt-4 border-t border-zinc-800">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {/* Calorie Filter */}
-                <div>
-                  <label className="label">Calories (per serving)</label>
-                  <Select
-                    value={filterCalories}
-                    onChange={(e) => setFilterCalories(e.target.value)}
-                  >
-                    <option value="">Any</option>
-                    <option value="<300">Under 300</option>
-                    <option value="300-500">300-500</option>
-                    <option value="500-700">500-700</option>
-                    <option value=">700">Over 700</option>
-                  </Select>
-                </div>
-
-                {/* Protein Filter */}
-                <div>
-                  <label className="label">Protein (grams)</label>
-                  <Select
-                    value={filterProtein}
-                    onChange={(e) => setFilterProtein(e.target.value)}
-                  >
-                    <option value="">Any</option>
-                    <option value="<10">Low (&lt;10g)</option>
-                    <option value="10-20">Medium (10-20g)</option>
-                    <option value=">20">High (&gt;20g)</option>
-                  </Select>
-                </div>
-
-                {/* Prep Time Filter */}
-                <div>
-                  <label className="label">Prep Time</label>
-                  <Select
-                    value={filterPrepTime}
-                    onChange={(e) => setFilterPrepTime(e.target.value)}
-                  >
-                    <option value="">Any</option>
-                    <option value="<30">Quick (&lt;30 min)</option>
-                    <option value="30-60">Medium (30-60 min)</option>
-                    <option value=">60">Long (&gt;60 min)</option>
-                  </Select>
-                </div>
-
-                {/* Difficulty Filter */}
-                <div>
-                  <label className="label">Difficulty</label>
-                  <Select
-                    value={filterDifficulty}
-                    onChange={(e) => setFilterDifficulty(e.target.value)}
-                  >
-                    <option value="">Any</option>
-                    <option value="Easy">Easy</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Hard">Hard</option>
-                  </Select>
-                </div>
-
-                {/* Ingredient Search */}
-                <div className="md:col-span-2">
-                  <label className="label">Contains Ingredient</label>
-                  <Input
-                    type="text"
-                    placeholder="e.g., chicken, tomatoes..."
-                    value={filterIngredient}
-                    onChange={(e) => setFilterIngredient(e.target.value)}
-                  />
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Calorie Filter */}
+              <div>
+                <label className="label">Calories (per serving)</label>
+                <Select
+                  value={filterCalories}
+                  onChange={(e) => setFilterCalories(e.target.value)}
+                >
+                  <option value="">Any</option>
+                  <option value="<300">Under 300</option>
+                  <option value="300-500">300-500</option>
+                  <option value="500-700">500-700</option>
+                  <option value=">700">Over 700</option>
+                </Select>
               </div>
 
-              {/* Dietary Tags */}
-              <div className="mt-4">
-                <label className="label">Dietary Preferences</label>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    { value: 'vegetarian', label: 'Vegetarian' },
-                    { value: 'vegan', label: 'Vegan' },
-                    { value: 'dairy-free', label: 'Dairy-Free' },
-                    { value: 'gluten-free', label: 'Gluten-Free' },
-                    { value: 'contains-meat', label: 'Contains Meat' },
-                    { value: 'contains-seafood', label: 'Contains Seafood' },
-                    { value: 'contains-nuts', label: 'Contains Nuts' }
-                  ].map(diet => (
-                    <label key={diet.value} className="flex items-center gap-2 px-3 py-2 border border-zinc-700 rounded-md cursor-pointer hover:bg-zinc-800 text-sm text-zinc-300 transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={filterDietary.includes(diet.value)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setFilterDietary([...filterDietary, diet.value])
-                          } else {
-                            setFilterDietary(filterDietary.filter(d => d !== diet.value))
-                          }
-                        }}
-                        className="w-4 h-4 bg-zinc-800 border-zinc-700 rounded text-purple-600 focus:ring-purple-500 focus:ring-offset-zinc-900"
-                      />
-                      {diet.label}
-                    </label>
-                  ))}
-                </div>
+              {/* Protein Filter */}
+              <div>
+                <label className="label">Protein (grams)</label>
+                <Select
+                  value={filterProtein}
+                  onChange={(e) => setFilterProtein(e.target.value)}
+                >
+                  <option value="">Any</option>
+                  <option value="<10">Low (&lt;10g)</option>
+                  <option value="10-20">Medium (10-20g)</option>
+                  <option value=">20">High (&gt;20g)</option>
+                </Select>
+              </div>
+
+              {/* Prep Time Filter */}
+              <div>
+                <label className="label">Prep Time</label>
+                <Select
+                  value={filterPrepTime}
+                  onChange={(e) => setFilterPrepTime(e.target.value)}
+                >
+                  <option value="">Any</option>
+                  <option value="<30">Quick (&lt;30 min)</option>
+                  <option value="30-60">Medium (30-60 min)</option>
+                  <option value=">60">Long (&gt;60 min)</option>
+                </Select>
+              </div>
+
+              {/* Difficulty Filter */}
+              <div>
+                <label className="label">Difficulty</label>
+                <Select
+                  value={filterDifficulty}
+                  onChange={(e) => setFilterDifficulty(e.target.value)}
+                >
+                  <option value="">Any</option>
+                  <option value="Easy">Easy</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Hard">Hard</option>
+                </Select>
+              </div>
+
+              {/* Ingredient Search */}
+              <div className="md:col-span-2">
+                <label className="label">Contains Ingredient</label>
+                <Input
+                  type="text"
+                  placeholder="e.g., chicken, tomatoes..."
+                  value={filterIngredient}
+                  onChange={(e) => setFilterIngredient(e.target.value)}
+                />
               </div>
             </div>
-          )}
-        </div>
 
+            {/* Dietary Tags */}
+            <div className="mt-4">
+              <label className="label">Dietary Preferences</label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { value: 'vegetarian', label: 'Vegetarian' },
+                  { value: 'vegan', label: 'Vegan' },
+                  { value: 'dairy-free', label: 'Dairy-Free' },
+                  { value: 'gluten-free', label: 'Gluten-Free' },
+                  { value: 'contains-meat', label: 'Contains Meat' },
+                  { value: 'contains-seafood', label: 'Contains Seafood' },
+                  { value: 'contains-nuts', label: 'Contains Nuts' }
+                ].map(diet => (
+                  <label
+                    key={diet.value}
+                    className="flex items-center gap-2 px-3 py-2 border border-zinc-700 rounded-md cursor-pointer hover:bg-zinc-800 text-sm text-zinc-300 transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={filterDietary.includes(diet.value)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setFilterDietary([...filterDietary, diet.value])
+                        } else {
+                          setFilterDietary(filterDietary.filter(d => d !== diet.value))
+                        }
+                      }}
+                      className="w-4 h-4 bg-zinc-800 border-zinc-700 rounded text-purple-600 focus:ring-purple-500 focus:ring-offset-zinc-900"
+                    />
+                    {diet.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Discover Banner */}
+        <RecipeDiscoverBanner className="mb-8" />
+
+        {/* Recipe Grid */}
         {filteredRecipes.length === 0 ? (
-          <div className="card p-12 text-center">
+          <div className="bg-zinc-900 rounded-xl p-12 text-center border border-zinc-800">
             <svg className="mx-auto h-12 w-12 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
             </svg>
@@ -532,94 +539,38 @@ export default function RecipesPage() {
             </p>
             {activeFilterCount === 0 && (
               <Link href="/recipes/new" className="mt-4 inline-block">
-                <Button variant="primary">
+                <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-purple-600 hover:from-orange-600 hover:to-purple-700 rounded-lg transition-colors text-sm font-medium text-white mx-auto">
+                  <Sparkles className="w-4 h-4" />
                   Add Recipe
-                </Button>
+                </button>
               </Link>
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredRecipes.map((recipe) => {
-              // Generate SVG if no valid image provided
-              // Valid images: http(s) URLs, or data:image/ URLs with proper format
-              const hasValidImage = recipe.imageUrl && (
-                recipe.imageUrl.startsWith('http://') ||
-                recipe.imageUrl.startsWith('https://') ||
-                (recipe.imageUrl.startsWith('data:image/') && recipe.imageUrl.length > 100)
-              )
-              const imageUrl = hasValidImage ? recipe.imageUrl : generateRecipeSVG(recipe.recipeName, recipe.mealType)
-
-              return (
-                <div key={recipe.id} className="card-interactive overflow-hidden">
-                  {/* Recipe Image */}
-                  <div className="relative h-48 w-full bg-zinc-800 -m-6 mb-4">
-                    <Image
-                      src={imageUrl}
-                      alt={recipe.recipeName}
-                      fill
-                      className="object-cover"
-                      unoptimized={imageUrl.startsWith('data:')}
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="text-lg font-semibold text-white flex-1">{recipe.recipeName}</h3>
-                      {recipe.familyRating && (
-                        <div className="flex items-center ml-2">
-                          <svg className="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                          </svg>
-                          <span className="ml-1 text-sm text-zinc-400">{recipe.familyRating.toFixed(1)}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {recipe.description && (
-                      <p className="text-sm text-zinc-400 mb-3 line-clamp-2">{recipe.description}</p>
-                    )}
-
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      {recipe.mealType.map(cat => (
-                        <Badge key={cat} variant="purple" size="sm">
-                          {cat}
-                        </Badge>
-                      ))}
-                    </div>
-
-                    <div className="flex items-center text-sm text-zinc-400 space-x-4 mb-4">
-                      <span>🍽️ {recipe.servings} servings</span>
-                      {recipe.totalTimeMinutes && (
-                        <span>⏱️ {recipe.totalTimeMinutes} min</span>
-                      )}
-                    </div>
-
-                    <div className="text-xs text-zinc-500 mb-4">
-                      Used {recipe.timesUsed} times • {recipe.ingredients.length} ingredients
-                    </div>
-
-                    <div className="flex space-x-2">
-                      <Link href={`/recipes/${recipe.id}`} className="flex-1">
-                        <Button variant="secondary" size="sm" className="w-full">
-                          View/Edit
-                        </Button>
-                      </Link>
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        onClick={() => handleDelete(recipe.id)}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {filteredRecipes.map((recipe) => (
+              <RecipeCard
+                key={recipe.id}
+                id={recipe.id}
+                name={recipe.recipeName}
+                description={recipe.description}
+                mealType={recipe.mealType}
+                cuisineType={recipe.cuisineType}
+                servings={recipe.servings}
+                totalTimeMinutes={recipe.totalTimeMinutes}
+                ingredientCount={recipe.ingredients.length}
+                ingredients={recipe.ingredients}
+                timesUsed={recipe.timesUsed}
+                caloriesPerServing={recipe.caloriesPerServing}
+                proteinPerServing={recipe.proteinPerServing}
+                carbsPerServing={recipe.carbsPerServing}
+                fatPerServing={recipe.fatPerServing}
+                onDelete={handleDelete}
+              />
+            ))}
           </div>
         )}
-      </PageContainer>
+      </div>
     </AppLayout>
   )
 }
