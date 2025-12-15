@@ -5,7 +5,7 @@ interface PageContainerProps {
   title?: string
   description?: string
   action?: React.ReactNode
-  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '7xl' | 'full'
+  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '4xl' | '7xl' | 'full'
   className?: string
 }
 
@@ -23,6 +23,7 @@ export function PageContainer({
     lg: 'max-w-lg',
     xl: 'max-w-xl',
     '2xl': 'max-w-2xl',
+    '4xl': 'max-w-4xl',
     '7xl': 'max-w-7xl',
     full: 'max-w-full',
   }
