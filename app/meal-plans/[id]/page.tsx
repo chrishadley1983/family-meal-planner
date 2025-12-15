@@ -24,6 +24,8 @@ interface Recipe {
   proteinPerServing?: number | null
   carbsPerServing?: number | null
   fatPerServing?: number | null
+  prepTimeMinutes?: number | null
+  cookTimeMinutes?: number | null
 }
 
 interface Meal {
@@ -922,19 +924,64 @@ export default function MealPlanDetailPage() {
       const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
       const pageWidth = doc.internal.pageSize.getWidth()
       const pageHeight = doc.internal.pageSize.getHeight()
+      const margin = 10
+      let currentY = margin
 
-      // Title
+      // === HEADER ===
+      // FamilyFuel logo (left side) - gradient square
+      const logoX = margin
+      const logoY = currentY
+      doc.setFillColor(139, 92, 246) // Purple
+      doc.roundedRect(logoX, logoY, 8, 8, 1.5, 1.5, 'F')
+      doc.setFillColor(236, 72, 153) // Pink
+      doc.roundedRect(logoX + 4, logoY, 4, 8, 0, 1.5, 'F')
+
+      // FamilyFuel text
+      doc.setFontSize(14)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(50, 50, 50)
+      doc.text('FamilyFuel', logoX + 11, currentY + 5.5)
+
+      // Title (center)
       doc.setFontSize(18)
-      doc.setTextColor(80, 80, 80)
-      doc.text('Weekly Meal Plan', pageWidth / 2, 15, { align: 'center' })
+      doc.text('Weekly Meal Plan', pageWidth / 2, currentY + 5, { align: 'center' })
 
-      // Date range
-      doc.setFontSize(12)
+      // Date range (below title)
+      doc.setFontSize(11)
+      doc.setFont('helvetica', 'normal')
       doc.setTextColor(100, 100, 100)
-      doc.text(formatDateRange(mealPlan.weekStartDate, mealPlan.weekEndDate), pageWidth / 2, 22, { align: 'center' })
+      doc.text(formatDateRange(mealPlan.weekStartDate, mealPlan.weekEndDate), pageWidth / 2, currentY + 12, { align: 'center' })
+
+      // Generated date (right)
+      doc.setFontSize(8)
+      doc.setTextColor(150, 150, 150)
+      doc.text(`Generated ${new Date().toLocaleDateString()}`, pageWidth - margin, currentY + 5, { align: 'right' })
+
+      currentY += 18
+
+      // Divider line
+      doc.setDrawColor(200, 200, 200)
+      doc.setLineWidth(0.3)
+      doc.line(margin, currentY, pageWidth - margin, currentY)
+
+      currentY += 4
+
+      // === TABLE ===
+      // Get day dates
+      const weekStartDate = new Date(mealPlan.weekStartDate)
+      const getDayDate = (dayIndex: number) => {
+        const date = new Date(weekStartDate)
+        date.setDate(weekStartDate.getDate() + dayIndex)
+        return date.getDate()
+      }
+      const getMonthAbbr = (dayIndex: number) => {
+        const date = new Date(weekStartDate)
+        date.setDate(weekStartDate.getDate() + dayIndex)
+        return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][date.getMonth()]
+      }
 
       // Prepare table data - rows are meal types, columns are days
-      const tableHead = [['', ...DAYS_OF_WEEK.map(d => d.slice(0, 3))]]
+      const tableHead = [['', ...DAYS_OF_WEEK.map((d, i) => `${d}\n${getDayDate(i)} ${getMonthAbbr(i)}`)]]
 
       const mealTypeLabels = ['Breakfast', 'Lunch', 'Afternoon Snack', 'Dinner', 'Dessert']
       const mealTypeKeys = ['breakfast', 'lunch', 'afternoon-snack', 'dinner', 'dessert']
@@ -953,6 +1000,10 @@ export default function MealPlanDetailPage() {
           } else if (meal?.notes?.toLowerCase().includes('batch')) {
             cellText = '⚡ ' + cellText
           }
+          // Add servings
+          if (meal?.servings) {
+            cellText += `\n(${meal.servings} servings)`
+          }
           row.push(cellText)
         })
         return row
@@ -961,48 +1012,56 @@ export default function MealPlanDetailPage() {
       autoTable(doc, {
         head: tableHead,
         body: tableBody,
-        startY: 28,
+        startY: currentY,
         theme: 'grid',
         styles: {
           fontSize: 8,
-          cellPadding: 3,
+          cellPadding: 2,
           overflow: 'linebreak',
           cellWidth: 'wrap',
+          valign: 'top',
         },
         headStyles: {
-          fillColor: [128, 90, 213],
+          fillColor: [38, 38, 38], // Dark header like design
           textColor: [255, 255, 255],
           fontStyle: 'bold',
           halign: 'center',
+          valign: 'middle',
+          minCellHeight: 12,
         },
         columnStyles: {
-          0: { cellWidth: 25, fontStyle: 'bold', fillColor: [240, 240, 245] },
-          1: { cellWidth: 35 },
-          2: { cellWidth: 35 },
-          3: { cellWidth: 35 },
-          4: { cellWidth: 35 },
-          5: { cellWidth: 35 },
-          6: { cellWidth: 35 },
-          7: { cellWidth: 35 },
+          0: { cellWidth: 22, fontStyle: 'bold', fillColor: [245, 245, 250], halign: 'left' },
+          1: { cellWidth: 36 },
+          2: { cellWidth: 36 },
+          3: { cellWidth: 36 },
+          4: { cellWidth: 36 },
+          5: { cellWidth: 36 },
+          6: { cellWidth: 36 },
+          7: { cellWidth: 36 },
+        },
+        bodyStyles: {
+          textColor: [60, 60, 60],
         },
         alternateRowStyles: {
-          fillColor: [250, 250, 255]
+          fillColor: [252, 252, 255]
         },
-        margin: { left: 10, right: 10 },
+        margin: { left: margin, right: margin },
       })
 
       // Legend
-      const legendY = (doc as any).lastAutoTable?.finalY + 10 || pageHeight - 20
-      doc.setFontSize(8)
+      const legendY = (doc as any).lastAutoTable?.finalY + 6 || pageHeight - 20
+      doc.setFontSize(9)
       doc.setTextColor(100, 100, 100)
-      doc.text('⚡ Batch Cook    🔄 Reheat (leftover)', 10, legendY)
+      doc.text('⚡ Batch Cook', margin, legendY)
+      doc.text('🔄 Reheat (from batch)', margin + 35, legendY)
 
       // Footer
-      doc.setFontSize(8)
-      doc.text(`Generated ${new Date().toLocaleDateString()}`, pageWidth - 10, pageHeight - 10, { align: 'right' })
+      doc.setFontSize(7)
+      doc.setTextColor(180, 180, 180)
+      doc.text('Powered by FamilyFuel', pageWidth / 2, pageHeight - 6, { align: 'center' })
 
       // Download
-      doc.save(`meal-plan-${mealPlan.weekStartDate}.pdf`)
+      doc.save(`FamilyFuel-MealPlan-${mealPlan.weekStartDate}.pdf`)
       success('Weekly Plan PDF downloaded!')
     } catch (err) {
       console.error('❌ Error generating PDF:', err)
@@ -1019,18 +1078,40 @@ export default function MealPlanDetailPage() {
     try {
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
       const pageWidth = doc.internal.pageSize.getWidth()
+      const pageHeight = doc.internal.pageSize.getHeight()
+      const margin = 12
+      let yPosition = margin
+
+      // === HEADER ===
+      // FamilyFuel logo
+      const logoX = margin
+      doc.setFillColor(139, 92, 246)
+      doc.roundedRect(logoX, yPosition, 8, 8, 1.5, 1.5, 'F')
+      doc.setFillColor(236, 72, 153)
+      doc.roundedRect(logoX + 4, yPosition, 4, 8, 0, 1.5, 'F')
+
+      doc.setFontSize(14)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(50, 50, 50)
+      doc.text('FamilyFuel', logoX + 11, yPosition + 5.5)
 
       // Title
-      doc.setFontSize(18)
-      doc.setTextColor(80, 80, 80)
-      doc.text('Cooking Plan', pageWidth / 2, 15, { align: 'center' })
+      doc.setFontSize(20)
+      doc.text('Cooking Plan', pageWidth / 2, yPosition + 5, { align: 'center' })
 
       // Date range
-      doc.setFontSize(12)
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'normal')
       doc.setTextColor(100, 100, 100)
-      doc.text(formatDateRange(mealPlan.weekStartDate, mealPlan.weekEndDate), pageWidth / 2, 22, { align: 'center' })
+      doc.text(formatDateRange(mealPlan.weekStartDate, mealPlan.weekEndDate), pageWidth / 2, yPosition + 12, { align: 'center' })
 
-      let yPosition = 32
+      yPosition += 20
+
+      // Divider
+      doc.setDrawColor(200, 200, 200)
+      doc.setLineWidth(0.3)
+      doc.line(margin, yPosition, pageWidth - margin, yPosition)
+      yPosition += 6
 
       // For each day, show what needs to be cooked
       DAYS_OF_WEEK.forEach((day, dayIndex) => {
@@ -1038,74 +1119,189 @@ export default function MealPlanDetailPage() {
         if (dayMeals.length === 0) return
 
         // Check if we need a new page
-        if (yPosition > 260) {
+        if (yPosition > 240) {
           doc.addPage()
-          yPosition = 15
+          yPosition = margin
         }
 
-        // Day header
+        // Day header with styled background
         const weekStartDate = new Date(mealPlan.weekStartDate)
         const dayDate = new Date(weekStartDate)
         dayDate.setDate(weekStartDate.getDate() + dayIndex)
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+        // Day header background
+        doc.setFillColor(139, 92, 246, 0.15) // Light purple
+        doc.roundedRect(margin, yPosition, pageWidth - margin * 2, 10, 2, 2, 'F')
 
         doc.setFontSize(12)
-        doc.setTextColor(128, 90, 213)
-        doc.text(`${day}, ${dayDate.getDate()} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][dayDate.getMonth()]}`, 10, yPosition)
-        yPosition += 6
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(80, 60, 150)
+        doc.text(`${day}, ${dayDate.getDate()} ${monthNames[dayDate.getMonth()]}`, margin + 4, yPosition + 7)
+        yPosition += 14
 
-        // Group meals by time of day
-        const morningMeals = dayMeals.filter(m =>
-          ['breakfast', 'morning-snack'].includes(m.mealType.toLowerCase().replace(/\s+/g, '-'))
-        )
-        const middayMeals = dayMeals.filter(m =>
-          ['lunch', 'afternoon-snack'].includes(m.mealType.toLowerCase().replace(/\s+/g, '-'))
-        )
-        const eveningMeals = dayMeals.filter(m =>
-          ['dinner', 'dessert', 'evening-snack'].includes(m.mealType.toLowerCase().replace(/\s+/g, '-'))
-        )
+        // Separate meals into cooking and reheat
+        const cookingMeals = dayMeals.filter(m => !m.isLeftover)
+        const reheatMeals = dayMeals.filter(m => m.isLeftover)
 
-        const renderSection = (sectionName: string, meals: Meal[]) => {
-          if (meals.length === 0) return
+        // 🍳 TODAY'S COOKING section
+        if (cookingMeals.length > 0) {
+          doc.setFontSize(10)
+          doc.setFont('helvetica', 'bold')
+          doc.setTextColor(60, 60, 60)
+          doc.text('🍳 TODAY\'S COOKING', margin + 2, yPosition)
+          yPosition += 5
 
-          doc.setFontSize(9)
-          doc.setTextColor(100, 100, 100)
-          doc.text(sectionName, 12, yPosition)
-          yPosition += 4
-
-          meals.forEach(meal => {
-            const mealLabel = MEAL_TYPES.find(mt => mt.key === meal.mealType.toLowerCase().replace(/\s+/g, '-'))?.label || meal.mealType
-            let recipeName = meal.recipeName || 'Not assigned'
-
-            // Add cooking indicators
-            let indicator = ''
-            if (meal.isLeftover) {
-              indicator = '🔄 REHEAT: '
-            } else if (meal.notes?.toLowerCase().includes('batch')) {
-              indicator = '⚡ BATCH: '
+          cookingMeals.forEach(meal => {
+            if (yPosition > 270) {
+              doc.addPage()
+              yPosition = margin
             }
 
+            const mealLabel = MEAL_TYPES.find(mt => mt.key === meal.mealType.toLowerCase().replace(/\s+/g, '-'))?.label || meal.mealType
+            const recipeName = meal.recipeName || 'Not assigned'
+            const isBatch = meal.notes?.toLowerCase().includes('batch')
+
+            // Meal row with light background
+            if (isBatch) {
+              doc.setFillColor(245, 158, 11, 0.1) // Amber tint
+              doc.setDrawColor(245, 158, 11, 0.3)
+              doc.roundedRect(margin + 2, yPosition - 1, pageWidth - margin * 2 - 4, 10, 1, 1, 'FD')
+            }
+
+            // Meal type label
+            doc.setFontSize(8)
+            doc.setFont('helvetica', 'normal')
+            doc.setTextColor(100, 100, 100)
+            doc.text(mealLabel, margin + 4, yPosition + 3)
+
+            // Batch badge
+            if (isBatch) {
+              doc.setFillColor(245, 158, 11)
+              doc.roundedRect(margin + 4, yPosition + 4, 14, 4, 1, 1, 'F')
+              doc.setFontSize(6)
+              doc.setTextColor(255, 255, 255)
+              doc.text('⚡ BATCH', margin + 5, yPosition + 6.8)
+            }
+
+            // Recipe name
             doc.setFontSize(9)
-            doc.setTextColor(60, 60, 60)
-            doc.text(`☐ ${mealLabel}: ${indicator}${recipeName}`, 14, yPosition)
-            yPosition += 5
+            doc.setFont('helvetica', 'bold')
+            doc.setTextColor(40, 40, 40)
+            doc.text(recipeName, margin + 28, yPosition + 3)
+
+            // Servings
+            doc.setFont('helvetica', 'normal')
+            doc.setTextColor(100, 100, 100)
+            doc.text(`${meal.servings || 4} servings`, margin + 28, yPosition + 7)
+
+            // Prep/Cook times (if recipe data available)
+            const recipe = recipes.find(r => r.id === meal.recipeId)
+            if (recipe) {
+              doc.setFontSize(8)
+              doc.setTextColor(245, 158, 11)
+              doc.text(`${recipe.prepTimeMinutes || 0} min prep`, pageWidth - margin - 30, yPosition + 3, { align: 'right' })
+              doc.setTextColor(100, 100, 100)
+              doc.text(`${recipe.cookTimeMinutes || 0} min cook`, pageWidth - margin - 4, yPosition + 3, { align: 'right' })
+            }
+
+            yPosition += 11
           })
         }
 
-        renderSection('Morning', morningMeals)
-        renderSection('Midday', middayMeals)
-        renderSection('Evening', eveningMeals)
+        // 🔄 REHEAT ONLY section
+        if (reheatMeals.length > 0) {
+          yPosition += 2
+          doc.setFontSize(10)
+          doc.setFont('helvetica', 'bold')
+          doc.setTextColor(60, 60, 60)
+          doc.text('🔄 REHEAT ONLY', margin + 2, yPosition)
+          yPosition += 5
 
-        yPosition += 4
+          reheatMeals.forEach(meal => {
+            if (yPosition > 270) {
+              doc.addPage()
+              yPosition = margin
+            }
+
+            const mealLabel = MEAL_TYPES.find(mt => mt.key === meal.mealType.toLowerCase().replace(/\s+/g, '-'))?.label || meal.mealType
+            const recipeName = meal.recipeName || 'Not assigned'
+
+            // Reheat row with green tint
+            doc.setFillColor(16, 185, 129, 0.1)
+            doc.setDrawColor(16, 185, 129, 0.3)
+            doc.roundedRect(margin + 2, yPosition - 1, pageWidth - margin * 2 - 4, 9, 1, 1, 'FD')
+
+            // Meal type with reheat badge
+            doc.setFontSize(8)
+            doc.setFont('helvetica', 'normal')
+            doc.setTextColor(100, 100, 100)
+            doc.text(mealLabel, margin + 4, yPosition + 3)
+
+            doc.setFillColor(16, 185, 129)
+            doc.roundedRect(margin + 4, yPosition + 4, 16, 4, 1, 1, 'F')
+            doc.setFontSize(6)
+            doc.setTextColor(255, 255, 255)
+            doc.text('🔄 REHEAT', margin + 5, yPosition + 6.8)
+
+            // Recipe name
+            doc.setFontSize(9)
+            doc.setFont('helvetica', 'bold')
+            doc.setTextColor(40, 40, 40)
+            doc.text(recipeName, margin + 28, yPosition + 3)
+
+            // Reheat time
+            doc.setFontSize(8)
+            doc.setTextColor(16, 185, 129)
+            doc.text('~10 min reheat', pageWidth - margin - 4, yPosition + 3, { align: 'right' })
+
+            yPosition += 10
+          })
+        }
+
+        // Calculate total cooking time for the day
+        let totalPrepTime = 0
+        let totalCookTime = 0
+        cookingMeals.forEach(meal => {
+          const recipe = recipes.find(r => r.id === meal.recipeId)
+          if (recipe) {
+            totalPrepTime += recipe.prepTimeMinutes || 0
+            totalCookTime += recipe.cookTimeMinutes || 0
+          }
+        })
+
+        if (totalPrepTime > 0 || totalCookTime > 0) {
+          // Total time footer
+          doc.setFillColor(139, 92, 246, 0.1)
+          doc.roundedRect(margin, yPosition, pageWidth - margin * 2, 8, 1, 1, 'F')
+
+          doc.setFontSize(9)
+          doc.setFont('helvetica', 'bold')
+          doc.setTextColor(60, 60, 60)
+          doc.text('Total cooking time:', margin + 4, yPosition + 5.5)
+
+          const totalMinutes = totalPrepTime + totalCookTime
+          const hours = Math.floor(totalMinutes / 60)
+          const mins = totalMinutes % 60
+          const timeStr = hours > 0 ? `~${hours}hr ${mins}min` : `~${mins}min`
+
+          doc.setFontSize(11)
+          doc.setTextColor(128, 90, 213)
+          doc.text(timeStr, pageWidth - margin - 4, yPosition + 5.5, { align: 'right' })
+
+          yPosition += 12
+        }
+
+        yPosition += 6
       })
 
-      // Legend
-      doc.setFontSize(8)
-      doc.setTextColor(100, 100, 100)
-      const finalY = Math.min(yPosition + 5, 280)
-      doc.text('⚡ BATCH = Cook extra portions    🔄 REHEAT = From earlier batch', 10, finalY)
+      // Footer
+      doc.setFontSize(7)
+      doc.setTextColor(180, 180, 180)
+      doc.text('Powered by FamilyFuel', pageWidth / 2, pageHeight - 6, { align: 'center' })
 
       // Download
-      doc.save(`cooking-plan-${mealPlan.weekStartDate}.pdf`)
+      doc.save(`FamilyFuel-CookingPlan-${mealPlan.weekStartDate}.pdf`)
       success('Cooking Plan PDF downloaded!')
     } catch (err) {
       console.error('❌ Error generating PDF:', err)
