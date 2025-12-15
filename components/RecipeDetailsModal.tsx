@@ -73,8 +73,19 @@ export function RecipeDetailsModal({ isOpen, onClose, recipeId }: RecipeDetailsM
         </div>
       ) : recipe ? (
         <div className="p-6">
+          {/* Close Button */}
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-lg transition-colors"
+            aria-label="Close"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+
           {/* Header */}
-          <div className="mb-6">
+          <div className="mb-6 pr-8">
             <h1 className="text-3xl font-bold text-white mb-2">{recipe.recipeName}</h1>
             {recipe.description && (
               <p className="text-zinc-400">{recipe.description}</p>

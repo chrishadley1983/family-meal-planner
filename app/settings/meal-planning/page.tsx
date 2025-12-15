@@ -166,7 +166,7 @@ export default function MealPlanningSettingsPage() {
             )}
           </div>
 
-          {/* Section 2: Recipe Variety & Cooldowns */}
+          {/* Section 2: Recipe Variety & Repeat Days */}
           <div className="bg-zinc-800 rounded-lg shadow-sm border border-zinc-700">
             <button
               onClick={() => toggleSection('variety')}
@@ -175,7 +175,7 @@ export default function MealPlanningSettingsPage() {
               <div className="flex items-center gap-3">
                 <span className="text-2xl">🔄</span>
                 <div className="text-left">
-                  <h2 className="text-lg font-semibold text-white">Recipe Variety & Cooldowns</h2>
+                  <h2 className="text-lg font-semibold text-white">Recipe Variety & Repeat Days</h2>
                   <p className="text-sm text-zinc-400">Prevent meal repetition and ensure diversity</p>
                 </div>
               </div>
