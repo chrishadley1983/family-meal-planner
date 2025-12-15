@@ -29,6 +29,152 @@ export interface DiscoverRecipe {
   alreadyInLibrary: boolean
 }
 
+// Helper function to get gradient style based on cuisine/meal type
+const getPlaceholderStyle = (recipe: DiscoverRecipe): string => {
+  const cuisineColors: Record<string, string> = {
+    italian: 'from-red-500/80 to-orange-600/80',
+    mexican: 'from-amber-500/80 to-red-600/80',
+    asian: 'from-red-500/80 to-pink-600/80',
+    chinese: 'from-red-500/80 to-amber-600/80',
+    japanese: 'from-pink-500/80 to-red-600/80',
+    indian: 'from-orange-500/80 to-yellow-600/80',
+    mediterranean: 'from-blue-500/80 to-cyan-600/80',
+    american: 'from-blue-500/80 to-red-600/80',
+    french: 'from-purple-500/80 to-blue-600/80',
+    thai: 'from-green-500/80 to-amber-600/80',
+    greek: 'from-blue-500/80 to-white/60',
+    spanish: 'from-red-500/80 to-yellow-600/80',
+    british: 'from-blue-500/80 to-red-600/80',
+    healthy: 'from-emerald-500/80 to-teal-600/80',
+    vegetarian: 'from-emerald-500/80 to-green-600/80',
+    vegan: 'from-green-500/80 to-emerald-600/80',
+  }
+
+  const mealColors: Record<string, string> = {
+    breakfast: 'from-amber-500/80 to-yellow-600/80',
+    lunch: 'from-emerald-500/80 to-teal-600/80',
+    dinner: 'from-purple-500/80 to-pink-600/80',
+    snack: 'from-orange-500/80 to-amber-600/80',
+    dessert: 'from-pink-500/80 to-rose-600/80',
+  }
+
+  // Try cuisine first
+  if (recipe.cuisineType) {
+    const cuisineLower = recipe.cuisineType.toLowerCase()
+    if (cuisineColors[cuisineLower]) {
+      return cuisineColors[cuisineLower]
+    }
+  }
+
+  // Fall back to meal category
+  if (recipe.mealCategory.length > 0) {
+    const mealLower = recipe.mealCategory[0].toLowerCase()
+    if (mealColors[mealLower]) {
+      return mealColors[mealLower]
+    }
+  }
+
+  // Default gradient
+  return 'from-purple-500/80 to-pink-600/80'
+}
+
+// Helper function to get emoji based on recipe name/type
+const getRecipeEmoji = (recipe: DiscoverRecipe): string => {
+  const nameLower = recipe.name.toLowerCase()
+
+  // Check for specific ingredients in name
+  const ingredientEmojis: Record<string, string> = {
+    chicken: '🍗',
+    beef: '🥩',
+    steak: '🥩',
+    pork: '🥓',
+    bacon: '🥓',
+    fish: '🐟',
+    salmon: '🐟',
+    tuna: '🐟',
+    cod: '🐟',
+    shrimp: '🦐',
+    prawn: '🦐',
+    seafood: '🦐',
+    pasta: '🍝',
+    spaghetti: '🍝',
+    noodle: '🍜',
+    rice: '🍚',
+    curry: '🍛',
+    pizza: '🍕',
+    burger: '🍔',
+    sandwich: '🥪',
+    salad: '🥗',
+    soup: '🍲',
+    stew: '🍲',
+    egg: '🍳',
+    breakfast: '🍳',
+    pancake: '🥞',
+    waffle: '🧇',
+    bread: '🍞',
+    toast: '🍞',
+    taco: '🌮',
+    burrito: '🌯',
+    sushi: '🍣',
+    cake: '🍰',
+    cookie: '🍪',
+    pie: '🥧',
+    vegetable: '🥗',
+    veggie: '🥗',
+    vegan: '🥬',
+    smoothie: '🥤',
+    drink: '🥤',
+  }
+
+  for (const [keyword, emoji] of Object.entries(ingredientEmojis)) {
+    if (nameLower.includes(keyword)) {
+      return emoji
+    }
+  }
+
+  // Fall back to cuisine-based emoji
+  const cuisineEmojis: Record<string, string> = {
+    italian: '🍝',
+    mexican: '🌮',
+    asian: '🍜',
+    chinese: '🥡',
+    japanese: '🍣',
+    indian: '🍛',
+    thai: '🍜',
+    mediterranean: '🥙',
+    greek: '🥙',
+    american: '🍔',
+    french: '🥐',
+    british: '🍽️',
+  }
+
+  if (recipe.cuisineType) {
+    const cuisineLower = recipe.cuisineType.toLowerCase()
+    if (cuisineEmojis[cuisineLower]) {
+      return cuisineEmojis[cuisineLower]
+    }
+  }
+
+  // Fall back to meal category emoji
+  const mealEmojis: Record<string, string> = {
+    breakfast: '🍳',
+    lunch: '🥗',
+    dinner: '🍽️',
+    snack: '🍿',
+    dessert: '🍰',
+  }
+
+  if (recipe.mealCategory.length > 0) {
+    const mealLower = recipe.mealCategory[0].toLowerCase()
+    if (mealEmojis[mealLower]) {
+      return mealEmojis[mealLower]
+    }
+  }
+
+  // Default emoji
+  return '🍽️'
+}
+
 interface DiscoverRecipeCardProps {
   recipe: DiscoverRecipe
   isSelected: boolean
@@ -70,20 +216,24 @@ export function DiscoverRecipeCard({
             }}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-400">
-            <svg
-              className="w-12 h-12"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
+          /* Emoji/gradient placeholder */
+          <div className={`w-full h-full bg-gradient-to-br ${getPlaceholderStyle(recipe)} relative`}>
+            {/* Pattern overlay */}
+            <div className="absolute inset-0 opacity-10">
+              <div
+                className="absolute inset-0"
+                style={{
+                  backgroundImage: `radial-gradient(circle at 2px 2px, white 1px, transparent 0)`,
+                  backgroundSize: '16px 16px'
+                }}
               />
-            </svg>
+            </div>
+            {/* Main emoji */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-5xl opacity-90 hover:scale-110 transition-transform duration-200">
+                {getRecipeEmoji(recipe)}
+              </span>
+            </div>
           </div>
         )}
 
@@ -200,7 +350,7 @@ export function DiscoverRecipeCard({
 export function DiscoverRecipeCardSkeleton() {
   return (
     <div className="border rounded-lg overflow-hidden bg-white shadow-sm animate-pulse">
-      <div className="h-40 bg-gray-200" />
+      <div className="h-40 bg-gradient-to-br from-gray-200 to-gray-300" />
       <div className="p-3 space-y-2">
         <div className="h-4 bg-gray-200 rounded w-3/4" />
         <div className="h-3 bg-gray-200 rounded w-1/2" />
