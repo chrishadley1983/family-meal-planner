@@ -29,6 +29,23 @@ function getRatingColor(rating: 'green' | 'yellow' | 'red' | 'amber'): string {
   }
 }
 
+// Check if notes is just a duplicate of the ingredient info
+function isDuplicateNote(ing: Ingredient): boolean {
+  if (!ing.notes) return true
+
+  const notesLower = ing.notes.toLowerCase().trim()
+  const nameLower = ing.ingredientName.toLowerCase().trim()
+  const fullIngredient = `${ing.quantity} ${ing.unit} ${ing.ingredientName}`.toLowerCase().trim()
+
+  // Check various duplicate patterns
+  return (
+    notesLower === nameLower ||
+    notesLower === fullIngredient ||
+    notesLower.includes(nameLower) && notesLower.includes(String(ing.quantity)) ||
+    nameLower.includes(notesLower)
+  )
+}
+
 function getIngredientRating(
   ingredientName: string,
   ratings?: IngredientRating[]
@@ -88,7 +105,7 @@ export function RecipeIngredients({
                 <span className="font-medium text-white">{ing.quantity} {ing.unit}</span>
                 {' '}
                 <span>{ing.ingredientName}</span>
-                {ing.notes && ing.notes !== ing.ingredientName && (
+                {ing.notes && !isDuplicateNote(ing) && (
                   <span className="text-zinc-500 text-sm"> ({ing.notes})</span>
                 )}
               </div>
