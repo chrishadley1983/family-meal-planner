@@ -1000,16 +1000,37 @@ export default function MealPlanDetailPage() {
             >
               Edit Schedule
             </Button>
-            <button
-              onClick={() => {
-                // Download PDF directly
-                window.open(`/api/meal-plans/${mealPlanId}/pdf`, '_blank')
-              }}
-              className="px-4 py-2 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg hover:opacity-90 text-sm flex items-center gap-2"
-              title="Export as PDF"
-            >
-              ↗ Export PDF
-            </button>
+            {/* Export Dropdown */}
+            <div className="relative group">
+              <button
+                className="px-4 py-2 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg hover:opacity-90 text-sm flex items-center gap-2"
+                title="Export Options"
+              >
+                ↗ Export PDF ▾
+              </button>
+              <div className="absolute right-0 mt-1 w-56 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                <button
+                  onClick={() => window.open(`/api/meal-plans/${mealPlanId}/pdf`, '_blank')}
+                  className="w-full px-4 py-3 text-left text-sm text-white hover:bg-zinc-700 rounded-t-lg flex items-center gap-3"
+                >
+                  <span className="w-8 h-8 bg-red-500 rounded flex items-center justify-center text-white">📅</span>
+                  <div>
+                    <div className="font-medium">Week Overview PDF</div>
+                    <div className="text-xs text-zinc-400">7-day grid view</div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => window.open(`/api/meal-plans/${mealPlanId}/cooking-plan-pdf`, '_blank')}
+                  className="w-full px-4 py-3 text-left text-sm text-white hover:bg-zinc-700 rounded-b-lg flex items-center gap-3 border-t border-zinc-700"
+                >
+                  <span className="w-8 h-8 bg-orange-500 rounded flex items-center justify-center text-white">🍳</span>
+                  <div>
+                    <div className="font-medium">Cooking Plan PDF</div>
+                    <div className="text-xs text-zinc-400">Day-by-day with times</div>
+                  </div>
+                </button>
+              </div>
+            </div>
             <Button
               onClick={handleDelete}
               disabled={saving}
