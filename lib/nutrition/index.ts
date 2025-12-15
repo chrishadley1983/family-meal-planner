@@ -72,7 +72,7 @@ export async function calculateRecipeNutrition(
     const cachedNutrition = getCachedNutrition(ingredientName)
 
     if (cachedNutrition) {
-      const nutrition = calculateIngredientNutrition(cachedNutrition, quantity, unit)
+      const nutrition = calculateIngredientNutrition(cachedNutrition, quantity, unit, ingredientName)
       addToTotals(totals, nutrition)
       breakdown.push({ ingredientName, nutrition, source: 'cache' })
       cachedCount++
@@ -89,7 +89,7 @@ export async function calculateRecipeNutrition(
           breakdown.push({ ingredientName, nutrition: usdaResult.nutrition, source: 'usda' })
 
           // Cache for future use
-          const grams = convertToGrams(quantity, unit)
+          const grams = convertToGrams(quantity, unit, ingredientName)
           const per100g = scaleNutritionTo100g(usdaResult.nutrition, grams)
           cacheNutrition(ingredientName, usdaResult.fdcId, per100g)
 
@@ -172,7 +172,7 @@ export function calculateRecipeNutritionSync(
     const cachedNutrition = getCachedNutrition(ingredientName)
 
     if (cachedNutrition) {
-      const nutrition = calculateIngredientNutrition(cachedNutrition, quantity, unit)
+      const nutrition = calculateIngredientNutrition(cachedNutrition, quantity, unit, ingredientName)
       addToTotals(totals, nutrition)
       breakdown.push({ ingredientName, nutrition, source: 'cache' })
       cachedCount++

@@ -262,7 +262,7 @@ async function getIngredientNutrition(ingredient: RecipeIngredient): Promise<{
       sugar: dbCached.sugarPer100g,
       sodium: dbCached.sodiumPer100g,
     }
-    const nutrition = calcIngredientNutritionFromPer100g(per100g, quantity, unit)
+    const nutrition = calcIngredientNutritionFromPer100g(per100g, quantity, unit, ingredientName)
 
     return {
       nutrition,
@@ -274,7 +274,7 @@ async function getIngredientNutrition(ingredient: RecipeIngredient): Promise<{
   // 2. Check in-memory seed data cache
   const seedData = getSeedDataNutrition(ingredientName)
   if (seedData) {
-    const nutrition = calcIngredientNutritionFromPer100g(seedData, quantity, unit)
+    const nutrition = calcIngredientNutritionFromPer100g(seedData, quantity, unit, ingredientName)
 
     // Save to persistent cache for next time
     await saveToPersistentCache({
@@ -298,7 +298,7 @@ async function getIngredientNutrition(ingredient: RecipeIngredient): Promise<{
 
     if (usdaResult) {
       // Calculate per 100g for caching
-      const grams = convertToGrams(quantity, unit)
+      const grams = convertToGrams(quantity, unit, ingredientName)
       const per100g = scaleNutritionTo100g(usdaResult.nutrition, grams)
 
       // Save to persistent cache
@@ -390,7 +390,7 @@ Use your knowledge of food nutrition to provide reasonable estimates. Be conserv
         sodium: Math.round(data.sodium) || 100,
       }
 
-      const nutrition = calcIngredientNutritionFromPer100g(per100g, quantity, unit)
+      const nutrition = calcIngredientNutritionFromPer100g(per100g, quantity, unit, ingredientName)
       return { nutrition, per100g }
     }
   } catch (error) {
@@ -399,7 +399,7 @@ Use your knowledge of food nutrition to provide reasonable estimates. Be conserv
 
   // Ultimate fallback: generic estimates based on ingredient type
   const per100g = getGenericEstimate(ingredientName)
-  const nutrition = calcIngredientNutritionFromPer100g(per100g, quantity, unit)
+  const nutrition = calcIngredientNutritionFromPer100g(per100g, quantity, unit, ingredientName)
   return { nutrition, per100g }
 }
 
