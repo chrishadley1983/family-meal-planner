@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { format } from 'date-fns'
 import { useNotification } from '@/components/providers/NotificationProvider'
+import { AppLayout } from '@/components/layout'
 
 interface ShoppingListMealPlan {
   id: string
@@ -35,6 +37,7 @@ interface ShoppingList {
 
 export default function ShoppingListsPage() {
   const router = useRouter()
+  const { data: session } = useSession()
   const { error, confirm } = useNotification()
   const [shoppingLists, setShoppingLists] = useState<ShoppingList[]>([])
   const [loading, setLoading] = useState(true)
@@ -196,7 +199,7 @@ export default function ShoppingListsPage() {
       : shoppingLists.filter((l) => l.status === filterStatus)
 
   return (
-    <div className="min-h-screen bg-gray-900">
+    <AppLayout userEmail={session?.user?.email || undefined}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
@@ -421,6 +424,6 @@ export default function ShoppingListsPage() {
           </div>
         </div>
       )}
-    </div>
+    </AppLayout>
   )
 }

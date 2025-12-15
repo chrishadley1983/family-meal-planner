@@ -3,9 +3,11 @@
 import { useEffect, useState, use } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { format } from 'date-fns'
 import ExportShareModal from '@/components/shopping-list/ExportShareModal'
 import { useNotification } from '@/components/providers/NotificationProvider'
+import { AppLayout } from '@/components/layout'
 
 interface SourceDetail {
   type: 'recipe' | 'staple' | 'manual'
@@ -113,6 +115,7 @@ interface ExcludedItem {
 export default function ShoppingListDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
+  const { data: session } = useSession()
   const { success, error, warning, confirm } = useNotification()
 
   const [shoppingList, setShoppingList] = useState<ShoppingList | null>(null)
@@ -1109,7 +1112,7 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
   }
 
   return (
-    <div className="min-h-screen bg-gray-900">
+    <AppLayout userEmail={session?.user?.email || undefined}>
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-6">
@@ -2481,6 +2484,6 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
         shoppingList={shoppingList}
         itemsByCategory={itemsByCategory}
       />
-    </div>
+    </AppLayout>
   )
 }
