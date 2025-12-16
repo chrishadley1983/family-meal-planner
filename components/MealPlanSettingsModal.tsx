@@ -130,7 +130,7 @@ export function MealPlanSettingsModal({ isOpen, onClose, onSave }: MealPlanSetti
 
               {expandedSections.has('macros') && (
                 <div className="px-4 pb-4 space-y-3">
-                  {(['balanced', 'strict', 'weekday-discipline', 'calorie-banking'] as MacroMode[]).map(mode => (
+                  {(['balanced', 'strict', 'weekday_discipline', 'calorie_banking'] as MacroMode[]).map(mode => (
                     <label key={mode} className="flex items-start gap-2 cursor-pointer">
                       <input
                         type="radio"
@@ -141,7 +141,7 @@ export function MealPlanSettingsModal({ isOpen, onClose, onSave }: MealPlanSetti
                         className="mt-1"
                       />
                       <div>
-                        <div className="text-sm text-white capitalize">{mode.replace('-', ' ')}</div>
+                        <div className="text-sm text-white capitalize">{mode.replace(/_/g, ' ')}</div>
                         <div className="text-xs text-zinc-400">{MACRO_MODE_DESCRIPTIONS[mode]}</div>
                       </div>
                     </label>
@@ -185,7 +185,7 @@ export function MealPlanSettingsModal({ isOpen, onClose, onSave }: MealPlanSetti
                         <div className="flex items-center gap-3">
                           <input
                             type="range"
-                            min="7"
+                            min="1"
                             max="30"
                             value={settings.dinnerCooldown}
                             onChange={(e) => setSettings({ ...settings, dinnerCooldown: parseInt(e.target.value) })}
@@ -199,8 +199,8 @@ export function MealPlanSettingsModal({ isOpen, onClose, onSave }: MealPlanSetti
                         <div className="flex items-center gap-3">
                           <input
                             type="range"
-                            min="3"
-                            max="21"
+                            min="1"
+                            max="30"
                             value={settings.lunchCooldown}
                             onChange={(e) => setSettings({ ...settings, lunchCooldown: parseInt(e.target.value) })}
                             className="flex-1 accent-purple-500"
@@ -214,7 +214,7 @@ export function MealPlanSettingsModal({ isOpen, onClose, onSave }: MealPlanSetti
                           <input
                             type="range"
                             min="1"
-                            max="14"
+                            max="30"
                             value={settings.breakfastCooldown}
                             onChange={(e) => setSettings({ ...settings, breakfastCooldown: parseInt(e.target.value) })}
                             className="flex-1 accent-purple-500"
@@ -228,7 +228,7 @@ export function MealPlanSettingsModal({ isOpen, onClose, onSave }: MealPlanSetti
                           <input
                             type="range"
                             min="1"
-                            max="7"
+                            max="30"
                             value={settings.snackCooldown}
                             onChange={(e) => setSettings({ ...settings, snackCooldown: parseInt(e.target.value) })}
                             className="flex-1 accent-purple-500"
@@ -445,7 +445,7 @@ export function MealPlanSettingsModal({ isOpen, onClose, onSave }: MealPlanSetti
 
               {expandedSections.has('feedback') && (
                 <div className="px-4 pb-4 space-y-3">
-                  {(['minimal', 'standard', 'detailed'] as FeedbackDetail[]).map(detail => (
+                  {(['light', 'medium', 'detailed'] as FeedbackDetail[]).map(detail => (
                     <label key={detail} className="flex items-start gap-2 cursor-pointer">
                       <input
                         type="radio"
@@ -456,7 +456,7 @@ export function MealPlanSettingsModal({ isOpen, onClose, onSave }: MealPlanSetti
                         className="mt-1"
                       />
                       <div>
-                        <div className="text-sm text-white capitalize">{detail}</div>
+                        <div className="text-sm text-white capitalize">{detail === 'light' ? 'Minimal' : detail === 'medium' ? 'Standard' : 'Detailed'}</div>
                         <div className="text-xs text-zinc-400">{FEEDBACK_DETAIL_DESCRIPTIONS[detail]}</div>
                       </div>
                     </label>
