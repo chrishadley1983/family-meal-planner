@@ -13,6 +13,7 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import MealPlanExportModal from '@/components/meal-plan/MealPlanExportModal'
 
 interface Recipe {
   id: string
@@ -303,6 +304,9 @@ export default function MealPlanDetailPage() {
   const [loadingCookingPreview, setLoadingCookingPreview] = useState(false)
   const [confirmingCook, setConfirmingCook] = useState(false)
   const [itemsToRemove, setItemsToRemove] = useState<Set<string>>(new Set())
+
+  // Export modal state
+  const [showExportModal, setShowExportModal] = useState(false)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -1000,6 +1004,14 @@ export default function MealPlanDetailPage() {
             >
               Edit Schedule
             </Button>
+            {/* Export & Share Button */}
+            <button
+              onClick={() => setShowExportModal(true)}
+              className="px-4 py-2 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg hover:opacity-90 text-sm flex items-center gap-2"
+              title="Export & Share"
+            >
+              ↗ Export & Share
+            </button>
             <Button
               onClick={handleDelete}
               disabled={saving}
@@ -1507,6 +1519,16 @@ export default function MealPlanDetailPage() {
             ) : null}
           </div>
         </Modal>
+
+        {/* Export & Share Modal */}
+        <MealPlanExportModal
+          isOpen={showExportModal}
+          onClose={() => setShowExportModal(false)}
+          mealPlanId={mealPlanId}
+          weekStartDate={mealPlan.weekStartDate}
+          weekEndDate={mealPlan.weekEndDate}
+          mealCount={mealPlan.meals.length}
+        />
       </PageContainer>
     </AppLayout>
   )

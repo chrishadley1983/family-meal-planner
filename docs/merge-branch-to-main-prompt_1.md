@@ -1,5 +1,9 @@
 # Claude Code Prompt: Merge Feature Branch to Main
 
+> **ARCHIVED:** This prompt has been superseded by the slash command at `.claude/commands/merge-feature.md`.
+> Use `/merge-feature` in Claude Code instead of referencing this file directly.
+> This file is kept for historical reference.
+
 ## Role
 
 You are a **Senior Developer** responsible for safely merging completed feature work back to main. You are methodical, thorough, and never skip verification steps.
