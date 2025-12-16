@@ -285,20 +285,86 @@ export function validateBatchCooking(
 }
 
 /**
+ * Validate that recipes are assigned to meal types that match their designated meal types
+ * @param meals - Generated meals from AI
+ * @param recipes - All available recipes with their mealType arrays
+ */
+export function validateMealTypeMatching(
+  meals: GeneratedMeal[],
+  recipes: Array<{ id: string; recipeName: string; mealType: string[] }>
+): ValidationResult {
+  const errors: string[] = []
+  const warnings: string[] = []
+
+  // Create a map of recipe ID to meal types
+  const recipeToMealTypes = new Map<string, string[]>()
+  recipes.forEach(recipe => {
+    recipeToMealTypes.set(recipe.id, recipe.mealType.map(t => t.toLowerCase().replace(/\s+/g, '-')))
+  })
+
+  // Check each meal
+  meals.forEach(meal => {
+    if (!meal.recipeId) return
+
+    const allowedMealTypes = recipeToMealTypes.get(meal.recipeId)
+    if (!allowedMealTypes || allowedMealTypes.length === 0) return // Can't validate
+
+    // Normalize the meal type from the plan
+    const planMealType = meal.mealType.toLowerCase().replace(/\s+/g, '-')
+
+    // Map common variations (e.g., "afternoon-snack" to "snack")
+    const normalizedPlanType = planMealType
+      .replace('afternoon-snack', 'snack')
+      .replace('morning-snack', 'snack')
+      .replace('evening-snack', 'snack')
+
+    // Check if any allowed meal type matches
+    const isMatching = allowedMealTypes.some(allowed => {
+      const normalizedAllowed = allowed.replace('afternoon-snack', 'snack')
+        .replace('morning-snack', 'snack')
+        .replace('evening-snack', 'snack')
+      return normalizedAllowed === normalizedPlanType || allowed === planMealType
+    })
+
+    if (!isMatching) {
+      const recipe = recipes.find(r => r.id === meal.recipeId)
+      errors.push(
+        `Meal type mismatch: "${meal.recipeName || recipe?.recipeName}" is assigned to ${meal.mealType} on ${meal.dayOfWeek}, ` +
+        `but this recipe is only designated for: ${allowedMealTypes.join(', ')}. ` +
+        `Please assign a recipe that supports ${meal.mealType}.`
+      )
+    }
+  })
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    warnings
+  }
+}
+
+/**
  * Master validation function that runs all checks
  */
 export function validateMealPlan(
   meals: GeneratedMeal[],
   settings: MealPlanSettings,
   weekStartDate: string,
-  recipeHistory: RecipeUsageHistoryItem[]
+  recipeHistory: RecipeUsageHistoryItem[],
+  recipes?: Array<{ id: string; recipeName: string; mealType: string[] }>
 ): ValidationResult {
   const cooldownResult = validateCooldowns(meals, settings, weekStartDate, recipeHistory)
   const batchCookingResult = validateBatchCooking(meals, weekStartDate)
 
+  // Add meal type matching validation if recipes are provided
+  let mealTypeResult: ValidationResult = { isValid: true, errors: [], warnings: [] }
+  if (recipes && recipes.length > 0) {
+    mealTypeResult = validateMealTypeMatching(meals, recipes)
+  }
+
   return {
-    isValid: cooldownResult.isValid && batchCookingResult.isValid,
-    errors: [...cooldownResult.errors, ...batchCookingResult.errors],
-    warnings: [...cooldownResult.warnings, ...batchCookingResult.warnings]
+    isValid: cooldownResult.isValid && batchCookingResult.isValid && mealTypeResult.isValid,
+    errors: [...cooldownResult.errors, ...batchCookingResult.errors, ...mealTypeResult.errors],
+    warnings: [...cooldownResult.warnings, ...batchCookingResult.warnings, ...mealTypeResult.warnings]
   }
 }
