@@ -12,6 +12,7 @@ Type `/` in Claude Code followed by the command name. For example:
 | Command | Description | When to Use |
 |---------|-------------|-------------|
 | `/merge-feature` | Safely merge a feature branch to main | After completing feature work on a branch |
+| `/test-plan` | Analyze test coverage and generate manifests | Before releases, after feature changes, for test planning |
 
 ## How Commands Work
 
@@ -51,8 +52,8 @@ You are a **[Role]** responsible for [task description].
 
 | Command | Purpose | Status |
 |---------|---------|--------|
+| `/test-execute` | Execute tests based on manifest from test-plan | Planned |
 | `/security-test` | Run security checks on codebase | Planned |
-| `/regression-test` | Full regression test suite | Planned |
 | `/qa-review` | Quality assurance checklist | Planned |
 | `/update-docs` | Update documentation | Planned |
 
