@@ -14,46 +14,59 @@ interface ShoppingListItem {
 interface ShoppingListData {
   name: string
   items: ShoppingListItem[]
+  weekStartDate?: string | Date
 }
 
 interface ItemsByCategory {
   [category: string]: ShoppingListItem[]
 }
 
-// Dark theme colors matching shopping-redesign.html
+// B&W Print-friendly colors
 const COLORS = {
-  // Backgrounds
-  pageBg: [3, 7, 18] as [number, number, number],        // #030712
-  cardBg: [17, 24, 39] as [number, number, number],      // #111827
-  categoryBg: [31, 41, 55] as [number, number, number],  // #1f2937
-
-  // Borders
-  cardBorder: [31, 41, 55] as [number, number, number],  // #1f2937
-  checkboxBorder: [55, 65, 81] as [number, number, number], // #374151
-
-  // Text colors
   white: [255, 255, 255] as [number, number, number],
-  textPrimary: [255, 255, 255] as [number, number, number],
-  textSecondary: [156, 163, 175] as [number, number, number], // #9ca3af
-  textMuted: [107, 114, 128] as [number, number, number],     // #6b7280
+  black: [26, 26, 26] as [number, number, number],       // #1a1a1a
+  gray: [102, 102, 102] as [number, number, number],     // #666
+  lightGray: [209, 213, 219] as [number, number, number], // #d1d5db (checkbox border)
+  borderGray: [229, 231, 235] as [number, number, number], // #e5e7eb
+  mutedGray: [156, 163, 175] as [number, number, number], // #9ca3af
+}
 
-  // Accent colors
-  purple: [139, 92, 246] as [number, number, number],    // #8b5cf6
-  purpleLight: [167, 139, 250] as [number, number, number], // #a78bfa
-  emerald: [16, 185, 129] as [number, number, number],   // #10b981
+// Category emoji mapping
+const CATEGORY_EMOJIS: { [key: string]: string } = {
+  'Fresh Produce': '(P)',    // 🥬
+  'Meat & Seafood': '(M)',   // 🥩
+  'Meat & Fish': '(M)',      // 🥩
+  'Dairy & Eggs': '(D)',     // 🥛
+  'Bakery': '(B)',           // 🍞
+  'Frozen': '(F)',           // ❄️
+  'Pantry': '(Pa)',          // 🥫
+  'Cupboard Staples': '(Pa)',// 🥫
+  'Baking & Cooking Ingredients': '(Ba)', // 🧁
+  'Baking Ingredients': '(Ba)',           // 🧁
+  'Canned & Jarred': '(C)',  // 🥫
+  'Condiments & Sauces': '(Co)', // 🍯
+  'Beverages': '(Be)',       // 🥤
+  'Snacks': '(S)',           // 🍿
+  'Household': '(H)',        // 🧹
+  'Chilled & Deli': '(Ch)',  // ❄️
+  'Other': '(O)',            // 📦
 }
 
 // Category order for consistent display
 const CATEGORY_ORDER = [
   'Fresh Produce',
   'Meat & Seafood',
+  'Meat & Fish',
   'Dairy & Eggs',
   'Bakery',
   'Frozen',
   'Pantry',
+  'Cupboard Staples',
   'Baking & Cooking Ingredients',
+  'Baking Ingredients',
   'Canned & Jarred',
   'Condiments & Sauces',
+  'Chilled & Deli',
   'Beverages',
   'Snacks',
   'Household',
@@ -88,7 +101,7 @@ function formatQuantity(quantity: number, unit: string): string {
 }
 
 /**
- * Generates a printable PDF shopping list with dark theme matching the web design
+ * Generates a printable PDF shopping list with B&W print-friendly design
  */
 export async function generateShoppingListPDF(
   shoppingList: ShoppingListData,
@@ -96,9 +109,11 @@ export async function generateShoppingListPDF(
   options: {
     includeQRCode?: boolean
     qrCodeDataUrl?: string
+    familyName?: string
+    linkedMealPlan?: string
   } = {}
 ): Promise<jsPDF> {
-  console.log('🔷 Generating dark theme PDF for shopping list:', shoppingList.name)
+  console.log('🔷 Generating B&W printable PDF for shopping list:', shoppingList.name)
 
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -109,143 +124,136 @@ export async function generateShoppingListPDF(
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
   const margin = 12
-  const columnGap = 6
+  const columnGap = 8
   const columnWidth = (pageWidth - 2 * margin - columnGap) / 2
-  const footerHeight = 10
+  const footerHeight = 12
 
   // Layout settings
-  const categoryHeaderHeight = 8
-  const itemRowHeight = 7
-  const cardPadding = 2
-  const cardMarginBottom = 3
-  const checkboxSize = 3.5
+  const categoryHeaderHeight = 7
+  const itemRowHeight = 5
+  const categoryMarginBottom = 6
+  const maxItemsPerCategory = 8 // Show max items, then "+ X more"
+  const checkboxSize = 4
 
   let currentY = margin
   let currentPage = 1
 
-  // === DRAW PAGE BACKGROUND ===
-  function drawPageBackground() {
-    doc.setFillColor(...COLORS.pageBg)
-    doc.rect(0, 0, pageWidth, pageHeight, 'F')
-  }
+  // Count total items
+  const totalItems = Object.values(itemsByCategory).reduce((sum, items) => sum + items.length, 0)
+
+  // Get week date
+  const weekDate = shoppingList.weekStartDate
+    ? format(new Date(shoppingList.weekStartDate), 'd MMM yyyy')
+    : format(new Date(), 'd MMM yyyy')
 
   // === HEADER ===
   function drawHeader() {
-    // FamilyFuel logo (purple)
+    // Left side - Title
     doc.setFontSize(18)
     doc.setFont('helvetica', 'bold')
-    doc.setTextColor(...COLORS.purple)
-    doc.text('FamilyFuel', margin, currentY + 5)
+    doc.setTextColor(...COLORS.black)
+    doc.text('Shopping List', margin, currentY + 5)
 
-    // Shopping List title (white)
+    // Subtitle
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(...COLORS.gray)
+    doc.text(`Week of ${weekDate} · ${totalItems} items`, margin, currentY + 10)
+
+    // Right side - FamilyFuel branding
     doc.setFontSize(14)
-    doc.setTextColor(...COLORS.white)
-    doc.text('Shopping List', pageWidth - margin, currentY + 4, { align: 'right' })
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(...COLORS.black)
+    doc.text('FamilyFuel', pageWidth - margin, currentY + 5, { align: 'right' })
 
-    // Date (gray)
-    const dateStr = format(new Date(), 'd MMM yyyy')
+    // Generated date
     doc.setFontSize(8)
     doc.setFont('helvetica', 'normal')
-    doc.setTextColor(...COLORS.textSecondary)
-    doc.text(dateStr, pageWidth - margin, currentY + 9, { align: 'right' })
+    doc.setTextColor(...COLORS.mutedGray)
+    doc.text(`Generated ${format(new Date(), 'd MMM yyyy')}`, pageWidth - margin, currentY + 9, { align: 'right' })
 
     currentY += 14
 
-    // Purple divider line
-    doc.setDrawColor(...COLORS.purple)
-    doc.setLineWidth(0.5)
+    // Bold divider line
+    doc.setDrawColor(...COLORS.black)
+    doc.setLineWidth(0.8)
     doc.line(margin, currentY, pageWidth - margin, currentY)
 
-    currentY += 4
+    currentY += 6
   }
 
   // === FOOTER ===
   function drawFooter() {
     const footerY = pageHeight - 6
-    doc.setFontSize(6)
-    doc.setTextColor(...COLORS.textMuted)
-    doc.text('Powered by FamilyFuel', pageWidth / 2, footerY, { align: 'center' })
-    doc.text(`Page ${currentPage}`, pageWidth - margin, footerY, { align: 'right' })
+
+    // Left side - Family name & meal plan link
+    doc.setFontSize(8)
+    doc.setTextColor(...COLORS.mutedGray)
+    const footerLeft = options.familyName
+      ? `${options.familyName}${options.linkedMealPlan ? ` · Linked to ${options.linkedMealPlan}` : ''}`
+      : (options.linkedMealPlan ? `Linked to ${options.linkedMealPlan}` : '')
+    if (footerLeft) {
+      doc.text(footerLeft, margin, footerY)
+    }
+
+    // Right side - familyfuel.app
+    doc.text('familyfuel.app', pageWidth - margin, footerY, { align: 'right' })
   }
 
   // === DRAW CATEGORY HEADER ===
-  function drawCategoryHeader(x: number, y: number, width: number, category: string, itemCount: number) {
-    // Dark gray background with rounded corners effect
-    doc.setFillColor(...COLORS.categoryBg)
-    doc.roundedRect(x, y, width, categoryHeaderHeight, 1.5, 1.5, 'F')
+  function drawCategoryHeader(x: number, y: number, width: number, category: string): number {
+    // Black background
+    doc.setFillColor(...COLORS.black)
+    doc.rect(x, y, width, categoryHeaderHeight, 'F')
 
-    // Category name (white, bold)
+    // Category emoji prefix
+    const emoji = CATEGORY_EMOJIS[category] || '(O)'
+
+    // White text, uppercase, with letter-spacing effect
     doc.setFontSize(9)
     doc.setFont('helvetica', 'bold')
     doc.setTextColor(...COLORS.white)
-    doc.text(category, x + 3, y + 5)
+    const categoryText = `${emoji} ${category.toUpperCase()}`
+    doc.text(categoryText, x + 3, y + 4.5)
 
-    // Item count (emerald)
-    doc.setFontSize(7)
-    doc.setFont('helvetica', 'normal')
-    doc.setTextColor(...COLORS.emerald)
-    doc.text(`${itemCount} items`, x + 3, y + categoryHeaderHeight - 1.5)
+    return y + categoryHeaderHeight
   }
 
   // === DRAW CHECKBOX ===
-  function drawCheckbox(x: number, y: number, isChecked: boolean) {
-    const centerX = x + checkboxSize / 2
-    const centerY = y + checkboxSize / 2
-
-    if (isChecked) {
-      // Filled green circle for checked
-      doc.setFillColor(...COLORS.emerald)
-      doc.circle(centerX, centerY, checkboxSize / 2, 'F')
-
-      // White checkmark (simple tick using lines)
-      doc.setDrawColor(...COLORS.white)
-      doc.setLineWidth(0.4)
-      // Draw a simple V checkmark
-      doc.line(centerX - 1, centerY, centerX - 0.3, centerY + 0.8)
-      doc.line(centerX - 0.3, centerY + 0.8, centerX + 1, centerY - 0.8)
-    } else {
-      // Empty circle with gray border
-      doc.setDrawColor(...COLORS.checkboxBorder)
-      doc.setLineWidth(0.4)
-      doc.circle(centerX, centerY, checkboxSize / 2, 'S')
-    }
+  function drawCheckbox(x: number, y: number) {
+    // Square checkbox with rounded corners
+    doc.setDrawColor(...COLORS.lightGray)
+    doc.setLineWidth(0.4)
+    doc.roundedRect(x, y, checkboxSize, checkboxSize, 0.8, 0.8, 'S')
   }
 
   // === DRAW ITEM ROW ===
-  function drawItemRow(x: number, y: number, width: number, item: ShoppingListItem, isLast: boolean) {
-    const rowPadding = 2
+  function drawItemRow(x: number, y: number, width: number, item: ShoppingListItem) {
+    // Checkbox
+    drawCheckbox(x, y)
 
     // Item name
     doc.setFontSize(8)
-    doc.setFont('helvetica', item.isPurchased ? 'normal' : 'bold')
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(...COLORS.black)
 
-    if (item.isPurchased) {
-      doc.setTextColor(...COLORS.textMuted)
-    } else {
-      doc.setTextColor(...COLORS.white)
-    }
-
-    const nameX = x + checkboxSize + 4
-    const maxNameWidth = width - checkboxSize - 8
+    const nameX = x + checkboxSize + 2
+    const maxNameWidth = width - checkboxSize - 30 // Leave space for quantity
     const itemName = doc.splitTextToSize(item.itemName, maxNameWidth)[0]
     doc.text(itemName, nameX, y + 3)
 
-    // Checkbox
-    drawCheckbox(x + rowPadding, y + 0.5, item.isPurchased)
-
-    // Quantity and unit (below item name, gray)
-    doc.setFontSize(6)
-    doc.setFont('helvetica', 'normal')
-    doc.setTextColor(...COLORS.textMuted)
+    // Quantity (right-aligned, gray)
+    doc.setTextColor(...COLORS.gray)
     const quantityStr = formatQuantity(item.quantity, item.unit)
-    doc.text(quantityStr, nameX, y + 6)
+    doc.text(quantityStr, x + width - 2, y + 3, { align: 'right' })
+  }
 
-    // Draw separator line (except for last item)
-    if (!isLast) {
-      doc.setDrawColor(...COLORS.cardBorder)
-      doc.setLineWidth(0.2)
-      doc.line(x + rowPadding, y + itemRowHeight - 0.5, x + width - rowPadding, y + itemRowHeight - 0.5)
-    }
+  // === DRAW "+ X more items" ===
+  function drawMoreItems(x: number, y: number, width: number, count: number) {
+    doc.setFontSize(7)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(...COLORS.mutedGray)
+    doc.text(`+ ${count} more items`, x + width - 2, y + 2, { align: 'right' })
   }
 
   // === BUILD CATEGORY GROUPS ===
@@ -253,60 +261,67 @@ export async function generateShoppingListPDF(
   const categoryGroups: Array<{
     category: string
     items: ShoppingListItem[]
+    totalCount: number
   }> = []
 
   for (const category of categories) {
     const items = itemsByCategory[category]
     if (!items || items.length === 0) continue
 
-    // Sort items: unpurchased first (alphabetical), then purchased (alphabetical)
-    const unpurchased = items.filter(i => !i.isPurchased).sort((a, b) =>
-      a.itemName.toLowerCase().localeCompare(b.itemName.toLowerCase())
-    )
-    const purchased = items.filter(i => i.isPurchased).sort((a, b) =>
-      a.itemName.toLowerCase().localeCompare(b.itemName.toLowerCase())
-    )
+    // Sort items alphabetically (unpurchased only for PDF)
+    const sortedItems = items
+      .filter(i => !i.isPurchased)
+      .sort((a, b) => a.itemName.toLowerCase().localeCompare(b.itemName.toLowerCase()))
+
+    if (sortedItems.length === 0) continue
 
     categoryGroups.push({
       category,
-      items: [...unpurchased, ...purchased]
+      items: sortedItems.slice(0, maxItemsPerCategory),
+      totalCount: sortedItems.length
     })
   }
 
   // === CALCULATE GROUP HEIGHT ===
-  function getGroupHeight(group: { category: string; items: ShoppingListItem[] }): number {
-    return categoryHeaderHeight + 1 + // header + gap
-           cardPadding * 2 + // card padding
-           group.items.length * itemRowHeight + // items
-           cardMarginBottom // bottom margin
+  function getGroupHeight(group: { items: ShoppingListItem[]; totalCount: number }): number {
+    const itemsToShow = Math.min(group.items.length, maxItemsPerCategory)
+    const hasMore = group.totalCount > maxItemsPerCategory
+    return categoryHeaderHeight +
+           2 + // gap after header
+           itemsToShow * itemRowHeight +
+           (hasMore ? 4 : 0) + // "+ X more items" row
+           categoryMarginBottom
   }
 
   // === DRAW CATEGORY GROUP ===
-  function drawCategoryGroup(x: number, y: number, width: number, group: { category: string; items: ShoppingListItem[] }) {
+  function drawCategoryGroup(x: number, y: number, width: number, group: { category: string; items: ShoppingListItem[]; totalCount: number }) {
     // Category header
-    drawCategoryHeader(x, y, width, group.category, group.items.length)
+    let cardY = drawCategoryHeader(x, y, width, group.category)
 
-    let cardY = y + categoryHeaderHeight + 1
+    // Items container with border
+    const itemsToShow = Math.min(group.items.length, maxItemsPerCategory)
+    const hasMore = group.totalCount > maxItemsPerCategory
+    const containerHeight = 2 + itemsToShow * itemRowHeight + (hasMore ? 4 : 0) + 2
 
-    // Card background
-    const cardHeight = cardPadding * 2 + group.items.length * itemRowHeight
-    doc.setFillColor(...COLORS.cardBg)
-    doc.setDrawColor(...COLORS.cardBorder)
+    doc.setDrawColor(...COLORS.borderGray)
     doc.setLineWidth(0.3)
-    doc.roundedRect(x, cardY, width, cardHeight, 1.5, 1.5, 'FD')
+    doc.rect(x, cardY, width, containerHeight, 'S')
 
-    // Draw items inside card
-    let itemY = cardY + cardPadding
-    for (let i = 0; i < group.items.length; i++) {
-      const item = group.items[i]
-      const isLast = i === group.items.length - 1
-      drawItemRow(x, itemY, width, item, isLast)
+    // Draw items
+    let itemY = cardY + 2
+    for (let i = 0; i < itemsToShow; i++) {
+      drawItemRow(x + 2, itemY, width - 4, group.items[i])
       itemY += itemRowHeight
+    }
+
+    // "+ X more items" if needed
+    if (hasMore) {
+      const moreCount = group.totalCount - maxItemsPerCategory
+      drawMoreItems(x + 2, itemY, width - 4, moreCount)
     }
   }
 
   // === RENDER PAGES ===
-  drawPageBackground()
   drawHeader()
   drawFooter()
 
@@ -354,7 +369,6 @@ export async function generateShoppingListPDF(
       currentPage++
       currentY = margin
 
-      drawPageBackground()
       drawHeader()
       drawFooter()
 
@@ -382,21 +396,17 @@ export async function generateShoppingListPDF(
       const qrX = pageWidth - margin - qrSize
       const qrY = pageHeight - footerHeight - qrSize - 4
 
-      // White background for QR code
-      doc.setFillColor(...COLORS.white)
-      doc.roundedRect(qrX - 1, qrY - 1, qrSize + 2, qrSize + 2, 1, 1, 'F')
-
       doc.addImage(options.qrCodeDataUrl, 'PNG', qrX, qrY, qrSize, qrSize)
 
       doc.setFontSize(5)
-      doc.setTextColor(...COLORS.textMuted)
-      doc.text('Scan to view', qrX + qrSize / 2, qrY + qrSize + 2.5, { align: 'center' })
+      doc.setTextColor(...COLORS.mutedGray)
+      doc.text('Scan to view', qrX + qrSize / 2, qrY + qrSize + 2, { align: 'center' })
     } catch (error) {
       console.warn('⚠️ Could not add QR code to PDF:', error)
     }
   }
 
-  console.log('🟢 Dark theme PDF generated successfully')
+  console.log('🟢 B&W printable PDF generated successfully')
   return doc
 }
 

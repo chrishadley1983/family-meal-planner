@@ -1166,53 +1166,38 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
               </div>
             </div>
 
-            {/* Status Actions */}
+          </div>
+
+          {/* Action Button Bar */}
+          <div className="flex items-center justify-between gap-2 p-4 bg-gray-900 border border-gray-800 rounded-xl">
+            {/* Primary Actions (Left) */}
             <div className="flex gap-2">
               {/* Export & Share - always visible */}
               <button
                 onClick={() => setShowExportModal(true)}
-                className="px-4 py-2 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg hover:opacity-90 text-sm flex items-center gap-2"
+                className="px-3 py-2 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg hover:opacity-90 text-sm flex items-center gap-1.5"
                 title="Export & Share"
               >
                 ↗ Export & Share
               </button>
 
               {shoppingList.status === 'Draft' && (
-                <>
-                  <button
-                    onClick={() => handleUpdateStatus('Finalized')}
-                    disabled={saving}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
-                  >
-                    Finalize
-                  </button>
-                  <button
-                    onClick={() => handleUpdateStatus('Archived')}
-                    disabled={saving}
-                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
-                  >
-                    Archive
-                  </button>
-                </>
+                <button
+                  onClick={() => handleUpdateStatus('Finalized')}
+                  disabled={saving}
+                  className="px-3 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 disabled:opacity-50 text-sm"
+                >
+                  Finalize
+                </button>
               )}
+
               {shoppingList.status === 'Finalized' && (
                 <>
-                  {purchasedItems > 0 && (
-                    <>
-                      <button
-                        onClick={handleOpenConvertModal}
-                        className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 text-sm flex items-center gap-2"
-                        title="Add purchased items to inventory"
-                      >
-                        📦 Add to Inventory
-                      </button>
-                    </>
-                  )}
                   {/* Mark All Purchased button - only show when there are unpurchased items */}
                   {totalItems > purchasedItems && (
                     <button
                       onClick={() => setShowMarkAllModal(true)}
-                      className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 text-sm flex items-center gap-2"
+                      className="px-3 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 text-sm flex items-center gap-1.5"
                       title="Mark all remaining items as purchased"
                     >
                       ✓ Mark All Purchased
@@ -1220,23 +1205,49 @@ export default function ShoppingListDetailPage({ params }: { params: Promise<{ i
                   )}
                   {purchasedItems > 0 && (
                     <button
-                      onClick={handleUndoLastPurchased}
-                      disabled={saving}
-                      className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 text-sm"
-                      title="Undo the most recently purchased item"
+                      onClick={handleOpenConvertModal}
+                      className="px-3 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 text-sm flex items-center gap-1.5"
+                      title="Add purchased items to inventory"
                     >
-                      Undo Last
+                      📦 Add to Inventory
                     </button>
                   )}
+                </>
+              )}
+            </div>
+
+            {/* Divider */}
+            <div className="w-px h-8 bg-gray-700" />
+
+            {/* Secondary Actions (Right) */}
+            <div className="flex gap-2">
+              {shoppingList.status === 'Finalized' && purchasedItems > 0 && (
+                <>
                   <button
-                    onClick={() => handleUpdateStatus('Archived')}
+                    onClick={handleUndoLastPurchased}
                     disabled={saving}
-                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50 text-sm"
+                    className="px-3 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50 text-sm"
+                    title="Undo the most recently purchased item"
                   >
-                    Archive
+                    Undo Last
+                  </button>
+                  <button
+                    onClick={handleUndoAllPurchased}
+                    disabled={saving}
+                    className="px-3 py-2 bg-gray-700 text-amber-500 rounded-lg hover:bg-gray-600 disabled:opacity-50 text-sm"
+                    title="Undo all purchased items"
+                  >
+                    Undo All ({purchasedItems})
                   </button>
                 </>
               )}
+              <button
+                onClick={() => handleUpdateStatus('Archived')}
+                disabled={saving}
+                className="px-3 py-2 bg-gray-700 text-gray-400 rounded-lg hover:bg-gray-600 disabled:opacity-50 text-sm"
+              >
+                Archive
+              </button>
             </div>
           </div>
 
