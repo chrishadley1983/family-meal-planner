@@ -1,469 +1,417 @@
 /**
- * E2E Test Template
+ * E2E Test Template (Playwright)
  *
  * Use this template when creating new E2E tests.
- * E2E tests verify complete user journeys using Playwright MCP.
+ * E2E tests verify complete user journeys using Playwright.
  *
- * Location: tests/e2e/<journey-name>.spec.ts
+ * Location: tests/e2e/playwright/<journey-name>.spec.ts
  *
- * IMPORTANT: E2E tests use Playwright MCP tools, NOT standard Playwright API.
- * The Test Execution Agent will interpret these test specifications and
- * execute them using MCP tool calls.
+ * Run tests:
+ *   npx playwright test                              # All E2E tests
+ *   npx playwright test tests/e2e/playwright/auth   # Specific file
+ *   npx playwright test --ui                         # Interactive UI mode
+ *   npx playwright test --debug                      # Debug mode
+ *
+ * IMPORTANT: App must be running on localhost:3000 before running E2E tests.
+ * The playwright.config.ts is configured to auto-start the dev server.
  */
 
+import { test, expect, type Page } from '@playwright/test'
+
 // =============================================================================
-// TEST SPECIFICATION
+// TEST CONFIGURATION
 // =============================================================================
 
 /**
- * E2E Test Specification Format
- *
- * Each E2E test is defined as a specification object that the Test Execution
- * Agent interprets and executes using MCP tools.
+ * Base URL for the application
+ * Can be overridden via PLAYWRIGHT_BASE_URL environment variable
  */
+const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000'
 
-export interface E2ETestSpec {
-  id: string
-  name: string
-  description: string
-  priority: 'critical' | 'high' | 'medium' | 'low'
-  requiresAuth: boolean
-  timeout: number // seconds
-  steps: E2ETestStep[]
-  cleanup?: E2ECleanupStep[]
-}
-
-export interface E2ETestStep {
-  action: E2EAction
-  description: string
-  params: Record<string, any>
-  assertions?: E2EAssertion[]
-  screenshot?: boolean
-  waitAfter?: number // milliseconds
-}
-
-export type E2EAction =
-  | 'navigate'
-  | 'click'
-  | 'type'
-  | 'fill_form'
-  | 'wait_for'
-  | 'snapshot'
-  | 'screenshot'
-  | 'verify_text'
-  | 'verify_element'
-  | 'verify_url'
-  | 'verify_database'
-  | 'check_console_errors'
-  | 'check_network'
-  | 'seed_data'
-  | 'cleanup_data'
-
-export interface E2EAssertion {
-  type: 'contains' | 'equals' | 'exists' | 'not_exists' | 'matches'
-  target: string
-  expected?: any
-}
-
-export interface E2ECleanupStep {
-  action: 'delete_record' | 'reset_state' | 'clear_cache'
-  params: Record<string, any>
+/**
+ * Test user credentials
+ * These should match seeded test data in the database
+ */
+const TEST_USER = {
+  email: 'e2e-test@example.com',
+  password: 'TestPassword123!',
+  name: 'E2E Test User',
 }
 
 // =============================================================================
-// EXAMPLE: Recipe Import Journey
-// =============================================================================
-
-export const recipeImportJourney: E2ETestSpec = {
-  id: 'e2e-recipe-import',
-  name: 'Recipe Import from URL',
-  description: 'Verify user can import a recipe from an external URL',
-  priority: 'critical',
-  requiresAuth: true,
-  timeout: 120,
-
-  steps: [
-    // Step 1: Navigate to new recipe page
-    {
-      action: 'navigate',
-      description: 'Navigate to new recipe page',
-      params: {
-        url: 'http://localhost:3000/recipes/new',
-      },
-      assertions: [
-        { type: 'contains', target: 'url', expected: '/recipes/new' },
-      ],
-    },
-
-    // Step 2: Take initial snapshot
-    {
-      action: 'snapshot',
-      description: 'Capture initial page state',
-      params: {},
-      screenshot: true,
-    },
-
-    // Step 3: Enter recipe URL
-    {
-      action: 'type',
-      description: 'Enter recipe URL in import field',
-      params: {
-        element: 'URL input field',
-        ref: 'input[name="url"]',
-        text: 'https://www.bbcgoodfood.com/recipes/easy-chicken-curry',
-      },
-    },
-
-    // Step 4: Click import button
-    {
-      action: 'click',
-      description: 'Click import button',
-      params: {
-        element: 'Import button',
-        ref: 'button:has-text("Import")',
-      },
-      waitAfter: 5000, // Wait for AI processing
-    },
-
-    // Step 5: Wait for loading to complete
-    {
-      action: 'wait_for',
-      description: 'Wait for import to complete',
-      params: {
-        textGone: 'Importing...',
-        timeout: 30000,
-      },
-    },
-
-    // Step 6: Check for console errors
-    {
-      action: 'check_console_errors',
-      description: 'Verify no console errors during import',
-      params: {
-        level: 'error',
-      },
-      assertions: [
-        { type: 'equals', target: 'errorCount', expected: 0 },
-      ],
-    },
-
-    // Step 7: Verify recipe form is populated
-    {
-      action: 'snapshot',
-      description: 'Capture populated form state',
-      params: {},
-      screenshot: true,
-      assertions: [
-        { type: 'exists', target: 'input[name="recipeName"]' },
-        { type: 'not_exists', target: '.error-message' },
-      ],
-    },
-
-    // Step 8: Save the recipe
-    {
-      action: 'click',
-      description: 'Click save button',
-      params: {
-        element: 'Save Recipe button',
-        ref: 'button:has-text("Save")',
-      },
-      waitAfter: 2000,
-    },
-
-    // Step 9: Verify redirect to recipe detail
-    {
-      action: 'verify_url',
-      description: 'Verify redirected to recipe detail page',
-      params: {
-        pattern: '/recipes/[a-z0-9-]+$',
-      },
-    },
-
-    // Step 10: Verify in database
-    {
-      action: 'verify_database',
-      description: 'Verify recipe exists in database',
-      params: {
-        query: 'SELECT * FROM "Recipe" WHERE "recipeName" LIKE \'%chicken curry%\'',
-        assertion: 'rowCount > 0',
-      },
-    },
-  ],
-
-  cleanup: [
-    {
-      action: 'delete_record',
-      params: {
-        table: 'Recipe',
-        where: 'recipeName LIKE \'%chicken curry%\' AND createdAt > NOW() - INTERVAL \'1 hour\'',
-      },
-    },
-  ],
-}
-
-// =============================================================================
-// EXAMPLE: Meal Plan Generation Journey
-// =============================================================================
-
-export const mealPlanGenerationJourney: E2ETestSpec = {
-  id: 'e2e-meal-plan-generation',
-  name: 'Weekly Meal Plan Generation',
-  description: 'Verify user can generate an AI-powered weekly meal plan',
-  priority: 'critical',
-  requiresAuth: true,
-  timeout: 180,
-
-  steps: [
-    // Seed test recipes first
-    {
-      action: 'seed_data',
-      description: 'Seed test recipes for meal plan',
-      params: {
-        table: 'Recipe',
-        records: [
-          { recipeName: 'E2E Test Recipe 1', servings: 4, cookTime: 30 },
-          { recipeName: 'E2E Test Recipe 2', servings: 4, cookTime: 45 },
-          { recipeName: 'E2E Test Recipe 3', servings: 4, cookTime: 20 },
-        ],
-      },
-    },
-
-    // Navigate to meal plan page
-    {
-      action: 'navigate',
-      description: 'Navigate to meal plans page',
-      params: {
-        url: 'http://localhost:3000/meal-plans/new',
-      },
-    },
-
-    // Select week start date
-    {
-      action: 'click',
-      description: 'Open date picker',
-      params: {
-        element: 'Week start date picker',
-        ref: 'input[name="weekStartDate"]',
-      },
-    },
-
-    {
-      action: 'click',
-      description: 'Select next Monday',
-      params: {
-        element: 'Next Monday in calendar',
-        ref: '.calendar-day:has-text("Monday"):not(.past)',
-      },
-    },
-
-    // Generate meal plan
-    {
-      action: 'click',
-      description: 'Click generate button',
-      params: {
-        element: 'Generate Meal Plan button',
-        ref: 'button:has-text("Generate")',
-      },
-      waitAfter: 10000,
-    },
-
-    // Wait for generation
-    {
-      action: 'wait_for',
-      description: 'Wait for generation to complete',
-      params: {
-        text: 'Your meal plan is ready',
-        timeout: 60000,
-      },
-    },
-
-    // Verify meal plan structure
-    {
-      action: 'snapshot',
-      description: 'Capture generated meal plan',
-      params: {},
-      screenshot: true,
-      assertions: [
-        { type: 'exists', target: '.meal-plan-day' },
-        { type: 'exists', target: '.meal-slot' },
-      ],
-    },
-
-    // Check no cooldown violations
-    {
-      action: 'verify_element',
-      description: 'Verify no validation errors',
-      params: {
-        selector: '.validation-error',
-        shouldNotExist: true,
-      },
-    },
-
-    // Save meal plan
-    {
-      action: 'click',
-      description: 'Save meal plan',
-      params: {
-        element: 'Save Meal Plan button',
-        ref: 'button:has-text("Save")',
-      },
-    },
-
-    // Verify saved
-    {
-      action: 'verify_database',
-      description: 'Verify meal plan saved to database',
-      params: {
-        query: 'SELECT * FROM "MealPlan" WHERE "createdAt" > NOW() - INTERVAL \'5 minutes\'',
-        assertion: 'rowCount > 0',
-      },
-    },
-  ],
-
-  cleanup: [
-    {
-      action: 'delete_record',
-      params: {
-        table: 'MealPlan',
-        where: 'createdAt > NOW() - INTERVAL \'1 hour\'',
-      },
-    },
-    {
-      action: 'delete_record',
-      params: {
-        table: 'Recipe',
-        where: 'recipeName LIKE \'E2E Test Recipe%\'',
-      },
-    },
-  ],
-}
-
-// =============================================================================
-// EXAMPLE: Authentication Journey
-// =============================================================================
-
-export const authenticationJourney: E2ETestSpec = {
-  id: 'e2e-authentication',
-  name: 'User Registration and Login',
-  description: 'Verify new user can register and existing user can login',
-  priority: 'critical',
-  requiresAuth: false, // This test handles its own auth
-  timeout: 90,
-
-  steps: [
-    // Navigate to registration
-    {
-      action: 'navigate',
-      description: 'Navigate to registration page',
-      params: {
-        url: 'http://localhost:3000/auth/register',
-      },
-    },
-
-    // Fill registration form
-    {
-      action: 'fill_form',
-      description: 'Fill registration form',
-      params: {
-        fields: [
-          { name: 'Email', ref: 'input[name="email"]', value: `e2e-test-${Date.now()}@test.com` },
-          { name: 'Password', ref: 'input[name="password"]', value: 'TestPassword123!' },
-          { name: 'Confirm Password', ref: 'input[name="confirmPassword"]', value: 'TestPassword123!' },
-          { name: 'Name', ref: 'input[name="name"]', value: 'E2E Test User' },
-        ],
-      },
-    },
-
-    // Submit registration
-    {
-      action: 'click',
-      description: 'Submit registration',
-      params: {
-        element: 'Register button',
-        ref: 'button[type="submit"]',
-      },
-      waitAfter: 3000,
-    },
-
-    // Verify redirect to dashboard
-    {
-      action: 'verify_url',
-      description: 'Verify redirected to dashboard',
-      params: {
-        contains: '/dashboard',
-      },
-    },
-
-    // Verify user in database
-    {
-      action: 'verify_database',
-      description: 'Verify user created in database',
-      params: {
-        query: 'SELECT * FROM "User" WHERE email LIKE \'e2e-test-%@test.com\' ORDER BY "createdAt" DESC LIMIT 1',
-        assertion: 'rowCount > 0',
-      },
-    },
-
-    // Screenshot dashboard
-    {
-      action: 'screenshot',
-      description: 'Capture dashboard after registration',
-      params: {
-        filename: 'e2e-auth-dashboard.png',
-      },
-    },
-  ],
-
-  cleanup: [
-    {
-      action: 'delete_record',
-      params: {
-        table: 'User',
-        where: 'email LIKE \'e2e-test-%@test.com\'',
-      },
-    },
-  ],
-}
-
-// =============================================================================
-// TEST COLLECTION EXPORT
+// HELPER FUNCTIONS
 // =============================================================================
 
 /**
- * All E2E test specifications for this project
- * The Test Execution Agent will import and execute these
+ * Login helper - authenticates the test user
+ * Use in beforeEach for tests requiring authentication
  */
-export const e2eTestSpecs: E2ETestSpec[] = [
-  authenticationJourney,
-  recipeImportJourney,
-  mealPlanGenerationJourney,
-  // Add more journeys here...
-]
-
-// =============================================================================
-// HELPER: Test Spec Validation
-// =============================================================================
+async function login(page: Page) {
+  await page.goto(`${BASE_URL}/login`)
+  await page.fill('input[name="email"], input[type="email"]', TEST_USER.email)
+  await page.fill('input[name="password"], input[type="password"]', TEST_USER.password)
+  await page.click('button[type="submit"]')
+  await page.waitForURL('**/dashboard**', { timeout: 10000 })
+}
 
 /**
- * Validates an E2E test specification
- * Used by Test Plan Agent to ensure specs are well-formed
+ * Logout helper
  */
-export function validateE2ESpec(spec: E2ETestSpec): { valid: boolean; errors: string[] } {
-  const errors: string[] = []
-
-  if (!spec.id) errors.push('Missing test ID')
-  if (!spec.name) errors.push('Missing test name')
-  if (!spec.steps || spec.steps.length === 0) errors.push('No test steps defined')
-
-  for (let i = 0; i < spec.steps.length; i++) {
-    const step = spec.steps[i]
-    if (!step.action) errors.push(`Step ${i + 1}: Missing action`)
-    if (!step.description) errors.push(`Step ${i + 1}: Missing description`)
-    if (!step.params) errors.push(`Step ${i + 1}: Missing params`)
-  }
-
-  return {
-    valid: errors.length === 0,
-    errors,
-  }
+async function logout(page: Page) {
+  await page.click('button:has-text("Logout"), [data-testid="logout-btn"]')
+  await page.waitForURL('**/login**', { timeout: 5000 })
 }
+
+/**
+ * Wait for loading to complete
+ */
+async function waitForLoading(page: Page, timeout = 10000) {
+  await page.waitForLoadState('networkidle', { timeout })
+}
+
+/**
+ * Take screenshot with timestamp
+ */
+async function screenshot(page: Page, name: string) {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+  await page.screenshot({ path: `test-results/${name}-${timestamp}.png` })
+}
+
+// =============================================================================
+// TEST SUITE: [Feature Name]
+// =============================================================================
+
+test.describe('[Feature Name]', () => {
+  // ---------------------------------------------------------------------------
+  // SETUP & TEARDOWN
+  // ---------------------------------------------------------------------------
+
+  test.beforeAll(async () => {
+    // One-time setup before all tests in this file
+    // Example: Seed test data
+    // await seedTestData()
+  })
+
+  test.afterAll(async () => {
+    // One-time cleanup after all tests
+    // Example: Clean up test data
+    // await cleanupTestData()
+  })
+
+  test.beforeEach(async ({ page }) => {
+    // Setup before each test
+    // Most tests need authentication
+    await login(page)
+  })
+
+  test.afterEach(async ({ page }) => {
+    // Cleanup after each test
+    // Optional: logout, clear state, etc.
+  })
+
+  // ---------------------------------------------------------------------------
+  // HAPPY PATH TESTS
+  // ---------------------------------------------------------------------------
+
+  test.describe('Happy Path', () => {
+    test('should [expected behavior] when [action]', async ({ page }) => {
+      // Arrange - Set up test preconditions
+      await page.goto(`${BASE_URL}/[target-page]`)
+      await waitForLoading(page)
+
+      // Act - Perform the user action
+      await page.fill('[data-testid="input-field"]', 'test value')
+      await page.click('[data-testid="submit-btn"]')
+
+      // Assert - Verify expected outcome
+      await expect(page.locator('[data-testid="success-message"]')).toBeVisible()
+      await expect(page).toHaveURL(/\/expected-path/)
+
+      // Optional: Screenshot for visual verification
+      await screenshot(page, 'feature-success')
+    })
+
+    test('should display correct data after [action]', async ({ page }) => {
+      // Navigate to target page
+      await page.goto(`${BASE_URL}/[target-page]`)
+      await waitForLoading(page)
+
+      // Verify data is displayed correctly
+      await expect(page.locator('[data-testid="data-container"]')).toBeVisible()
+      await expect(page.locator('[data-testid="item-count"]')).toHaveText(/\d+/)
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // FORM VALIDATION TESTS
+  // ---------------------------------------------------------------------------
+
+  test.describe('Form Validation', () => {
+    test('should show error for empty required field', async ({ page }) => {
+      await page.goto(`${BASE_URL}/[form-page]`)
+
+      // Submit without filling required fields
+      await page.click('[data-testid="submit-btn"]')
+
+      // Verify validation error appears
+      await expect(page.locator('.error, [role="alert"]')).toBeVisible()
+    })
+
+    test('should show error for invalid format', async ({ page }) => {
+      await page.goto(`${BASE_URL}/[form-page]`)
+
+      // Enter invalid data
+      await page.fill('[data-testid="email-input"]', 'not-an-email')
+      await page.click('[data-testid="submit-btn"]')
+
+      // Verify validation error
+      await expect(page.locator('text=valid email')).toBeVisible()
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // ERROR HANDLING TESTS
+  // ---------------------------------------------------------------------------
+
+  test.describe('Error Handling', () => {
+    test('should display error message when API fails', async ({ page }) => {
+      // Mock API failure (if using route interception)
+      // await page.route('**/api/endpoint', route => route.abort())
+
+      await page.goto(`${BASE_URL}/[target-page]`)
+
+      // Trigger action that calls API
+      await page.click('[data-testid="action-btn"]')
+
+      // Verify error handling
+      await expect(page.locator('[data-testid="error-message"]')).toBeVisible()
+    })
+
+    test('should handle not found gracefully', async ({ page }) => {
+      // Navigate to non-existent resource
+      await page.goto(`${BASE_URL}/[resource]/non-existent-id`)
+
+      // Verify 404 handling
+      await expect(page.locator('text=not found')).toBeVisible()
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // NAVIGATION TESTS
+  // ---------------------------------------------------------------------------
+
+  test.describe('Navigation', () => {
+    test('should navigate to [destination] when clicking [element]', async ({ page }) => {
+      await page.goto(`${BASE_URL}/[start-page]`)
+
+      // Click navigation element
+      await page.click('[data-testid="nav-link"]')
+
+      // Verify navigation
+      await expect(page).toHaveURL(/\/expected-destination/)
+    })
+
+    test('should redirect unauthenticated users to login', async ({ page, context }) => {
+      // Clear cookies/storage to remove auth
+      await context.clearCookies()
+
+      // Try to access protected page
+      await page.goto(`${BASE_URL}/[protected-page]`)
+
+      // Verify redirect to login
+      await expect(page).toHaveURL(/\/login/)
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // CRUD OPERATION TESTS
+  // ---------------------------------------------------------------------------
+
+  test.describe('CRUD Operations', () => {
+    test('should create new [resource]', async ({ page }) => {
+      await page.goto(`${BASE_URL}/[resource]/new`)
+
+      // Fill form
+      await page.fill('[data-testid="name-input"]', 'E2E Test Resource')
+      await page.fill('[data-testid="description-input"]', 'Created by E2E test')
+
+      // Submit
+      await page.click('[data-testid="submit-btn"]')
+
+      // Verify creation
+      await expect(page.locator('text=E2E Test Resource')).toBeVisible()
+    })
+
+    test('should update existing [resource]', async ({ page }) => {
+      await page.goto(`${BASE_URL}/[resource]/[id]/edit`)
+
+      // Modify field
+      await page.fill('[data-testid="name-input"]', 'Updated Name')
+
+      // Save
+      await page.click('[data-testid="save-btn"]')
+
+      // Verify update
+      await expect(page.locator('text=Updated Name')).toBeVisible()
+    })
+
+    test('should delete [resource] with confirmation', async ({ page }) => {
+      await page.goto(`${BASE_URL}/[resource]/[id]`)
+
+      // Click delete
+      await page.click('[data-testid="delete-btn"]')
+
+      // Confirm in dialog
+      await page.click('[data-testid="confirm-delete-btn"]')
+
+      // Verify deletion
+      await expect(page).toHaveURL(/\/[resource]$/)
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // ACCESSIBILITY TESTS
+  // ---------------------------------------------------------------------------
+
+  test.describe('Accessibility', () => {
+    test('should have no accessibility violations on main page', async ({ page }) => {
+      await page.goto(`${BASE_URL}/[target-page]`)
+
+      // Check for basic accessibility (keyboard navigation, focus)
+      await page.keyboard.press('Tab')
+      const focusedElement = await page.evaluate(() => document.activeElement?.tagName)
+      expect(focusedElement).toBeTruthy()
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // RESPONSIVE TESTS
+  // ---------------------------------------------------------------------------
+
+  test.describe('Responsive Design', () => {
+    test('should display mobile menu on small screens', async ({ page }) => {
+      // Set viewport to mobile size
+      await page.setViewportSize({ width: 375, height: 667 })
+
+      await page.goto(`${BASE_URL}/[target-page]`)
+
+      // Verify mobile-specific elements
+      await expect(page.locator('[data-testid="mobile-menu-btn"]')).toBeVisible()
+    })
+  })
+})
+
+// =============================================================================
+// EXAMPLE: Complete Authentication Test Suite
+// =============================================================================
+
+/*
+test.describe('Authentication', () => {
+  test.describe('Login', () => {
+    test('should login with valid credentials', async ({ page }) => {
+      await page.goto(`${BASE_URL}/login`)
+
+      await page.fill('input[name="email"]', TEST_USER.email)
+      await page.fill('input[name="password"]', TEST_USER.password)
+      await page.click('button[type="submit"]')
+
+      await expect(page).toHaveURL(/\/dashboard/)
+      await expect(page.locator(`text=${TEST_USER.name}`)).toBeVisible()
+    })
+
+    test('should show error for invalid credentials', async ({ page }) => {
+      await page.goto(`${BASE_URL}/login`)
+
+      await page.fill('input[name="email"]', TEST_USER.email)
+      await page.fill('input[name="password"]', 'wrong-password')
+      await page.click('button[type="submit"]')
+
+      await expect(page.locator('text=Invalid')).toBeVisible()
+      await expect(page).toHaveURL(/\/login/)
+    })
+
+    test('should show validation error for empty email', async ({ page }) => {
+      await page.goto(`${BASE_URL}/login`)
+
+      await page.fill('input[name="password"]', 'some-password')
+      await page.click('button[type="submit"]')
+
+      await expect(page.locator('input[name="email"]:invalid')).toBeVisible()
+    })
+  })
+
+  test.describe('Registration', () => {
+    test('should register new user', async ({ page }) => {
+      const newUser = {
+        email: `e2e-${Date.now()}@test.com`,
+        password: 'SecurePass123!',
+        name: 'New E2E User',
+      }
+
+      await page.goto(`${BASE_URL}/register`)
+
+      await page.fill('input[name="email"]', newUser.email)
+      await page.fill('input[name="password"]', newUser.password)
+      await page.fill('input[name="name"]', newUser.name)
+      await page.click('button[type="submit"]')
+
+      await expect(page).toHaveURL(/\/dashboard/)
+    })
+  })
+
+  test.describe('Logout', () => {
+    test('should logout successfully', async ({ page }) => {
+      // Login first
+      await login(page)
+
+      // Logout
+      await page.click('[data-testid="logout-btn"]')
+
+      // Verify logged out
+      await expect(page).toHaveURL(/\/login/)
+    })
+  })
+})
+*/
+
+// =============================================================================
+// SELECTOR BEST PRACTICES
+// =============================================================================
+
+/*
+SELECTOR PRIORITY (most to least preferred):
+
+1. data-testid attributes (most stable)
+   await page.click('[data-testid="submit-btn"]')
+
+2. ARIA roles with accessible names
+   await page.getByRole('button', { name: 'Submit' })
+   await page.getByRole('textbox', { name: 'Email' })
+
+3. Label associations
+   await page.getByLabel('Email')
+   await page.getByPlaceholder('Enter email')
+
+4. Text content
+   await page.getByText('Sign In')
+   await page.click('button:has-text("Submit")')
+
+5. CSS selectors (last resort)
+   await page.click('.submit-button')
+   await page.click('#submit-btn')
+
+AVOID:
+- Selectors based on styling classes that may change
+- XPath selectors (fragile)
+- Index-based selectors like nth-child
+
+RECOMMENDED data-testid pattern:
+- [feature]-[element]-[variant]
+- Example: "login-submit-btn", "recipe-card-delete"
+*/
+
+// =============================================================================
+// EXPORTS FOR TYPE CHECKING
+// =============================================================================
+
+export { login, logout, waitForLoading, screenshot, TEST_USER, BASE_URL }
