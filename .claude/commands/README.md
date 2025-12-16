@@ -13,6 +13,7 @@ Type `/` in Claude Code followed by the command name. For example:
 |---------|-------------|-------------|
 | `/merge-feature` | Safely merge a feature branch to main | After completing feature work on a branch |
 | `/test-plan` | Analyze test coverage and generate manifests | Before releases, after feature changes, for test planning |
+| `/test-build` | Generate test files to fill coverage gaps | After `/test-plan analyze` identifies missing tests |
 
 ## How Commands Work
 
@@ -56,6 +57,29 @@ You are a **[Role]** responsible for [task description].
 | `/security-test` | Run security checks on codebase | Planned |
 | `/qa-review` | Quality assurance checklist | Planned |
 | `/update-docs` | Update documentation | Planned |
+
+## Test Agent Workflow
+
+The test agents work together in a pipeline:
+
+```
+/test-plan analyze     →  Identifies coverage gaps
+                           ↓
+/test-build <mode>     →  Generates test files to fill gaps
+                           ↓
+/test-execute <mode>   →  Runs the tests (planned)
+```
+
+### Test Build Modes
+
+| Mode | Description |
+|------|-------------|
+| `critical` | Build tests for CRITICAL priority gaps |
+| `high` | Build tests for HIGH priority gaps |
+| `medium` | Build tests for MEDIUM priority gaps |
+| `feature:<name>` | Build tests for specific feature (e.g., `feature:auth`) |
+| `type:<type>` | Build specific test type: `type:e2e`, `type:api`, `type:unit` |
+| `all` | Build all missing tests (large output) |
 
 ## Best Practices
 
