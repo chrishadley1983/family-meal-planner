@@ -20,19 +20,27 @@ interface ItemsByCategory {
   [category: string]: ShoppingListItem[]
 }
 
-// Brand colors (print-friendly versions)
-const BRAND_COLORS = {
-  purple: '#8B5CF6',
-  purpleRGB: [139, 92, 246] as [number, number, number],
-  purpleLight: '#A78BFA',
-  gray: '#6B7280',
-  grayRGB: [107, 114, 128] as [number, number, number],
-  grayLight: '#9CA3AF',
-  grayLightRGB: [156, 163, 175] as [number, number, number],
-  black: '#1F2937',
-  blackRGB: [31, 41, 55] as [number, number, number],
-  white: '#FFFFFF',
-  whiteRGB: [255, 255, 255] as [number, number, number],
+// Dark theme colors matching shopping-redesign.html
+const COLORS = {
+  // Backgrounds
+  pageBg: [3, 7, 18] as [number, number, number],        // #030712
+  cardBg: [17, 24, 39] as [number, number, number],      // #111827
+  categoryBg: [31, 41, 55] as [number, number, number],  // #1f2937
+
+  // Borders
+  cardBorder: [31, 41, 55] as [number, number, number],  // #1f2937
+  checkboxBorder: [55, 65, 81] as [number, number, number], // #374151
+
+  // Text colors
+  white: [255, 255, 255] as [number, number, number],
+  textPrimary: [255, 255, 255] as [number, number, number],
+  textSecondary: [156, 163, 175] as [number, number, number], // #9ca3af
+  textMuted: [107, 114, 128] as [number, number, number],     // #6b7280
+
+  // Accent colors
+  purple: [139, 92, 246] as [number, number, number],    // #8b5cf6
+  purpleLight: [167, 139, 250] as [number, number, number], // #a78bfa
+  emerald: [16, 185, 129] as [number, number, number],   // #10b981
 }
 
 // Category order for consistent display
@@ -60,40 +68,27 @@ function sortCategories(categories: string[]): string[] {
     const indexA = CATEGORY_ORDER.indexOf(a)
     const indexB = CATEGORY_ORDER.indexOf(b)
 
-    // If both are in the order list, sort by order
     if (indexA !== -1 && indexB !== -1) {
       return indexA - indexB
     }
-    // If only one is in the list, prioritize it
     if (indexA !== -1) return -1
     if (indexB !== -1) return 1
-    // Otherwise sort alphabetically
     return a.localeCompare(b)
   })
 }
 
 /**
- * Formats quantity with unit for display - WITH SPACE
+ * Formats quantity with unit for display
  */
 function formatQuantity(quantity: number, unit: string): string {
-  // Handle whole numbers vs decimals
   const formattedQty = Number.isInteger(quantity)
     ? quantity.toString()
     : quantity.toFixed(1).replace(/\.0$/, '')
-
-  // Combine quantity and unit WITH A SPACE
   return `${formattedQty} ${unit}`
 }
 
-// Row type for 2-column layout
-interface PDFRow {
-  type: 'category' | 'item'
-  category?: string
-  item?: ShoppingListItem
-}
-
 /**
- * Generates a printable PDF shopping list with 2-column newspaper layout
+ * Generates a printable PDF shopping list with dark theme matching the web design
  */
 export async function generateShoppingListPDF(
   shoppingList: ShoppingListData,
@@ -103,7 +98,7 @@ export async function generateShoppingListPDF(
     qrCodeDataUrl?: string
   } = {}
 ): Promise<jsPDF> {
-  console.log('🔷 Generating PDF for shopping list:', shoppingList.name)
+  console.log('🔷 Generating dark theme PDF for shopping list:', shoppingList.name)
 
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -114,213 +109,294 @@ export async function generateShoppingListPDF(
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
   const margin = 12
-  const columnGap = 8
+  const columnGap = 6
   const columnWidth = (pageWidth - 2 * margin - columnGap) / 2
-  const footerHeight = 12
-  const contentHeight = pageHeight - margin - footerHeight
+  const footerHeight = 10
 
-  // Row heights
-  const categoryRowHeight = 6
-  const itemRowHeight = 5
-  const categorySpacing = 2
+  // Layout settings
+  const categoryHeaderHeight = 8
+  const itemRowHeight = 7
+  const cardPadding = 2
+  const cardMarginBottom = 3
+  const checkboxSize = 3.5
 
   let currentY = margin
   let currentPage = 1
 
+  // === DRAW PAGE BACKGROUND ===
+  function drawPageBackground() {
+    doc.setFillColor(...COLORS.pageBg)
+    doc.rect(0, 0, pageWidth, pageHeight, 'F')
+  }
+
   // === HEADER ===
   function drawHeader() {
-    // Text logo (left side) - styled "FamilyFuel"
-    doc.setFontSize(20)
+    // FamilyFuel logo (purple)
+    doc.setFontSize(18)
     doc.setFont('helvetica', 'bold')
-    doc.setTextColor(...BRAND_COLORS.purpleRGB)
-    doc.text('FamilyFuel', margin, currentY + 6)
+    doc.setTextColor(...COLORS.purple)
+    doc.text('FamilyFuel', margin, currentY + 5)
 
-    // Title and date (right side)
-    const dateStr = format(new Date(), 'd MMM yyyy')
-    doc.setFontSize(16)
-    doc.setTextColor(...BRAND_COLORS.blackRGB)
-    doc.setFont('helvetica', 'bold')
+    // Shopping List title (white)
+    doc.setFontSize(14)
+    doc.setTextColor(...COLORS.white)
     doc.text('Shopping List', pageWidth - margin, currentY + 4, { align: 'right' })
 
-    doc.setFontSize(9)
+    // Date (gray)
+    const dateStr = format(new Date(), 'd MMM yyyy')
+    doc.setFontSize(8)
     doc.setFont('helvetica', 'normal')
-    doc.setTextColor(...BRAND_COLORS.grayRGB)
-    doc.text(dateStr, pageWidth - margin, currentY + 10, { align: 'right' })
+    doc.setTextColor(...COLORS.textSecondary)
+    doc.text(dateStr, pageWidth - margin, currentY + 9, { align: 'right' })
 
-    currentY += 16
+    currentY += 14
 
-    // Divider line
-    doc.setDrawColor(...BRAND_COLORS.purpleRGB)
+    // Purple divider line
+    doc.setDrawColor(...COLORS.purple)
     doc.setLineWidth(0.5)
     doc.line(margin, currentY, pageWidth - margin, currentY)
 
-    currentY += 5
+    currentY += 4
   }
 
   // === FOOTER ===
   function drawFooter() {
-    const footerY = pageHeight - 8
-    doc.setFontSize(7)
-    doc.setTextColor(...BRAND_COLORS.grayLightRGB)
+    const footerY = pageHeight - 6
+    doc.setFontSize(6)
+    doc.setTextColor(...COLORS.textMuted)
     doc.text('Powered by FamilyFuel', pageWidth / 2, footerY, { align: 'center' })
     doc.text(`Page ${currentPage}`, pageWidth - margin, footerY, { align: 'right' })
   }
 
   // === DRAW CATEGORY HEADER ===
-  function drawCategoryHeader(x: number, y: number, width: number, category: string) {
-    // Purple background
-    doc.setFillColor(...BRAND_COLORS.purpleRGB)
-    doc.rect(x, y, width, categoryRowHeight, 'F')
+  function drawCategoryHeader(x: number, y: number, width: number, category: string, itemCount: number) {
+    // Dark gray background with rounded corners effect
+    doc.setFillColor(...COLORS.categoryBg)
+    doc.roundedRect(x, y, width, categoryHeaderHeight, 1.5, 1.5, 'F')
 
-    // White text
-    doc.setFontSize(8)
+    // Category name (white, bold)
+    doc.setFontSize(9)
     doc.setFont('helvetica', 'bold')
-    doc.setTextColor(...BRAND_COLORS.whiteRGB)
-    doc.text(category, x + 2, y + 4)
+    doc.setTextColor(...COLORS.white)
+    doc.text(category, x + 3, y + 5)
+
+    // Item count (emerald)
+    doc.setFontSize(7)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(...COLORS.emerald)
+    doc.text(`${itemCount} items`, x + 3, y + categoryHeaderHeight - 1.5)
+  }
+
+  // === DRAW CHECKBOX ===
+  function drawCheckbox(x: number, y: number, isChecked: boolean) {
+    const centerX = x + checkboxSize / 2
+    const centerY = y + checkboxSize / 2
+
+    if (isChecked) {
+      // Filled green circle for checked
+      doc.setFillColor(...COLORS.emerald)
+      doc.circle(centerX, centerY, checkboxSize / 2, 'F')
+
+      // White checkmark (simple tick using lines)
+      doc.setDrawColor(...COLORS.white)
+      doc.setLineWidth(0.4)
+      // Draw a simple V checkmark
+      doc.line(centerX - 1, centerY, centerX - 0.3, centerY + 0.8)
+      doc.line(centerX - 0.3, centerY + 0.8, centerX + 1, centerY - 0.8)
+    } else {
+      // Empty circle with gray border
+      doc.setDrawColor(...COLORS.checkboxBorder)
+      doc.setLineWidth(0.4)
+      doc.circle(centerX, centerY, checkboxSize / 2, 'S')
+    }
   }
 
   // === DRAW ITEM ROW ===
-  function drawItemRow(x: number, y: number, width: number, item: ShoppingListItem) {
-    // Checkbox
-    const checkboxSize = 3
-    const checkboxY = y + 1
-    doc.setDrawColor(...BRAND_COLORS.grayRGB)
-    doc.setLineWidth(0.3)
-    doc.circle(x + checkboxSize / 2 + 1, checkboxY + checkboxSize / 2, checkboxSize / 2, 'S')
-
-    if (item.isPurchased) {
-      // Draw checkmark
-      doc.setFillColor(...BRAND_COLORS.purpleRGB)
-      doc.circle(x + checkboxSize / 2 + 1, checkboxY + checkboxSize / 2, checkboxSize / 2 - 0.5, 'F')
-    }
+  function drawItemRow(x: number, y: number, width: number, item: ShoppingListItem, isLast: boolean) {
+    const rowPadding = 2
 
     // Item name
     doc.setFontSize(8)
-    doc.setFont('helvetica', 'normal')
+    doc.setFont('helvetica', item.isPurchased ? 'normal' : 'bold')
+
     if (item.isPurchased) {
-      doc.setTextColor(...BRAND_COLORS.grayLightRGB)
+      doc.setTextColor(...COLORS.textMuted)
     } else {
-      doc.setTextColor(...BRAND_COLORS.blackRGB)
+      doc.setTextColor(...COLORS.white)
     }
 
-    const nameX = x + checkboxSize + 3
-    const maxNameWidth = width - checkboxSize - 30 // Leave space for quantity
-    const itemName = doc.splitTextToSize(item.itemName, maxNameWidth)[0] // Take first line only
-    doc.text(itemName, nameX, y + 3.5)
+    const nameX = x + checkboxSize + 4
+    const maxNameWidth = width - checkboxSize - 8
+    const itemName = doc.splitTextToSize(item.itemName, maxNameWidth)[0]
+    doc.text(itemName, nameX, y + 3)
 
-    // Quantity (right aligned)
-    doc.setTextColor(...BRAND_COLORS.grayRGB)
+    // Checkbox
+    drawCheckbox(x + rowPadding, y + 0.5, item.isPurchased)
+
+    // Quantity and unit (below item name, gray)
+    doc.setFontSize(6)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(...COLORS.textMuted)
     const quantityStr = formatQuantity(item.quantity, item.unit)
-    doc.text(quantityStr, x + width - 2, y + 3.5, { align: 'right' })
+    doc.text(quantityStr, nameX, y + 6)
+
+    // Draw separator line (except for last item)
+    if (!isLast) {
+      doc.setDrawColor(...COLORS.cardBorder)
+      doc.setLineWidth(0.2)
+      doc.line(x + rowPadding, y + itemRowHeight - 0.5, x + width - rowPadding, y + itemRowHeight - 0.5)
+    }
   }
 
-  // === BUILD ROW LIST ===
-  // Build a flat list of rows (category headers + items)
-  const rows: PDFRow[] = []
+  // === BUILD CATEGORY GROUPS ===
   const categories = sortCategories(Object.keys(itemsByCategory))
+  const categoryGroups: Array<{
+    category: string
+    items: ShoppingListItem[]
+  }> = []
 
   for (const category of categories) {
     const items = itemsByCategory[category]
     if (!items || items.length === 0) continue
 
-    // Sort items alphabetically within category
-    const sortedItems = [...items].sort((a, b) =>
+    // Sort items: unpurchased first (alphabetical), then purchased (alphabetical)
+    const unpurchased = items.filter(i => !i.isPurchased).sort((a, b) =>
+      a.itemName.toLowerCase().localeCompare(b.itemName.toLowerCase())
+    )
+    const purchased = items.filter(i => i.isPurchased).sort((a, b) =>
       a.itemName.toLowerCase().localeCompare(b.itemName.toLowerCase())
     )
 
-    // Add category header row
-    rows.push({ type: 'category', category })
+    categoryGroups.push({
+      category,
+      items: [...unpurchased, ...purchased]
+    })
+  }
 
-    // Add item rows
-    for (const item of sortedItems) {
-      rows.push({ type: 'item', item })
+  // === CALCULATE GROUP HEIGHT ===
+  function getGroupHeight(group: { category: string; items: ShoppingListItem[] }): number {
+    return categoryHeaderHeight + 1 + // header + gap
+           cardPadding * 2 + // card padding
+           group.items.length * itemRowHeight + // items
+           cardMarginBottom // bottom margin
+  }
+
+  // === DRAW CATEGORY GROUP ===
+  function drawCategoryGroup(x: number, y: number, width: number, group: { category: string; items: ShoppingListItem[] }) {
+    // Category header
+    drawCategoryHeader(x, y, width, group.category, group.items.length)
+
+    let cardY = y + categoryHeaderHeight + 1
+
+    // Card background
+    const cardHeight = cardPadding * 2 + group.items.length * itemRowHeight
+    doc.setFillColor(...COLORS.cardBg)
+    doc.setDrawColor(...COLORS.cardBorder)
+    doc.setLineWidth(0.3)
+    doc.roundedRect(x, cardY, width, cardHeight, 1.5, 1.5, 'FD')
+
+    // Draw items inside card
+    let itemY = cardY + cardPadding
+    for (let i = 0; i < group.items.length; i++) {
+      const item = group.items[i]
+      const isLast = i === group.items.length - 1
+      drawItemRow(x, itemY, width, item, isLast)
+      itemY += itemRowHeight
     }
   }
 
-  // === CALCULATE ROW HEIGHTS FOR LAYOUT ===
-  function getRowHeight(row: PDFRow): number {
-    if (row.type === 'category') {
-      return categoryRowHeight + categorySpacing
-    }
-    return itemRowHeight
-  }
-
-  // === SPLIT INTO PAGES AND COLUMNS ===
-  // Each page has 2 columns. We need to figure out how many rows fit per column.
-
+  // === RENDER PAGES ===
+  drawPageBackground()
   drawHeader()
   drawFooter()
 
   const startY = currentY
-  const availableHeight = contentHeight - startY
+  const contentHeight = pageHeight - margin - footerHeight
 
   // Column positions
   const leftColumnX = margin
   const rightColumnX = margin + columnWidth + columnGap
 
-  // Current drawing position
-  let columnIndex = 0 // 0 = left, 1 = right
-  let columnY = startY
-  let rowIndex = 0
+  // Track column positions
+  let leftColumnY = startY
+  let rightColumnY = startY
+  let groupIndex = 0
 
-  while (rowIndex < rows.length) {
-    const row = rows[rowIndex]
-    const rowHeight = getRowHeight(row)
+  while (groupIndex < categoryGroups.length) {
+    const group = categoryGroups[groupIndex]
+    const groupHeight = getGroupHeight(group)
 
-    // Check if row fits in current column
-    if (columnY + rowHeight > contentHeight) {
-      // Move to next column or page
-      if (columnIndex === 0) {
-        // Move to right column
-        columnIndex = 1
-        columnY = startY
-      } else {
-        // New page
-        doc.addPage()
-        currentPage++
-        currentY = margin
+    // Decide which column to use (use the one with more space, or left if equal)
+    const useLeftColumn = leftColumnY <= rightColumnY
+    const columnX = useLeftColumn ? leftColumnX : rightColumnX
+    const columnY = useLeftColumn ? leftColumnY : rightColumnY
 
-        // Draw header and footer on new page
-        drawHeader()
-        drawFooter()
+    // Check if group fits in current column
+    if (columnY + groupHeight > contentHeight) {
+      // Try the other column
+      const otherColumnY = useLeftColumn ? rightColumnY : leftColumnY
+      const otherColumnX = useLeftColumn ? rightColumnX : leftColumnX
 
-        columnIndex = 0
-        columnY = currentY
+      if (otherColumnY + groupHeight <= contentHeight) {
+        // Fits in other column
+        drawCategoryGroup(otherColumnX, otherColumnY, columnWidth, group)
+        if (useLeftColumn) {
+          rightColumnY = otherColumnY + groupHeight
+        } else {
+          leftColumnY = otherColumnY + groupHeight
+        }
+        groupIndex++
+        continue
       }
+
+      // Neither column has space - new page
+      doc.addPage()
+      currentPage++
+      currentY = margin
+
+      drawPageBackground()
+      drawHeader()
+      drawFooter()
+
+      leftColumnY = currentY
+      rightColumnY = currentY
+      continue
     }
 
-    // Draw the row
-    const x = columnIndex === 0 ? leftColumnX : rightColumnX
+    // Draw the group in chosen column
+    drawCategoryGroup(columnX, columnY, columnWidth, group)
 
-    if (row.type === 'category' && row.category) {
-      drawCategoryHeader(x, columnY, columnWidth, row.category)
-      columnY += categoryRowHeight + categorySpacing
-    } else if (row.type === 'item' && row.item) {
-      drawItemRow(x, columnY, columnWidth, row.item)
-      columnY += itemRowHeight
+    if (useLeftColumn) {
+      leftColumnY = columnY + groupHeight
+    } else {
+      rightColumnY = columnY + groupHeight
     }
 
-    rowIndex++
+    groupIndex++
   }
 
   // === QR CODE (if provided) ===
   if (options.includeQRCode && options.qrCodeDataUrl) {
     try {
-      const qrSize = 20
+      const qrSize = 18
       const qrX = pageWidth - margin - qrSize
-      const qrY = pageHeight - footerHeight - qrSize - 5
+      const qrY = pageHeight - footerHeight - qrSize - 4
+
+      // White background for QR code
+      doc.setFillColor(...COLORS.white)
+      doc.roundedRect(qrX - 1, qrY - 1, qrSize + 2, qrSize + 2, 1, 1, 'F')
 
       doc.addImage(options.qrCodeDataUrl, 'PNG', qrX, qrY, qrSize, qrSize)
 
-      doc.setFontSize(6)
-      doc.setTextColor(...BRAND_COLORS.grayLightRGB)
-      doc.text('Scan to view', qrX + qrSize / 2, qrY + qrSize + 2, { align: 'center' })
+      doc.setFontSize(5)
+      doc.setTextColor(...COLORS.textMuted)
+      doc.text('Scan to view', qrX + qrSize / 2, qrY + qrSize + 2.5, { align: 'center' })
     } catch (error) {
       console.warn('⚠️ Could not add QR code to PDF:', error)
     }
   }
 
-  console.log('🟢 PDF generated successfully with 2-column layout')
+  console.log('🟢 Dark theme PDF generated successfully')
   return doc
 }
 
