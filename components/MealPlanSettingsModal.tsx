@@ -112,6 +112,44 @@ export function MealPlanSettingsModal({ isOpen, onClose, onSave }: MealPlanSetti
           </div>
         ) : (
           <div className="space-y-4">
+            {/* Macro Targeting Mode */}
+            <div className="bg-zinc-800/50 rounded-lg border border-zinc-700">
+              <button
+                onClick={() => toggleSection('macros')}
+                className="w-full px-4 py-3 flex items-center justify-between hover:bg-zinc-700/50 rounded-t-lg"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-xl">🎯</span>
+                  <div className="text-left">
+                    <h3 className="font-semibold text-white">Macro Targeting Mode</h3>
+                    <p className="text-xs text-zinc-400">How strictly to follow nutritional targets</p>
+                  </div>
+                </div>
+                <span className="text-zinc-400">{expandedSections.has('macros') ? '▼' : '▶'}</span>
+              </button>
+
+              {expandedSections.has('macros') && (
+                <div className="px-4 pb-4 space-y-3">
+                  {(['balanced', 'strict', 'weekday-discipline', 'calorie-banking'] as MacroMode[]).map(mode => (
+                    <label key={mode} className="flex items-start gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="macroMode"
+                        value={mode}
+                        checked={settings.macroMode === mode}
+                        onChange={(e) => setSettings({ ...settings, macroMode: e.target.value as MacroMode })}
+                        className="mt-1"
+                      />
+                      <div>
+                        <div className="text-sm text-white capitalize">{mode.replace('-', ' ')}</div>
+                        <div className="text-xs text-zinc-400">{MACRO_MODE_DESCRIPTIONS[mode]}</div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Recipe Variety & Repeat Days */}
             <div className="bg-zinc-800/50 rounded-lg border border-zinc-700">
               <button
@@ -333,6 +371,96 @@ export function MealPlanSettingsModal({ isOpen, onClose, onSave }: MealPlanSetti
                       />
                     </div>
                   )}
+                </div>
+              )}
+            </div>
+
+            {/* Priority Ordering */}
+            <div className="bg-zinc-800/50 rounded-lg border border-zinc-700">
+              <button
+                onClick={() => toggleSection('priority')}
+                className="w-full px-4 py-3 flex items-center justify-between hover:bg-zinc-700/50 rounded-t-lg"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-xl">📊</span>
+                  <div className="text-left">
+                    <h3 className="font-semibold text-white">Priority Ordering</h3>
+                    <p className="text-xs text-zinc-400">When priorities conflict, which wins?</p>
+                  </div>
+                </div>
+                <span className="text-zinc-400">{expandedSections.has('priority') ? '▼' : '▶'}</span>
+              </button>
+
+              {expandedSections.has('priority') && (
+                <div className="px-4 pb-4">
+                  <p className="text-xs text-zinc-400 mb-3">Drag to reorder (top = highest priority)</p>
+                  <div className="space-y-2">
+                    {settings.priorityOrder.map((priority, index) => (
+                      <div
+                        key={priority}
+                        className="flex items-center gap-2 p-2 bg-zinc-900/50 rounded border border-zinc-700"
+                      >
+                        <span className="text-zinc-500 text-sm w-5">{index + 1}.</span>
+                        <span className="flex-1 text-sm text-white">{PRIORITY_LABELS[priority]}</span>
+                        <div className="flex gap-1">
+                          <button
+                            type="button"
+                            onClick={() => movePriority(index, 'up')}
+                            disabled={index === 0}
+                            className="px-2 py-1 text-xs bg-zinc-700 rounded hover:bg-zinc-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => movePriority(index, 'down')}
+                            disabled={index === settings.priorityOrder.length - 1}
+                            className="px-2 py-1 text-xs bg-zinc-700 rounded hover:bg-zinc-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                          >
+                            ↓
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Emilia's Nutritional Feedback */}
+            <div className="bg-zinc-800/50 rounded-lg border border-zinc-700">
+              <button
+                onClick={() => toggleSection('feedback')}
+                className="w-full px-4 py-3 flex items-center justify-between hover:bg-zinc-700/50 rounded-t-lg"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-xl">💬</span>
+                  <div className="text-left">
+                    <h3 className="font-semibold text-white">Emilia's Nutritional Feedback</h3>
+                    <p className="text-xs text-zinc-400">How much detail in weekly summaries</p>
+                  </div>
+                </div>
+                <span className="text-zinc-400">{expandedSections.has('feedback') ? '▼' : '▶'}</span>
+              </button>
+
+              {expandedSections.has('feedback') && (
+                <div className="px-4 pb-4 space-y-3">
+                  {(['minimal', 'standard', 'detailed'] as FeedbackDetail[]).map(detail => (
+                    <label key={detail} className="flex items-start gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="feedbackDetail"
+                        value={detail}
+                        checked={settings.feedbackDetail === detail}
+                        onChange={(e) => setSettings({ ...settings, feedbackDetail: e.target.value as FeedbackDetail })}
+                        className="mt-1"
+                      />
+                      <div>
+                        <div className="text-sm text-white capitalize">{detail}</div>
+                        <div className="text-xs text-zinc-400">{FEEDBACK_DETAIL_DESCRIPTIONS[detail]}</div>
+                      </div>
+                    </label>
+                  ))}
                 </div>
               )}
             </div>
