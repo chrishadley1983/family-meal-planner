@@ -48,11 +48,11 @@ export function RecipeSearchBar({
       <select
         value={mealType}
         onChange={(e) => onMealTypeChange(e.target.value)}
-        className="bg-transparent border-0 px-3 py-2 text-sm text-zinc-400 focus:outline-none cursor-pointer hover:text-white"
+        className="bg-zinc-800 border-0 px-3 py-2 text-sm text-zinc-400 focus:outline-none cursor-pointer hover:text-white rounded"
       >
-        <option value="">All Types</option>
+        <option value="" className="bg-zinc-800 text-zinc-300">All Types</option>
         {mealTypes.map((type) => (
-          <option key={type} value={type}>
+          <option key={type} value={type} className="bg-zinc-800 text-zinc-300">
             {type}
           </option>
         ))}
@@ -65,11 +65,11 @@ export function RecipeSearchBar({
       <select
         value={cuisineType}
         onChange={(e) => onCuisineTypeChange(e.target.value)}
-        className="bg-transparent border-0 px-3 py-2 text-sm text-zinc-400 focus:outline-none cursor-pointer hover:text-white"
+        className="bg-zinc-800 border-0 px-3 py-2 text-sm text-zinc-400 focus:outline-none cursor-pointer hover:text-white rounded"
       >
-        <option value="">All Cuisines</option>
+        <option value="" className="bg-zinc-800 text-zinc-300">All Cuisines</option>
         {cuisineTypes.map((type) => (
-          <option key={type} value={type}>
+          <option key={type} value={type} className="bg-zinc-800 text-zinc-300">
             {type}
           </option>
         ))}
