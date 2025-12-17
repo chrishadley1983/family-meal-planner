@@ -192,6 +192,156 @@ export function validateCooldowns(
 }
 
 /**
+ * Auto-fix batch cooking setup when same recipe appears multiple times
+ *
+ * Logic:
+ * 1. If batch cooking is enabled in settings → convert to batch cooking (set isLeftover flags)
+ * 2. If batch cooking disabled → check if repetition violates cooldown
+ *    - If cooldown allows (e.g., cooldown=1 day, used on Mon+Thu = 3 days apart) → leave as-is
+ *    - If cooldown violated → return error (can't fix without batch cooking)
+ *
+ * @returns Object containing any auto-fixes applied and any unfixable errors
+ */
+export interface BatchCookingAutoFixResult {
+  fixesApplied: string[]
+  unfixableErrors: string[]
+}
+
+export function autoFixBatchCooking(
+  meals: GeneratedMeal[],
+  settings: MealPlanSettings,
+  weekStartDate: string,
+  skipForMealTypes?: string[],
+  productRecipeIds?: Set<string>
+): BatchCookingAutoFixResult {
+  const fixesApplied: string[] = []
+  const unfixableErrors: string[] = []
+
+  console.log('🔧 Auto-fix batch cooking: checking for repeated recipes...')
+  console.log(`   Batch cooking enabled: ${settings.batchCookingEnabled}`)
+
+  // Group meals by recipe to find potential batch cooking scenarios
+  const recipeGroups = new Map<string, GeneratedMeal[]>()
+
+  meals.forEach(meal => {
+    if (!meal.recipeId) return
+    if (!recipeGroups.has(meal.recipeId)) {
+      recipeGroups.set(meal.recipeId, [])
+    }
+    recipeGroups.get(meal.recipeId)!.push(meal)
+  })
+
+  // Check each recipe group with multiple usages
+  recipeGroups.forEach((groupMeals, recipeId) => {
+    if (groupMeals.length <= 1) return // Single usage, no action needed
+
+    // Skip product-based recipes (grabbed from pantry, not cooked)
+    if (productRecipeIds?.has(recipeId)) {
+      console.log(`   ✅ Skipping product recipe: ${groupMeals[0].recipeName}`)
+      return
+    }
+
+    // Check if ALL meals are in skip list (user explicitly requested repetition)
+    const shouldSkip = skipForMealTypes && skipForMealTypes.length > 0 &&
+      groupMeals.every(meal => {
+        const normalizedMealType = meal.mealType.toLowerCase().replace(/\s+/g, '-')
+        return skipForMealTypes.some(skip =>
+          normalizedMealType === skip ||
+          normalizedMealType.includes(skip) ||
+          skip.includes(normalizedMealType)
+        )
+      })
+
+    if (shouldSkip) {
+      console.log(`   ✅ Skipping (user requested): ${groupMeals[0].recipeName}`)
+      return
+    }
+
+    // Check if already properly set up as batch cooking
+    const hasLeftovers = groupMeals.some(m => m.isLeftover === true)
+    if (hasLeftovers) {
+      console.log(`   ✅ Already batch cooking: ${groupMeals[0].recipeName}`)
+      return
+    }
+
+    // Recipe used multiple times without batch cooking flags - need to fix or error
+    const recipeName = groupMeals[0].recipeName || recipeId
+    const mealsWithIndex = groupMeals.map(meal => ({
+      ...meal,
+      dayIndex: getDayIndex(meal.dayOfWeek, weekStartDate)
+    })).sort((a, b) => a.dayIndex - b.dayIndex)
+
+    const daysUsed = mealsWithIndex.map(m => m.dayOfWeek).join(', ')
+    console.log(`🔧 Recipe "${recipeName}" used ${groupMeals.length} times (${daysUsed}) - needs fix`)
+
+    // OPTION 1: If batch cooking enabled, convert to batch cooking
+    if (settings.batchCookingEnabled) {
+      console.log(`   → Converting to batch cooking (enabled in settings)`)
+
+      const firstMeal = mealsWithIndex[0]
+      const subsequentMeals = mealsWithIndex.slice(1)
+
+      // Calculate total servings needed
+      const totalServings = mealsWithIndex.reduce((sum, m) => sum + (m.servings || 4), 0)
+
+      // Fix first meal: set servings to total, add batch cook note
+      firstMeal.isLeftover = false
+      firstMeal.servings = totalServings
+      const servingsBreakdown = mealsWithIndex.map(m => `${m.dayOfWeek} (${m.servings || 4})`).join(' + ')
+      firstMeal.notes = `Batch cook ${totalServings} servings—covers ${servingsBreakdown}`
+
+      // Fix subsequent meals: mark as leftover
+      subsequentMeals.forEach(meal => {
+        meal.isLeftover = true
+        meal.batchCookSourceDay = firstMeal.dayOfWeek
+        meal.notes = `Reheat from ${firstMeal.dayOfWeek}`
+      })
+
+      fixesApplied.push(
+        `Converted "${recipeName}" to batch cooking: cook on ${firstMeal.dayOfWeek}, ` +
+        `reheat on ${subsequentMeals.map(m => m.dayOfWeek).join(', ')}`
+      )
+      return
+    }
+
+    // OPTION 2: If batch cooking disabled, check cooldown
+    console.log(`   → Batch cooking disabled, checking cooldowns...`)
+
+    // Get cooldown for the meal type (use first meal's type)
+    const cooldownDays = getCooldownForMealType(mealsWithIndex[0].mealType, settings)
+
+    // Check each pair of consecutive usages
+    let cooldownViolated = false
+    for (let i = 0; i < mealsWithIndex.length - 1; i++) {
+      const daysBetween = mealsWithIndex[i + 1].dayIndex - mealsWithIndex[i].dayIndex
+      if (daysBetween < cooldownDays) {
+        cooldownViolated = true
+        console.log(`   ❌ Cooldown violated: ${daysBetween} days between ${mealsWithIndex[i].dayOfWeek} and ${mealsWithIndex[i + 1].dayOfWeek} (need ${cooldownDays})`)
+        break
+      }
+    }
+
+    if (!cooldownViolated) {
+      // Cooldown allows repetition - leave as-is, just log it
+      console.log(`   ✅ Cooldown allows repetition (${cooldownDays} days required, gaps are sufficient)`)
+      fixesApplied.push(
+        `"${recipeName}" used ${mealsWithIndex.length} times - allowed by cooldown (${cooldownDays} day cooldown, sufficient gaps)`
+      )
+      return
+    }
+
+    // OPTION 3: Neither works - can't fix
+    console.log(`   ❌ Cannot fix: batch cooking disabled and cooldown violated`)
+    unfixableErrors.push(
+      `Recipe "${recipeName}" used ${mealsWithIndex.length} times (${daysUsed}) violates ${cooldownDays}-day cooldown. ` +
+      `Enable batch cooking in settings or use different recipes.`
+    )
+  })
+
+  return { fixesApplied, unfixableErrors }
+}
+
+/**
  * Validate batch cooking setup
  * Ensures isLeftover flags are correct, chronological order is maintained, and servings match
  * @param skipForMealTypes - Meal types where repeated recipes are allowed without batch cooking (e.g., user requested "porridge every day")
@@ -275,7 +425,7 @@ export function validateBatchCooking(
     )
 
     if (!hasLeftovers && !hasBatchCookNotes) {
-      // Same recipe used multiple times without batch cooking - possible cooldown violation
+      // This should have been fixed by autoFixBatchCooking - if we reach here, something is wrong
       errors.push(
         `Recipe "${mealsWithIndex[0].recipeName || recipeId}" used ${mealsWithIndex.length} times ` +
         `(${mealsWithIndex.map(m => m.dayOfWeek).join(', ')}) but not marked as batch cooking. ` +
@@ -708,6 +858,7 @@ export interface ValidationOptions {
 
 /**
  * Master validation function that runs all checks
+ * Now includes auto-fix for batch cooking before validation
  */
 export function validateMealPlan(
   meals: GeneratedMeal[],
@@ -728,6 +879,34 @@ export function validateMealPlan(
   console.log('🔍 skipBatchCookingForMealTypes:', options?.skipBatchCookingForMealTypes || 'EMPTY/UNDEFINED')
   console.log('🔍 productRecipeIds:', options?.productRecipeIds?.size || 0, 'product recipes')
 
+  // STEP 1: Auto-fix batch cooking BEFORE validation
+  // This modifies meals in-place to set isLeftover flags when same recipe used multiple times
+  const autoFixResult = autoFixBatchCooking(
+    meals,
+    settings,
+    weekStartDate,
+    options?.skipBatchCookingForMealTypes,
+    options?.productRecipeIds
+  )
+
+  // Log auto-fix results
+  if (autoFixResult.fixesApplied.length > 0) {
+    console.log('🔧 Auto-fix batch cooking applied:')
+    autoFixResult.fixesApplied.forEach(fix => console.log(`   ✅ ${fix}`))
+  }
+
+  // If there are unfixable errors, return them immediately
+  if (autoFixResult.unfixableErrors.length > 0) {
+    console.log('❌ Auto-fix batch cooking - unfixable errors:')
+    autoFixResult.unfixableErrors.forEach(err => console.log(`   ❌ ${err}`))
+    return {
+      isValid: false,
+      errors: autoFixResult.unfixableErrors,
+      warnings: autoFixResult.fixesApplied.map(fix => `Auto-fixed: ${fix}`)
+    }
+  }
+
+  // STEP 2: Run standard validations (now on potentially fixed meals)
   const cooldownResult = validateCooldowns(meals, settings, weekStartDate, recipeHistory)
   const batchCookingResult = validateBatchCooking(meals, weekStartDate, options?.skipBatchCookingForMealTypes, options?.productRecipeIds)
 
@@ -748,9 +927,12 @@ export function validateMealPlan(
     console.log('🔍 Skipping macro validation: profiles or recipes not provided')
   }
 
+  // Include auto-fix info in warnings for successful validations
+  const autoFixWarnings = autoFixResult.fixesApplied.map(fix => `Auto-fixed: ${fix}`)
+
   return {
     isValid: cooldownResult.isValid && batchCookingResult.isValid && mealTypeResult.isValid && macroResult.isValid,
     errors: [...cooldownResult.errors, ...batchCookingResult.errors, ...mealTypeResult.errors, ...macroResult.errors],
-    warnings: [...cooldownResult.warnings, ...batchCookingResult.warnings, ...mealTypeResult.warnings, ...macroResult.warnings]
+    warnings: [...autoFixWarnings, ...cooldownResult.warnings, ...batchCookingResult.warnings, ...mealTypeResult.warnings, ...macroResult.warnings]
   }
 }
