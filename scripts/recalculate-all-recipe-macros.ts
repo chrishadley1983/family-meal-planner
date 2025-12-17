@@ -2,14 +2,17 @@
  * One-off script to recalculate macros for ALL existing recipes
  * Uses the nutrition service: cache -> USDA API -> AI estimate
  *
- * Usage: npx ts-node scripts/recalculate-all-recipe-macros.ts
- * Or:    npx tsx scripts/recalculate-all-recipe-macros.ts
+ * Usage: npx tsx scripts/recalculate-all-recipe-macros.ts
+ *
+ * Note: Requires DATABASE_URL environment variable to be set
  */
 
-import { PrismaClient } from '@prisma/client'
-import { calculateRecipeNutrition, RecipeIngredient } from '../lib/nutrition/index'
+import { config } from 'dotenv'
+// Load environment variables from .env file
+config()
 
-const prisma = new PrismaClient()
+import { prisma } from '../lib/prisma'
+import { calculateRecipeNutrition, RecipeIngredient } from '../lib/nutrition/index'
 
 interface RecipeWithIngredients {
   id: string
@@ -144,10 +147,14 @@ async function recalculateAllRecipeMacros() {
 
 // Run the script
 recalculateAllRecipeMacros()
+  .then(() => {
+    console.log('\n🔌 Disconnecting from database...')
+    return prisma.$disconnect()
+  })
+  .then(() => {
+    process.exit(0)
+  })
   .catch((error) => {
     console.error('Fatal error:', error)
-    process.exit(1)
-  })
-  .finally(async () => {
-    await prisma.$disconnect()
+    prisma.$disconnect().finally(() => process.exit(1))
   })
