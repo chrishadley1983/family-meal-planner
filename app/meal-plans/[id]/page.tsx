@@ -360,6 +360,12 @@ export default function MealPlanDetailPage() {
       const data = await response.json()
       setMealPlan(data.mealPlan)
 
+      // Initialize mealPlanProducts from API response (now included in meal plan query)
+      if (data.mealPlan.mealPlanProducts) {
+        console.log('🟢 Loaded mealPlanProducts from meal plan response:', data.mealPlan.mealPlanProducts.length)
+        setMealPlanProducts(data.mealPlan.mealPlanProducts)
+      }
+
       // Calculate which day of week the meal plan starts on
       // DAYS_OF_WEEK array: 0=Monday, 1=Tuesday, ..., 6=Sunday
       // Date.getDay(): 0=Sunday, 1=Monday, ..., 6=Saturday
@@ -486,34 +492,78 @@ export default function MealPlanDetailPage() {
     let mealsWithNutrition = 0
     let totalMeals = 0
 
+    // Debug: Track what's being counted
+    let mealCalories = 0
+    let productCalories = 0
+    let snackMealCalories = 0
+    let snackMealsCount = 0
+    let mealsWithoutRecipe = 0
+    let mealsWithoutNutrition = 0
+
     // Count meals (excluding leftovers - they don't add calories)
     const mealsToCount = mealPlan.meals.filter(m => !m.isLeftover)
     totalMeals = mealsToCount.length
 
+    console.log('📊 Weekly Nutrition Calculation:')
+    console.log(`  Total meals (non-leftover): ${mealsToCount.length}`)
+    console.log(`  Leftover meals (excluded): ${mealPlan.meals.filter(m => m.isLeftover).length}`)
+
     mealsToCount.forEach(meal => {
+      const isSnack = meal.mealType.toLowerCase().includes('snack')
+
       if (meal.recipe) {
         const recipe = meal.recipe as any
         if (recipe.caloriesPerServing) {
-          totalCalories += recipe.caloriesPerServing || 0
+          const calories = recipe.caloriesPerServing || 0
+          totalCalories += calories
+          mealCalories += calories
+          if (isSnack) {
+            snackMealCalories += calories
+            snackMealsCount++
+          }
           totalProtein += recipe.proteinPerServing || 0
           totalCarbs += recipe.carbsPerServing || 0
           totalFat += recipe.fatPerServing || 0
           mealsWithNutrition++
+        } else {
+          mealsWithoutNutrition++
+          if (isSnack) {
+            console.log(`  ⚠️ Snack meal "${meal.recipeName}" has recipe but NO nutrition data`)
+          }
+        }
+      } else {
+        mealsWithoutRecipe++
+        if (isSnack) {
+          console.log(`  ⚠️ Snack meal "${meal.recipeName || meal.mealType}" has NO recipe linked`)
         }
       }
     })
 
     // Add products (snacks added via UI)
+    console.log(`  Product snacks in mealPlanProducts: ${mealPlanProducts.length}`)
+
     mealPlanProducts.forEach(mp => {
       totalMeals++ // Each product slot counts as a meal
       if (mp.product.caloriesPerServing) {
-        totalCalories += (mp.product.caloriesPerServing || 0) * mp.quantity
+        const calories = (mp.product.caloriesPerServing || 0) * mp.quantity
+        totalCalories += calories
+        productCalories += calories
         totalProtein += (mp.product.proteinPerServing || 0) * mp.quantity
         totalCarbs += (mp.product.carbsPerServing || 0) * mp.quantity
         totalFat += (mp.product.fatPerServing || 0) * mp.quantity
         mealsWithNutrition++
+        console.log(`  🍫 Product: ${mp.product.name} = ${calories} cal`)
       }
     })
+
+    console.log('📊 Calorie Breakdown:')
+    console.log(`  Meal calories (from recipes): ${Math.round(mealCalories)}`)
+    console.log(`  - Snack meal calories: ${Math.round(snackMealCalories)} (${snackMealsCount} snacks)`)
+    console.log(`  Product calories: ${Math.round(productCalories)}`)
+    console.log(`  TOTAL: ${Math.round(totalCalories)}`)
+    console.log(`  Meals without recipe: ${mealsWithoutRecipe}`)
+    console.log(`  Meals without nutrition: ${mealsWithoutNutrition}`)
+    console.log(`  Daily avg: ${Math.round(totalCalories / 7)} cal/day`)
 
     const nutritionCoveragePercent = totalMeals > 0
       ? Math.round((mealsWithNutrition / totalMeals) * 100)

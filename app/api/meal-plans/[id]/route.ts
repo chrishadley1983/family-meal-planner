@@ -73,6 +73,11 @@ export async function GET(
             { dayOfWeek: 'asc' },
             { mealType: 'asc' }
           ]
+        },
+        mealPlanProducts: {
+          include: {
+            product: true
+          }
         }
       }
     })
