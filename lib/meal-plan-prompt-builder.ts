@@ -1145,12 +1145,12 @@ Please generate a meal plan for the week and return it as a JSON object with thi
 - **YOU MUST ONLY use recipes from the "AVAILABLE RECIPES" list above**
 - Every meal MUST have a valid recipeId from that list - do NOT suggest recipes that aren't in the database
 - **MEAL TYPE MATCHING IS MANDATORY:** Only use recipes for meal slots that match their designated "Meal Types" field:
-  * A recipe with mealType: ["Dinner"] can ONLY be used for dinner slots
+  * A recipe with mealType: ["Dinner"] can be used for dinner OR lunch slots (dinner recipes work for lunch)
   * A recipe with mealType: ["Breakfast"] can ONLY be used for breakfast slots
   * A recipe with mealType: ["Breakfast", "Lunch"] can be used for either breakfast OR lunch, but NOT dinner
   * A recipe with mealType: ["Snack"] can be used for morning-snack, afternoon-snack, or evening-snack slots
   * **SNACK SLOTS REQUIRE SNACK RECIPES:** Never assign a breakfast/lunch/dinner recipe to a snack slot. If no snack recipes are available, leave the snack slot empty rather than using an inappropriate recipe.
-  * NEVER assign a dinner recipe to breakfast or vice versa - this is a critical error
+  * NEVER assign a breakfast recipe to dinner or vice versa - this is a critical error
   * NEVER assign a breakfast recipe to a snack slot - oatmeal/porridge for breakfast is NOT a snack
 - **COOLDOWN PERIODS MUST BE RESPECTED** - Do NOT use the same recipe within its cooldown period (see "RECIPE VARIETY & COOLDOWNS" section)
 - The ONLY exception to cooldown is batch cooking - if using the same recipe multiple times, it MUST be set up as batch cooking with proper isLeftover flags
