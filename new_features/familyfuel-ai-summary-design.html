@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FamilyFuel - AI Summary Component Design</title>
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --bg-card: #1e293b;
+      --bg-elevated: #334155;
+      --bg-input: #0f172a;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent-orange: #f97316;
+      --accent-amber: #f59e0b;
+      --accent-purple: #a855f7;
+      --accent-blue: #3b82f6;
+      --accent-green: #22c55e;
+      --accent-pink: #ec4899;
+      --accent-cyan: #06b6d4;
+      --border-color: #475569;
+      --border-light: #334155;
+      --success: #22c55e;
+      --warning: #eab308;
+      --error: #ef4444;
+      --gradient-primary: linear-gradient(135deg, #f97316, #f59e0b);
+      --gradient-purple: linear-gradient(135deg, #a855f7, #ec4899);
+      --gradient-blue: linear-gradient(135deg, #3b82f6, #06b6d4);
+      --gradient-green: linear-gradient(135deg, #22c55e, #10b981);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1a1a2e;
+      color: var(--text-primary);
+      line-height: 1.6;
+      padding: 2rem;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .page-title {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .page-title h1 {
+      font-size: 1.5rem;
+      background: var(--gradient-primary);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.25rem;
+    }
+
+    .page-title p {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+
+    /* Section Labels */
+    .section-label {
+      display: inline-block;
+      background: var(--gradient-primary);
+      color: white;
+      padding: 0.375rem 0.875rem;
+      border-radius: 0.375rem;
+      font-weight: 600;
+      font-size: 0.75rem;
+      margin-bottom: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .section-wrapper {
+      margin-bottom: 3rem;
+    }
+
+    .design-note {
+      background: var(--bg-card);
+      border-left: 3px solid var(--accent-purple);
+      padding: 0.875rem 1rem;
+      margin-top: 1rem;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      border-radius: 0 0.5rem 0.5rem 0;
+    }
+
+    .design-note strong {
+      color: var(--accent-purple);
+    }
+
+    .design-note code {
+      background: var(--bg-elevated);
+      padding: 0.125rem 0.375rem;
+      border-radius: 0.25rem;
+      font-size: 0.75rem;
+      color: var(--accent-amber);
+    }
+
+    /* ===================== */
+    /* AI SUMMARY COMPONENT */
+    /* ===================== */
+    .ai-summary {
+      background: var(--bg-card);
+      border-radius: 0.75rem;
+      border: 1px solid var(--border-color);
+      overflow: hidden;
+    }
+
+    /* Header Section */
+    .ai-summary-header {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border-color);
+      background: linear-gradient(135deg, rgba(168, 85, 247, 0.1), rgba(236, 72, 153, 0.05));
+    }
+
+    .ai-summary-header-top {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .ai-avatar {
+      width: 48px;
+      height: 48px;
+      background: var(--gradient-purple);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      flex-shrink: 0;
+    }
+
+    .ai-summary-text {
+      flex: 1;
+    }
+
+    .ai-summary-text h3 {
+      font-size: 1.0625rem;
+      font-weight: 600;
+      margin-bottom: 0.375rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .ai-summary-text h3 .success-check {
+      color: var(--success);
+    }
+
+    .ai-summary-text p {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      line-height: 1.55;
+    }
+
+    .ai-summary-text p strong {
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    /* Macro Bars */
+    .macro-bars {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+    }
+
+    .macro-bar {
+      background: var(--bg-dark);
+      border-radius: 0.5rem;
+      padding: 0.75rem;
+    }
+
+    .macro-bar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 0.5rem;
+    }
+
+    .macro-bar-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .macro-bar-value {
+      font-size: 1.125rem;
+      font-weight: 700;
+    }
+
+    .macro-bar-value.cal { color: var(--accent-orange); }
+    .macro-bar-value.pro { color: var(--accent-blue); }
+    .macro-bar-value.carb { color: var(--accent-amber); }
+    .macro-bar-value.fat { color: var(--accent-purple); }
+
+    .macro-bar-track {
+      height: 4px;
+      background: var(--bg-elevated);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: 0.375rem;
+    }
+
+    .macro-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.5s ease;
+    }
+
+    .macro-bar-fill.cal { background: var(--gradient-primary); }
+    .macro-bar-fill.pro { background: var(--accent-blue); }
+    .macro-bar-fill.carb { background: var(--accent-amber); }
+    .macro-bar-fill.fat { background: var(--accent-purple); }
+
+    .macro-bar-status {
+      font-size: 0.65rem;
+      color: var(--success);
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    /* Expandable Sections */
+    .expandable-sections {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .expandable-section {
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .expandable-section:last-child {
+      border-bottom: none;
+    }
+
+    .expandable-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.875rem 1.5rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .expandable-header:hover {
+      background: rgba(51, 65, 85, 0.5);
+    }
+
+    .expandable-header-left {
+      display: flex;
+      align-items: center;
+      gap: 0.875rem;
+    }
+
+    .section-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.125rem;
+    }
+
+    .section-icon.cuisine { background: rgba(249, 115, 22, 0.15); }
+    .section-icon.batch { background: rgba(59, 130, 246, 0.15); }
+    .section-icon.shopping { background: rgba(34, 197, 94, 0.15); }
+    .section-icon.tips { background: rgba(168, 85, 247, 0.15); }
+    .section-icon.dietary { background: rgba(236, 72, 153, 0.15); }
+
+    .section-text .section-title {
+      font-size: 0.9rem;
+      font-weight: 500;
+      margin-bottom: 0.125rem;
+    }
+
+    .section-text .section-preview {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .section-arrow {
+      color: var(--text-muted);
+      transition: transform 0.2s;
+      font-size: 0.75rem;
+    }
+
+    .expandable-section.open .section-arrow {
+      transform: rotate(180deg);
+    }
+
+    /* Expanded Content Styles */
+    .expandable-content {
+      padding: 0 1.5rem 1.25rem 4.25rem;
+      display: none;
+    }
+
+    .expandable-section.open .expandable-content {
+      display: block;
+    }
+
+    /* Cuisine Grid */
+    .cuisine-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .cuisine-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.875rem;
+      background: var(--bg-dark);
+      border-radius: 0.5rem;
+      font-size: 0.8rem;
+    }
+
+    .cuisine-tag .emoji {
+      font-size: 1.125rem;
+    }
+
+    .cuisine-tag .name {
+      color: var(--text-secondary);
+    }
+
+    .cuisine-tag .count {
+      color: var(--accent-orange);
+      font-weight: 600;
+    }
+
+    /* Batch Cooking Cards */
+    .batch-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 0.625rem;
+    }
+
+    .batch-card {
+      display: flex;
+      align-items: center;
+      gap: 0.875rem;
+      padding: 0.75rem 1rem;
+      background: var(--bg-dark);
+      border-radius: 0.5rem;
+    }
+
+    .batch-card .day-badge {
+      padding: 0.25rem 0.625rem;
+      background: var(--accent-blue);
+      color: white;
+      border-radius: 0.25rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .batch-card .recipe-name {
+      flex: 1;
+      font-size: 0.85rem;
+    }
+
+    .batch-card .arrow {
+      color: var(--text-muted);
+      font-size: 1.25rem;
+    }
+
+    .batch-card .covers {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .batch-card .covers .day-badge {
+      background: var(--accent-green);
+    }
+
+    .batch-card .covers span {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    /* Shopping List */
+    .shopping-summary {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .shopping-stat {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.625rem 0;
+    }
+
+    .shopping-stat .icon {
+      width: 32px;
+      height: 32px;
+      background: var(--bg-dark);
+      border-radius: 0.375rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+    }
+
+    .shopping-stat .text {
+      flex: 1;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .shopping-stat .text strong {
+      color: var(--text-primary);
+    }
+
+    .overlap-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.375rem;
+      margin-top: 0.5rem;
+    }
+
+    .overlap-tag {
+      padding: 0.25rem 0.5rem;
+      background: var(--bg-elevated);
+      border-radius: 0.25rem;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    /* Pro Tips */
+    .tips-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .tip-item {
+      display: flex;
+      gap: 0.75rem;
+      padding: 0.875rem 1rem;
+      background: var(--bg-dark);
+      border-radius: 0.5rem;
+      border-left: 3px solid var(--accent-purple);
+    }
+
+    .tip-item .tip-icon {
+      font-size: 1.25rem;
+      flex-shrink: 0;
+    }
+
+    .tip-item .tip-content {
+      flex: 1;
+    }
+
+    .tip-item .tip-title {
+      font-size: 0.85rem;
+      font-weight: 500;
+      margin-bottom: 0.25rem;
+    }
+
+    .tip-item .tip-desc {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .tip-item .tip-when {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      margin-top: 0.5rem;
+      padding: 0.25rem 0.5rem;
+      background: var(--bg-elevated);
+      border-radius: 0.25rem;
+      font-size: 0.7rem;
+      color: var(--accent-amber);
+    }
+
+    /* Dietary Notes */
+    .dietary-notes {
+      display: flex;
+      flex-direction: column;
+      gap: 0.625rem;
+    }
+
+    .dietary-note {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.625rem 0.875rem;
+      background: var(--bg-dark);
+      border-radius: 0.5rem;
+    }
+
+    .dietary-note .profile-avatar {
+      width: 28px;
+      height: 28px;
+      background: var(--gradient-primary);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .dietary-note .note-text {
+      flex: 1;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .dietary-note .note-text strong {
+      color: var(--text-primary);
+    }
+
+    .dietary-note .check {
+      color: var(--success);
+    }
+
+    /* Divider */
+    .section-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border-color), transparent);
+      margin: 2.5rem 0;
+    }
+
+    /* JSON Structure Guide */
+    .json-guide {
+      background: var(--bg-dark);
+      border-radius: 0.75rem;
+      border: 1px solid var(--border-color);
+      overflow: hidden;
+    }
+
+    .json-guide-header {
+      padding: 1rem 1.25rem;
+      background: var(--bg-elevated);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .json-guide pre {
+      padding: 1.25rem;
+      overflow-x: auto;
+      font-size: 0.75rem;
+      line-height: 1.6;
+      color: var(--text-secondary);
+    }
+
+    .json-guide .key { color: var(--accent-purple); }
+    .json-guide .string { color: var(--accent-green); }
+    .json-guide .number { color: var(--accent-orange); }
+    .json-guide .boolean { color: var(--accent-blue); }
+    .json-guide .comment { color: var(--text-muted); font-style: italic; }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .macro-bars {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      
+      .ai-summary-header-top {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .expandable-content {
+        padding-left: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    
+    <div class="page-title">
+      <h1>🔥 AI Summary Component</h1>
+      <p>Option 3: Conversational + Expandable Sections</p>
+    </div>
+
+    <!-- ===================== -->
+    <!-- COLLAPSED STATE -->
+    <!-- ===================== -->
+    <div class="section-wrapper">
+      <span class="section-label">Default State (All Collapsed)</span>
+      
+      <div class="ai-summary">
+        <!-- Header with AI Message + Macros -->
+        <div class="ai-summary-header">
+          <div class="ai-summary-header-top">
+            <div class="ai-avatar">✨</div>
+            <div class="ai-summary-text">
+              <h3>
+                Your meal plan is ready!
+                <span class="success-check">✓</span>
+              </h3>
+              <p>
+                Strong macro balance for <strong>Chris</strong>, averaging <strong>2,045 kcal/day</strong>—all within ±10% of your targets. I've prioritised <strong>Standard Porridge daily</strong> as requested, and used your <strong>expiring 4L milk</strong> across breakfast recipes.
+              </p>
+            </div>
+          </div>
+
+          <!-- Macro Bars -->
+          <div class="macro-bars">
+            <div class="macro-bar">
+              <div class="macro-bar-header">
+                <span class="macro-bar-label">Calories</span>
+                <span class="macro-bar-value cal">2,045</span>
+              </div>
+              <div class="macro-bar-track">
+                <div class="macro-bar-fill cal" style="width: 95%;"></div>
+              </div>
+              <div class="macro-bar-status">✓ On target</div>
+            </div>
+            <div class="macro-bar">
+              <div class="macro-bar-header">
+                <span class="macro-bar-label">Protein</span>
+                <span class="macro-bar-value pro">176g</span>
+              </div>
+              <div class="macro-bar-track">
+                <div class="macro-bar-fill pro" style="width: 88%;"></div>
+              </div>
+              <div class="macro-bar-status">✓ On target</div>
+            </div>
+            <div class="macro-bar">
+              <div class="macro-bar-header">
+                <span class="macro-bar-label">Carbs</span>
+                <span class="macro-bar-value carb">206g</span>
+              </div>
+              <div class="macro-bar-track">
+                <div class="macro-bar-fill carb" style="width: 92%;"></div>
+              </div>
+              <div class="macro-bar-status">✓ On target</div>
+            </div>
+            <div class="macro-bar">
+              <div class="macro-bar-header">
+                <span class="macro-bar-label">Fat</span>
+                <span class="macro-bar-value fat">68g</span>
+              </div>
+              <div class="macro-bar-track">
+                <div class="macro-bar-fill fat" style="width: 85%;"></div>
+              </div>
+              <div class="macro-bar-status">✓ On target</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Expandable Sections (All Collapsed) -->
+        <div class="expandable-sections">
+          <div class="expandable-section">
+            <div class="expandable-header">
+              <div class="expandable-header-left">
+                <div class="section-icon cuisine">🍽️</div>
+                <div class="section-text">
+                  <div class="section-title">Cuisine Variety</div>
+                  <div class="section-preview">6 cuisines across 21 meals — no meal fatigue</div>
+                </div>
+              </div>
+              <span class="section-arrow">▼</span>
+            </div>
+          </div>
+
+          <div class="expandable-section">
+            <div class="expandable-header">
+              <div class="expandable-header-left">
+                <div class="section-icon batch">🍳</div>
+                <div class="section-text">
+                  <div class="section-title">Batch Cooking</div>
+                  <div class="section-preview">2 meals prep ahead for later in the week</div>
+                </div>
+              </div>
+              <span class="section-arrow">▼</span>
+            </div>
+          </div>
+
+          <div class="expandable-section">
+            <div class="expandable-header">
+              <div class="expandable-header-left">
+                <div class="section-icon shopping">🛒</div>
+                <div class="section-text">
+                  <div class="section-title">Shopping Efficiency</div>
+                  <div class="section-preview">Good ingredient overlap — moderate shopping list</div>
+                </div>
+              </div>
+              <span class="section-arrow">▼</span>
+            </div>
+          </div>
+
+          <div class="expandable-section">
+            <div class="expandable-header">
+              <div class="expandable-header-left">
+                <div class="section-icon tips">💡</div>
+                <div class="section-text">
+                  <div class="section-title">Pro Tips</div>
+                  <div class="section-preview">3 prep suggestions for the week</div>
+                </div>
+              </div>
+              <span class="section-arrow">▼</span>
+            </div>
+          </div>
+
+          <div class="expandable-section">
+            <div class="expandable-header">
+              <div class="expandable-header-left">
+                <div class="section-icon dietary">👨‍👩‍👧</div>
+                <div class="section-text">
+                  <div class="section-title">Dietary Compliance</div>
+                  <div class="section-preview">All family preferences respected</div>
+                </div>
+              </div>
+              <span class="section-arrow">▼</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="design-note">
+        <strong>Interaction:</strong> Click any section header to expand. Arrow rotates 180° on open. Only one section open at a time (accordion) or allow multiple (your choice).
+      </div>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <!-- ===================== -->
+    <!-- EXPANDED SECTIONS -->
+    <!-- ===================== -->
+    <div class="section-wrapper">
+      <span class="section-label">Expanded Section: Cuisine Variety</span>
+      
+      <div class="ai-summary" style="border-radius: 0.75rem;">
+        <div class="expandable-sections">
+          <div class="expandable-section open">
+            <div class="expandable-header">
+              <div class="expandable-header-left">
+                <div class="section-icon cuisine">🍽️</div>
+                <div class="section-text">
+                  <div class="section-title">Cuisine Variety</div>
+                  <div class="section-preview">6 cuisines across 21 meals — no meal fatigue</div>
+                </div>
+              </div>
+              <span class="section-arrow">▼</span>
+            </div>
+            <div class="expandable-content">
+              <div class="cuisine-grid">
+                <div class="cuisine-tag">
+                  <span class="emoji">🍝</span>
+                  <span class="name">Italian</span>
+                  <span class="count">×3</span>
+                </div>
+                <div class="cuisine-tag">
+                  <span class="emoji">🌮</span>
+                  <span class="name">Mexican</span>
+                  <span class="count">×3</span>
+                </div>
+                <div class="cuisine-tag">
+                  <span class="emoji">🍜</span>
+                  <span class="name">Thai</span>
+                  <span class="count">×2</span>
+                </div>
+                <div class="cuisine-tag">
+                  <span class="emoji">🥢</span>
+                  <span class="name">Asian</span>
+                  <span class="count">×2</span>
+                </div>
+                <div class="cuisine-tag">
+                  <span class="emoji">🥙</span>
+                  <span class="name">Greek</span>
+                  <span class="count">×1</span>
+                </div>
+                <div class="cuisine-tag">
+                  <span class="emoji">🍛</span>
+                  <span class="name">Indian</span>
+                  <span class="count">×1</span>
+                </div>
+                <div class="cuisine-tag">
+                  <span class="emoji">🥧</span>
+                  <span class="name">British</span>
+                  <span class="count">×1</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="design-note">
+        <strong>Data:</strong> <code>cuisines: [{name, emoji, count}]</code> — Tags are clickable to filter the meal plan calendar if desired.
+      </div>
+    </div>
+
+    <div class="section-wrapper">
+      <span class="section-label">Expanded Section: Batch Cooking</span>
+      
+      <div class="ai-summary" style="border-radius: 0.75rem;">
+        <div class="expandable-sections">
+          <div class="expandable-section open">
+            <div class="expandable-header">
+              <div class="expandable-header-left">
+                <div class="section-icon batch">🍳</div>
+                <div class="section-text">
+                  <div class="section-title">Batch Cooking</div>
+                  <div class="section-preview">2 meals prep ahead for later in the week</div>
+                </div>
+              </div>
+              <span class="section-arrow">▼</span>
+            </div>
+            <div class="expandable-content">
+              <div class="batch-cards">
+                <div class="batch-card">
+                  <span class="day-badge">Sun</span>
+                  <span class="recipe-name">Chicken Enchiladas</span>
+                  <span class="arrow">→</span>
+                  <div class="covers">
+                    <span class="day-badge">Wed</span>
+                    <span>Dinner</span>
+                  </div>
+                </div>
+                <div class="batch-card">
+                  <span class="day-badge">Tue</span>
+                  <span class="recipe-name">Chicken & Chorizo Ragu</span>
+                  <span class="arrow">→</span>
+                  <div class="covers">
+                    <span class="day-badge">Fri</span>
+                    <span>Dinner</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="design-note">
+        <strong>Data:</strong> <code>batchCooking: [{prepDay, recipe, coversDay, meal}]</code> — Shows cook-once-eat-twice opportunities clearly.
+      </div>
+    </div>
+
+    <div class="section-wrapper">
+      <span class="section-label">Expanded Section: Shopping Efficiency</span>
+      
+      <div class="ai-summary" style="border-radius: 0.75rem;">
+        <div class="expandable-sections">
+          <div class="expandable-section open">
+            <div class="expandable-header">
+              <div class="expandable-header-left">
+                <div class="section-icon shopping">🛒</div>
+                <div class="section-text">
+                  <div class="section-title">Shopping Efficiency</div>
+                  <div class="section-preview">Good ingredient overlap — moderate shopping list</div>
+                </div>
+              </div>
+              <span class="section-arrow">▼</span>
+            </div>
+            <div class="expandable-content">
+              <div class="shopping-summary">
+                <div class="shopping-stat">
+                  <div class="icon">📦</div>
+                  <div class="text">
+                    <strong>Moderate</strong> shopping list size — good ingredient overlap across Asian and Italian meals
+                  </div>
+                </div>
+                <div class="shopping-stat">
+                  <div class="icon">🥛</div>
+                  <div class="text">
+                    Uses <strong>expiring inventory:</strong> 4L milk across breakfast recipes
+                  </div>
+                </div>
+                <div class="shopping-stat">
+                  <div class="icon">🔄</div>
+                  <div class="text">
+                    <strong>Shared ingredients</strong> reduce waste:
+                    <div class="overlap-tags">
+                      <span class="overlap-tag">Chicken thighs ×3</span>
+                      <span class="overlap-tag">Garlic ×5</span>
+                      <span class="overlap-tag">Onions ×4</span>
+                      <span class="overlap-tag">Tomatoes ×3</span>
+                      <span class="overlap-tag">Coriander ×3</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="design-note">
+        <strong>Data:</strong> <code>shopping: {efficiency, usesExpiring[], sharedIngredients[]}</code> — Highlights inventory usage and overlap.
+      </div>
+    </div>
+
+    <div class="section-wrapper">
+      <span class="section-label">Expanded Section: Pro Tips</span>
+      
+      <div class="ai-summary" style="border-radius: 0.75rem;">
+        <div class="expandable-sections">
+          <div class="expandable-section open">
+            <div class="expandable-header">
+              <div class="expandable-header-left">
+                <div class="section-icon tips">💡</div>
+                <div class="section-text">
+                  <div class="section-title">Pro Tips</div>
+                  <div class="section-preview">3 prep suggestions for the week</div>
+                </div>
+              </div>
+              <span class="section-arrow">▼</span>
+            </div>
+            <div class="expandable-content">
+              <div class="tips-list">
+                <div class="tip-item">
+                  <span class="tip-icon">🍗</span>
+                  <div class="tip-content">
+                    <div class="tip-title">Marinate ahead</div>
+                    <div class="tip-desc">Marinate the chicken thighs for Sunday's souvlaki on Friday evening for maximum tenderness.</div>
+                    <span class="tip-when">📅 Friday evening</span>
+                  </div>
+                </div>
+                <div class="tip-item">
+                  <span class="tip-icon">🥘</span>
+                  <div class="tip-content">
+                    <div class="tip-title">Prep sauces in batch</div>
+                    <div class="tip-desc">Prep all curry pastes and sauces Thursday evening so Friday's quick turnaround is painless.</div>
+                    <span class="tip-when">📅 Thursday evening</span>
+                  </div>
+                </div>
+                <div class="tip-item">
+                  <span class="tip-icon">🥗</span>
+                  <div class="tip-content">
+                    <div class="tip-title">Chop veg Sunday</div>
+                    <div class="tip-desc">Chop onions, peppers, and garlic for the week in one session — store in airtight containers.</div>
+                    <span class="tip-when">📅 Sunday afternoon</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="design-note">
+        <strong>Data:</strong> <code>tips: [{icon, title, description, when}]</code> — Actionable with clear timing. Could link to calendar.
+      </div>
+    </div>
+
+    <div class="section-wrapper">
+      <span class="section-label">Expanded Section: Dietary Compliance</span>
+      
+      <div class="ai-summary" style="border-radius: 0.75rem;">
+        <div class="expandable-sections">
+          <div class="expandable-section open">
+            <div class="expandable-header">
+              <div class="expandable-header-left">
+                <div class="section-icon dietary">👨‍👩‍👧</div>
+                <div class="section-text">
+                  <div class="section-title">Dietary Compliance</div>
+                  <div class="section-preview">All family preferences respected</div>
+                </div>
+              </div>
+              <span class="section-arrow">▼</span>
+            </div>
+            <div class="expandable-content">
+              <div class="dietary-notes">
+                <div class="dietary-note">
+                  <div class="profile-avatar">C</div>
+                  <div class="note-text">
+                    <strong>Chris:</strong> Regular pasta portions, high protein targets met
+                  </div>
+                  <span class="check">✓</span>
+                </div>
+                <div class="dietary-note">
+                  <div class="profile-avatar">M</div>
+                  <div class="note-text">
+                    <strong>Max:</strong> Kid-friendly portions, no spicy dishes assigned
+                  </div>
+                  <span class="check">✓</span>
+                </div>
+                <div class="dietary-note">
+                  <div class="profile-avatar">E</div>
+                  <div class="note-text">
+                    <strong>Emmie:</strong> Kid-friendly portions, familiar foods prioritised
+                  </div>
+                  <span class="check">✓</span>
+                </div>
+                <div class="dietary-note">
+                  <div class="icon" style="font-size: 1.25rem;">⚠️</div>
+                  <div class="note-text">
+                    <strong>No cooldown violations</strong> — same proteins spaced 2+ days apart
+                  </div>
+                  <span class="check">✓</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="design-note">
+        <strong>Data:</strong> <code>dietary: [{profile, note, compliant}]</code> — Shows each family member's needs are met.
+      </div>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <!-- ===================== -->
+    <!-- JSON STRUCTURE -->
+    <!-- ===================== -->
+    <div class="section-wrapper">
+      <span class="section-label">Suggested AI Response Structure</span>
+      
+      <div class="json-guide">
+        <div class="json-guide-header">
+          <span>📄</span> JSON Response Format
+        </div>
+        <pre>{
+  <span class="key">"success"</span>: <span class="boolean">true</span>,
+  <span class="key">"headline"</span>: <span class="string">"Your meal plan is ready!"</span>,
+  <span class="key">"summary"</span>: <span class="string">"Strong macro balance for Chris, averaging 2,045 kcal/day..."</span>,
+  
+  <span class="key">"macros"</span>: {
+    <span class="key">"calories"</span>: { <span class="key">"value"</span>: <span class="number">2045</span>, <span class="key">"target"</span>: <span class="number">2100</span>, <span class="key">"status"</span>: <span class="string">"on_target"</span> },
+    <span class="key">"protein"</span>: { <span class="key">"value"</span>: <span class="number">176</span>, <span class="key">"target"</span>: <span class="number">180</span>, <span class="key">"status"</span>: <span class="string">"on_target"</span> },
+    <span class="key">"carbs"</span>: { <span class="key">"value"</span>: <span class="number">206</span>, <span class="key">"target"</span>: <span class="number">220</span>, <span class="key">"status"</span>: <span class="string">"on_target"</span> },
+    <span class="key">"fat"</span>: { <span class="key">"value"</span>: <span class="number">68</span>, <span class="key">"target"</span>: <span class="number">70</span>, <span class="key">"status"</span>: <span class="string">"on_target"</span> }
+  },
+  
+  <span class="key">"cuisines"</span>: [
+    { <span class="key">"name"</span>: <span class="string">"Italian"</span>, <span class="key">"emoji"</span>: <span class="string">"🍝"</span>, <span class="key">"count"</span>: <span class="number">3</span> },
+    { <span class="key">"name"</span>: <span class="string">"Mexican"</span>, <span class="key">"emoji"</span>: <span class="string">"🌮"</span>, <span class="key">"count"</span>: <span class="number">3</span> },
+    { <span class="key">"name"</span>: <span class="string">"Thai"</span>, <span class="key">"emoji"</span>: <span class="string">"🍜"</span>, <span class="key">"count"</span>: <span class="number">2</span> }
+    <span class="comment">// ...</span>
+  ],
+  
+  <span class="key">"batchCooking"</span>: [
+    { 
+      <span class="key">"prepDay"</span>: <span class="string">"Sunday"</span>, 
+      <span class="key">"recipe"</span>: <span class="string">"Chicken Enchiladas"</span>, 
+      <span class="key">"coversDay"</span>: <span class="string">"Wednesday"</span>, 
+      <span class="key">"coversMeal"</span>: <span class="string">"Dinner"</span> 
+    }
+  ],
+  
+  <span class="key">"shopping"</span>: {
+    <span class="key">"efficiency"</span>: <span class="string">"moderate"</span>, <span class="comment">// low | moderate | high</span>
+    <span class="key">"usesExpiring"</span>: [<span class="string">"4L milk"</span>],
+    <span class="key">"sharedIngredients"</span>: [
+      { <span class="key">"name"</span>: <span class="string">"Chicken thighs"</span>, <span class="key">"count"</span>: <span class="number">3</span> },
+      { <span class="key">"name"</span>: <span class="string">"Garlic"</span>, <span class="key">"count"</span>: <span class="number">5</span> }
+    ]
+  },
+  
+  <span class="key">"tips"</span>: [
+    {
+      <span class="key">"icon"</span>: <span class="string">"🍗"</span>,
+      <span class="key">"title"</span>: <span class="string">"Marinate ahead"</span>,
+      <span class="key">"description"</span>: <span class="string">"Marinate chicken thighs Friday evening..."</span>,
+      <span class="key">"when"</span>: <span class="string">"Friday evening"</span>
+    }
+  ],
+  
+  <span class="key">"dietary"</span>: [
+    { 
+      <span class="key">"profile"</span>: <span class="string">"Chris"</span>, 
+      <span class="key">"initial"</span>: <span class="string">"C"</span>,
+      <span class="key">"note"</span>: <span class="string">"Regular pasta portions, high protein targets met"</span>, 
+      <span class="key">"compliant"</span>: <span class="boolean">true</span> 
+    }
+  ]
+}</pre>
+      </div>
+
+      <div class="design-note">
+        <strong>Implementation:</strong> Update the AI prompt to return structured JSON. Parse in the API route and pass to the <code>&lt;AISummary&gt;</code> component. Each section renders conditionally based on data presence.
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>
