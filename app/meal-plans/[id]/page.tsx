@@ -500,28 +500,17 @@ export default function MealPlanDetailPage() {
     let mealsWithoutRecipe = 0
     let mealsWithoutNutrition = 0
 
-    // Count meals - exclude leftovers EXCEPT for snacks
-    // Snacks marked as "leftover" are still consumed (e.g., batch-made muffins grabbed from pantry)
-    // Only main meals (B/L/D) should skip leftovers to avoid double-counting batch cooking
-    const mealsToCount = mealPlan.meals.filter(m => {
-      const isSnack = m.mealType.toLowerCase().includes('snack')
-      // Include snacks even if marked as leftover (they're still eaten)
-      // Exclude non-snack leftovers (they're reheats from batch cooking day)
-      return isSnack || !m.isLeftover
-    })
+    // Count ALL meals including leftovers
+    // Each meal row represents food consumed on that day - leftovers are still eaten!
+    // The isLeftover flag just indicates it was cooked earlier, not that it shouldn't be counted
+    const mealsToCount = mealPlan.meals
     totalMeals = mealsToCount.length
 
-    const leftoverMainMeals = mealPlan.meals.filter(m =>
-      m.isLeftover && !m.mealType.toLowerCase().includes('snack')
-    ).length
-    const leftoverSnacks = mealPlan.meals.filter(m =>
-      m.isLeftover && m.mealType.toLowerCase().includes('snack')
-    ).length
+    const leftoverMeals = mealPlan.meals.filter(m => m.isLeftover).length
 
     console.log('📊 Weekly Nutrition Calculation:')
     console.log(`  Total meals to count: ${mealsToCount.length}`)
-    console.log(`  Leftover main meals (excluded): ${leftoverMainMeals}`)
-    console.log(`  Leftover snacks (included): ${leftoverSnacks}`)
+    console.log(`  Of which are leftovers: ${leftoverMeals}`)
 
     mealsToCount.forEach(meal => {
       const isSnack = meal.mealType.toLowerCase().includes('snack')
