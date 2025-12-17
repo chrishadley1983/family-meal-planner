@@ -7,6 +7,12 @@ import { calculateServingsForMeals, filterZeroServingMeals } from '@/lib/meal-ut
 import { startOfWeek, subWeeks, addDays } from 'date-fns'
 import { DEFAULT_SETTINGS, MealPlanSettings, WeeklyNutritionalSummary } from '@/lib/types/meal-plan-settings'
 import { validateMealPlan } from '@/lib/meal-plan-validation'
+import {
+  filterRecipesForMacroFeasibility,
+  calculateAverageDailyCalories,
+  buildFilteringSummary,
+  RecipeForFilter
+} from '@/lib/recipe-macro-filter'
 
 /**
  * Detect patterns in custom instructions that suggest repeated meals
@@ -296,6 +302,40 @@ export async function POST(req: NextRequest) {
       hasSettings: !!settingsRecord
     })
 
+    // Pre-filter recipes based on macro feasibility (only when macros is high priority)
+    const avgDailyCalories = calculateAverageDailyCalories(
+      profiles.map(p => ({
+        macroTrackingEnabled: p.macroTrackingEnabled,
+        dailyCalorieTarget: p.dailyCalorieTarget
+      }))
+    )
+
+    const recipesForFilter: RecipeForFilter[] = recipes.map(r => ({
+      id: r.id,
+      recipeName: r.recipeName,
+      mealType: r.mealType || [],
+      caloriesPerServing: r.caloriesPerServing,
+      proteinPerServing: r.proteinPerServing,
+      carbsPerServing: r.carbsPerServing,
+      fatPerServing: r.fatPerServing
+    }))
+
+    const filterResult = filterRecipesForMacroFeasibility(
+      recipesForFilter,
+      avgDailyCalories,
+      settings.macroMode,
+      settings.priorityOrder
+    )
+
+    // Use filtered recipes for generation (or all if filtering was skipped/degraded)
+    const filteredRecipeIds = new Set(filterResult.filteredRecipes.map(r => r.id))
+    const recipesForGeneration = recipes.filter(r => filteredRecipeIds.has(r.id))
+
+    console.log(`🍽️ Using ${recipesForGeneration.length}/${recipes.length} recipes after macro filtering`)
+
+    // Build filtering summary to include in AI prompt (if recipes were filtered)
+    const filteringSummary = buildFilteringSummary(filterResult)
+
     // Generate meal plan using Claude with validation and retry logic
     const MAX_RETRIES = 3
     let generatedPlan: any = null
@@ -312,9 +352,10 @@ export async function POST(req: NextRequest) {
       try {
         // Generate meal plan using Claude with all advanced features
         // On retry attempts, include validation feedback from the previous failure
+        // Use pre-filtered recipes (based on macro feasibility) when macros is high priority
         generatedPlan = await generateMealPlan({
           profiles,
-          recipes,
+          recipes: recipesForGeneration, // Use filtered recipes
           weekStartDate,
           weekProfileSchedules, // Pass per-person schedules for week
           settings,
@@ -330,7 +371,9 @@ export async function POST(req: NextRequest) {
           })),
           inventory,
           quickOptions,
-          customInstructions, // Pass user's custom instructions
+          customInstructions: filteringSummary
+            ? `${customInstructions || ''}\n${filteringSummary}`.trim()
+            : customInstructions, // Append filtering summary to instructions
           linkedRecipes, // Pass recipe IDs that MUST be used
           validationFeedback: previousValidationErrors.length > 0 ? previousValidationErrors : undefined // Pass errors from previous attempt
         })
