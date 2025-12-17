@@ -1,13 +1,32 @@
 // Meal Plan Validation Functions
-// Validates cooldown periods and batch cooking logic after AI generation
+// Validates cooldown periods, batch cooking logic, and macro targets after AI generation
 
 import { differenceInDays } from 'date-fns'
-import { MealPlanSettings, getCooldownForMealType } from './types/meal-plan-settings'
+import { MealPlanSettings, MacroMode, getCooldownForMealType } from './types/meal-plan-settings'
 
 export interface ValidationResult {
   isValid: boolean
   errors: string[]
   warnings: string[]
+}
+
+// Profile interface for macro validation
+export interface MacroProfile {
+  macroTrackingEnabled: boolean
+  dailyCalorieTarget?: number | null
+  dailyProteinTarget?: number | null
+  dailyCarbsTarget?: number | null
+  dailyFatTarget?: number | null
+}
+
+// Recipe interface for macro calculations
+export interface RecipeWithNutrition {
+  id: string
+  recipeName: string
+  caloriesPerServing?: number | null
+  proteinPerServing?: number | null
+  carbsPerServing?: number | null
+  fatPerServing?: number | null
 }
 
 export interface GeneratedMeal {
@@ -127,9 +146,14 @@ export function validateCooldowns(
   // Check for cooldown violations with RECENT HISTORY (past 4 weeks)
   const weekStart = new Date(weekStartDate)
   recipeUsageInPlan.forEach((usages, recipeId) => {
-    const recentHistory = recipeHistory.filter(h => h.recipeId === recipeId)
+    // Only consider history entries that are BEFORE the week start date
+    // (excludes entries from current meal plan generation for future weeks)
+    const recentHistory = recipeHistory.filter(h => {
+      const historyDate = new Date(h.usedDate)
+      return h.recipeId === recipeId && historyDate < weekStart
+    })
 
-    if (recentHistory.length === 0) return // No history, no violation
+    if (recentHistory.length === 0) return // No relevant history, no violation
 
     // Get the most recent usage from history
     const mostRecentHistory = recentHistory.sort((a, b) =>
@@ -143,6 +167,9 @@ export function validateCooldowns(
 
     // Calculate days between history and new usage
     const daysSinceLastUse = differenceInDays(earliestPlanDate, mostRecentHistory.usedDate)
+
+    // Skip if days since last use is negative (shouldn't happen now, but extra safety)
+    if (daysSinceLastUse < 0) return
 
     // Get cooldown for the meal type
     const cooldownDays = getCooldownForMealType(mostRecentHistory.mealType, settings)
@@ -167,13 +194,18 @@ export function validateCooldowns(
 /**
  * Validate batch cooking setup
  * Ensures isLeftover flags are correct, chronological order is maintained, and servings match
+ * @param skipForMealTypes - Meal types where repeated recipes are allowed without batch cooking (e.g., user requested "porridge every day")
  */
 export function validateBatchCooking(
   meals: GeneratedMeal[],
-  weekStartDate: string
+  weekStartDate: string,
+  skipForMealTypes?: string[]
 ): ValidationResult {
   const errors: string[] = []
   const warnings: string[] = []
+
+  // Debug: Log what skipForMealTypes was passed
+  console.log('🔍 validateBatchCooking - skipForMealTypes:', skipForMealTypes || 'EMPTY/UNDEFINED')
 
   // Group meals by recipe to find potential batch cooking scenarios
   const recipeGroups = new Map<string, GeneratedMeal[]>()
@@ -191,6 +223,34 @@ export function validateBatchCooking(
   // Check each recipe group
   recipeGroups.forEach((groupMeals, recipeId) => {
     if (groupMeals.length <= 1) return // Single usage, no batch cooking needed
+
+    // Debug: Log the recipe being checked and its meal types
+    const mealTypesInGroup = groupMeals.map(m => m.mealType)
+    console.log(`🔍 Checking recipe group: ${groupMeals[0].recipeName} (${groupMeals.length} uses)`)
+    console.log(`   Meal types: ${mealTypesInGroup.join(', ')}`)
+    console.log(`   skipForMealTypes: ${skipForMealTypes?.join(', ') || 'NONE'}`)
+
+    // Check if ALL meals in this group are for meal types that should skip batch cooking validation
+    // This happens when user explicitly requests "porridge every day" etc.
+    const shouldSkipValidation = skipForMealTypes && skipForMealTypes.length > 0 &&
+      groupMeals.every(meal => {
+        const normalizedMealType = meal.mealType.toLowerCase().replace(/\s+/g, '-')
+        const matches = skipForMealTypes.some(skip =>
+          normalizedMealType === skip ||
+          normalizedMealType.includes(skip) ||
+          skip.includes(normalizedMealType)
+        )
+        console.log(`   Checking meal type "${normalizedMealType}" against skip list: ${matches ? 'MATCH' : 'NO MATCH'}`)
+        return matches
+      })
+
+    console.log(`   shouldSkipValidation: ${shouldSkipValidation}`)
+
+    if (shouldSkipValidation) {
+      // User explicitly requested repeated meals for this meal type - skip batch cooking validation
+      console.log('   ✅ Skipping batch cooking validation for this recipe')
+      return
+    }
 
     // Add day indices for sorting
     const mealsWithIndex = groupMeals.map(meal => ({
@@ -285,16 +345,282 @@ export function validateBatchCooking(
 }
 
 /**
- * Validate that recipes are assigned to meal types that match their designated meal types
- * @param meals - Generated meals from AI
- * @param recipes - All available recipes with their mealType arrays
+ * Get tolerance percentage based on macro mode
+ * @param macroMode - The macro tracking mode from settings
+ * @param dayOfWeek - Optional day for weekday_discipline mode
+ * @returns Tolerance as decimal (e.g., 0.10 for 10%)
  */
-export function validateMealTypeMatching(
+export function getToleranceForMacroMode(macroMode: MacroMode, dayOfWeek?: string): number {
+  switch (macroMode) {
+    case 'strict':
+      return 0.05 // ±5%
+    case 'balanced':
+      return 0.10 // ±10%
+    case 'weekday_discipline':
+      // Strict on weekdays, relaxed on weekends
+      const isWeekend = dayOfWeek === 'Saturday' || dayOfWeek === 'Sunday'
+      return isWeekend ? 0.25 : 0.05
+    case 'calorie_banking':
+      // More flexible daily, but weekly should balance - use 15% daily tolerance
+      return 0.15
+    default:
+      return 0.10
+  }
+}
+
+/**
+ * Calculate plan coverage percentage based on which meal types are in the plan
+ * Fixed percentages: Breakfast 25%, Lunch 35%, Dinner 40%, Snacks 20%
+ */
+function calculatePlanCoverage(meals: GeneratedMeal[]): number {
+  const MEAL_PERCENTAGES: Record<string, number> = {
+    breakfast: 25,
+    lunch: 35,
+    dinner: 40,
+    'morning-snack': 6.67,      // Snacks share 20% (split evenly if multiple snack types)
+    'afternoon-snack': 6.67,
+    dessert: 6.67
+  }
+
+  // Find unique meal types in the plan (across all 7 days)
+  const mealTypesInPlan = new Set<string>()
+  meals.forEach(meal => {
+    if (!meal.isLeftover && meal.mealType) {
+      mealTypesInPlan.add(meal.mealType.toLowerCase().replace(/\s+/g, '-'))
+    }
+  })
+
+  // Determine if plan has any snacks (morning, afternoon, or dessert)
+  const hasSnacks = Array.from(mealTypesInPlan).some(mt =>
+    mt.includes('snack') || mt === 'dessert'
+  )
+
+  // Calculate total coverage
+  let coverage = 0
+  if (mealTypesInPlan.has('breakfast')) coverage += 25
+  if (mealTypesInPlan.has('lunch')) coverage += 35
+  if (mealTypesInPlan.has('dinner')) coverage += 40
+  if (hasSnacks) coverage += 20 // All snacks together count as 20%
+
+  return coverage
+}
+
+/**
+ * Validate macro targets are met for the generated meal plan
+ * Only validates if macros is in top 3 priorities and user has macro tracking enabled
+ *
+ * KEY CONCEPT: If the meal plan doesn't cover all meal types (e.g., only Lunch + Dinner),
+ * we scale the targets proportionally. A plan with only Lunch + Dinner covers 75% of daily
+ * calories (35% + 40%), so we validate against 75% of the daily targets.
+ */
+export function validateMacros(
   meals: GeneratedMeal[],
-  recipes: Array<{ id: string; recipeName: string; mealType: string[] }>
+  settings: MealPlanSettings,
+  profiles: MacroProfile[],
+  recipes: RecipeWithNutrition[]
 ): ValidationResult {
   const errors: string[] = []
   const warnings: string[] = []
+
+  // Check if macros is in top 3 priorities
+  const macroPriority = settings.priorityOrder.indexOf('macros')
+  const isMacroHighPriority = macroPriority >= 0 && macroPriority < 3
+
+  // If macros isn't a high priority, skip strict validation
+  if (!isMacroHighPriority) {
+    console.log('🔍 Macro validation: macros not in top 3 priorities, skipping strict validation')
+    return { isValid: true, errors, warnings }
+  }
+
+  // Find profile with macro tracking enabled
+  const macrosProfile = profiles.find(p => p.macroTrackingEnabled)
+  if (!macrosProfile) {
+    console.log('🔍 Macro validation: no profile has macro tracking enabled, skipping')
+    return { isValid: true, errors, warnings }
+  }
+
+  // Get raw targets from profile
+  const rawDailyCalorieTarget = macrosProfile.dailyCalorieTarget || 0
+  const rawDailyProteinTarget = macrosProfile.dailyProteinTarget || 0
+  const rawDailyCarbsTarget = macrosProfile.dailyCarbsTarget || 0
+  const rawDailyFatTarget = macrosProfile.dailyFatTarget || 0
+
+  // If no targets set, skip validation
+  if (rawDailyCalorieTarget === 0 && rawDailyProteinTarget === 0) {
+    console.log('🔍 Macro validation: no targets set, skipping')
+    return { isValid: true, errors, warnings }
+  }
+
+  // Calculate plan coverage percentage (what % of daily calories does this plan cover)
+  const planCoverage = calculatePlanCoverage(meals)
+  const coverageMultiplier = planCoverage / 100
+
+  // Scale targets based on plan coverage
+  // If plan only has Lunch + Dinner (75% coverage), we expect 75% of daily targets
+  const dailyCalorieTarget = Math.round(rawDailyCalorieTarget * coverageMultiplier)
+  const dailyProteinTarget = Math.round(rawDailyProteinTarget * coverageMultiplier)
+  const dailyCarbsTarget = Math.round(rawDailyCarbsTarget * coverageMultiplier)
+  const dailyFatTarget = Math.round(rawDailyFatTarget * coverageMultiplier)
+
+  console.log(`🔍 Plan coverage: ${planCoverage}% of daily calories`)
+  if (planCoverage < 100) {
+    console.log(`📊 Scaling targets to ${planCoverage}% of full day targets`)
+    console.log(`   Full day: ${rawDailyCalorieTarget} cal → Plan target: ${dailyCalorieTarget} cal`)
+  }
+
+  // Create recipe lookup map
+  const recipeMap = new Map<string, RecipeWithNutrition>()
+  recipes.forEach(r => recipeMap.set(r.id, r))
+
+  // Calculate totals from non-leftover meals
+  let totalCalories = 0
+  let totalProtein = 0
+  let totalCarbs = 0
+  let totalFat = 0
+  let mealsWithNutrition = 0
+  let totalMeals = 0
+
+  meals.forEach(meal => {
+    if (meal.isLeftover) return // Skip leftovers - they're reheats, not additional calories
+
+    totalMeals++
+
+    if (!meal.recipeId) return
+
+    const recipe = recipeMap.get(meal.recipeId)
+    if (!recipe) return
+
+    if (recipe.caloriesPerServing) {
+      totalCalories += recipe.caloriesPerServing
+      totalProtein += recipe.proteinPerServing || 0
+      totalCarbs += recipe.carbsPerServing || 0
+      totalFat += recipe.fatPerServing || 0
+      mealsWithNutrition++
+    }
+  })
+
+  // Skip validation if not enough nutrition data
+  const nutritionCoverage = totalMeals > 0 ? (mealsWithNutrition / totalMeals) * 100 : 0
+  if (nutritionCoverage < 50) {
+    console.log(`🔍 Macro validation: only ${nutritionCoverage.toFixed(0)}% of meals have nutrition data, skipping strict validation`)
+    warnings.push(`Only ${nutritionCoverage.toFixed(0)}% of recipes have nutrition data. Add calorie/macro information to more recipes for accurate tracking.`)
+    return { isValid: true, errors, warnings }
+  }
+
+  // Calculate daily averages (7-day week)
+  const dailyAvgCalories = Math.round(totalCalories / 7)
+  const dailyAvgProtein = Math.round(totalProtein / 7)
+  const dailyAvgCarbs = Math.round(totalCarbs / 7)
+  const dailyAvgFat = Math.round(totalFat / 7)
+
+  // Get tolerance based on macro mode
+  const tolerance = getToleranceForMacroMode(settings.macroMode)
+  const tolerancePercent = Math.round(tolerance * 100)
+
+  console.log(`🔍 Macro validation: mode=${settings.macroMode}, tolerance=±${tolerancePercent}%, coverage=${planCoverage}%`)
+  console.log(`📊 Daily averages (from plan): ${dailyAvgCalories} cal, ${dailyAvgProtein}g protein, ${dailyAvgCarbs}g carbs, ${dailyAvgFat}g fat`)
+  console.log(`🎯 Adjusted targets (${planCoverage}% of full): ${dailyCalorieTarget} cal, ${dailyProteinTarget}g protein, ${dailyCarbsTarget}g carbs, ${dailyFatTarget}g fat`)
+
+  // Validate calories
+  if (dailyCalorieTarget > 0) {
+    const calorieMin = dailyCalorieTarget * (1 - tolerance)
+    const calorieMax = dailyCalorieTarget * (1 + tolerance)
+    const calorieDeviation = Math.round(((dailyAvgCalories - dailyCalorieTarget) / dailyCalorieTarget) * 100)
+
+    if (dailyAvgCalories < calorieMin) {
+      const coverageNote = planCoverage < 100 ? ` (plan covers ${planCoverage}% of daily calories)` : ''
+      errors.push(
+        `Calorie target not met: averaging ${dailyAvgCalories} cal/day (${calorieDeviation}% below target of ${dailyCalorieTarget})${coverageNote}. ` +
+        `Allowed range with ${settings.macroMode} mode: ${Math.round(calorieMin)}-${Math.round(calorieMax)} cal/day. ` +
+        `Select higher-calorie recipes to meet target.`
+      )
+    } else if (dailyAvgCalories > calorieMax) {
+      const coverageNote = planCoverage < 100 ? ` (plan covers ${planCoverage}% of daily calories)` : ''
+      errors.push(
+        `Calorie target exceeded: averaging ${dailyAvgCalories} cal/day (+${calorieDeviation}% above target of ${dailyCalorieTarget})${coverageNote}. ` +
+        `Allowed range with ${settings.macroMode} mode: ${Math.round(calorieMin)}-${Math.round(calorieMax)} cal/day. ` +
+        `Select lower-calorie recipes to meet target.`
+      )
+    } else {
+      console.log(`✅ Calories within tolerance: ${dailyAvgCalories} cal/day (${calorieDeviation >= 0 ? '+' : ''}${calorieDeviation}%)`)
+    }
+  }
+
+  // Validate protein
+  if (dailyProteinTarget > 0) {
+    const proteinMin = dailyProteinTarget * (1 - tolerance)
+    const proteinMax = dailyProteinTarget * (1 + tolerance)
+    const proteinDeviation = Math.round(((dailyAvgProtein - dailyProteinTarget) / dailyProteinTarget) * 100)
+
+    if (dailyAvgProtein < proteinMin) {
+      errors.push(
+        `Protein target not met: averaging ${dailyAvgProtein}g/day (${proteinDeviation}% below target of ${dailyProteinTarget}g). ` +
+        `Allowed range: ${Math.round(proteinMin)}-${Math.round(proteinMax)}g/day. ` +
+        `Select protein-rich recipes to meet target.`
+      )
+    } else if (dailyAvgProtein > proteinMax) {
+      warnings.push(
+        `Protein above target: averaging ${dailyAvgProtein}g/day (+${proteinDeviation}% above target of ${dailyProteinTarget}g). ` +
+        `This is generally fine, but noted for awareness.`
+      )
+    } else {
+      console.log(`✅ Protein within tolerance: ${dailyAvgProtein}g/day (${proteinDeviation >= 0 ? '+' : ''}${proteinDeviation}%)`)
+    }
+  }
+
+  // Validate carbs (if target set)
+  if (dailyCarbsTarget > 0) {
+    const carbsMin = dailyCarbsTarget * (1 - tolerance)
+    const carbsMax = dailyCarbsTarget * (1 + tolerance)
+    const carbsDeviation = Math.round(((dailyAvgCarbs - dailyCarbsTarget) / dailyCarbsTarget) * 100)
+
+    if (dailyAvgCarbs < carbsMin || dailyAvgCarbs > carbsMax) {
+      warnings.push(
+        `Carbs outside target range: averaging ${dailyAvgCarbs}g/day (${carbsDeviation >= 0 ? '+' : ''}${carbsDeviation}% vs target of ${dailyCarbsTarget}g). ` +
+        `Allowed range: ${Math.round(carbsMin)}-${Math.round(carbsMax)}g/day.`
+      )
+    } else {
+      console.log(`✅ Carbs within tolerance: ${dailyAvgCarbs}g/day (${carbsDeviation >= 0 ? '+' : ''}${carbsDeviation}%)`)
+    }
+  }
+
+  // Validate fat (if target set)
+  if (dailyFatTarget > 0) {
+    const fatMin = dailyFatTarget * (1 - tolerance)
+    const fatMax = dailyFatTarget * (1 + tolerance)
+    const fatDeviation = Math.round(((dailyAvgFat - dailyFatTarget) / dailyFatTarget) * 100)
+
+    if (dailyAvgFat < fatMin || dailyAvgFat > fatMax) {
+      warnings.push(
+        `Fat outside target range: averaging ${dailyAvgFat}g/day (${fatDeviation >= 0 ? '+' : ''}${fatDeviation}% vs target of ${dailyFatTarget}g). ` +
+        `Allowed range: ${Math.round(fatMin)}-${Math.round(fatMax)}g/day.`
+      )
+    } else {
+      console.log(`✅ Fat within tolerance: ${dailyAvgFat}g/day (${fatDeviation >= 0 ? '+' : ''}${fatDeviation}%)`)
+    }
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    warnings
+  }
+}
+
+/**
+ * Validate that recipes are assigned to meal types that match their designated meal types
+ * @param meals - Generated meals from AI
+ * @param recipes - All available recipes with their mealType arrays
+ * @param options - Validation options
+ */
+export function validateMealTypeMatching(
+  meals: GeneratedMeal[],
+  recipes: Array<{ id: string; recipeName: string; mealType: string[] }>,
+  options?: { allowDinnerForLunch?: boolean }
+): ValidationResult {
+  const errors: string[] = []
+  const warnings: string[] = []
+  const allowDinnerForLunch = options?.allowDinnerForLunch ?? true // Default to true
 
   // Create a map of recipe ID to meal types
   const recipeToMealTypes = new Map<string, string[]>()
@@ -323,7 +649,25 @@ export function validateMealTypeMatching(
       const normalizedAllowed = allowed.replace('afternoon-snack', 'snack')
         .replace('morning-snack', 'snack')
         .replace('evening-snack', 'snack')
-      return normalizedAllowed === normalizedPlanType || allowed === planMealType
+
+      // Direct match
+      if (normalizedAllowed === normalizedPlanType || allowed === planMealType) {
+        return true
+      }
+
+      // "main-course" and "supper" are compatible with both lunch and dinner
+      if ((allowed === 'main-course' || allowed === 'supper') &&
+          (normalizedPlanType === 'lunch' || normalizedPlanType === 'dinner')) {
+        return true
+      }
+
+      // If allowDinnerForLunch is enabled, dinner recipes can be used for lunch
+      if (allowDinnerForLunch && normalizedPlanType === 'lunch' &&
+          (allowed === 'dinner' || normalizedAllowed === 'dinner')) {
+        return true
+      }
+
+      return false
     })
 
     if (!isMatching) {
@@ -344,6 +688,16 @@ export function validateMealTypeMatching(
 }
 
 /**
+ * Validation options passed to the master validation function
+ */
+export interface ValidationOptions {
+  allowDinnerForLunch?: boolean
+  skipBatchCookingForMealTypes?: string[] // Meal types where repeated recipes are OK without batch cooking
+  profiles?: MacroProfile[] // Profiles for macro validation
+  recipesWithNutrition?: RecipeWithNutrition[] // Recipes with nutrition data for macro validation
+}
+
+/**
  * Master validation function that runs all checks
  */
 export function validateMealPlan(
@@ -351,20 +705,41 @@ export function validateMealPlan(
   settings: MealPlanSettings,
   weekStartDate: string,
   recipeHistory: RecipeUsageHistoryItem[],
-  recipes?: Array<{ id: string; recipeName: string; mealType: string[] }>
+  recipes?: Array<{ id: string; recipeName: string; mealType: string[] }>,
+  options?: ValidationOptions
 ): ValidationResult {
+  // Debug: Log the options being passed to validation
+  console.log('🔍 validateMealPlan called with options:', JSON.stringify({
+    allowDinnerForLunch: options?.allowDinnerForLunch,
+    skipBatchCookingForMealTypes: options?.skipBatchCookingForMealTypes,
+    hasProfiles: !!options?.profiles?.length,
+    hasRecipesWithNutrition: !!options?.recipesWithNutrition?.length
+  }))
+  console.log('🔍 skipBatchCookingForMealTypes:', options?.skipBatchCookingForMealTypes || 'EMPTY/UNDEFINED')
+
   const cooldownResult = validateCooldowns(meals, settings, weekStartDate, recipeHistory)
-  const batchCookingResult = validateBatchCooking(meals, weekStartDate)
+  const batchCookingResult = validateBatchCooking(meals, weekStartDate, options?.skipBatchCookingForMealTypes)
 
   // Add meal type matching validation if recipes are provided
   let mealTypeResult: ValidationResult = { isValid: true, errors: [], warnings: [] }
   if (recipes && recipes.length > 0) {
-    mealTypeResult = validateMealTypeMatching(meals, recipes)
+    mealTypeResult = validateMealTypeMatching(meals, recipes, {
+      allowDinnerForLunch: options?.allowDinnerForLunch ?? true // Default to true
+    })
+  }
+
+  // Add macro validation if profiles and recipes with nutrition data are provided
+  let macroResult: ValidationResult = { isValid: true, errors: [], warnings: [] }
+  if (options?.profiles && options?.recipesWithNutrition) {
+    console.log('🔍 Running macro validation...')
+    macroResult = validateMacros(meals, settings, options.profiles, options.recipesWithNutrition)
+  } else {
+    console.log('🔍 Skipping macro validation: profiles or recipes not provided')
   }
 
   return {
-    isValid: cooldownResult.isValid && batchCookingResult.isValid && mealTypeResult.isValid,
-    errors: [...cooldownResult.errors, ...batchCookingResult.errors, ...mealTypeResult.errors],
-    warnings: [...cooldownResult.warnings, ...batchCookingResult.warnings, ...mealTypeResult.warnings]
+    isValid: cooldownResult.isValid && batchCookingResult.isValid && mealTypeResult.isValid && macroResult.isValid,
+    errors: [...cooldownResult.errors, ...batchCookingResult.errors, ...mealTypeResult.errors, ...macroResult.errors],
+    warnings: [...cooldownResult.warnings, ...batchCookingResult.warnings, ...mealTypeResult.warnings, ...macroResult.warnings]
   }
 }

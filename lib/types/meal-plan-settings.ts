@@ -259,6 +259,9 @@ export interface PromptBuilderParams {
   recipeHistory: RecipeUsageHistory[]
   inventory: InventoryItem[]
   servingsMap?: Record<string, Record<string, number>> // day -> mealType -> servings count
+  customInstructions?: string // User's custom instructions for AI to consider
+  linkedRecipes?: Array<{ id: string; name: string }> // Recipes that MUST be used in the meal plan
+  validationFeedback?: string[] // Feedback from previous validation failures (for retry attempts)
 }
 
 // Quick options for generation page (temporary overrides)
@@ -266,4 +269,31 @@ export interface QuickOptions {
   prioritizeShopping?: boolean
   useExpiring?: boolean
   maximizeBatch?: boolean
+  allowDinnerForLunch?: boolean // Allow dinner recipes to be used for lunch slots (default: true)
+}
+
+// Weekly nutritional summary calculated from actual recipe data
+export interface WeeklyNutritionalSummary {
+  // Weekly totals
+  totalCalories: number
+  totalProtein: number
+  totalCarbs: number
+  totalFat: number
+
+  // Daily averages
+  dailyAvgCalories: number
+  dailyAvgProtein: number
+  dailyAvgCarbs: number
+  dailyAvgFat: number
+
+  // Coverage stats
+  mealsWithNutrition: number
+  totalMeals: number
+  nutritionCoveragePercent: number
+
+  // AI-generated summary text (with corrected macro numbers)
+  aiSummary: string
+
+  // Timestamp for when this was calculated
+  calculatedAt: string
 }

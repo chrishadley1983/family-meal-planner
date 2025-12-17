@@ -66,7 +66,10 @@ function buildMainPrompt(
     settings,
     recipeHistory,
     inventory,
-    servingsMap
+    servingsMap,
+    customInstructions,
+    linkedRecipes,
+    validationFeedback
   } = params
 
   // Apply quick options (temporary overrides)
@@ -74,40 +77,55 @@ function buildMainPrompt(
 
   const sections: string[] = []
 
+  // 0. Validation Feedback Section (if this is a retry attempt)
+  if (validationFeedback && validationFeedback.length > 0) {
+    sections.push(buildValidationFeedbackSection(validationFeedback))
+  }
+
   // 1. Context Section
   sections.push(buildContextSection(profiles, weekStartDate, weekProfileSchedules, servingsMap))
 
-  // 2. Macro Targeting Section
-  sections.push(buildMacroSection(effectiveSettings, profiles))
+  // 2. Mandatory Recipes Section (if user linked specific recipes)
+  if (linkedRecipes && linkedRecipes.length > 0) {
+    sections.push(buildMandatoryRecipesSection(linkedRecipes, recipes, customInstructions))
+  }
 
-  // 3. Recipe Variety Section
+  // 3. Custom User Instructions Section (if provided)
+  if (customInstructions && customInstructions.trim()) {
+    sections.push(buildCustomInstructionsSection(customInstructions))
+  }
+
+  // 3. Macro Targeting Section
+  sections.push(buildMacroSection(effectiveSettings, profiles, weekProfileSchedules))
+
+  // 4. Recipe Variety Section
   if (effectiveSettings.varietyEnabled) {
     sections.push(buildVarietySection(effectiveSettings, recipeHistory, recipes))
   }
 
-  // 4. Shopping Efficiency Section
+  // 5. Shopping Efficiency Section
   sections.push(buildShoppingSection(effectiveSettings))
 
-  // 5. Inventory & Expiry Section
+  // 6. Inventory & Expiry Section
   if (inventory.length > 0) {
     sections.push(buildInventorySection(effectiveSettings, inventory))
   }
 
-  // 6. Batch Cooking Section
+  // 7. Batch Cooking Section
   if (effectiveSettings.batchCookingEnabled) {
     sections.push(buildBatchCookingSection(effectiveSettings))
   }
 
-  // 7. Priority Ordering Section
+  // 8. Priority Ordering Section
   sections.push(buildPrioritySection(effectiveSettings))
 
-  // 8. Recipe List Section (with enrichments)
+  // 9. Recipe List Section (with enrichments)
   sections.push(buildRecipeListSection(recipes, recipeHistory, effectiveSettings, weekStartDate))
 
-  // 9. JSON Output Format Section
+  // 10. JSON Output Format Section
   sections.push(buildOutputFormatSection())
 
-  // 10. Emilia's Feedback Section
+  // 11. Emilia's Feedback Section
   sections.push(buildFeedbackSection(effectiveSettings))
 
   return sections.join('\n\n---\n\n')
@@ -128,6 +146,135 @@ function applyQuickOptions(
     expiryPriority: quickOptions.useExpiring ? 'strong' : settings.expiryPriority,
     batchCookingEnabled: quickOptions.maximizeBatch ?? settings.batchCookingEnabled
   }
+}
+
+/**
+ * Build the custom user instructions section
+ * This section highlights specific requests from the user that should be prioritized
+ */
+function buildCustomInstructionsSection(customInstructions: string): string {
+  return `# CUSTOM USER INSTRUCTIONS
+
+**IMPORTANT:** The user has provided the following specific instructions for this meal plan. Please prioritize these requests when making your selections, while still respecting nutritional balance and variety rules:
+
+${customInstructions}
+
+---
+*Note: If any instruction conflicts with dietary restrictions or recipe availability, explain the limitation in your summary and offer the closest alternative.*`
+}
+
+/**
+ * Build the validation feedback section
+ * This section is included when a previous generation attempt failed validation
+ * It tells the AI what went wrong and how to fix it
+ */
+function buildValidationFeedbackSection(validationFeedback: string[]): string {
+  return `# 🚨 CRITICAL: PREVIOUS ATTEMPT FAILED VALIDATION
+
+**Your previous meal plan was REJECTED because it did not meet the following requirements:**
+
+${validationFeedback.map((error, i) => `${i + 1}. ❌ ${error}`).join('\n')}
+
+**YOU MUST FIX THESE ISSUES in this attempt. This is a retry - your plan will be rejected again if you repeat these mistakes.**
+
+**Specific Actions Required:**
+${validationFeedback.map(error => {
+  // Provide specific guidance based on error type
+  if (error.toLowerCase().includes('calorie') && error.toLowerCase().includes('below')) {
+    return '- SELECT HIGHER-CALORIE RECIPES: Choose recipes with more calories per serving to meet the daily target'
+  } else if (error.toLowerCase().includes('calorie') && error.toLowerCase().includes('above')) {
+    return '- SELECT LOWER-CALORIE RECIPES: Choose recipes with fewer calories per serving to stay within target'
+  } else if (error.toLowerCase().includes('protein') && error.toLowerCase().includes('below')) {
+    return '- SELECT PROTEIN-RICH RECIPES: Choose recipes with higher protein content (chicken, fish, legumes, eggs)'
+  } else if (error.toLowerCase().includes('cooldown')) {
+    return '- RESPECT COOLDOWN PERIODS: Do not repeat the same recipe within the specified cooldown period'
+  } else if (error.toLowerCase().includes('batch cooking')) {
+    return '- FIX BATCH COOKING: Mark leftover meals correctly with isLeftover=true and batchCookSourceDay'
+  } else if (error.toLowerCase().includes('meal type')) {
+    return '- USE CORRECT MEAL TYPES: Only assign recipes to meal types they are designated for'
+  } else if (error.toLowerCase().includes('mandatory') || error.toLowerCase().includes('must use')) {
+    return '- INCLUDE MANDATORY RECIPES: You MUST use the recipes the user specifically selected'
+  }
+  return `- Address this issue: ${error}`
+}).join('\n')}
+
+---
+**Remember: Meeting macro targets is a HARD REQUIREMENT when macros is a high priority. Your plan will be validated again.**`
+}
+
+/**
+ * Build the mandatory recipes section
+ * These are specific recipes the user has explicitly selected to include in the meal plan
+ */
+function buildMandatoryRecipesSection(
+  linkedRecipes: Array<{ id: string; name: string }>,
+  allRecipes: any[],
+  customInstructions?: string
+): string {
+  // Check if user wants "every day" or similar frequency
+  const instructionsLower = (customInstructions || '').toLowerCase()
+  const wantsEveryDay = /every\s*day|daily|each\s*day|all\s*week|every\s*morning|every\s*night|all\s*7\s*days|seven\s*days/.test(instructionsLower)
+
+  let section = `# 🔴 MANDATORY RECIPES (MUST USE)
+
+**CRITICAL:** The user has explicitly selected the following recipes to be included in this meal plan. You MUST use these exact recipes with the exact recipe IDs provided.
+
+**Recipes you MUST include:**
+`
+
+  linkedRecipes.forEach((linked, index) => {
+    // Find the full recipe details to get meal type info
+    const fullRecipe = allRecipes.find(r => r.id === linked.id)
+    const mealTypes = fullRecipe?.mealType?.join(', ') || 'Any meal type'
+
+    section += `\n${index + 1}. **${linked.name}**
+   - Recipe ID: \`${linked.id}\` (USE THIS EXACT ID)
+   - Suitable for: ${mealTypes}
+`
+  })
+
+  // Add strong emphasis if user wants every day
+  if (wantsEveryDay && linkedRecipes.length === 1) {
+    const recipe = linkedRecipes[0]
+    const fullRecipe = allRecipes.find(r => r.id === recipe.id)
+    const mealType = fullRecipe?.mealType?.[0] || 'meal'
+
+    section += `
+## ⚠️ EVERY DAY REQUIREMENT ⚠️
+
+The user has requested "${recipe.name}" for **EVERY SINGLE DAY** of the week.
+
+**YOU MUST:**
+- Use recipe ID \`${recipe.id}\` for ALL 7 ${mealType.toLowerCase()} slots (Sunday through Saturday)
+- Do NOT use any other recipe for ${mealType.toLowerCase()} - ONLY "${recipe.name}"
+- This is NOT batch cooking - prepare fresh each day (no isLeftover flags needed)
+- Variety rules DO NOT APPLY to this meal type this week
+
+**EXPECTED OUTPUT for ${mealType}:**
+- Sunday ${mealType}: "${recipe.name}" (recipeId: "${recipe.id}")
+- Monday ${mealType}: "${recipe.name}" (recipeId: "${recipe.id}")
+- Tuesday ${mealType}: "${recipe.name}" (recipeId: "${recipe.id}")
+- Wednesday ${mealType}: "${recipe.name}" (recipeId: "${recipe.id}")
+- Thursday ${mealType}: "${recipe.name}" (recipeId: "${recipe.id}")
+- Friday ${mealType}: "${recipe.name}" (recipeId: "${recipe.id}")
+- Saturday ${mealType}: "${recipe.name}" (recipeId: "${recipe.id}")
+
+**FAILURE TO USE THIS EXACT RECIPE FOR ALL 7 DAYS IS AN ERROR.**
+`
+  } else {
+    section += `
+**INSTRUCTIONS:**
+- Each recipe above MUST appear at least once in your meal plan
+- Use the EXACT recipe ID provided (not a similar recipe or made-up ID)
+- Assign each recipe to an appropriate meal slot based on its meal type
+- If the user's custom instructions mention frequency (e.g., "every day"), use that recipe for ALL days
+- These recipes take priority over variety rules - it's OK to reduce variety to accommodate mandatory recipes
+- If cooldown rules conflict with using a mandatory recipe, temporarily ignore the cooldown for that specific recipe
+
+**FAILURE TO INCLUDE THESE RECIPES IS AN ERROR.**`
+  }
+
+  return section
 }
 
 /**
@@ -222,9 +369,141 @@ function buildContextSection(
 }
 
 /**
+ * Calculate dynamic per-meal calorie budgets based on main user's schedule
+ *
+ * KEY PRINCIPLE: Each meal type has a FIXED percentage of daily calories:
+ * - Breakfast: 25%
+ * - Lunch: 35%
+ * - Dinner: 40%
+ * - Snacks: 20% (when present)
+ *
+ * If a meal is missing from the schedule, the user is eating those calories OUTSIDE the plan.
+ * We do NOT pro-rate remaining meals to fill 100% - that would defeat the purpose.
+ *
+ * Example: User only has Lunch + Dinner in the plan
+ * - Lunch = 35% of daily calories = 700 cal (if 2000 target)
+ * - Dinner = 40% of daily calories = 800 cal
+ * - Plan covers 75% of daily calories (1500 cal)
+ * - User eats remaining 25% (500 cal) outside the plan (breakfast on their own)
+ */
+interface MealBudgets {
+  breakfast: number | null
+  lunch: number | null
+  dinner: number | null
+  snacks: number | null
+  totalPlanPercent: number // What % of daily calories the plan covers
+  explanation: string
+}
+
+function calculateDynamicMealBudgets(
+  dailyCalories: number,
+  mainUserProfileId: string,
+  weekProfileSchedules?: any[]
+): MealBudgets {
+  // Fixed percentages for each meal type (these don't change based on what's missing)
+  const FIXED_PERCENTAGES = {
+    breakfast: 0.25,  // 25% of daily calories
+    lunch: 0.35,      // 35% of daily calories
+    dinner: 0.40,     // 40% of daily calories
+    snacks: 0.20      // 20% of daily calories (when present)
+  }
+
+  // Default result if no schedule data (assume full schedule)
+  const defaultBudgets: MealBudgets = {
+    breakfast: Math.round(dailyCalories * FIXED_PERCENTAGES.breakfast),
+    lunch: Math.round(dailyCalories * FIXED_PERCENTAGES.lunch),
+    dinner: Math.round(dailyCalories * FIXED_PERCENTAGES.dinner),
+    snacks: null,
+    totalPlanPercent: 100,
+    explanation: 'Full plan (B:25%, L:35%, D:40%) = 100% of daily target'
+  }
+
+  if (!weekProfileSchedules || weekProfileSchedules.length === 0) {
+    return defaultBudgets
+  }
+
+  // Find the main user's schedule
+  const mainUserSchedule = weekProfileSchedules.find(s => s.profileId === mainUserProfileId)
+  if (!mainUserSchedule || !mainUserSchedule.schedule) {
+    return defaultBudgets
+  }
+
+  // Analyze what meals the main user typically has across the week
+  // Count occurrences of each meal type
+  const mealCounts = {
+    breakfast: 0,
+    lunch: 0,
+    dinner: 0,
+    snack: 0 // includes morning-snack, afternoon-snack, dessert
+  }
+
+  const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+  days.forEach(day => {
+    const dayMeals = mainUserSchedule.schedule[day] || {}
+    Object.entries(dayMeals).forEach(([mealType, isEating]) => {
+      if (!isEating) return
+
+      const normalizedMealType = mealType.toLowerCase().replace(/\s+/g, '-')
+      if (normalizedMealType === 'breakfast') {
+        mealCounts.breakfast++
+      } else if (normalizedMealType === 'lunch') {
+        mealCounts.lunch++
+      } else if (normalizedMealType === 'dinner') {
+        mealCounts.dinner++
+      } else if (normalizedMealType.includes('snack') || normalizedMealType === 'dessert') {
+        mealCounts.snack++
+      }
+    })
+  })
+
+  // Determine which meal types are "active" (at least 4 days = majority of week)
+  const hasBreakfast = mealCounts.breakfast >= 4
+  const hasLunch = mealCounts.lunch >= 4
+  const hasDinner = mealCounts.dinner >= 4
+  const hasSnacks = mealCounts.snack >= 4
+
+  // Calculate budgets - each meal keeps its FIXED percentage
+  // If a meal isn't in the plan, its budget is null (user eats outside the plan)
+  const budgets: MealBudgets = {
+    breakfast: hasBreakfast ? Math.round(dailyCalories * FIXED_PERCENTAGES.breakfast) : null,
+    lunch: hasLunch ? Math.round(dailyCalories * FIXED_PERCENTAGES.lunch) : null,
+    dinner: hasDinner ? Math.round(dailyCalories * FIXED_PERCENTAGES.dinner) : null,
+    snacks: hasSnacks ? Math.round(dailyCalories * FIXED_PERCENTAGES.snacks) : null,
+    totalPlanPercent: 0,
+    explanation: ''
+  }
+
+  // Calculate what % of daily calories the plan covers
+  let totalPercent = 0
+  if (hasBreakfast) totalPercent += FIXED_PERCENTAGES.breakfast * 100
+  if (hasLunch) totalPercent += FIXED_PERCENTAGES.lunch * 100
+  if (hasDinner) totalPercent += FIXED_PERCENTAGES.dinner * 100
+  if (hasSnacks) totalPercent += FIXED_PERCENTAGES.snacks * 100
+  budgets.totalPlanPercent = Math.round(totalPercent)
+
+  // Build explanation
+  const activeMeals: string[] = []
+  const percentages: string[] = []
+  if (hasBreakfast) { activeMeals.push('Breakfast'); percentages.push('B:25%') }
+  if (hasLunch) { activeMeals.push('Lunch'); percentages.push('L:35%') }
+  if (hasDinner) { activeMeals.push('Dinner'); percentages.push('D:40%') }
+  if (hasSnacks) { activeMeals.push('Snacks'); percentages.push('S:20%') }
+
+  if (budgets.totalPlanPercent === 100) {
+    budgets.explanation = `Full plan (${percentages.join(', ')}) = 100% of daily target`
+  } else if (budgets.totalPlanPercent === 120) {
+    budgets.explanation = `Full plan with snacks (${percentages.join(', ')}) = 120% of daily target`
+  } else {
+    budgets.explanation = `Partial plan (${percentages.join(', ')}) = ${budgets.totalPlanPercent}% of daily target - user eats ${100 - budgets.totalPlanPercent}% outside plan`
+  }
+
+  return budgets
+}
+
+/**
  * Section 2: Macro Targeting Mode
  */
-function buildMacroSection(settings: MealPlanSettings, profiles: any[]): string {
+function buildMacroSection(settings: MealPlanSettings, profiles: any[], weekProfileSchedules?: any[]): string {
   let section = `# MACRO TARGETING\n\n`
 
   const macrosProfile = profiles.find(p => p.macroTrackingEnabled)
@@ -234,66 +513,135 @@ function buildMacroSection(settings: MealPlanSettings, profiles: any[]): string 
     return section
   }
 
+  // Check if macros is in top 3 priorities
+  const macroPriority = settings.priorityOrder.indexOf('macros')
+  const isMacroHighPriority = macroPriority >= 0 && macroPriority < 3
+
+  // Determine tolerance based on mode
+  const tolerance = settings.macroMode === 'strict' ? 0.05 : 0.10
+  const tolerancePercent = Math.round(tolerance * 100)
+
   section += `**Mode:** ${settings.macroMode.replace('_', ' ').toUpperCase()}\n\n`
+
+  // Add strong enforcement message if macros is high priority
+  if (isMacroHighPriority) {
+    section += `## ⚠️ MACRO TARGETING IS HIGH PRIORITY (#${macroPriority + 1}) - VALIDATION ENFORCED\n\n`
+    section += `**THIS IS A HARD REQUIREMENT, NOT A SUGGESTION.**\n`
+    section += `Your meal plan will be REJECTED if it does not meet macro targets within the allowed tolerance.\n`
+    section += `If you cannot hit targets with available recipes, you MUST explain why in the summary.\n\n`
+  }
+
+  // Calculate per-meal budgets dynamically based on main user's schedule
+  const dailyCalories = macrosProfile.dailyCalorieTarget || 2000
+  const mealBudgets = calculateDynamicMealBudgets(dailyCalories, macrosProfile.id, weekProfileSchedules)
 
   switch (settings.macroMode) {
     case 'balanced':
-      section += `**Approach:** Flexible daily macro targeting with ±10% tolerance on all macros.\n\n`
-      section += `Target daily totals for ${macrosProfile.profileName}:\n`
-      section += `- Calories: ${macrosProfile.dailyCalorieTarget} ± ${Math.round(macrosProfile.dailyCalorieTarget * 0.1)}\n`
+      section += `**Approach:** Flexible daily macro targeting with ±${tolerancePercent}% tolerance on all macros.\n\n`
+      section += `**REQUIRED Daily Totals for ${macrosProfile.profileName}:**\n`
+      section += `- Calories: ${dailyCalories} ± ${Math.round(dailyCalories * tolerance)} (MUST be between ${Math.round(dailyCalories * (1 - tolerance))} and ${Math.round(dailyCalories * (1 + tolerance))})\n`
       if (macrosProfile.dailyProteinTarget) {
-        section += `- Protein: ${macrosProfile.dailyProteinTarget}g ± ${Math.round(macrosProfile.dailyProteinTarget * 0.1)}g\n`
+        section += `- Protein: ${macrosProfile.dailyProteinTarget}g ± ${Math.round(macrosProfile.dailyProteinTarget * tolerance)}g\n`
       }
       if (macrosProfile.dailyCarbsTarget) {
-        section += `- Carbs: ${macrosProfile.dailyCarbsTarget}g ± ${Math.round(macrosProfile.dailyCarbsTarget * 0.1)}g\n`
+        section += `- Carbs: ${macrosProfile.dailyCarbsTarget}g ± ${Math.round(macrosProfile.dailyCarbsTarget * tolerance)}g\n`
       }
       if (macrosProfile.dailyFatTarget) {
-        section += `- Fat: ${macrosProfile.dailyFatTarget}g ± ${Math.round(macrosProfile.dailyFatTarget * 0.1)}g\n`
+        section += `- Fat: ${macrosProfile.dailyFatTarget}g ± ${Math.round(macrosProfile.dailyFatTarget * tolerance)}g\n`
       }
       break
 
     case 'strict':
-      section += `**Approach:** Precise daily tracking with ±5% tolerance on all macros.\n\n`
-      section += `Target daily totals for ${macrosProfile.profileName}:\n`
-      section += `- Calories: ${macrosProfile.dailyCalorieTarget} ± ${Math.round(macrosProfile.dailyCalorieTarget * 0.05)}\n`
+      section += `**Approach:** Precise daily tracking with ±${tolerancePercent}% tolerance on all macros.\n\n`
+      section += `**REQUIRED Daily Totals for ${macrosProfile.profileName}:**\n`
+      section += `- Calories: ${dailyCalories} ± ${Math.round(dailyCalories * tolerance)} (MUST be between ${Math.round(dailyCalories * (1 - tolerance))} and ${Math.round(dailyCalories * (1 + tolerance))})\n`
       if (macrosProfile.dailyProteinTarget) {
-        section += `- Protein: ${macrosProfile.dailyProteinTarget}g ± ${Math.round(macrosProfile.dailyProteinTarget * 0.05)}g\n`
+        section += `- Protein: ${macrosProfile.dailyProteinTarget}g ± ${Math.round(macrosProfile.dailyProteinTarget * tolerance)}g\n`
       }
       if (macrosProfile.dailyCarbsTarget) {
-        section += `- Carbs: ${macrosProfile.dailyCarbsTarget}g ± ${Math.round(macrosProfile.dailyCarbsTarget * 0.05)}g\n`
+        section += `- Carbs: ${macrosProfile.dailyCarbsTarget}g ± ${Math.round(macrosProfile.dailyCarbsTarget * tolerance)}g\n`
       }
       if (macrosProfile.dailyFatTarget) {
-        section += `- Fat: ${macrosProfile.dailyFatTarget}g ± ${Math.round(macrosProfile.dailyFatTarget * 0.05)}g\n`
+        section += `- Fat: ${macrosProfile.dailyFatTarget}g ± ${Math.round(macrosProfile.dailyFatTarget * tolerance)}g\n`
       }
       break
 
     case 'weekday_discipline':
       section += `**Approach:** Strict on weekdays (±5%), relaxed on weekends (±25%).\n\n`
-      section += `**Weekday Targets** (Monday-Friday) for ${macrosProfile.profileName}:\n`
-      section += `- Calories: ${macrosProfile.dailyCalorieTarget} ± ${Math.round(macrosProfile.dailyCalorieTarget * 0.05)}\n`
+      section += `**REQUIRED Weekday Targets** (Monday-Friday) for ${macrosProfile.profileName}:\n`
+      section += `- Calories: ${dailyCalories} ± ${Math.round(dailyCalories * 0.05)}\n`
       if (macrosProfile.dailyProteinTarget) {
         section += `- Protein: ${macrosProfile.dailyProteinTarget}g ± ${Math.round(macrosProfile.dailyProteinTarget * 0.05)}g\n`
       }
       section += `\n**Weekend Targets** (Saturday-Sunday):\n`
-      section += `- Calories: ${macrosProfile.dailyCalorieTarget} ± ${Math.round(macrosProfile.dailyCalorieTarget * 0.25)}\n`
+      section += `- Calories: ${dailyCalories} ± ${Math.round(dailyCalories * 0.25)}\n`
       if (macrosProfile.dailyProteinTarget) {
         section += `- Protein: ${macrosProfile.dailyProteinTarget}g ± ${Math.round(macrosProfile.dailyProteinTarget * 0.25)}g\n`
       }
       break
 
     case 'calorie_banking':
-      const weekdayDeficit = Math.round(macrosProfile.dailyCalorieTarget * 0.85)
-      const weekendSurplus = Math.round(macrosProfile.dailyCalorieTarget * 1.3)
+      const weekdayDeficit = Math.round(dailyCalories * 0.85)
+      const weekendSurplus = Math.round(dailyCalories * 1.3)
       section += `**Approach:** Weekday deficit compensated by weekend surplus, weekly balance maintained.\n\n`
-      section += `**Weekday Targets** (Monday-Friday) for ${macrosProfile.profileName}:\n`
+      section += `**REQUIRED Weekday Targets** (Monday-Friday) for ${macrosProfile.profileName}:\n`
       section += `- Calories: ~${weekdayDeficit} (85% of daily target)\n`
       section += `\n**Weekend Targets** (Saturday-Sunday):\n`
       section += `- Calories: ~${weekendSurplus} (130% of daily target)\n`
-      section += `\n**Weekly Total:** ${macrosProfile.dailyCalorieTarget * 7} calories\n`
+      section += `\n**Weekly Total:** ${dailyCalories * 7} calories\n`
       break
   }
 
-  section += `\n**Important:** Prioritize hitting these targets while balancing other constraints.\n`
+  // Add per-meal budgets to help AI select appropriately (dynamic based on user's schedule)
+  section += `\n**PER-MEAL CALORIE BUDGETS (Based on ${macrosProfile.profileName}'s Schedule):**\n`
+  section += `_${mealBudgets.explanation}_\n\n`
+
+  // Only show budgets for meals that are in the plan
+  if (mealBudgets.breakfast !== null) {
+    section += `- Breakfast: Target ~${mealBudgets.breakfast} cal per serving (25% of daily target)\n`
+  }
+  if (mealBudgets.lunch !== null) {
+    section += `- Lunch: Target ~${mealBudgets.lunch} cal per serving (35% of daily target)\n`
+  }
+  if (mealBudgets.dinner !== null) {
+    section += `- Dinner: Target ~${mealBudgets.dinner} cal per serving (40% of daily target)\n`
+  }
+  if (mealBudgets.snacks !== null) {
+    section += `- Snacks/Desserts: Target ~${mealBudgets.snacks} cal total across snacks (20% of daily target)\n`
+  }
+
+  // Calculate expected daily total from planned meals
+  const expectedDailyTotal = (mealBudgets.breakfast || 0) + (mealBudgets.lunch || 0) + (mealBudgets.dinner || 0) + (mealBudgets.snacks || 0)
+  section += `\n**Expected Daily Total from Plan:** ~${expectedDailyTotal} cal (${mealBudgets.totalPlanPercent}% of ${dailyCalories} daily target)\n`
+
+  if (mealBudgets.totalPlanPercent < 100) {
+    section += `_Note: User eats ${100 - mealBudgets.totalPlanPercent}% of daily calories outside this meal plan_\n`
+  }
+  section += `\n`
+
+  section += `**RECIPE SELECTION STRATEGY FOR HITTING TARGETS:**\n`
+  section += `1. FIRST, check each recipe's caloriesPerServing in the recipe list\n`
+  section += `2. Select recipes that sum to approximately ${expectedDailyTotal} cal per day (the planned meals)\n`
+  section += `3. If a day's meals are too low in calories, swap for a higher-calorie alternative\n`
+  section += `4. Prefer recipes with higher protein to help hit protein targets\n`
+  section += `5. VERIFY your selections: mentally add up each day's calories before finalizing\n\n`
+
+  if (isMacroHighPriority) {
+    section += `**⚠️ VALIDATION CHECK - Your plan will be rejected if:**\n`
+    // Use expectedDailyTotal (from planned meals) not raw dailyCalories (which is full day target)
+    section += `- Daily average calories from planned meals are outside ${Math.round(expectedDailyTotal * (1 - tolerance))} - ${Math.round(expectedDailyTotal * (1 + tolerance))} range\n`
+    if (macrosProfile.dailyProteinTarget) {
+      // Scale protein target by plan coverage percentage
+      const expectedProtein = Math.round(macrosProfile.dailyProteinTarget * (mealBudgets.totalPlanPercent / 100))
+      section += `- Daily average protein from planned meals is outside ${Math.round(expectedProtein * (1 - tolerance))}g - ${Math.round(expectedProtein * (1 + tolerance))}g range\n`
+    }
+    if (mealBudgets.totalPlanPercent < 100) {
+      section += `\n_Remember: This plan only covers ${mealBudgets.totalPlanPercent}% of daily calories. Validation is against the planned meals total (${expectedDailyTotal} cal), not the full daily target (${dailyCalories} cal)._\n`
+    }
+    section += `\nIf you cannot meet these targets, explain the constraint in your summary (e.g., "Available recipes limited higher-calorie options").\n`
+  } else {
+    section += `**Note:** Macro targeting is a lower priority in your settings. Focus on other constraints first, but try to get close to these targets where possible.\n`
+  }
 
   return section
 }

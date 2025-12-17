@@ -30,6 +30,9 @@ export async function generateMealPlan(params: {
   recipeHistory?: RecipeUsageHistory[]
   inventory?: InventoryItem[]
   quickOptions?: QuickOptions
+  customInstructions?: string
+  linkedRecipes?: Array<{ id: string; name: string }>
+  validationFeedback?: string[] // Feedback from previous validation failures
 }) {
   const {
     profiles,
@@ -40,7 +43,10 @@ export async function generateMealPlan(params: {
     settings,
     recipeHistory,
     inventory,
-    quickOptions
+    quickOptions,
+    customInstructions,
+    linkedRecipes,
+    validationFeedback
   } = params
 
   // If advanced features are provided, use the advanced prompt builder
@@ -53,7 +59,10 @@ export async function generateMealPlan(params: {
       settings: settings || DEFAULT_SETTINGS,
       recipeHistory: recipeHistory || [],
       inventory: inventory || [],
-      quickOptions
+      quickOptions,
+      customInstructions,
+      linkedRecipes,
+      validationFeedback
     })
   }
 
@@ -187,6 +196,9 @@ async function generateAdvancedMealPlan(params: {
   recipeHistory: RecipeUsageHistory[]
   inventory: InventoryItem[]
   quickOptions?: QuickOptions
+  customInstructions?: string
+  linkedRecipes?: Array<{ id: string; name: string }>
+  validationFeedback?: string[] // Feedback from previous validation failures
 }) {
   const {
     profiles,
@@ -196,7 +208,10 @@ async function generateAdvancedMealPlan(params: {
     settings,
     recipeHistory,
     inventory,
-    quickOptions
+    quickOptions,
+    customInstructions,
+    linkedRecipes,
+    validationFeedback
   } = params
 
   // Calculate servings map
@@ -237,7 +252,10 @@ async function generateAdvancedMealPlan(params: {
       settings,
       recipeHistory,
       inventory,
-      servingsMap
+      servingsMap,
+      customInstructions,
+      linkedRecipes,
+      validationFeedback
     },
     quickOptions
   )
@@ -267,12 +285,20 @@ async function generateAdvancedMealPlan(params: {
     const jsonMatch = responseText.match(/\{[\s\S]*\}/)
     if (!jsonMatch) {
       console.error('❌ No JSON found in Claude response')
+      console.error('❌ Raw response (first 1000 chars):', responseText.substring(0, 1000))
       throw new Error('Failed to parse meal plan from Claude response')
     }
 
-    const mealPlan = JSON.parse(jsonMatch[0])
-    console.log('🟢 Meal plan parsed successfully, meals count:', mealPlan.meals?.length || 0)
-    return mealPlan
+    try {
+      const mealPlan = JSON.parse(jsonMatch[0])
+      console.log('🟢 Meal plan parsed successfully, meals count:', mealPlan.meals?.length || 0)
+      return mealPlan
+    } catch (parseError) {
+      console.error('❌ JSON parse error:', parseError)
+      console.error('❌ Extracted JSON (first 500 chars):', jsonMatch[0].substring(0, 500))
+      console.error('❌ Extracted JSON (last 500 chars):', jsonMatch[0].substring(jsonMatch[0].length - 500))
+      throw new Error('Failed to parse JSON from Claude response: ' + (parseError as Error).message)
+    }
   } catch (error) {
     console.error('❌ Error generating advanced meal plan:', error)
     throw error
