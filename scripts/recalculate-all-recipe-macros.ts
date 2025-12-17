@@ -4,15 +4,15 @@
  *
  * Usage: npx tsx scripts/recalculate-all-recipe-macros.ts
  *
- * Note: Requires DATABASE_URL environment variable to be set
+ * Note: Requires DATABASE_URL environment variable to be set in .env file
  */
 
-import { config } from 'dotenv'
-// Load environment variables from .env file
-config()
+// This import loads .env immediately before other imports are resolved
+import 'dotenv/config'
 
 import { prisma } from '../lib/prisma'
-import { calculateRecipeNutrition, RecipeIngredient } from '../lib/nutrition/index'
+import type { RecipeIngredient } from '../lib/nutrition/index'
+import { calculateRecipeNutrition } from '../lib/nutrition/index'
 
 interface RecipeWithIngredients {
   id: string
