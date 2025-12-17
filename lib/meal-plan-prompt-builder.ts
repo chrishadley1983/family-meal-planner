@@ -96,7 +96,7 @@ function buildMainPrompt(
   }
 
   // 3. Macro Targeting Section
-  sections.push(buildMacroSection(effectiveSettings, profiles, weekProfileSchedules))
+  sections.push(buildMacroSection(effectiveSettings, profiles, weekProfileSchedules, servingsMap))
 
   // 4. Recipe Variety Section
   if (effectiveSettings.varietyEnabled) {
@@ -398,7 +398,8 @@ interface MealBudgets {
 function calculateDynamicMealBudgets(
   dailyCalories: number,
   mainUserProfileId: string,
-  weekProfileSchedules?: any[]
+  weekProfileSchedules?: any[],
+  servingsMap?: Record<string, Record<string, number>>
 ): MealBudgets {
   // Fixed percentages for each meal type (these don't change based on what's missing)
   const FIXED_PERCENTAGES = {
@@ -408,7 +409,7 @@ function calculateDynamicMealBudgets(
     snacks: 0.20      // 20% of daily calories (when present)
   }
 
-  // Default result if no schedule data (assume full schedule)
+  // Default result if no schedule data (assume full schedule - B:25% + L:35% + D:40% = 100%)
   const defaultBudgets: MealBudgets = {
     breakfast: Math.round(dailyCalories * FIXED_PERCENTAGES.breakfast),
     lunch: Math.round(dailyCalories * FIXED_PERCENTAGES.lunch),
@@ -418,32 +419,98 @@ function calculateDynamicMealBudgets(
     explanation: 'Full plan (B:25%, L:35%, D:40%) = 100% of daily target'
   }
 
+  // STRATEGY: Use servingsMap as the primary source of truth since it's pre-calculated
+  // and directly represents what meals are scheduled. Fall back to schedule analysis only
+  // if servingsMap is not available.
+
+  // Try servingsMap first - it's the most reliable source
+  if (servingsMap && Object.keys(servingsMap).length > 0) {
+    const mealCounts = {
+      breakfast: 0,
+      lunch: 0,
+      dinner: 0,
+      snack: 0
+    }
+
+    // Count days where each meal type has servings > 0
+    Object.values(servingsMap).forEach(dayMeals => {
+      Object.entries(dayMeals).forEach(([mealType, servings]) => {
+        if (servings <= 0) return
+
+        const normalizedMealType = mealType.toLowerCase().replace(/[\s_]+/g, '-')
+        if (normalizedMealType === 'breakfast') {
+          mealCounts.breakfast++
+        } else if (normalizedMealType === 'lunch') {
+          mealCounts.lunch++
+        } else if (normalizedMealType === 'dinner') {
+          mealCounts.dinner++
+        } else if (normalizedMealType.includes('snack') || normalizedMealType === 'dessert') {
+          mealCounts.snack++
+        }
+      })
+    })
+
+    console.log('[calculateDynamicMealBudgets] Using servingsMap - meal counts:', mealCounts)
+
+    return buildBudgetsFromCounts(dailyCalories, mealCounts, FIXED_PERCENTAGES)
+  }
+
+  // Fall back to schedule analysis if servingsMap not available
   if (!weekProfileSchedules || weekProfileSchedules.length === 0) {
+    console.log('[calculateDynamicMealBudgets] No servingsMap or schedules - using defaults (100%)')
     return defaultBudgets
   }
 
-  // Find the main user's schedule
-  const mainUserSchedule = weekProfileSchedules.find(s => s.profileId === mainUserProfileId)
+  // Find the main user's schedule - try multiple lookup strategies
+  let mainUserSchedule = weekProfileSchedules.find(s => s.profileId === mainUserProfileId)
+
+  // If not found by exact ID match, try finding by isMainUser flag
+  if (!mainUserSchedule) {
+    mainUserSchedule = weekProfileSchedules.find(s => s.isMainUser === true)
+  }
+
+  // If still not found, use the first schedule (usually the main user)
+  if (!mainUserSchedule && weekProfileSchedules.length > 0) {
+    mainUserSchedule = weekProfileSchedules[0]
+    console.log('[calculateDynamicMealBudgets] Profile not found by ID, using first schedule')
+  }
+
   if (!mainUserSchedule || !mainUserSchedule.schedule) {
+    console.log('[calculateDynamicMealBudgets] No valid schedule found - using defaults (100%)')
     return defaultBudgets
   }
 
   // Analyze what meals the main user typically has across the week
-  // Count occurrences of each meal type
   const mealCounts = {
     breakfast: 0,
     lunch: 0,
     dinner: 0,
-    snack: 0 // includes morning-snack, afternoon-snack, dessert
+    snack: 0
   }
 
-  const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
-  days.forEach(day => {
-    const dayMeals = mainUserSchedule.schedule[day] || {}
+  // Try both lowercase and capitalized day names
+  const dayVariants = [
+    'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
+    'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
+  ]
+
+  const processedDays = new Set<string>()
+
+  dayVariants.forEach(day => {
+    const dayLower = day.toLowerCase()
+    if (processedDays.has(dayLower)) return // Already processed this day
+
+    const dayMeals = mainUserSchedule.schedule[day]
+    if (!dayMeals) return
+
+    processedDays.add(dayLower)
+
     Object.entries(dayMeals).forEach(([mealType, isEating]) => {
       if (!isEating) return
 
-      const normalizedMealType = mealType.toLowerCase().replace(/\s+/g, '-')
+      // Normalize meal type - handle various formats
+      const normalizedMealType = mealType.toLowerCase().replace(/[\s_]+/g, '-')
+
       if (normalizedMealType === 'breakfast') {
         mealCounts.breakfast++
       } else if (normalizedMealType === 'lunch') {
@@ -456,6 +523,26 @@ function calculateDynamicMealBudgets(
     })
   })
 
+  console.log('[calculateDynamicMealBudgets] Schedule analysis - meal counts:', mealCounts, 'from profile:', mainUserProfileId)
+
+  // If all counts are 0, something went wrong - default to 100% coverage
+  const totalCounts = mealCounts.breakfast + mealCounts.lunch + mealCounts.dinner
+  if (totalCounts === 0) {
+    console.warn('[calculateDynamicMealBudgets] All meal counts are 0 - defaulting to 100% coverage')
+    return defaultBudgets
+  }
+
+  return buildBudgetsFromCounts(dailyCalories, mealCounts, FIXED_PERCENTAGES)
+}
+
+/**
+ * Helper function to build meal budgets from meal counts
+ */
+function buildBudgetsFromCounts(
+  dailyCalories: number,
+  mealCounts: { breakfast: number; lunch: number; dinner: number; snack: number },
+  FIXED_PERCENTAGES: { breakfast: number; lunch: number; dinner: number; snacks: number }
+): MealBudgets {
   // Determine which meal types are "active" (at least 4 days = majority of week)
   const hasBreakfast = mealCounts.breakfast >= 4
   const hasLunch = mealCounts.lunch >= 4
@@ -482,17 +569,23 @@ function calculateDynamicMealBudgets(
   budgets.totalPlanPercent = Math.round(totalPercent)
 
   // Build explanation
-  const activeMeals: string[] = []
   const percentages: string[] = []
-  if (hasBreakfast) { activeMeals.push('Breakfast'); percentages.push('B:25%') }
-  if (hasLunch) { activeMeals.push('Lunch'); percentages.push('L:35%') }
-  if (hasDinner) { activeMeals.push('Dinner'); percentages.push('D:40%') }
-  if (hasSnacks) { activeMeals.push('Snacks'); percentages.push('S:20%') }
+  if (hasBreakfast) percentages.push('B:25%')
+  if (hasLunch) percentages.push('L:35%')
+  if (hasDinner) percentages.push('D:40%')
+  if (hasSnacks) percentages.push('S:20%')
 
   if (budgets.totalPlanPercent === 100) {
     budgets.explanation = `Full plan (${percentages.join(', ')}) = 100% of daily target`
   } else if (budgets.totalPlanPercent === 120) {
     budgets.explanation = `Full plan with snacks (${percentages.join(', ')}) = 120% of daily target`
+  } else if (budgets.totalPlanPercent === 0) {
+    // This shouldn't happen after our fixes, but if it does, default to 100%
+    budgets.totalPlanPercent = 100
+    budgets.breakfast = Math.round(dailyCalories * FIXED_PERCENTAGES.breakfast)
+    budgets.lunch = Math.round(dailyCalories * FIXED_PERCENTAGES.lunch)
+    budgets.dinner = Math.round(dailyCalories * FIXED_PERCENTAGES.dinner)
+    budgets.explanation = 'Full plan (B:25%, L:35%, D:40%) = 100% of daily target (fallback)'
   } else {
     budgets.explanation = `Partial plan (${percentages.join(', ')}) = ${budgets.totalPlanPercent}% of daily target - user eats ${100 - budgets.totalPlanPercent}% outside plan`
   }
@@ -503,7 +596,12 @@ function calculateDynamicMealBudgets(
 /**
  * Section 2: Macro Targeting Mode
  */
-function buildMacroSection(settings: MealPlanSettings, profiles: any[], weekProfileSchedules?: any[]): string {
+function buildMacroSection(
+  settings: MealPlanSettings,
+  profiles: any[],
+  weekProfileSchedules?: any[],
+  servingsMap?: Record<string, Record<string, number>>
+): string {
   let section = `# MACRO TARGETING\n\n`
 
   const macrosProfile = profiles.find(p => p.macroTrackingEnabled)
@@ -532,8 +630,9 @@ function buildMacroSection(settings: MealPlanSettings, profiles: any[], weekProf
   }
 
   // Calculate per-meal budgets dynamically based on main user's schedule
+  // Pass servingsMap as the primary source of truth for which meals are scheduled
   const dailyCalories = macrosProfile.dailyCalorieTarget || 2000
-  const mealBudgets = calculateDynamicMealBudgets(dailyCalories, macrosProfile.id, weekProfileSchedules)
+  const mealBudgets = calculateDynamicMealBudgets(dailyCalories, macrosProfile.id, weekProfileSchedules, servingsMap)
 
   switch (settings.macroMode) {
     case 'balanced':
