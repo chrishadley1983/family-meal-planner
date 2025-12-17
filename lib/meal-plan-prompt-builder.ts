@@ -953,6 +953,13 @@ function buildBatchCookingSection(settings: MealPlanSettings): string {
   section += `- Override maximum leftover days to ${settings.maxLeftoverDays} if ingredient shelf life allows\n`
   section += `- Include storage/reheating instructions in the meal notes\n\n`
 
+  section += `**⚠️ IMPORTANT: "Batch cook" terminology:**\n`
+  section += `- ONLY use "batch cook" in notes when you ARE planning leftovers for later days\n`
+  section += `- If a recipe appears ONCE (no leftovers), do NOT say "batch cook" - just say "Cook X servings"\n`
+  section += `- ❌ WRONG: "Batch cook 4 servings for Monday only" (no leftovers = not batch cooking)\n`
+  section += `- ✅ CORRECT: "Cook 4 servings" (when recipe appears once)\n`
+  section += `- ✅ CORRECT: "Batch cook 8 servings—covers Monday (4) + Wednesday (4)" (when recipe appears twice)\n\n`
+
   return section
 }
 
