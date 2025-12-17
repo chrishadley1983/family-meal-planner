@@ -31,6 +31,9 @@ export interface RecipeIngredient {
   quantity: number
   unit: string
   notes?: string | null
+  // Product ingredient fields
+  isProduct?: boolean
+  productId?: string | null
 }
 
 export interface NutritionResult {
@@ -55,7 +58,7 @@ export interface NutritionResult {
   ingredientBreakdown: Array<{
     ingredientName: string
     nutrition: NutrientsPer100g
-    source: 'db_cache' | 'seed_data' | 'usda' | 'ai_estimate'
+    source: 'product' | 'db_cache' | 'seed_data' | 'usda' | 'ai_estimate'
     confidence: 'high' | 'medium' | 'low'
   }>
   confidence: 'high' | 'medium' | 'low'
@@ -162,6 +165,7 @@ export async function getRecipeNutrition(params: {
     sodium: 0,
   }
 
+  let productHits = 0
   let dbCacheHits = 0
   let seedDataHits = 0
   let usdaHits = 0
@@ -180,6 +184,7 @@ export async function getRecipeNutrition(params: {
 
     // Track sources for logging
     switch (result.source) {
+      case 'product': productHits++; break
       case 'db_cache': dbCacheHits++; break
       case 'seed_data': seedDataHits++; break
       case 'usda': usdaHits++; break
@@ -187,7 +192,7 @@ export async function getRecipeNutrition(params: {
     }
   }
 
-  console.log(`📊 Sources: ${dbCacheHits} DB cache, ${seedDataHits} seed data, ${usdaHits} USDA, ${aiEstimates} AI estimates`)
+  console.log(`📊 Sources: ${productHits} products, ${dbCacheHits} DB cache, ${seedDataHits} seed data, ${usdaHits} USDA, ${aiEstimates} AI estimates`)
 
   // Calculate per-serving values
   const perServing = {
@@ -232,15 +237,52 @@ export async function getRecipeNutrition(params: {
 
 /**
  * Get nutrition for a single ingredient
- * Checks: DB cache → Seed data → USDA API → AI estimate
+ * Checks: Product → DB cache → Seed data → USDA API → AI estimate
  */
 async function getIngredientNutrition(ingredient: RecipeIngredient): Promise<{
   nutrition: NutrientsPer100g
-  source: 'db_cache' | 'seed_data' | 'usda' | 'ai_estimate'
+  source: 'product' | 'db_cache' | 'seed_data' | 'usda' | 'ai_estimate'
   confidence: 'high' | 'medium' | 'low'
 }> {
-  const { ingredientName, quantity, unit } = ingredient
+  const { ingredientName, quantity, unit, isProduct, productId } = ingredient
   const normalizedName = normalizeIngredientName(ingredientName).toLowerCase()
+
+  // 0. Check if this is a product ingredient - use product's nutrition directly
+  if (isProduct && productId) {
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      select: {
+        caloriesPerServing: true,
+        proteinPerServing: true,
+        carbsPerServing: true,
+        fatPerServing: true,
+        fiberPerServing: true,
+        sugarPerServing: true,
+        sodiumPerServing: true,
+      },
+    })
+
+    if (product && product.caloriesPerServing !== null) {
+      // Product nutrition is per serving, so we multiply by quantity
+      const nutrition: NutrientsPer100g = {
+        calories: (product.caloriesPerServing || 0) * quantity,
+        protein: (product.proteinPerServing || 0) * quantity,
+        carbs: (product.carbsPerServing || 0) * quantity,
+        fat: (product.fatPerServing || 0) * quantity,
+        fiber: (product.fiberPerServing || 0) * quantity,
+        sugar: (product.sugarPerServing || 0) * quantity,
+        sodium: (product.sodiumPerServing || 0) * quantity,
+      }
+
+      console.log(`📦 Using product nutrition for: ${ingredientName} (${quantity}x)`)
+      return {
+        nutrition,
+        source: 'product',
+        confidence: 'high',
+      }
+    }
+    console.log(`⚠️ Product ${productId} has no nutrition data, falling back to lookup`)
+  }
 
   // 1. Check persistent DB cache first
   const dbCached = await prisma.ingredientNutritionCache.findFirst({

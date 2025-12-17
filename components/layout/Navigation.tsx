@@ -4,7 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
-import { Calendar, ChefHat, Sparkles, ShoppingCart, Package, Bell, Menu, X, Home } from 'lucide-react'
+import { Calendar, ChefHat, Sparkles, ShoppingCart, Package, Bell, Menu, X, Home, Tag } from 'lucide-react'
 import { UserMenu } from './UserMenu'
 
 interface NavigationProps {
@@ -15,11 +15,12 @@ interface NavigationProps {
   shoppingCount?: number
 }
 
-// Primary nav items (6 items: Dashboard + 5 core pages)
+// Primary nav items (7 items: Dashboard + 6 core pages)
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', Icon: Home },
   { href: '/meal-plans', label: 'Meal Plan', Icon: Calendar },
   { href: '/recipes', label: 'Recipes', Icon: ChefHat },
+  { href: '/products', label: 'Products', Icon: Tag },
   { href: '/discover', label: 'Discover', Icon: Sparkles },
   { href: '/shopping-lists', label: 'Shopping', Icon: ShoppingCart, showBadge: true },
   { href: '/inventory', label: 'Inventory', Icon: Package },

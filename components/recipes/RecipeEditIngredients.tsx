@@ -1,5 +1,6 @@
 'use client'
 
+import { Package } from 'lucide-react'
 import { Button } from '@/components/ui'
 
 interface IngredientRating {
@@ -13,6 +14,8 @@ interface Ingredient {
   quantity: number
   unit: string
   notes?: string | null
+  isProduct?: boolean
+  productId?: string | null
 }
 
 interface RecipeEditIngredientsProps {
@@ -24,6 +27,7 @@ interface RecipeEditIngredientsProps {
     abbreviation: string
   }>>
   onAdd: () => void
+  onAddProduct?: () => void
   onRemove: (index: number) => void
   onUpdate: (index: number, field: string, value: any) => void
   onAnalyzeNutrition?: () => void
@@ -92,6 +96,7 @@ export function RecipeEditIngredients({
   ingredientRatings,
   availableUnits,
   onAdd,
+  onAddProduct,
   onRemove,
   onUpdate,
   onAnalyzeNutrition,
@@ -114,6 +119,17 @@ export function RecipeEditIngredients({
               Analyze Nutrition
             </Button>
           )}
+          {onAddProduct && (
+            <Button
+              onClick={onAddProduct}
+              variant="secondary"
+              size="sm"
+              className="bg-purple-900/30 hover:bg-purple-900/50 border border-purple-700 text-purple-300"
+            >
+              <Package className="w-4 h-4 mr-1" />
+              Add Product
+            </Button>
+          )}
           <Button onClick={onAdd} variant="primary" size="sm">
             + Add Ingredient
           </Button>
@@ -133,26 +149,42 @@ export function RecipeEditIngredients({
       <div className="flex flex-col gap-2">
         {ingredients.map((ing, index) => {
           const rating = getIngredientRating(ing.ingredientName, ingredientRatings)
+          const isProduct = ing.isProduct
           return (
             <div
               key={index}
               className="grid grid-cols-12 gap-2 items-center"
             >
-              {/* Ingredient name with traffic light */}
+              {/* Ingredient name with traffic light or product badge */}
               <div className="col-span-4 flex items-center gap-2">
-                <div
-                  className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
-                    rating ? getRatingColor(rating.rating) : 'bg-zinc-600'
-                  }`}
-                  title={rating?.reason}
-                />
-                <input
-                  type="text"
-                  placeholder="Ingredient"
-                  value={ing.ingredientName}
-                  onChange={(e) => onUpdate(index, 'ingredientName', e.target.value)}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
-                />
+                {isProduct ? (
+                  <div
+                    className="w-5 h-5 rounded-full bg-purple-500/20 border border-purple-500/50 flex items-center justify-center shrink-0"
+                    title="Product ingredient"
+                  >
+                    <Package className="w-3 h-3 text-purple-400" />
+                  </div>
+                ) : (
+                  <div
+                    className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                      rating ? getRatingColor(rating.rating) : 'bg-zinc-600'
+                    }`}
+                    title={rating?.reason}
+                  />
+                )}
+                {isProduct ? (
+                  <span className="w-full px-3 py-2 bg-gray-800/50 border border-purple-500/30 rounded-lg text-sm text-purple-200">
+                    {ing.ingredientName}
+                  </span>
+                ) : (
+                  <input
+                    type="text"
+                    placeholder="Ingredient"
+                    value={ing.ingredientName}
+                    onChange={(e) => onUpdate(index, 'ingredientName', e.target.value)}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+                  />
+                )}
               </div>
 
               {/* Quantity */}
@@ -168,22 +200,28 @@ export function RecipeEditIngredients({
 
               {/* Unit dropdown */}
               <div className="col-span-2">
-                <select
-                  value={ing.unit}
-                  onChange={(e) => onUpdate(index, 'unit', e.target.value)}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
-                >
-                  <option value="">Unit</option>
-                  {Object.entries(availableUnits).map(([category, units]) => (
-                    <optgroup key={category} label={category.charAt(0).toUpperCase() + category.slice(1)}>
-                      {units.map((unit) => (
-                        <option key={unit.code} value={unit.abbreviation}>
-                          {unit.abbreviation} ({unit.name})
-                        </option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
+                {isProduct ? (
+                  <span className="block w-full px-2 py-2 bg-gray-800/50 border border-gray-700 rounded-lg text-sm text-zinc-400">
+                    {ing.unit}
+                  </span>
+                ) : (
+                  <select
+                    value={ing.unit}
+                    onChange={(e) => onUpdate(index, 'unit', e.target.value)}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+                  >
+                    <option value="">Unit</option>
+                    {Object.entries(availableUnits).map(([category, units]) => (
+                      <optgroup key={category} label={category.charAt(0).toUpperCase() + category.slice(1)}>
+                        {units.map((unit) => (
+                          <option key={unit.code} value={unit.abbreviation}>
+                            {unit.abbreviation} ({unit.name})
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                )}
               </div>
 
               {/* Preview / Notes */}

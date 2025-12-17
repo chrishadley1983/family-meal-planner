@@ -14,6 +14,31 @@ import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-ki
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import MealPlanExportModal from '@/components/meal-plan/MealPlanExportModal'
+import { ProductSlotSelector } from '@/components/meal-plans/ProductSlotSelector'
+import { Package, X, Star } from 'lucide-react'
+import type { Product } from '@/lib/types/product'
+
+interface MealPlanProduct {
+  id: string
+  mealPlanId: string
+  productId: string
+  dayOfWeek: string
+  mealSlot: string
+  quantity: number
+  product: {
+    id: string
+    name: string
+    brand: string | null
+    category: string | null
+    imageUrl: string | null
+    caloriesPerServing: number | null
+    proteinPerServing: number | null
+    carbsPerServing: number | null
+    fatPerServing: number | null
+    isSnack: boolean
+    familyRating: number | null
+  }
+}
 
 interface Recipe {
   id: string
@@ -308,6 +333,15 @@ export default function MealPlanDetailPage() {
   // Export modal state
   const [showExportModal, setShowExportModal] = useState(false)
 
+  // Product slot state
+  const [mealPlanProducts, setMealPlanProducts] = useState<MealPlanProduct[]>([])
+  const [showProductSelector, setShowProductSelector] = useState(false)
+  const [selectedProductSlot, setSelectedProductSlot] = useState<{
+    dayOfWeek: string
+    mealSlot: string
+    currentProductId?: string | null
+  } | null>(null)
+
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor)
@@ -317,6 +351,7 @@ export default function MealPlanDetailPage() {
     fetchMealPlan()
     fetchProfiles()
     fetchRecipes()
+    fetchMealPlanProducts()
   }, [mealPlanId])
 
   const fetchMealPlan = async () => {
@@ -376,6 +411,20 @@ export default function MealPlanDetailPage() {
     }
   }
 
+  const fetchMealPlanProducts = async () => {
+    try {
+      console.log('🔷 Fetching meal plan products...')
+      const response = await fetch(`/api/meal-plans/${mealPlanId}/products`)
+      if (response.ok) {
+        const data = await response.json()
+        console.log('🟢 Loaded', data.mealPlanProducts?.length || 0, 'meal plan products')
+        setMealPlanProducts(data.mealPlanProducts || [])
+      }
+    } catch (err) {
+      console.error('❌ Error fetching meal plan products:', err)
+    }
+  }
+
   const calculateDailyMacros = (day: string): DailyMacros => {
     if (!mealPlan || !selectedProfileId) {
       return { calories: 0, protein: 0, carbs: 0, fat: 0 }
@@ -387,6 +436,7 @@ export default function MealPlanDetailPage() {
     let totalCarbs = 0
     let totalFat = 0
 
+    // Add recipe macros
     dayMeals.forEach(meal => {
       if (meal.recipe) {
         totalCalories += meal.recipe.caloriesPerServing || 0
@@ -394,6 +444,15 @@ export default function MealPlanDetailPage() {
         totalCarbs += meal.recipe.carbsPerServing || 0
         totalFat += meal.recipe.fatPerServing || 0
       }
+    })
+
+    // Add snack product macros
+    const dayProducts = mealPlanProducts.filter(p => p.dayOfWeek === day)
+    dayProducts.forEach(mp => {
+      totalCalories += (mp.product.caloriesPerServing || 0) * mp.quantity
+      totalProtein += (mp.product.proteinPerServing || 0) * mp.quantity
+      totalCarbs += (mp.product.carbsPerServing || 0) * mp.quantity
+      totalFat += (mp.product.fatPerServing || 0) * mp.quantity
     })
 
     return {
@@ -677,6 +736,101 @@ export default function MealPlanDetailPage() {
     } finally {
       setConfirmingCook(false)
     }
+  }
+
+  // Product slot handlers
+  const openProductSelector = (dayOfWeek: string, mealSlot: string) => {
+    const existingProduct = mealPlanProducts.find(
+      p => p.dayOfWeek === dayOfWeek && p.mealSlot === mealSlot
+    )
+    setSelectedProductSlot({
+      dayOfWeek,
+      mealSlot,
+      currentProductId: existingProduct?.productId || null
+    })
+    setShowProductSelector(true)
+  }
+
+  const handleProductSelect = async (product: Product) => {
+    if (!selectedProductSlot) return
+
+    try {
+      console.log('🔷 Assigning product to snack slot:', {
+        productId: product.id,
+        dayOfWeek: selectedProductSlot.dayOfWeek,
+        mealSlot: selectedProductSlot.mealSlot
+      })
+
+      const response = await fetch(`/api/meal-plans/${mealPlanId}/products`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productId: product.id,
+          dayOfWeek: selectedProductSlot.dayOfWeek,
+          mealSlot: selectedProductSlot.mealSlot,
+          quantity: 1
+        })
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to assign product')
+      }
+
+      const data = await response.json()
+      console.log('🟢 Product assigned:', data.mealPlanProduct)
+
+      // Update local state
+      setMealPlanProducts(prev => {
+        // Remove any existing product for this slot
+        const filtered = prev.filter(
+          p => !(p.dayOfWeek === selectedProductSlot.dayOfWeek && p.mealSlot === selectedProductSlot.mealSlot)
+        )
+        return [...filtered, data.mealPlanProduct]
+      })
+
+      success(`${product.name} added to ${selectedProductSlot.mealSlot}`)
+    } catch (err) {
+      console.error('❌ Error assigning product:', err)
+      error(err instanceof Error ? err.message : 'Failed to assign product')
+    }
+
+    setShowProductSelector(false)
+    setSelectedProductSlot(null)
+  }
+
+  const handleRemoveProduct = async (dayOfWeek: string, mealSlot: string) => {
+    try {
+      console.log('🔷 Removing product from slot:', { dayOfWeek, mealSlot })
+
+      const response = await fetch(
+        `/api/meal-plans/${mealPlanId}/products?dayOfWeek=${encodeURIComponent(dayOfWeek)}&mealSlot=${encodeURIComponent(mealSlot)}`,
+        { method: 'DELETE' }
+      )
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to remove product')
+      }
+
+      console.log('🟢 Product removed from slot')
+
+      // Update local state
+      setMealPlanProducts(prev =>
+        prev.filter(p => !(p.dayOfWeek === dayOfWeek && p.mealSlot === mealSlot))
+      )
+
+      success('Product removed from slot')
+    } catch (err) {
+      console.error('❌ Error removing product:', err)
+      error(err instanceof Error ? err.message : 'Failed to remove product')
+    }
+  }
+
+  const getProductForSlot = (dayOfWeek: string, mealSlot: string): MealPlanProduct | undefined => {
+    return mealPlanProducts.find(
+      p => p.dayOfWeek === dayOfWeek && p.mealSlot === mealSlot
+    )
   }
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -1218,6 +1372,113 @@ export default function MealPlanDetailPage() {
                       )}
                     </div>
                   </SortableContext>
+
+                  {/* Snacks Section */}
+                  <div className="mt-8">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Package className="w-5 h-5 text-purple-400" />
+                      <h3 className="text-lg font-medium text-zinc-300">Snacks</h3>
+                    </div>
+                    <div className="space-y-3">
+                      {['Morning Snack', 'Afternoon Snack', 'Evening Snack'].map((slotName) => {
+                        const product = getProductForSlot(day, slotName)
+                        return (
+                          <div
+                            key={`${day}-${slotName}`}
+                            className={`border rounded-lg p-3 transition-colors ${
+                              product
+                                ? 'border-purple-500/50 bg-purple-900/10'
+                                : 'border-dashed border-zinc-700 bg-zinc-900/30 hover:border-purple-500/30 cursor-pointer'
+                            }`}
+                            onClick={() => !product && openProductSelector(day, slotName)}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <span className="text-xs font-medium text-zinc-400 w-28">
+                                  {slotName}
+                                </span>
+                                {product ? (
+                                  <div className="flex items-center gap-3">
+                                    {/* Product thumbnail */}
+                                    <div className="w-10 h-10 rounded-lg bg-zinc-800 flex items-center justify-center overflow-hidden">
+                                      {product.product.imageUrl ? (
+                                        <img
+                                          src={product.product.imageUrl}
+                                          alt={product.product.name}
+                                          className="w-full h-full object-cover"
+                                        />
+                                      ) : (
+                                        <Package className="w-5 h-5 text-zinc-600" />
+                                      )}
+                                    </div>
+                                    {/* Product info */}
+                                    <div>
+                                      <div className="flex items-center gap-2">
+                                        <p className="text-sm text-white font-medium">
+                                          {product.product.brand ? `${product.product.brand} ` : ''}
+                                          {product.product.name}
+                                        </p>
+                                        {/* Family rating stars */}
+                                        {product.product.familyRating && (
+                                          <div className="flex items-center gap-0.5">
+                                            {Array.from({ length: 5 }).map((_, i) => (
+                                              <Star
+                                                key={i}
+                                                className={`w-3 h-3 ${
+                                                  i < Math.round(product.product.familyRating! / 2)
+                                                    ? 'fill-yellow-500 text-yellow-500'
+                                                    : 'text-zinc-600'
+                                                }`}
+                                              />
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                      <p className="text-xs text-zinc-500">
+                                        {product.product.caloriesPerServing && `${product.product.caloriesPerServing} kcal`}
+                                        {product.product.proteinPerServing && ` • ${product.product.proteinPerServing}g protein`}
+                                      </p>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span className="text-sm text-zinc-500 italic">
+                                    Click to add snack
+                                  </span>
+                                )}
+                              </div>
+                              {/* Actions */}
+                              <div className="flex items-center gap-2">
+                                {product && (
+                                  <>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        openProductSelector(day, slotName)
+                                      }}
+                                      className="p-1 text-purple-400 hover:text-purple-300 transition-colors"
+                                      title="Change snack"
+                                    >
+                                      <Package className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        handleRemoveProduct(day, slotName)
+                                      }}
+                                      className="p-1 text-red-400 hover:text-red-300 transition-colors"
+                                      title="Remove snack"
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
                 </div>
               )
             })()}
@@ -1528,6 +1789,19 @@ export default function MealPlanDetailPage() {
           weekStartDate={mealPlan.weekStartDate}
           weekEndDate={mealPlan.weekEndDate}
           mealCount={mealPlan.meals.length}
+        />
+
+        {/* Product Slot Selector */}
+        <ProductSlotSelector
+          isOpen={showProductSelector}
+          onClose={() => {
+            setShowProductSelector(false)
+            setSelectedProductSlot(null)
+          }}
+          onSelect={handleProductSelect}
+          dayOfWeek={selectedProductSlot?.dayOfWeek || ''}
+          mealSlot={selectedProductSlot?.mealSlot || ''}
+          currentProductId={selectedProductSlot?.currentProductId}
         />
       </PageContainer>
     </AppLayout>

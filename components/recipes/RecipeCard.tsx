@@ -29,6 +29,8 @@ interface RecipeCardProps {
   proteinPerServing?: number | null
   carbsPerServing?: number | null
   fatPerServing?: number | null
+  isProductRecipe?: boolean
+  sourceProductId?: string | null
   onDelete: (id: string) => void
 }
 
@@ -47,6 +49,8 @@ export function RecipeCard({
   proteinPerServing,
   carbsPerServing,
   fatPerServing,
+  isProductRecipe,
+  sourceProductId,
   onDelete,
 }: RecipeCardProps) {
   const isFavourite = timesUsed >= 3
@@ -69,11 +73,18 @@ export function RecipeCard({
             <h3 className="font-semibold line-clamp-2 group-hover:text-purple-300 transition-colors leading-snug text-white">
               {name}
             </h3>
-            {mealType.length > 0 && (
-              <span className="px-2 py-0.5 bg-zinc-800 rounded text-xs flex-shrink-0 text-zinc-300">
-                {mealType[0]}
-              </span>
-            )}
+            <div className="flex gap-1 flex-shrink-0">
+              {isProductRecipe && (
+                <span className="px-2 py-0.5 bg-purple-500/20 border border-purple-500/30 rounded text-xs text-purple-300">
+                  Product
+                </span>
+              )}
+              {mealType.length > 0 && (
+                <span className="px-2 py-0.5 bg-zinc-800 rounded text-xs text-zinc-300">
+                  {mealType[0]}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Description */}
