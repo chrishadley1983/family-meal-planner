@@ -36,6 +36,9 @@ export interface MealPlanSettings {
 
   // Emilia's Feedback
   feedbackDetail: FeedbackDetail
+
+  // Meal Type Flexibility
+  allowDinnerForLunch?: boolean // Allow dinner recipes to be used for lunch slots (default: true)
 }
 
 export const DEFAULT_SETTINGS: MealPlanSettings = {
@@ -54,7 +57,8 @@ export const DEFAULT_SETTINGS: MealPlanSettings = {
   batchCookingEnabled: true,
   maxLeftoverDays: 4,
   priorityOrder: ['macros', 'ratings', 'variety', 'shopping', 'prep', 'time'],
-  feedbackDetail: 'medium'
+  feedbackDetail: 'medium',
+  allowDinnerForLunch: true
 }
 
 // Pantry staples list (excluded from unique ingredient counting for shopping efficiency)

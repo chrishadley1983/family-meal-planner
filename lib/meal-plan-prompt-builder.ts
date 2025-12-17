@@ -123,7 +123,7 @@ function buildMainPrompt(
   sections.push(buildRecipeListSection(recipes, recipeHistory, effectiveSettings, weekStartDate))
 
   // 10. JSON Output Format Section
-  sections.push(buildOutputFormatSection())
+  sections.push(buildOutputFormatSection(effectiveSettings))
 
   // 11. Emilia's Feedback Section
   sections.push(buildFeedbackSection(effectiveSettings))
@@ -1118,7 +1118,15 @@ function buildRecipeListSection(
 /**
  * Section 9: Output Format
  */
-function buildOutputFormatSection(): string {
+function buildOutputFormatSection(settings: MealPlanSettings): string {
+  // Check if dinner recipes can be used for lunch (default: true)
+  const allowDinnerForLunch = settings.allowDinnerForLunch !== false
+
+  // Build the dinner rule based on the setting
+  const dinnerRule = allowDinnerForLunch
+    ? `* A recipe with mealType: ["Dinner"] can be used for dinner OR lunch slots (allowDinnerForLunch is enabled)`
+    : `* A recipe with mealType: ["Dinner"] can ONLY be used for dinner slots`
+
   return `# OUTPUT FORMAT
 
 Please generate a meal plan for the week and return it as a JSON object with this structure:
@@ -1145,7 +1153,7 @@ Please generate a meal plan for the week and return it as a JSON object with thi
 - **YOU MUST ONLY use recipes from the "AVAILABLE RECIPES" list above**
 - Every meal MUST have a valid recipeId from that list - do NOT suggest recipes that aren't in the database
 - **MEAL TYPE MATCHING IS MANDATORY:** Only use recipes for meal slots that match their designated "Meal Types" field:
-  * A recipe with mealType: ["Dinner"] can be used for dinner OR lunch slots (dinner recipes work for lunch)
+  ${dinnerRule}
   * A recipe with mealType: ["Breakfast"] can ONLY be used for breakfast slots
   * A recipe with mealType: ["Breakfast", "Lunch"] can be used for either breakfast OR lunch, but NOT dinner
   * A recipe with mealType: ["Snack"] can be used for morning-snack, afternoon-snack, or evening-snack slots
