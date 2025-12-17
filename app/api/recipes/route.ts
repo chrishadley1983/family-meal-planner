@@ -13,6 +13,9 @@ const ingredientSchema = z.object({
   category: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
   sortOrder: z.number().int().default(0),
+  // Product fields
+  isProduct: z.boolean().default(false),
+  productId: z.string().optional().nullable(),
 })
 
 const instructionSchema = z.object({

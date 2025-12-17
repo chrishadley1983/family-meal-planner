@@ -49,6 +49,8 @@ interface Recipe {
   isGlutenFree: boolean
   containsNuts: boolean
   isQuickMeal: boolean
+  isProductRecipe?: boolean
+  sourceProductId?: string | null
 }
 
 export default function RecipesPage() {
@@ -565,6 +567,8 @@ export default function RecipesPage() {
                 proteinPerServing={recipe.proteinPerServing}
                 carbsPerServing={recipe.carbsPerServing}
                 fatPerServing={recipe.fatPerServing}
+                isProductRecipe={recipe.isProductRecipe}
+                sourceProductId={recipe.sourceProductId}
                 onDelete={handleDelete}
               />
             ))}

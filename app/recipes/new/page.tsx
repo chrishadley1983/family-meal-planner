@@ -7,7 +7,10 @@ import Image from 'next/image'
 import { AppLayout, PageContainer } from '@/components/layout'
 import { useSession } from 'next-auth/react'
 import { useAILoading } from '@/components/providers/AILoadingProvider'
+import { ProductSearchPopup } from '@/components/products/ProductSearchPopup'
+import { Package } from 'lucide-react'
 import type { ChatMessage, IngredientModification, InstructionModification, ProjectedNutrition, ValidatedNutrition } from '@/lib/types/nutritionist'
+import type { Product } from '@/lib/types/product'
 
 type InputMethod = 'manual' | 'url' | 'photo' | 'text'
 
@@ -73,7 +76,13 @@ export default function NewRecipePage() {
     unit: string
     category?: string
     notes?: string
+    isProduct?: boolean
+    productId?: string
+    product?: Product
   }>>([{ ingredientName: '', quantity: 1, unit: '' }])
+
+  // Product search popup state
+  const [showProductSearch, setShowProductSearch] = useState(false)
 
   const [instructions, setInstructions] = useState<Array<{
     stepNumber: number
@@ -967,6 +976,22 @@ export default function NewRecipePage() {
     setIngredients([...ingredients, { ingredientName: '', quantity: 1, unit: '' }])
   }
 
+  // Add a product as an ingredient
+  const addProductAsIngredient = (product: Product, quantity: number) => {
+    const productIngredient = {
+      ingredientName: product.brand ? `${product.brand} ${product.name}` : product.name,
+      quantity: quantity,
+      unit: product.unitOfMeasure,
+      category: product.category,
+      notes: product.servingSize || undefined,
+      isProduct: true,
+      productId: product.id,
+      product: product,
+    }
+    setIngredients([...ingredients, productIngredient])
+    console.log('📦 Product added as ingredient:', product.name)
+  }
+
   const removeIngredient = (index: number) => {
     setIngredients(ingredients.filter((_, i) => i !== index))
   }
@@ -1416,38 +1441,63 @@ Instructions:
             <div className="card p-6 space-y-4">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-medium text-white">Ingredients</h3>
-                <button
-                  type="button"
-                  onClick={addIngredient}
-                  className="px-3 py-1 bg-purple-600 text-white rounded-md text-sm hover:bg-purple-700"
-                >
-                  Add Ingredient
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowProductSearch(true)}
+                    className="px-3 py-1 bg-purple-900/30 text-purple-300 border border-purple-700 rounded-md text-sm hover:bg-purple-900/50 flex items-center gap-1.5"
+                  >
+                    <Package className="w-4 h-4" />
+                    Add Product
+                  </button>
+                  <button
+                    type="button"
+                    onClick={addIngredient}
+                    className="px-3 py-1 bg-purple-600 text-white rounded-md text-sm hover:bg-purple-700"
+                  >
+                    Add Ingredient
+                  </button>
+                </div>
               </div>
 
               {ingredients.map((ing, index) => {
                 const rating = getIngredientRating(ing.ingredientName)
                 return (
                   <div key={index} className="flex gap-2 items-center">
-                    {/* Traffic Light Indicator */}
-                    {rating && (
+                    {/* Traffic Light Indicator or Product Badge */}
+                    {ing.isProduct ? (
+                      <div
+                        className="w-6 h-6 rounded-full bg-purple-500/20 border border-purple-500/50 flex items-center justify-center flex-shrink-0"
+                        title="Product ingredient"
+                      >
+                        <Package className="w-3 h-3 text-purple-400" />
+                      </div>
+                    ) : rating ? (
                       <div
                         className={`w-3 h-3 rounded-full ${getTrafficLightClass(rating.rating)} flex-shrink-0`}
                         title={rating.reason}
                       />
-                    )}
-                    {!rating && macroAnalysis && (
+                    ) : macroAnalysis ? (
                       <div className="w-3 h-3 rounded-full bg-zinc-700 flex-shrink-0" />
-                    )}
+                    ) : null}
 
                     <div className="grid grid-cols-12 gap-2 items-center flex-1">
-                      <input
-                        type="text"
-                        placeholder="Ingredient name"
-                        className="col-span-5 rounded-md bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-purple-500 focus:ring-purple-500 px-3 py-2 border text-sm"
-                        value={ing.ingredientName}
-                        onChange={(e) => updateIngredient(index, 'ingredientName', e.target.value)}
-                      />
+                      {ing.isProduct ? (
+                        // Product ingredient - read-only name with badge
+                        <div className="col-span-5 flex items-center gap-2">
+                          <span className="flex-1 px-3 py-2 bg-zinc-800/50 border border-purple-500/30 rounded-md text-sm text-purple-200">
+                            {ing.ingredientName}
+                          </span>
+                        </div>
+                      ) : (
+                        <input
+                          type="text"
+                          placeholder="Ingredient name"
+                          className="col-span-5 rounded-md bg-zinc-800 border-zinc-700 text-white placeholder-zinc-500 focus:border-purple-500 focus:ring-purple-500 px-3 py-2 border text-sm"
+                          value={ing.ingredientName}
+                          onChange={(e) => updateIngredient(index, 'ingredientName', e.target.value)}
+                        />
+                      )}
                       <input
                         type="number"
                         placeholder="Qty"
@@ -1457,22 +1507,29 @@ Instructions:
                         value={ing.quantity}
                         onChange={(e) => updateIngredient(index, 'quantity', parseFloat(e.target.value))}
                       />
-                      <select
-                        className="col-span-2 rounded-md bg-zinc-800 border-zinc-700 text-white focus:border-purple-500 focus:ring-purple-500 px-3 py-2 border text-sm"
-                        value={ing.unit}
-                        onChange={(e) => updateIngredient(index, 'unit', e.target.value)}
-                      >
-                        <option value="">Unit</option>
-                        {Object.entries(availableUnits).map(([category, units]) => (
-                          <optgroup key={category} label={category.charAt(0).toUpperCase() + category.slice(1)}>
-                            {units.map((unit) => (
-                              <option key={unit.code} value={unit.abbreviation}>
-                                {unit.abbreviation} ({unit.name})
-                              </option>
-                            ))}
-                          </optgroup>
-                        ))}
-                      </select>
+                      {ing.isProduct ? (
+                        // Product ingredient - read-only unit
+                        <span className="col-span-2 px-3 py-2 bg-zinc-800/50 border border-zinc-700 rounded-md text-sm text-zinc-400">
+                          {ing.unit}
+                        </span>
+                      ) : (
+                        <select
+                          className="col-span-2 rounded-md bg-zinc-800 border-zinc-700 text-white focus:border-purple-500 focus:ring-purple-500 px-3 py-2 border text-sm"
+                          value={ing.unit}
+                          onChange={(e) => updateIngredient(index, 'unit', e.target.value)}
+                        >
+                          <option value="">Unit</option>
+                          {Object.entries(availableUnits).map(([category, units]) => (
+                            <optgroup key={category} label={category.charAt(0).toUpperCase() + category.slice(1)}>
+                              {units.map((unit) => (
+                                <option key={unit.code} value={unit.abbreviation}>
+                                  {unit.abbreviation} ({unit.name})
+                                </option>
+                              ))}
+                            </optgroup>
+                          ))}
+                        </select>
+                      )}
                       <input
                         type="text"
                         placeholder="Notes"
@@ -1816,6 +1873,13 @@ Instructions:
           </div>
         </div>
       )}
+
+      {/* Product Search Popup */}
+      <ProductSearchPopup
+        isOpen={showProductSearch}
+        onClose={() => setShowProductSearch(false)}
+        onSelect={addProductAsIngredient}
+      />
     </AppLayout>
   )
 }

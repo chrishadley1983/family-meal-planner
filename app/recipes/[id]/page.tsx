@@ -10,7 +10,9 @@ import { Button, Badge, Input, Select } from '@/components/ui'
 import { useSession } from 'next-auth/react'
 import { useAILoading } from '@/components/providers/AILoadingProvider'
 import { useNotification } from '@/components/providers/NotificationProvider'
+import { ProductSearchPopup } from '@/components/products/ProductSearchPopup'
 import { ChatMessage, IngredientModification, InstructionModification, ProjectedNutrition, ValidatedNutrition } from '@/lib/types/nutritionist'
+import type { Product } from '@/lib/types/product'
 import {
   RecipeDetailHeader,
   RecipeDetailHero,
@@ -107,6 +109,9 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [baseServings, setBaseServings] = useState(4)
   const [baseIngredients, setBaseIngredients] = useState<any[]>([])
+
+  // Product search popup state
+  const [showProductSearch, setShowProductSearch] = useState(false)
 
   const mealCategories = ['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert']
 
@@ -823,6 +828,22 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
     setIngredients([...ingredients, { ingredientName: '', quantity: 1, unit: '', notes: '' }])
   }
 
+  // Add a product as an ingredient
+  const addProductAsIngredient = (product: Product, quantity: number) => {
+    saveToHistory()
+    const productIngredient = {
+      ingredientName: product.brand ? `${product.brand} ${product.name}` : product.name,
+      quantity: quantity,
+      unit: product.unitOfMeasure,
+      category: product.category,
+      notes: product.servingSize || '',
+      isProduct: true,
+      productId: product.id,
+    }
+    setIngredients([...ingredients, productIngredient])
+    console.log('📦 Product added as ingredient:', product.name)
+  }
+
   const removeIngredient = (index: number) => {
     saveToHistory()
     setIngredients(ingredients.filter((_, i) => i !== index))
@@ -915,6 +936,8 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
             onEdit={() => setIsEditing(true)}
             onDuplicate={handleDuplicate}
             duplicating={duplicating}
+            isProductRecipe={recipe.isProductRecipe}
+            sourceProductId={recipe.sourceProductId}
           />
 
           {/* Hero Section */}
@@ -1049,6 +1072,7 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
           ingredientRatings={macroAnalysis?.ingredientRatings}
           availableUnits={availableUnits}
           onAdd={addIngredient}
+          onAddProduct={() => setShowProductSearch(true)}
           onRemove={removeIngredient}
           onUpdate={updateIngredient}
           onAnalyzeNutrition={() => fetchAIAnalysis({ recipeName, servings, ingredients, mealType })}
@@ -1119,6 +1143,13 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
         onSave={handleSaveEdit}
         canUndo={history.length > 0}
         saving={saving}
+      />
+
+      {/* Product Search Popup */}
+      <ProductSearchPopup
+        isOpen={showProductSearch}
+        onClose={() => setShowProductSearch(false)}
+        onSelect={addProductAsIngredient}
       />
     </AppLayout>
   )
