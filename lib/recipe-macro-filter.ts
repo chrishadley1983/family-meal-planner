@@ -147,8 +147,8 @@ export function isMacrosHighPriority(priorityOrder: string[]): boolean {
  * Logic:
  * - If recipe has NO nutrition data at all, allow it (AI will handle)
  * - If recipe has data, check each macro against ±20% tolerance
- * - Recipe is rejected only if it EXCEEDS max on any macro (too high is problematic)
- * - Being below min is OK (can use larger portions or supplement)
+ * - Recipe is rejected if it's ABOVE max OR BELOW min (both directions matter)
+ * - This ensures the AI can actually meet targets with the available recipes
  */
 function recipeMacrosFitRange(
   recipe: RecipeForFilter,
@@ -163,24 +163,42 @@ function recipeMacrosFitRange(
     return { fits: true, reasons: [] }
   }
 
-  // Check calories (if present)
-  if (recipe.caloriesPerServing && recipe.caloriesPerServing > range.calories.max) {
-    reasons.push(`${recipe.caloriesPerServing} cal > ${range.calories.max} cal max`)
+  // Check calories (if present) - BOTH min and max
+  if (recipe.caloriesPerServing) {
+    if (recipe.caloriesPerServing > range.calories.max) {
+      reasons.push(`${recipe.caloriesPerServing} cal > ${range.calories.max} cal max`)
+    } else if (recipe.caloriesPerServing < range.calories.min) {
+      reasons.push(`${recipe.caloriesPerServing} cal < ${range.calories.min} cal min`)
+    }
   }
 
-  // Check protein (if present) - only reject if way over (protein high is usually OK)
-  if (recipe.proteinPerServing && recipe.proteinPerServing > range.protein.max * 1.5) {
-    reasons.push(`${recipe.proteinPerServing}g protein > ${Math.round(range.protein.max * 1.5)}g max`)
+  // Check protein (if present) - be lenient with protein (high protein is usually OK)
+  // Only reject if way over max or significantly under min
+  if (recipe.proteinPerServing) {
+    if (recipe.proteinPerServing > range.protein.max * 1.5) {
+      reasons.push(`${recipe.proteinPerServing}g protein > ${Math.round(range.protein.max * 1.5)}g max`)
+    } else if (recipe.proteinPerServing < range.protein.min * 0.5) {
+      // Only reject if less than half the minimum (very low protein)
+      reasons.push(`${recipe.proteinPerServing}g protein < ${Math.round(range.protein.min * 0.5)}g min`)
+    }
   }
 
-  // Check carbs (if present)
-  if (recipe.carbsPerServing && recipe.carbsPerServing > range.carbs.max) {
-    reasons.push(`${recipe.carbsPerServing}g carbs > ${range.carbs.max}g max`)
+  // Check carbs (if present) - BOTH min and max
+  if (recipe.carbsPerServing) {
+    if (recipe.carbsPerServing > range.carbs.max) {
+      reasons.push(`${recipe.carbsPerServing}g carbs > ${range.carbs.max}g max`)
+    } else if (recipe.carbsPerServing < range.carbs.min) {
+      reasons.push(`${recipe.carbsPerServing}g carbs < ${range.carbs.min}g min`)
+    }
   }
 
-  // Check fat (if present)
-  if (recipe.fatPerServing && recipe.fatPerServing > range.fat.max) {
-    reasons.push(`${recipe.fatPerServing}g fat > ${range.fat.max}g max`)
+  // Check fat (if present) - BOTH min and max
+  if (recipe.fatPerServing) {
+    if (recipe.fatPerServing > range.fat.max) {
+      reasons.push(`${recipe.fatPerServing}g fat > ${range.fat.max}g max`)
+    } else if (recipe.fatPerServing < range.fat.min) {
+      reasons.push(`${recipe.fatPerServing}g fat < ${range.fat.min}g min`)
+    }
   }
 
   return {
@@ -431,7 +449,7 @@ export function buildFilteringSummary(result: MacroFilterResult): string {
   const lines: string[] = [
     '',
     '## Pre-Filtered Recipes',
-    `${result.removedRecipes.length} recipe(s) were pre-filtered because their macros exceed the ±20% tolerance for their meal types:`,
+    `${result.removedRecipes.length} recipe(s) were pre-filtered because their macros fall outside the ±20% tolerance for their meal types:`,
   ]
 
   result.removedRecipes.slice(0, 10).forEach(r => {
