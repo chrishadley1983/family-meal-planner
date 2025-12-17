@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { formatDate, formatDateRange } from '@/lib/date-utils'
@@ -474,6 +474,65 @@ export default function MealPlanDetailPage() {
     if (target === 0) return 0
     return Math.min((actual / target) * 100, 100)
   }
+
+  // Compute weekly nutrition summary including BOTH meals AND products
+  const computedWeeklyNutrition = useMemo(() => {
+    if (!mealPlan) return null
+
+    let totalCalories = 0
+    let totalProtein = 0
+    let totalCarbs = 0
+    let totalFat = 0
+    let mealsWithNutrition = 0
+    let totalMeals = 0
+
+    // Count meals (excluding leftovers - they don't add calories)
+    const mealsToCount = mealPlan.meals.filter(m => !m.isLeftover)
+    totalMeals = mealsToCount.length
+
+    mealsToCount.forEach(meal => {
+      if (meal.recipe) {
+        const recipe = meal.recipe as any
+        if (recipe.caloriesPerServing) {
+          totalCalories += recipe.caloriesPerServing || 0
+          totalProtein += recipe.proteinPerServing || 0
+          totalCarbs += recipe.carbsPerServing || 0
+          totalFat += recipe.fatPerServing || 0
+          mealsWithNutrition++
+        }
+      }
+    })
+
+    // Add products (snacks added via UI)
+    mealPlanProducts.forEach(mp => {
+      totalMeals++ // Each product slot counts as a meal
+      if (mp.product.caloriesPerServing) {
+        totalCalories += (mp.product.caloriesPerServing || 0) * mp.quantity
+        totalProtein += (mp.product.proteinPerServing || 0) * mp.quantity
+        totalCarbs += (mp.product.carbsPerServing || 0) * mp.quantity
+        totalFat += (mp.product.fatPerServing || 0) * mp.quantity
+        mealsWithNutrition++
+      }
+    })
+
+    const nutritionCoveragePercent = totalMeals > 0
+      ? Math.round((mealsWithNutrition / totalMeals) * 100)
+      : 0
+
+    return {
+      totalCalories: Math.round(totalCalories),
+      totalProtein: Math.round(totalProtein),
+      totalCarbs: Math.round(totalCarbs),
+      totalFat: Math.round(totalFat),
+      dailyAvgCalories: Math.round(totalCalories / 7),
+      dailyAvgProtein: Math.round(totalProtein / 7),
+      dailyAvgCarbs: Math.round(totalCarbs / 7),
+      dailyAvgFat: Math.round(totalFat / 7),
+      mealsWithNutrition,
+      totalMeals,
+      nutritionCoveragePercent
+    }
+  }, [mealPlan, mealPlanProducts])
 
   // Helper to get the day number within the week (1-7) for currentDayIndex
   const getDayNumberInWeek = (): number => {
@@ -1518,51 +1577,51 @@ export default function MealPlanDetailPage() {
                     </div>
                   </div>
 
-                  {/* Weekly Nutritional Summary */}
-                  {mealPlan.weeklyNutritionalSummary && mealPlan.weeklyNutritionalSummary.mealsWithNutrition > 0 && (
+                  {/* Weekly Nutritional Summary - computed to include both meals AND products */}
+                  {computedWeeklyNutrition && computedWeeklyNutrition.mealsWithNutrition > 0 && (
                     <div className="mt-8 p-4 bg-gradient-to-r from-purple-900/20 to-orange-900/20 border border-purple-500/30 rounded-lg">
                       <div className="flex items-center gap-2 mb-3">
                         <span className="text-purple-400 text-xl">📊</span>
                         <span className="text-lg font-medium text-white">Weekly Nutrition Summary</span>
                         <span className="text-xs text-zinc-500 ml-auto">
-                          {mealPlan.weeklyNutritionalSummary.nutritionCoveragePercent}% coverage ({mealPlan.weeklyNutritionalSummary.mealsWithNutrition}/{mealPlan.weeklyNutritionalSummary.totalMeals} meals)
+                          {computedWeeklyNutrition.nutritionCoveragePercent}% coverage ({computedWeeklyNutrition.mealsWithNutrition}/{computedWeeklyNutrition.totalMeals} meals)
                         </span>
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                         <div className="bg-zinc-800/60 rounded-lg p-3 text-center">
                           <div className="text-2xl font-bold text-orange-400">
-                            {mealPlan.weeklyNutritionalSummary.dailyAvgCalories.toLocaleString()}
+                            {computedWeeklyNutrition.dailyAvgCalories.toLocaleString()}
                           </div>
                           <div className="text-xs text-zinc-500 mt-1">Calories/day</div>
                           <div className="text-[10px] text-zinc-600 mt-0.5">
-                            ({mealPlan.weeklyNutritionalSummary.totalCalories.toLocaleString()} weekly)
+                            ({computedWeeklyNutrition.totalCalories.toLocaleString()} weekly)
                           </div>
                         </div>
                         <div className="bg-zinc-800/60 rounded-lg p-3 text-center">
                           <div className="text-2xl font-bold text-blue-400">
-                            {mealPlan.weeklyNutritionalSummary.dailyAvgProtein}g
+                            {computedWeeklyNutrition.dailyAvgProtein}g
                           </div>
                           <div className="text-xs text-zinc-500 mt-1">Protein/day</div>
                           <div className="text-[10px] text-zinc-600 mt-0.5">
-                            ({mealPlan.weeklyNutritionalSummary.totalProtein}g weekly)
+                            ({computedWeeklyNutrition.totalProtein}g weekly)
                           </div>
                         </div>
                         <div className="bg-zinc-800/60 rounded-lg p-3 text-center">
                           <div className="text-2xl font-bold text-amber-400">
-                            {mealPlan.weeklyNutritionalSummary.dailyAvgCarbs}g
+                            {computedWeeklyNutrition.dailyAvgCarbs}g
                           </div>
                           <div className="text-xs text-zinc-500 mt-1">Carbs/day</div>
                           <div className="text-[10px] text-zinc-600 mt-0.5">
-                            ({mealPlan.weeklyNutritionalSummary.totalCarbs}g weekly)
+                            ({computedWeeklyNutrition.totalCarbs}g weekly)
                           </div>
                         </div>
                         <div className="bg-zinc-800/60 rounded-lg p-3 text-center">
                           <div className="text-2xl font-bold text-pink-400">
-                            {mealPlan.weeklyNutritionalSummary.dailyAvgFat}g
+                            {computedWeeklyNutrition.dailyAvgFat}g
                           </div>
                           <div className="text-xs text-zinc-500 mt-1">Fat/day</div>
                           <div className="text-[10px] text-zinc-600 mt-0.5">
-                            ({mealPlan.weeklyNutritionalSummary.totalFat}g weekly)
+                            ({computedWeeklyNutrition.totalFat}g weekly)
                           </div>
                         </div>
                       </div>
