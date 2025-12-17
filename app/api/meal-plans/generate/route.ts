@@ -9,7 +9,7 @@ import { DEFAULT_SETTINGS, MealPlanSettings, WeeklyNutritionalSummary } from '@/
 import { validateMealPlan } from '@/lib/meal-plan-validation'
 import {
   filterRecipesForMacroFeasibility,
-  calculateAverageDailyCalories,
+  calculateAverageDailyMacros,
   buildFilteringSummary,
   RecipeForFilter
 } from '@/lib/recipe-macro-filter'
@@ -303,10 +303,13 @@ export async function POST(req: NextRequest) {
     })
 
     // Pre-filter recipes based on macro feasibility (only when macros is high priority)
-    const avgDailyCalories = calculateAverageDailyCalories(
+    const avgDailyMacros = calculateAverageDailyMacros(
       profiles.map(p => ({
         macroTrackingEnabled: p.macroTrackingEnabled,
-        dailyCalorieTarget: p.dailyCalorieTarget
+        dailyCalorieTarget: p.dailyCalorieTarget,
+        dailyProteinTarget: p.dailyProteinTarget,
+        dailyCarbsTarget: p.dailyCarbsTarget,
+        dailyFatTarget: p.dailyFatTarget
       }))
     )
 
@@ -322,16 +325,20 @@ export async function POST(req: NextRequest) {
 
     const filterResult = filterRecipesForMacroFeasibility(
       recipesForFilter,
-      avgDailyCalories,
+      avgDailyMacros.calories,
       settings.macroMode,
-      settings.priorityOrder
+      settings.priorityOrder,
+      avgDailyMacros.protein,
+      avgDailyMacros.carbs,
+      avgDailyMacros.fat
     )
 
     // Use filtered recipes for generation (or all if filtering was skipped/degraded)
     const filteredRecipeIds = new Set(filterResult.filteredRecipes.map(r => r.id))
     const recipesForGeneration = recipes.filter(r => filteredRecipeIds.has(r.id))
 
-    console.log(`🍽️ Using ${recipesForGeneration.length}/${recipes.length} recipes after macro filtering`)
+    // Log filtering results right after "Data fetched" for visibility
+    console.log(`🍽️ Macro filter: ${recipesForGeneration.length}/${recipes.length} recipes kept (${filterResult.removedRecipes.length} filtered out)`)
 
     // Build filtering summary to include in AI prompt (if recipes were filtered)
     const filteringSummary = buildFilteringSummary(filterResult)

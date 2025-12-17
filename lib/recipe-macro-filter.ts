@@ -12,6 +12,9 @@ const MEAL_PERCENTAGES = {
   snack: 0.20 // Combined for all snack types
 } as const
 
+// Filter tolerance - stricter than validation to give AI room to work
+const FILTER_TOLERANCE = 0.20 // ±20%
+
 /**
  * Recipe interface for filtering - minimal fields needed
  */
@@ -26,12 +29,13 @@ export interface RecipeForFilter {
 }
 
 /**
- * Per-meal type calorie range
+ * Per-meal type macro range
  */
-export interface MealTypeCalorieRange {
-  min: number
-  max: number
-  target: number
+export interface MealTypeMacroRange {
+  calories: { min: number; max: number; target: number }
+  protein: { min: number; max: number; target: number }
+  carbs: { min: number; max: number; target: number }
+  fat: { min: number; max: number; target: number }
   mealType: string
 }
 
@@ -49,45 +53,57 @@ export interface MacroFilterResult {
     canMeetTargets: boolean
     issues: string[]
   }
-  mealTypeRanges: Record<string, MealTypeCalorieRange>
+  mealTypeRanges: Record<string, MealTypeMacroRange>
 }
 
 /**
- * Get tolerance percentage based on macro mode
+ * Daily macro targets interface
  */
-function getToleranceForMacroMode(macroMode: MacroMode): number {
-  switch (macroMode) {
-    case 'strict':
-      return 0.05 // ±5%
-    case 'balanced':
-      return 0.10 // ±10%
-    case 'weekday_discipline':
-      return 0.10 // Use average
-    case 'calorie_banking':
-      return 0.15
-    default:
-      return 0.10
-  }
+export interface DailyMacroTargets {
+  calories: number
+  protein: number
+  carbs: number
+  fat: number
 }
 
 /**
- * Calculate per-meal calorie ranges based on daily target and macro mode
+ * Calculate per-meal macro ranges based on daily targets
+ * Uses fixed ±20% tolerance for filtering
  */
-export function calculateMealTypeCalorieRanges(
-  dailyCalorieTarget: number,
-  macroMode: MacroMode
-): Record<string, MealTypeCalorieRange> {
-  const tolerance = getToleranceForMacroMode(macroMode)
-
-  const ranges: Record<string, MealTypeCalorieRange> = {}
+export function calculateMealTypeMacroRanges(
+  dailyTargets: DailyMacroTargets
+): Record<string, MealTypeMacroRange> {
+  const ranges: Record<string, MealTypeMacroRange> = {}
 
   Object.entries(MEAL_PERCENTAGES).forEach(([mealType, percentage]) => {
-    const target = Math.round(dailyCalorieTarget * percentage)
-    // Apply tolerance to get min/max
-    const min = Math.round(target * (1 - tolerance))
-    const max = Math.round(target * (1 + tolerance))
+    const calorieTarget = Math.round(dailyTargets.calories * percentage)
+    const proteinTarget = Math.round(dailyTargets.protein * percentage)
+    const carbsTarget = Math.round(dailyTargets.carbs * percentage)
+    const fatTarget = Math.round(dailyTargets.fat * percentage)
 
-    ranges[mealType] = { min, max, target, mealType }
+    ranges[mealType] = {
+      calories: {
+        min: Math.round(calorieTarget * (1 - FILTER_TOLERANCE)),
+        max: Math.round(calorieTarget * (1 + FILTER_TOLERANCE)),
+        target: calorieTarget
+      },
+      protein: {
+        min: Math.round(proteinTarget * (1 - FILTER_TOLERANCE)),
+        max: Math.round(proteinTarget * (1 + FILTER_TOLERANCE)),
+        target: proteinTarget
+      },
+      carbs: {
+        min: Math.round(carbsTarget * (1 - FILTER_TOLERANCE)),
+        max: Math.round(carbsTarget * (1 + FILTER_TOLERANCE)),
+        target: carbsTarget
+      },
+      fat: {
+        min: Math.round(fatTarget * (1 - FILTER_TOLERANCE)),
+        max: Math.round(fatTarget * (1 + FILTER_TOLERANCE)),
+        target: fatTarget
+      },
+      mealType
+    }
   })
 
   return ranges
@@ -125,53 +141,52 @@ export function isMacrosHighPriority(priorityOrder: string[]): boolean {
 }
 
 /**
- * Check if a recipe's calories fit within a meal type's calorie range
- * Returns true if recipe fits, or if recipe has no calorie data (we give benefit of doubt)
+ * Check if a recipe's macros fit within a meal type's ranges
+ * Returns fit status and reasons for any failures
+ *
+ * Logic:
+ * - If recipe has NO nutrition data at all, allow it (AI will handle)
+ * - If recipe has data, check each macro against ±20% tolerance
+ * - Recipe is rejected only if it EXCEEDS max on any macro (too high is problematic)
+ * - Being below min is OK (can use larger portions or supplement)
  */
-function recipeCaloriesFitRange(
+function recipeMacrosFitRange(
   recipe: RecipeForFilter,
-  range: MealTypeCalorieRange
-): { fits: boolean; reason?: string } {
-  // No calorie data - allow it (AI will handle)
-  if (!recipe.caloriesPerServing) {
-    return { fits: true }
+  range: MealTypeMacroRange
+): { fits: boolean; reasons: string[] } {
+  const reasons: string[] = []
+
+  // No nutrition data at all - allow it (AI will handle)
+  const hasAnyNutrition = recipe.caloriesPerServing || recipe.proteinPerServing ||
+                          recipe.carbsPerServing || recipe.fatPerServing
+  if (!hasAnyNutrition) {
+    return { fits: true, reasons: [] }
   }
 
-  const calories = recipe.caloriesPerServing
-
-  // Check if within range
-  if (calories >= range.min && calories <= range.max) {
-    return { fits: true }
+  // Check calories (if present)
+  if (recipe.caloriesPerServing && recipe.caloriesPerServing > range.calories.max) {
+    reasons.push(`${recipe.caloriesPerServing} cal > ${range.calories.max} cal max`)
   }
 
-  // Too low - but we're more lenient on low calorie recipes
-  // User can have multiple servings to meet targets
-  if (calories < range.min) {
-    // Only reject if recipe is drastically low (< 50% of min)
-    if (calories < range.min * 0.5) {
-      return {
-        fits: false,
-        reason: `${calories} cal is too low for ${range.mealType} (min ${range.min} cal)`
-      }
-    }
-    return { fits: true } // Allow slightly low - can use larger portions
+  // Check protein (if present) - only reject if way over (protein high is usually OK)
+  if (recipe.proteinPerServing && recipe.proteinPerServing > range.protein.max * 1.5) {
+    reasons.push(`${recipe.proteinPerServing}g protein > ${Math.round(range.protein.max * 1.5)}g max`)
   }
 
-  // Too high - this is the main concern
-  // A 1200 cal recipe for a 500 cal lunch slot will blow targets
-  if (calories > range.max) {
-    // If over by more than 50%, definitely reject
-    if (calories > range.max * 1.5) {
-      return {
-        fits: false,
-        reason: `${calories} cal exceeds ${range.mealType} max of ${range.max} cal by >50%`
-      }
-    }
-    // If over by 20-50%, warn but allow (AI might use smaller portions)
-    return { fits: true }
+  // Check carbs (if present)
+  if (recipe.carbsPerServing && recipe.carbsPerServing > range.carbs.max) {
+    reasons.push(`${recipe.carbsPerServing}g carbs > ${range.carbs.max}g max`)
   }
 
-  return { fits: true }
+  // Check fat (if present)
+  if (recipe.fatPerServing && recipe.fatPerServing > range.fat.max) {
+    reasons.push(`${recipe.fatPerServing}g fat > ${range.fat.max}g max`)
+  }
+
+  return {
+    fits: reasons.length === 0,
+    reasons
+  }
 }
 
 /**
@@ -179,8 +194,8 @@ function recipeCaloriesFitRange(
  * Only filters when macros is top-3 priority
  *
  * @param recipes - All available recipes
- * @param dailyCalorieTarget - Average daily calorie target (weighted across profiles)
- * @param macroMode - The macro tracking mode
+ * @param dailyTargets - Daily macro targets (calories, protein, carbs, fat)
+ * @param macroMode - The macro tracking mode (used for logging, not tolerance)
  * @param priorityOrder - User's priority ordering
  * @returns Filtered recipes and feasibility report
  */
@@ -188,7 +203,10 @@ export function filterRecipesForMacroFeasibility(
   recipes: RecipeForFilter[],
   dailyCalorieTarget: number,
   macroMode: MacroMode,
-  priorityOrder: string[]
+  priorityOrder: string[],
+  dailyProteinTarget: number = 0,
+  dailyCarbsTarget: number = 0,
+  dailyFatTarget: number = 0
 ): MacroFilterResult {
   // Check if macros is high priority - if not, return all recipes
   if (!isMacrosHighPriority(priorityOrder)) {
@@ -204,7 +222,7 @@ export function filterRecipesForMacroFeasibility(
         canMeetTargets: true,
         issues: []
       },
-      mealTypeRanges: calculateMealTypeCalorieRanges(dailyCalorieTarget, macroMode)
+      mealTypeRanges: {}
     }
   }
 
@@ -226,19 +244,26 @@ export function filterRecipesForMacroFeasibility(
     }
   }
 
-  console.log(`🍽️ Macro filtering ACTIVE - daily target: ${dailyCalorieTarget} cal, mode: ${macroMode}`)
+  const dailyTargets: DailyMacroTargets = {
+    calories: dailyCalorieTarget,
+    protein: dailyProteinTarget,
+    carbs: dailyCarbsTarget,
+    fat: dailyFatTarget
+  }
 
-  // Calculate per-meal calorie ranges
-  const ranges = calculateMealTypeCalorieRanges(dailyCalorieTarget, macroMode)
+  console.log(`🍽️ Macro filtering ACTIVE (±${FILTER_TOLERANCE * 100}% tolerance)`)
+  console.log(`   Daily targets: ${dailyTargets.calories} cal, ${dailyTargets.protein}g protein, ${dailyTargets.carbs}g carbs, ${dailyTargets.fat}g fat`)
 
-  console.log('📊 Per-meal calorie ranges:')
+  // Calculate per-meal macro ranges
+  const ranges = calculateMealTypeMacroRanges(dailyTargets)
+
+  console.log('📊 Per-meal macro ranges:')
   Object.entries(ranges).forEach(([mealType, range]) => {
-    console.log(`   ${mealType}: ${range.min}-${range.max} cal (target: ${range.target})`)
+    console.log(`   ${mealType}: ${range.calories.min}-${range.calories.max} cal, ${range.protein.min}-${range.protein.max}g P, ${range.carbs.min}-${range.carbs.max}g C, ${range.fat.min}-${range.fat.max}g F`)
   })
 
   const filteredRecipes: RecipeForFilter[] = []
   const removedRecipes: RecipeForFilter[] = []
-  const removalReasons: Map<string, string[]> = new Map()
 
   // Filter each recipe
   recipes.forEach(recipe => {
@@ -252,7 +277,7 @@ export function filterRecipesForMacroFeasibility(
 
     // Check if recipe fits ANY of its meal categories
     let fitsAnyCategory = false
-    const failedCategories: string[] = []
+    const allFailedReasons: string[] = []
 
     mealCategories.forEach(category => {
       const range = ranges[category]
@@ -261,11 +286,11 @@ export function filterRecipesForMacroFeasibility(
         return
       }
 
-      const result = recipeCaloriesFitRange(recipe, range)
+      const result = recipeMacrosFitRange(recipe, range)
       if (result.fits) {
         fitsAnyCategory = true
       } else {
-        failedCategories.push(result.reason || `Doesn't fit ${category}`)
+        allFailedReasons.push(`${category}: ${result.reasons.join(', ')}`)
       }
     })
 
@@ -273,8 +298,7 @@ export function filterRecipesForMacroFeasibility(
       filteredRecipes.push(recipe)
     } else {
       removedRecipes.push(recipe)
-      removalReasons.set(recipe.id, failedCategories)
-      console.log(`   ❌ Removed "${recipe.recipeName}": ${failedCategories.join(', ')}`)
+      console.log(`   ❌ Filtered: "${recipe.recipeName}" - ${allFailedReasons.join('; ')}`)
     }
   })
 
@@ -289,25 +313,25 @@ export function filterRecipesForMacroFeasibility(
   const MIN_OPTIONS = 3 // Need at least 3 recipes per meal type for variety
 
   if (breakfastOptions < MIN_OPTIONS) {
-    issues.push(`Only ${breakfastOptions} breakfast recipe(s) fit calorie targets - need at least ${MIN_OPTIONS} for variety`)
+    issues.push(`Only ${breakfastOptions} breakfast recipe(s) fit macro targets - need at least ${MIN_OPTIONS} for variety`)
   }
   if (lunchOptions < MIN_OPTIONS) {
-    issues.push(`Only ${lunchOptions} lunch recipe(s) fit calorie targets - need at least ${MIN_OPTIONS} for variety`)
+    issues.push(`Only ${lunchOptions} lunch recipe(s) fit macro targets - need at least ${MIN_OPTIONS} for variety`)
   }
   if (dinnerOptions < MIN_OPTIONS) {
-    issues.push(`Only ${dinnerOptions} dinner recipe(s) fit calorie targets - need at least ${MIN_OPTIONS} for variety`)
+    issues.push(`Only ${dinnerOptions} dinner recipe(s) fit macro targets - need at least ${MIN_OPTIONS} for variety`)
   }
   // Snacks are optional, so only warn if we had snacks before but filtered them all out
   const hadSnacks = recipes.some(r => getMealCategories(r.mealType).includes('snack'))
   if (hadSnacks && snackOptions === 0) {
-    issues.push(`All snack recipes filtered out - consider adding snacks that fit ${ranges.snack?.min}-${ranges.snack?.max} cal`)
+    issues.push(`All snack recipes filtered out - consider adding snacks that fit targets`)
   }
 
   // Determine if we can meet targets
   const canMeetTargets = breakfastOptions >= 1 && lunchOptions >= 1 && dinnerOptions >= 1
 
   console.log(`🍽️ Macro filtering complete:`)
-  console.log(`   Kept: ${filteredRecipes.length}/${recipes.length} recipes`)
+  console.log(`   Kept: ${filteredRecipes.length}/${recipes.length} recipes (filtered out ${removedRecipes.length})`)
   console.log(`   Breakfast: ${breakfastOptions}, Lunch: ${lunchOptions}, Dinner: ${dinnerOptions}, Snack: ${snackOptions}`)
   if (issues.length > 0) {
     console.log('   ⚠️ Issues:')
@@ -348,8 +372,44 @@ export function filterRecipesForMacroFeasibility(
 }
 
 /**
- * Calculate weighted average daily calorie target across all profiles
+ * Calculate weighted average daily macro targets across all profiles
  * Weight by macro tracking being enabled
+ */
+export function calculateAverageDailyMacros(
+  profiles: Array<{
+    macroTrackingEnabled: boolean
+    dailyCalorieTarget?: number | null
+    dailyProteinTarget?: number | null
+    dailyCarbsTarget?: number | null
+    dailyFatTarget?: number | null
+  }>
+): DailyMacroTargets {
+  const trackingProfiles = profiles.filter(p => p.macroTrackingEnabled && p.dailyCalorieTarget)
+
+  if (trackingProfiles.length === 0) {
+    return { calories: 0, protein: 0, carbs: 0, fat: 0 }
+  }
+
+  const totals = trackingProfiles.reduce(
+    (acc, p) => ({
+      calories: acc.calories + (p.dailyCalorieTarget || 0),
+      protein: acc.protein + (p.dailyProteinTarget || 0),
+      carbs: acc.carbs + (p.dailyCarbsTarget || 0),
+      fat: acc.fat + (p.dailyFatTarget || 0)
+    }),
+    { calories: 0, protein: 0, carbs: 0, fat: 0 }
+  )
+
+  return {
+    calories: Math.round(totals.calories / trackingProfiles.length),
+    protein: Math.round(totals.protein / trackingProfiles.length),
+    carbs: Math.round(totals.carbs / trackingProfiles.length),
+    fat: Math.round(totals.fat / trackingProfiles.length)
+  }
+}
+
+/**
+ * Legacy function - kept for backward compatibility
  */
 export function calculateAverageDailyCalories(
   profiles: Array<{
@@ -357,14 +417,7 @@ export function calculateAverageDailyCalories(
     dailyCalorieTarget?: number | null
   }>
 ): number {
-  const trackingProfiles = profiles.filter(p => p.macroTrackingEnabled && p.dailyCalorieTarget)
-
-  if (trackingProfiles.length === 0) {
-    return 0 // No targets set
-  }
-
-  const total = trackingProfiles.reduce((sum, p) => sum + (p.dailyCalorieTarget || 0), 0)
-  return Math.round(total / trackingProfiles.length)
+  return calculateAverageDailyMacros(profiles as any).calories
 }
 
 /**
@@ -378,11 +431,16 @@ export function buildFilteringSummary(result: MacroFilterResult): string {
   const lines: string[] = [
     '',
     '## Pre-Filtered Recipes',
-    `The following ${result.removedRecipes.length} recipe(s) were pre-filtered because their calories don't fit the target ranges:`,
+    `${result.removedRecipes.length} recipe(s) were pre-filtered because their macros exceed the ±20% tolerance for their meal types:`,
   ]
 
   result.removedRecipes.slice(0, 10).forEach(r => {
-    lines.push(`- "${r.recipeName}" (${r.caloriesPerServing || 'unknown'} cal/serving)`)
+    const macros = []
+    if (r.caloriesPerServing) macros.push(`${r.caloriesPerServing} cal`)
+    if (r.proteinPerServing) macros.push(`${r.proteinPerServing}g P`)
+    if (r.carbsPerServing) macros.push(`${r.carbsPerServing}g C`)
+    if (r.fatPerServing) macros.push(`${r.fatPerServing}g F`)
+    lines.push(`- "${r.recipeName}" (${macros.join(', ') || 'no data'})`)
   })
 
   if (result.removedRecipes.length > 10) {
@@ -390,9 +448,9 @@ export function buildFilteringSummary(result: MacroFilterResult): string {
   }
 
   lines.push('')
-  lines.push('The remaining recipes should allow you to meet macro targets. Focus on:')
+  lines.push('The remaining recipes should allow you to meet macro targets. Per-meal targets:')
   Object.entries(result.mealTypeRanges).forEach(([mealType, range]) => {
-    lines.push(`- ${mealType}: aim for ${range.min}-${range.max} cal per serving`)
+    lines.push(`- ${mealType}: ${range.calories.min}-${range.calories.max} cal, ${range.protein.min}-${range.protein.max}g P, ${range.carbs.min}-${range.carbs.max}g C, ${range.fat.min}-${range.fat.max}g F`)
   })
 
   return lines.join('\n')
