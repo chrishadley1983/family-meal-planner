@@ -146,6 +146,20 @@ export default function ViewRecipePage({ params }: RecipePageProps) {
       return
     }
 
+    // Diagnostic logging for nutrition calculation issue
+    console.log('🔍 DIAGNOSTIC - recipeData being sent to analyze-macros:', {
+      servings: recipeData.servings,
+      servingsType: typeof recipeData.servings,
+      ingredientCount: recipeData.ingredients?.length,
+      ingredients: recipeData.ingredients?.map((ing: any) => ({
+        name: ing.ingredientName,
+        quantity: ing.quantity,
+        unit: ing.unit,
+        isProduct: ing.isProduct,
+        productId: ing.productId
+      }))
+    })
+
     console.log('✅ Starting AI analysis...')
     setLoadingAI(true)
     startLoading('Analyzing nutritional information...')

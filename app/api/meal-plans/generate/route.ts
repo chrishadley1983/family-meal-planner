@@ -313,6 +313,33 @@ export async function POST(req: NextRequest) {
       }))
     )
 
+    // Detect if snacks are in the schedule (Option B1)
+    // When snacks are present, B+L+D ranges are scaled to 80%
+    let hasSnacksInPlan = false
+    if (weekProfileSchedules && Array.isArray(weekProfileSchedules)) {
+      hasSnacksInPlan = weekProfileSchedules.some((schedule: any) => {
+        if (!schedule.dailyMeals) return false
+        return Object.values(schedule.dailyMeals).some((dayMeals: any) => {
+          if (!dayMeals) return false
+          return Object.keys(dayMeals).some(mealType =>
+            mealType.toLowerCase().includes('snack') || mealType.toLowerCase() === 'dessert'
+          )
+        })
+      })
+    }
+    if (hasSnacksInPlan) {
+      console.log('🍫 Snacks/desserts detected in schedule - B+L+D macro ranges will be scaled to 80%')
+    }
+
+    // Build Set of product recipe IDs for batch cooking validation exemption (Option C1)
+    // Product-based recipes (e.g., protein bars) are grabbed from pantry, not batch cooked
+    const productRecipeIds = new Set<string>(
+      recipes.filter(r => r.isProductRecipe).map(r => r.id)
+    )
+    if (productRecipeIds.size > 0) {
+      console.log(`📦 Found ${productRecipeIds.size} product-based recipes (exempt from batch cooking validation)`)
+    }
+
     const recipesForFilter: RecipeForFilter[] = recipes.map(r => ({
       id: r.id,
       recipeName: r.recipeName,
@@ -330,7 +357,8 @@ export async function POST(req: NextRequest) {
       settings.priorityOrder,
       avgDailyMacros.protein,
       avgDailyMacros.carbs,
-      avgDailyMacros.fat
+      avgDailyMacros.fat,
+      hasSnacksInPlan // Pass snack detection for 80% scaling
     )
 
     // Use filtered recipes for generation (or all if filtering was skipped/degraded)
@@ -406,6 +434,7 @@ export async function POST(req: NextRequest) {
           {
             allowDinnerForLunch: quickOptions?.allowDinnerForLunch ?? true, // Default to true
             skipBatchCookingForMealTypes, // Skip batch cooking validation for meal types where user requested repetition
+            productRecipeIds, // Option C1: Skip batch cooking validation for product-based recipes
             // Pass profiles and recipes for macro validation
             profiles: profiles.map((p) => ({
               macroTrackingEnabled: p.macroTrackingEnabled,

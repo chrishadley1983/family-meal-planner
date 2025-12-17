@@ -195,17 +195,20 @@ export function validateCooldowns(
  * Validate batch cooking setup
  * Ensures isLeftover flags are correct, chronological order is maintained, and servings match
  * @param skipForMealTypes - Meal types where repeated recipes are allowed without batch cooking (e.g., user requested "porridge every day")
+ * @param productRecipeIds - Recipe IDs that are product-based (grabbed from pantry, not batch cooked)
  */
 export function validateBatchCooking(
   meals: GeneratedMeal[],
   weekStartDate: string,
-  skipForMealTypes?: string[]
+  skipForMealTypes?: string[],
+  productRecipeIds?: Set<string>
 ): ValidationResult {
   const errors: string[] = []
   const warnings: string[] = []
 
   // Debug: Log what skipForMealTypes was passed
   console.log('🔍 validateBatchCooking - skipForMealTypes:', skipForMealTypes || 'EMPTY/UNDEFINED')
+  console.log('🔍 validateBatchCooking - productRecipeIds:', productRecipeIds?.size || 0, 'product recipes')
 
   // Group meals by recipe to find potential batch cooking scenarios
   const recipeGroups = new Map<string, GeneratedMeal[]>()
@@ -223,6 +226,13 @@ export function validateBatchCooking(
   // Check each recipe group
   recipeGroups.forEach((groupMeals, recipeId) => {
     if (groupMeals.length <= 1) return // Single usage, no batch cooking needed
+
+    // Option C1: Skip batch cooking validation for product-based recipes
+    // Products (e.g., protein bars) are grabbed from pantry, not batch cooked
+    if (productRecipeIds?.has(recipeId)) {
+      console.log(`   ✅ Skipping batch cooking validation for product recipe: ${groupMeals[0].recipeName}`)
+      return
+    }
 
     // Debug: Log the recipe being checked and its meal types
     const mealTypesInGroup = groupMeals.map(m => m.mealType)
@@ -370,18 +380,12 @@ export function getToleranceForMacroMode(macroMode: MacroMode, dayOfWeek?: strin
 
 /**
  * Calculate plan coverage percentage based on which meal types are in the plan
- * Fixed percentages: Breakfast 25%, Lunch 35%, Dinner 40%, Snacks 20%
+ *
+ * When snacks/desserts are present, main meals are scaled to 80%:
+ * - Without snacks: B:25% + L:35% + D:40% = 100%
+ * - With snacks: B:20% + L:28% + D:32% + S:20% = 100%
  */
 function calculatePlanCoverage(meals: GeneratedMeal[]): number {
-  const MEAL_PERCENTAGES: Record<string, number> = {
-    breakfast: 25,
-    lunch: 35,
-    dinner: 40,
-    'morning-snack': 6.67,      // Snacks share 20% (split evenly if multiple snack types)
-    'afternoon-snack': 6.67,
-    dessert: 6.67
-  }
-
   // Find unique meal types in the plan (across all 7 days)
   const mealTypesInPlan = new Set<string>()
   meals.forEach(meal => {
@@ -395,14 +399,17 @@ function calculatePlanCoverage(meals: GeneratedMeal[]): number {
     mt.includes('snack') || mt === 'dessert'
   )
 
-  // Calculate total coverage
-  let coverage = 0
-  if (mealTypesInPlan.has('breakfast')) coverage += 25
-  if (mealTypesInPlan.has('lunch')) coverage += 35
-  if (mealTypesInPlan.has('dinner')) coverage += 40
-  if (hasSnacks) coverage += 20 // All snacks together count as 20%
+  // When snacks are present, scale main meals to 80% so total = 100%
+  const scaleFactor = hasSnacks ? 0.80 : 1.0
 
-  return coverage
+  // Calculate total coverage with scaling
+  let coverage = 0
+  if (mealTypesInPlan.has('breakfast')) coverage += 25 * scaleFactor  // 25% or 20%
+  if (mealTypesInPlan.has('lunch')) coverage += 35 * scaleFactor      // 35% or 28%
+  if (mealTypesInPlan.has('dinner')) coverage += 40 * scaleFactor     // 40% or 32%
+  if (hasSnacks) coverage += 20 // Snacks always 20%
+
+  return Math.round(coverage)
 }
 
 /**
@@ -546,17 +553,18 @@ export function validateMacros(
     }
   }
 
-  // Validate protein
+  // Validate protein - Option D1: Make failure a WARNING not an error
+  // Protein targets are aspirational - low protein shouldn't block plan generation
   if (dailyProteinTarget > 0) {
     const proteinMin = dailyProteinTarget * (1 - tolerance)
     const proteinMax = dailyProteinTarget * (1 + tolerance)
     const proteinDeviation = Math.round(((dailyAvgProtein - dailyProteinTarget) / dailyProteinTarget) * 100)
 
     if (dailyAvgProtein < proteinMin) {
-      errors.push(
-        `Protein target not met: averaging ${dailyAvgProtein}g/day (${proteinDeviation}% below target of ${dailyProteinTarget}g). ` +
-        `Allowed range: ${Math.round(proteinMin)}-${Math.round(proteinMax)}g/day. ` +
-        `Select protein-rich recipes to meet target.`
+      // Changed from errors.push to warnings.push - protein below target is a warning, not an error
+      warnings.push(
+        `Protein below target: averaging ${dailyAvgProtein}g/day (${proteinDeviation}% below target of ${dailyProteinTarget}g). ` +
+        `Consider selecting more protein-rich recipes.`
       )
     } else if (dailyAvgProtein > proteinMax) {
       warnings.push(
@@ -695,6 +703,7 @@ export interface ValidationOptions {
   skipBatchCookingForMealTypes?: string[] // Meal types where repeated recipes are OK without batch cooking
   profiles?: MacroProfile[] // Profiles for macro validation
   recipesWithNutrition?: RecipeWithNutrition[] // Recipes with nutrition data for macro validation
+  productRecipeIds?: Set<string> // Recipe IDs that are product-based (skip batch cooking validation)
 }
 
 /**
@@ -713,12 +722,14 @@ export function validateMealPlan(
     allowDinnerForLunch: options?.allowDinnerForLunch,
     skipBatchCookingForMealTypes: options?.skipBatchCookingForMealTypes,
     hasProfiles: !!options?.profiles?.length,
-    hasRecipesWithNutrition: !!options?.recipesWithNutrition?.length
+    hasRecipesWithNutrition: !!options?.recipesWithNutrition?.length,
+    productRecipeIdsCount: options?.productRecipeIds?.size || 0
   }))
   console.log('🔍 skipBatchCookingForMealTypes:', options?.skipBatchCookingForMealTypes || 'EMPTY/UNDEFINED')
+  console.log('🔍 productRecipeIds:', options?.productRecipeIds?.size || 0, 'product recipes')
 
   const cooldownResult = validateCooldowns(meals, settings, weekStartDate, recipeHistory)
-  const batchCookingResult = validateBatchCooking(meals, weekStartDate, options?.skipBatchCookingForMealTypes)
+  const batchCookingResult = validateBatchCooking(meals, weekStartDate, options?.skipBatchCookingForMealTypes, options?.productRecipeIds)
 
   // Add meal type matching validation if recipes are provided
   let mealTypeResult: ValidationResult = { isValid: true, errors: [], warnings: [] }

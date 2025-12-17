@@ -32,7 +32,14 @@
       "Bash(taskkill:*)",
       "Bash(powershell -Command \"Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force\")",
       "Bash(npx prisma db pull:*)",
-      "Bash(npx prisma generate:*)"
+      "Bash(npx prisma generate:*)",
+      "Bash(git pull:*)",
+      "Bash(npx prisma db push:*)",
+      "Bash(timeout 10 npm run dev:*)",
+      "Bash(node test-cooldown-logic.js:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(npm run build:*)",
+      "Bash(ls:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

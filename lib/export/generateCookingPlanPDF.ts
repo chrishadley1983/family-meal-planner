@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf'
 import { format, parseISO, addDays } from 'date-fns'
+import { getWeekDaysWithDates } from '@/lib/date-utils'
 
 // Types for meal plan data
 interface Recipe {
@@ -55,7 +56,6 @@ const COLORS = {
   white: [255, 255, 255] as [number, number, number],
 }
 
-const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner']
 const MEAL_TYPE_LABELS: Record<string, string> = {
   breakfast: 'BREAKFAST',
@@ -162,10 +162,13 @@ export async function generateCookingPlanPDF(mealPlan: MealPlan): Promise<jsPDF>
     return false
   }
 
+  // Get week days with actual dates from start date
+  const weekDays = getWeekDaysWithDates(mealPlan.weekStartDate)
+
   // === DRAW DAY SECTION ===
-  function drawDaySection(dayIndex: number) {
-    const dayName = DAYS_OF_WEEK[dayIndex]
-    const dayDate = getDayDate(mealPlan.weekStartDate, dayIndex)
+  function drawDaySection(dayInfo: { day: string; date: Date }, dayIndex: number) {
+    const dayName = dayInfo.day
+    const dayDate = dayInfo.date
     const dayMeals = mealPlan.meals.filter((m: Meal) => m.dayOfWeek === dayName)
 
     // Get meals by type
@@ -261,37 +264,45 @@ export async function generateCookingPlanPDF(mealPlan: MealPlan): Promise<jsPDF>
 
       const isBatch = meal.notes && meal.notes.toLowerCase().includes('batch') && !meal.isLeftover
       const isReheat = meal.isLeftover
+      const hasBadge = isBatch || isReheat
+
+      // Calculate row height - taller if badge is present
+      const rowHeight = hasBadge ? 14 : tableRowHeight
 
       // Row background
       doc.setFillColor(...(rowIndex % 2 === 0 ? COLORS.rowBg : COLORS.rowAltBg))
-      doc.rect(sectionX, currentY, sectionWidth, tableRowHeight, 'F')
+      doc.rect(sectionX, currentY, sectionWidth, rowHeight, 'F')
 
       // Row border
       doc.setDrawColor(...COLORS.border)
       doc.setLineWidth(0.2)
-      doc.rect(sectionX, currentY, sectionWidth, tableRowHeight, 'S')
+      doc.rect(sectionX, currentY, sectionWidth, rowHeight, 'S')
 
       colX = sectionX + 3
 
-      // Meal type with badge
+      // Meal type label
       doc.setFontSize(7)
       doc.setFont('helvetica', 'bold')
       doc.setTextColor(...COLORS.textDark)
       doc.text(MEAL_TYPE_LABELS[mealType] || mealType.toUpperCase(), colX, currentY + 4)
 
-      // BATCH or REHEAT badge
+      // BATCH or REHEAT badge - using circle indicator + text instead of box with emoji
       if (isBatch) {
+        // Amber circle indicator
         doc.setFillColor(...COLORS.amber)
-        doc.roundedRect(colX, currentY + 5, 16, 4, 1, 1, 'F')
-        doc.setFontSize(5)
-        doc.setTextColor(...COLORS.white)
-        doc.text('⚡ BATCH', colX + 1, currentY + 8)
+        doc.circle(colX + 1.5, currentY + 8.5, 1.5, 'F')
+        doc.setFontSize(6)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(...COLORS.amber)
+        doc.text('BATCH', colX + 4, currentY + 9.5)
       } else if (isReheat) {
+        // Emerald circle indicator
         doc.setFillColor(...COLORS.emerald)
-        doc.roundedRect(colX, currentY + 5, 16, 4, 1, 1, 'F')
-        doc.setFontSize(5)
-        doc.setTextColor(...COLORS.white)
-        doc.text('🔄 REHEAT', colX + 0.5, currentY + 8)
+        doc.circle(colX + 1.5, currentY + 8.5, 1.5, 'F')
+        doc.setFontSize(6)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(...COLORS.emerald)
+        doc.text('REHEAT', colX + 4, currentY + 9.5)
       }
 
       colX += colWidths.meal
@@ -302,13 +313,13 @@ export async function generateCookingPlanPDF(mealPlan: MealPlan): Promise<jsPDF>
       doc.setTextColor(...COLORS.textDark)
       const recipeName = meal.recipeName || ''
       const truncatedName = recipeName.length > 40 ? recipeName.substring(0, 37) + '...' : recipeName
-      doc.text(truncatedName, colX, currentY + 6)
+      doc.text(truncatedName, colX, currentY + (hasBadge ? 5 : 6))
 
       // Add batch note under recipe name if applicable
       if (isBatch && meal.notes) {
         doc.setFontSize(6)
         doc.setTextColor(...COLORS.textMedium)
-        const noteText = meal.notes.length > 50 ? meal.notes.substring(0, 47) + '...' : meal.notes
+        const noteText = meal.notes.length > 60 ? meal.notes.substring(0, 57) + '...' : meal.notes
         doc.text(noteText, colX, currentY + 9)
       }
 
@@ -317,19 +328,19 @@ export async function generateCookingPlanPDF(mealPlan: MealPlan): Promise<jsPDF>
       // Prep time
       doc.setFontSize(8)
       doc.setTextColor(...COLORS.textMedium)
-      const prepTime = isReheat ? '—' : formatTime(meal.recipe?.prepTime)
-      doc.text(prepTime, colX, currentY + 6)
+      const prepTime = isReheat ? '-' : formatTime(meal.recipe?.prepTime)
+      doc.text(prepTime, colX, currentY + (hasBadge ? 5 : 6))
       colX += colWidths.prep
 
       // Cook time
-      const cookTime = isReheat ? '10 min' : formatTime(meal.recipe?.cookTime)
-      doc.text(cookTime, colX, currentY + 6)
+      const cookTime = isReheat ? '10m' : formatTime(meal.recipe?.cookTime)
+      doc.text(cookTime, colX, currentY + (hasBadge ? 5 : 6))
       colX += colWidths.cook
 
       // Servings
-      doc.text(meal.servings?.toString() || '—', colX + 5, currentY + 6)
+      doc.text(meal.servings?.toString() || '-', colX + 5, currentY + (hasBadge ? 5 : 6))
 
-      currentY += tableRowHeight
+      currentY += rowHeight
       rowIndex++
     }
 
@@ -348,7 +359,7 @@ export async function generateCookingPlanPDF(mealPlan: MealPlan): Promise<jsPDF>
     // Look for prep ahead tasks in ALL meals for future days
     const futurePrepTasks = mealPlan.meals.filter((m: Meal) => {
       if (!m.notes) return false
-      const dayIdx = DAYS_OF_WEEK.indexOf(m.dayOfWeek)
+      const dayIdx = weekDays.findIndex(d => d.day === m.dayOfWeek)
       // Check if this meal's notes mention prep for a future day
       return dayIdx > dayIndex && m.notes.toLowerCase().includes('prep')
     })
@@ -396,10 +407,10 @@ export async function generateCookingPlanPDF(mealPlan: MealPlan): Promise<jsPDF>
   // === MAIN RENDERING ===
   drawHeader()
 
-  // Draw each day
-  for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
-    drawDaySection(dayIndex)
-  }
+  // Draw each day using the actual week days from the start date
+  weekDays.forEach((dayInfo, dayIndex) => {
+    drawDaySection(dayInfo, dayIndex)
+  })
 
   console.log('🟢 Cooking Plan PDF generated successfully')
   return doc

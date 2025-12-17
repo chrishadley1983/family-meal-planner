@@ -727,6 +727,7 @@ model Product {
   saturatedFatPerServing Float?
   sodiumPerServing       Float?
   servingSize            String?
+  servingsPerPackage     Int?               @default(1)
   isSnack                Boolean            @default(false)
   isActive               Boolean            @default(true)
   familyRating           Int?

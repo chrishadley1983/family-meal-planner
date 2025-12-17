@@ -549,36 +549,41 @@ function buildBudgetsFromCounts(
   const hasDinner = mealCounts.dinner >= 4
   const hasSnacks = mealCounts.snack >= 4
 
-  // Calculate budgets - each meal keeps its FIXED percentage
-  // If a meal isn't in the plan, its budget is null (user eats outside the plan)
+  // When snacks/desserts are present, scale B+L+D down to 80% so total = 100%
+  // Without snacks: B:25% + L:35% + D:40% = 100%
+  // With snacks: B:20% + L:28% + D:32% + S:20% = 100%
+  const scaleFactor = hasSnacks ? 0.80 : 1.0
+
+  // Calculate budgets - scale main meals when snacks are present
   const budgets: MealBudgets = {
-    breakfast: hasBreakfast ? Math.round(dailyCalories * FIXED_PERCENTAGES.breakfast) : null,
-    lunch: hasLunch ? Math.round(dailyCalories * FIXED_PERCENTAGES.lunch) : null,
-    dinner: hasDinner ? Math.round(dailyCalories * FIXED_PERCENTAGES.dinner) : null,
+    breakfast: hasBreakfast ? Math.round(dailyCalories * FIXED_PERCENTAGES.breakfast * scaleFactor) : null,
+    lunch: hasLunch ? Math.round(dailyCalories * FIXED_PERCENTAGES.lunch * scaleFactor) : null,
+    dinner: hasDinner ? Math.round(dailyCalories * FIXED_PERCENTAGES.dinner * scaleFactor) : null,
     snacks: hasSnacks ? Math.round(dailyCalories * FIXED_PERCENTAGES.snacks) : null,
     totalPlanPercent: 0,
     explanation: ''
   }
 
   // Calculate what % of daily calories the plan covers
+  // With snacks: (25+35+40)*0.8 + 20 = 80 + 20 = 100%
   let totalPercent = 0
-  if (hasBreakfast) totalPercent += FIXED_PERCENTAGES.breakfast * 100
-  if (hasLunch) totalPercent += FIXED_PERCENTAGES.lunch * 100
-  if (hasDinner) totalPercent += FIXED_PERCENTAGES.dinner * 100
+  if (hasBreakfast) totalPercent += FIXED_PERCENTAGES.breakfast * 100 * scaleFactor
+  if (hasLunch) totalPercent += FIXED_PERCENTAGES.lunch * 100 * scaleFactor
+  if (hasDinner) totalPercent += FIXED_PERCENTAGES.dinner * 100 * scaleFactor
   if (hasSnacks) totalPercent += FIXED_PERCENTAGES.snacks * 100
   budgets.totalPlanPercent = Math.round(totalPercent)
 
-  // Build explanation
+  // Build explanation with actual percentages
   const percentages: string[] = []
-  if (hasBreakfast) percentages.push('B:25%')
-  if (hasLunch) percentages.push('L:35%')
-  if (hasDinner) percentages.push('D:40%')
-  if (hasSnacks) percentages.push('S:20%')
+  if (hasBreakfast) percentages.push(`B:${Math.round(FIXED_PERCENTAGES.breakfast * 100 * scaleFactor)}%`)
+  if (hasLunch) percentages.push(`L:${Math.round(FIXED_PERCENTAGES.lunch * 100 * scaleFactor)}%`)
+  if (hasDinner) percentages.push(`D:${Math.round(FIXED_PERCENTAGES.dinner * 100 * scaleFactor)}%`)
+  if (hasSnacks) percentages.push(`S:${Math.round(FIXED_PERCENTAGES.snacks * 100)}%`)
 
-  if (budgets.totalPlanPercent === 100) {
+  if (budgets.totalPlanPercent === 100 && !hasSnacks) {
     budgets.explanation = `Full plan (${percentages.join(', ')}) = 100% of daily target`
-  } else if (budgets.totalPlanPercent === 120) {
-    budgets.explanation = `Full plan with snacks (${percentages.join(', ')}) = 120% of daily target`
+  } else if (budgets.totalPlanPercent === 100 && hasSnacks) {
+    budgets.explanation = `Full plan with snacks (${percentages.join(', ')}) = 100% of daily target (main meals scaled to 80%)`
   } else if (budgets.totalPlanPercent === 0) {
     // This shouldn't happen after our fixes, but if it does, default to 100%
     budgets.totalPlanPercent = 100

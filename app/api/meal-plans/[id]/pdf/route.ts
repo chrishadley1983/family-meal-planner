@@ -3,7 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import jsPDF from 'jspdf'
-import { format, parseISO, addDays } from 'date-fns'
+import { format } from 'date-fns'
+import { getWeekDaysWithDates } from '@/lib/date-utils'
 
 // Brand colors
 const BRAND_COLORS = {
@@ -18,22 +19,16 @@ const BRAND_COLORS = {
   white: [255, 255, 255] as [number, number, number],
 }
 
-const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner']
 const MEAL_TYPE_LABELS: Record<string, string> = {
   breakfast: 'BREAKFAST',
   lunch: 'LUNCH',
   dinner: 'DINNER',
+  snack: 'SNACKS',
 }
 
-function getDayDate(weekStartDate: string | Date, dayIndex: number): Date {
-  const startDate = typeof weekStartDate === 'string' ? parseISO(weekStartDate) : new Date(weekStartDate)
-  return addDays(startDate, dayIndex)
-}
-
-function formatShortDate(date: Date): string {
-  return format(date, 'd MMM')
-}
+// Snack slot types to check for
+const SNACK_SLOTS = ['morning-snack', 'afternoon-snack', 'evening-snack']
 
 export async function GET(
   req: NextRequest,
@@ -47,7 +42,7 @@ export async function GET(
 
     const { id } = await params
 
-    // Fetch meal plan with meals
+    // Fetch meal plan with meals and products
     const mealPlan = await prisma.mealPlan.findFirst({
       where: {
         id,
@@ -62,6 +57,11 @@ export async function GET(
             { dayOfWeek: 'asc' },
             { mealType: 'asc' }
           ]
+        },
+        mealPlanProducts: {
+          include: {
+            product: true
+          }
         }
       }
     })
@@ -71,6 +71,9 @@ export async function GET(
     }
 
     console.log('🔷 Generating Meal Plan PDF for week:', mealPlan.weekStartDate)
+
+    // Get week days with actual dates from start date
+    const weekDays = getWeekDaysWithDates(mealPlan.weekStartDate)
 
     // Generate PDF
     const doc = new jsPDF({
@@ -100,7 +103,8 @@ export async function GET(
 
     // === WEEK TABLE ===
     const dayColumnWidth = tableWidth / 7
-    const mealTypeRowHeight = 28
+    const mealTypeRowHeight = 24
+    const snackRowHeight = 18
     const headerHeight = 14
 
     // Day headers
@@ -113,15 +117,15 @@ export async function GET(
 
     for (let i = 0; i < 7; i++) {
       const dayX = margin + i * dayColumnWidth
-      const dayDate = getDayDate(mealPlan.weekStartDate, i)
+      const dayInfo = weekDays[i]
 
       // Day name
-      doc.text(DAYS_OF_WEEK[i], dayX + dayColumnWidth / 2, currentY + 5, { align: 'center' })
+      doc.text(dayInfo.day, dayX + dayColumnWidth / 2, currentY + 5, { align: 'center' })
 
       // Date
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(8)
-      doc.text(formatShortDate(dayDate), dayX + dayColumnWidth / 2, currentY + 10, { align: 'center' })
+      doc.text(dayInfo.shortDate, dayX + dayColumnWidth / 2, currentY + 10, { align: 'center' })
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(9)
 
@@ -159,7 +163,7 @@ export async function GET(
 
       for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
         const dayX = margin + dayIndex * dayColumnWidth
-        const dayName = DAYS_OF_WEEK[dayIndex]
+        const dayName = weekDays[dayIndex].day
 
         // Find meal for this day and meal type
         const meal = mealPlan.meals.find(
@@ -178,20 +182,24 @@ export async function GET(
           const cellWidth = dayColumnWidth - cellPadding * 2
           let textY = currentY + 4
 
-          // Batch cook / Reheat indicator
+          // Batch cook / Reheat indicator using circle + text (no emoji)
           if (meal.isLeftover) {
-            doc.setFontSize(5)
+            // Reheat indicator - emerald circle
             doc.setFillColor(...BRAND_COLORS.emerald)
-            doc.roundedRect(dayX + cellPadding, textY - 2.5, 8, 3, 0.5, 0.5, 'F')
-            doc.setTextColor(...BRAND_COLORS.white)
-            doc.text('[R]', dayX + cellPadding + 1, textY)
+            doc.circle(dayX + cellPadding + 1.5, textY - 1, 1.5, 'F')
+            doc.setFontSize(5)
+            doc.setFont('helvetica', 'bold')
+            doc.setTextColor(...BRAND_COLORS.emerald)
+            doc.text('REHEAT', dayX + cellPadding + 4, textY)
             textY += 4
           } else if (meal.notes && meal.notes.toLowerCase().includes('batch')) {
-            doc.setFontSize(5)
+            // Batch cook indicator - amber circle
             doc.setFillColor(...BRAND_COLORS.amber)
-            doc.roundedRect(dayX + cellPadding, textY - 2.5, 8, 3, 0.5, 0.5, 'F')
-            doc.setTextColor(...BRAND_COLORS.white)
-            doc.text('[B]', dayX + cellPadding + 1, textY)
+            doc.circle(dayX + cellPadding + 1.5, textY - 1, 1.5, 'F')
+            doc.setFontSize(5)
+            doc.setFont('helvetica', 'bold')
+            doc.setTextColor(...BRAND_COLORS.amber)
+            doc.text('BATCH', dayX + cellPadding + 4, textY)
             textY += 4
           }
 
@@ -201,7 +209,7 @@ export async function GET(
           doc.setTextColor(...BRAND_COLORS.black)
 
           const lines = doc.splitTextToSize(meal.recipeName, cellWidth)
-          for (let lineIndex = 0; lineIndex < Math.min(lines.length, 3); lineIndex++) {
+          for (let lineIndex = 0; lineIndex < Math.min(lines.length, 2); lineIndex++) {
             doc.text(lines[lineIndex], dayX + cellPadding, textY)
             textY += 3
           }
@@ -210,7 +218,7 @@ export async function GET(
           if (meal.servings) {
             doc.setFontSize(6)
             doc.setTextColor(...BRAND_COLORS.gray)
-            doc.text(`${meal.servings} servings`, dayX + cellPadding, textY + 2)
+            doc.text(`${meal.servings} servings`, dayX + cellPadding, textY + 1)
           }
         } else {
           doc.setFontSize(7)
@@ -223,29 +231,118 @@ export async function GET(
       currentY += mealTypeRowHeight
     }
 
+    // === SNACKS ROW ===
+    // Snack header row - using emerald to differentiate from meals
+    doc.setFillColor(...BRAND_COLORS.emerald)
+    doc.rect(margin, currentY, tableWidth, 6, 'F')
+
+    doc.setFontSize(7)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(...BRAND_COLORS.white)
+    doc.text(MEAL_TYPE_LABELS['snack'], margin + 3, currentY + 4)
+
+    currentY += 6
+
+    // Snack cells for each day
+    doc.setFillColor(...BRAND_COLORS.white)
+    doc.rect(margin, currentY, tableWidth, snackRowHeight, 'F')
+
+    // Draw borders
+    doc.setDrawColor(...BRAND_COLORS.grayLight)
+    doc.setLineWidth(0.2)
+    doc.rect(margin, currentY, tableWidth, snackRowHeight, 'S')
+
+    for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+      const dayX = margin + dayIndex * dayColumnWidth
+      const dayName = weekDays[dayIndex].day
+
+      // Column dividers
+      if (dayIndex > 0) {
+        doc.line(dayX, currentY, dayX, currentY + snackRowHeight)
+      }
+
+      // Find snack recipes for this day (from meals)
+      const snackRecipes = mealPlan.meals.filter(
+        (m: { dayOfWeek: string; mealType: string }) =>
+          m.dayOfWeek === dayName && SNACK_SLOTS.includes(m.mealType.toLowerCase().replace(/\s+/g, '-'))
+      )
+
+      // Find snack products for this day
+      const snackProducts = (mealPlan.mealPlanProducts || []).filter(
+        (p: { dayOfWeek: string; mealSlot: string }) =>
+          p.dayOfWeek === dayName && SNACK_SLOTS.includes(p.mealSlot.toLowerCase().replace(/\s+/g, '-'))
+      )
+
+      const cellPadding = 2
+      let textY = currentY + 4
+
+      const hasSnacks = snackRecipes.length > 0 || snackProducts.length > 0
+
+      if (hasSnacks) {
+        doc.setFontSize(6)
+        doc.setFont('helvetica', 'normal')
+
+        // Show snack recipes
+        for (const snack of snackRecipes) {
+          if (snack.recipeName && textY < currentY + snackRowHeight - 2) {
+            doc.setTextColor(...BRAND_COLORS.purple)
+            const truncatedName = snack.recipeName.length > 20
+              ? snack.recipeName.substring(0, 17) + '...'
+              : snack.recipeName
+            doc.text(truncatedName, dayX + cellPadding, textY)
+            textY += 3
+          }
+        }
+
+        // Show snack products
+        for (const product of snackProducts) {
+          if (textY < currentY + snackRowHeight - 2) {
+            doc.setTextColor(...BRAND_COLORS.emerald)
+            const productName = product.product?.name || 'Unknown'
+            const truncatedName = productName.length > 20
+              ? productName.substring(0, 17) + '...'
+              : productName
+            doc.text(truncatedName, dayX + cellPadding, textY)
+            textY += 3
+          }
+        }
+      } else {
+        // No snacks
+        doc.setFontSize(7)
+        doc.setFont('helvetica', 'italic')
+        doc.setTextColor(...BRAND_COLORS.grayLight)
+        doc.text('-', dayX + dayColumnWidth / 2, currentY + snackRowHeight / 2, { align: 'center' })
+      }
+    }
+
+    currentY += snackRowHeight
+
     // === LEGEND ===
     currentY += 5
     doc.setFontSize(7)
 
-    // Batch cook badge
+    // Batch indicator
     doc.setFillColor(...BRAND_COLORS.amber)
-    doc.roundedRect(margin, currentY - 2, 8, 3, 0.5, 0.5, 'F')
-    doc.setFontSize(5)
-    doc.setTextColor(...BRAND_COLORS.white)
-    doc.text('[B]', margin + 1, currentY)
-    doc.setFontSize(7)
+    doc.circle(margin + 1.5, currentY - 1, 1.5, 'F')
     doc.setTextColor(...BRAND_COLORS.gray)
-    doc.text('Batch cook', margin + 10, currentY)
+    doc.text('Batch cook', margin + 5, currentY)
 
-    // Reheat badge
+    // Reheat indicator
     doc.setFillColor(...BRAND_COLORS.emerald)
-    doc.roundedRect(margin + 35, currentY - 2, 8, 3, 0.5, 0.5, 'F')
-    doc.setFontSize(5)
-    doc.setTextColor(...BRAND_COLORS.white)
-    doc.text('[R]', margin + 36, currentY)
-    doc.setFontSize(7)
+    doc.circle(margin + 31.5, currentY - 1, 1.5, 'F')
     doc.setTextColor(...BRAND_COLORS.gray)
-    doc.text('Reheat (from batch)', margin + 45, currentY)
+    doc.text('Reheat (from batch)', margin + 35, currentY)
+
+    // Snack color indicators
+    doc.setTextColor(...BRAND_COLORS.purple)
+    doc.text('■', margin + 80, currentY)
+    doc.setTextColor(...BRAND_COLORS.gray)
+    doc.text('Snack recipe', margin + 84, currentY)
+
+    doc.setTextColor(...BRAND_COLORS.emerald)
+    doc.text('■', margin + 110, currentY)
+    doc.setTextColor(...BRAND_COLORS.gray)
+    doc.text('Snack product', margin + 114, currentY)
 
     // === BATCH COOKING / PREP AHEAD SUMMARY ===
     currentY += 10
@@ -270,7 +367,11 @@ export async function GET(
         doc.setFontSize(8)
         doc.setFont('helvetica', 'bold')
         doc.setTextColor(...BRAND_COLORS.amber)
-        doc.text('[B] Batch Cook:', margin, currentY)
+
+        // Circle indicator instead of [B]
+        doc.setFillColor(...BRAND_COLORS.amber)
+        doc.circle(margin + 1.5, currentY - 1, 1.5, 'F')
+        doc.text('Batch Cook:', margin + 5, currentY)
         currentY += 4
 
         doc.setFont('helvetica', 'normal')
@@ -302,7 +403,11 @@ export async function GET(
         doc.setFontSize(8)
         doc.setFont('helvetica', 'bold')
         doc.setTextColor(...BRAND_COLORS.emerald)
-        doc.text('[R] Reheat Days:', margin, currentY)
+
+        // Circle indicator instead of [R]
+        doc.setFillColor(...BRAND_COLORS.emerald)
+        doc.circle(margin + 1.5, currentY - 1, 1.5, 'F')
+        doc.text('Reheat Days:', margin + 5, currentY)
         currentY += 4
 
         doc.setFont('helvetica', 'normal')

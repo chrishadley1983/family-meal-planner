@@ -49,6 +49,22 @@ export async function POST(request: NextRequest) {
 
     const servings = recipe.servings || 4
 
+    // Diagnostic logging for nutrition calculation issue
+    console.log('🔍 DIAGNOSTIC - analyze-macros API received:', {
+      recipeId: recipe.id,
+      recipeName: recipe.recipeName,
+      servingsFromRequest: recipe.servings,
+      servingsUsed: servings,
+      ingredientCount: recipe.ingredients?.length,
+      ingredients: recipe.ingredients?.map((ing: any) => ({
+        name: ing.ingredientName,
+        quantity: ing.quantity,
+        unit: ing.unit,
+        isProduct: ing.isProduct,
+        productId: ing.productId
+      }))
+    })
+
     console.log('📊 Calculating nutrition via unified service...')
 
     // Step 1: Calculate accurate nutrition using unified service

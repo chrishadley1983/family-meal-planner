@@ -17,6 +17,7 @@ import MealPlanExportModal from '@/components/meal-plan/MealPlanExportModal'
 import { ProductSlotSelector } from '@/components/meal-plans/ProductSlotSelector'
 import { Package, X, Star } from 'lucide-react'
 import type { Product } from '@/lib/types/product'
+import type { WeeklyNutritionalSummary } from '@/lib/types/meal-plan-settings'
 
 interface MealPlanProduct {
   id: string
@@ -74,6 +75,7 @@ interface MealPlan {
   status: string
   customSchedule: any
   meals: Meal[]
+  weeklyNutritionalSummary?: WeeklyNutritionalSummary | null
 }
 
 interface Profile {
@@ -143,16 +145,13 @@ interface WeekProfileSchedule {
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const MEAL_TYPES = [
   { key: 'breakfast', label: 'Breakfast' },
-  { key: 'morning-snack', label: 'Morning Snack' },
   { key: 'lunch', label: 'Lunch' },
-  { key: 'afternoon-snack', label: 'Afternoon Snack' },
   { key: 'dinner', label: 'Dinner' },
-  { key: 'dessert', label: 'Dessert' },
-  { key: 'evening-snack', label: 'Evening Snack' }
+  { key: 'dessert', label: 'Dessert' }
 ]
 
-// Meal type order for consistent display and sorting
-const MEAL_TYPE_ORDER = ['breakfast', 'lunch', 'afternoon-snack', 'dinner', 'dessert']
+// Meal type order for consistent display and sorting (snacks handled in separate section below)
+const MEAL_TYPE_ORDER = ['breakfast', 'lunch', 'dinner', 'dessert']
 
 function SortableMealCard({ meal, recipes, onUpdate, onDelete, onToggleLock, onMarkCooked, disabled, isFinalizedPlan }: any) {
   const {
@@ -1382,15 +1381,23 @@ export default function MealPlanDetailPage() {
                     <div className="space-y-3">
                       {['Morning Snack', 'Afternoon Snack', 'Evening Snack'].map((slotName) => {
                         const product = getProductForSlot(day, slotName)
+                        // Also check for snack meals (from AI generation)
+                        // Map slot name to meal type: "Morning Snack" -> "morning-snack"
+                        const snackMealType = slotName.toLowerCase().replace(' ', '-')
+                        const snackMeal = dayMeals.find(m =>
+                          m.mealType.toLowerCase().replace(/\s+/g, '-') === snackMealType
+                        )
+                        const hasSnack = product || snackMeal
+
                         return (
                           <div
                             key={`${day}-${slotName}`}
                             className={`border rounded-lg p-3 transition-colors ${
-                              product
+                              hasSnack
                                 ? 'border-purple-500/50 bg-purple-900/10'
                                 : 'border-dashed border-zinc-700 bg-zinc-900/30 hover:border-purple-500/30 cursor-pointer'
                             }`}
-                            onClick={() => !product && openProductSelector(day, slotName)}
+                            onClick={() => !hasSnack && openProductSelector(day, slotName)}
                           >
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
@@ -1440,6 +1447,24 @@ export default function MealPlanDetailPage() {
                                       </p>
                                     </div>
                                   </div>
+                                ) : snackMeal ? (
+                                  <div className="flex items-center gap-3">
+                                    {/* Snack meal from AI generation */}
+                                    <div className="w-10 h-10 rounded-lg bg-emerald-800/30 flex items-center justify-center">
+                                      <span className="text-lg">🍫</span>
+                                    </div>
+                                    <div>
+                                      <p className="text-sm text-white font-medium">
+                                        {snackMeal.recipeName || 'Snack'}
+                                      </p>
+                                      {snackMeal.recipe && (
+                                        <p className="text-xs text-zinc-500">
+                                          {snackMeal.recipe.caloriesPerServing && `${snackMeal.recipe.caloriesPerServing} kcal`}
+                                          {snackMeal.recipe.proteinPerServing && ` • ${snackMeal.recipe.proteinPerServing}g protein`}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
                                 ) : (
                                   <span className="text-sm text-zinc-500 italic">
                                     Click to add snack
@@ -1472,6 +1497,19 @@ export default function MealPlanDetailPage() {
                                     </button>
                                   </>
                                 )}
+                                {snackMeal && !product && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleMealDelete(snackMeal.id)
+                                    }}
+                                    disabled={!isEditable}
+                                    className="p-1 text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
+                                    title="Remove snack"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -1479,6 +1517,57 @@ export default function MealPlanDetailPage() {
                       })}
                     </div>
                   </div>
+
+                  {/* Weekly Nutritional Summary */}
+                  {mealPlan.weeklyNutritionalSummary && mealPlan.weeklyNutritionalSummary.mealsWithNutrition > 0 && (
+                    <div className="mt-8 p-4 bg-gradient-to-r from-purple-900/20 to-orange-900/20 border border-purple-500/30 rounded-lg">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-purple-400 text-xl">📊</span>
+                        <span className="text-lg font-medium text-white">Weekly Nutrition Summary</span>
+                        <span className="text-xs text-zinc-500 ml-auto">
+                          {mealPlan.weeklyNutritionalSummary.nutritionCoveragePercent}% coverage ({mealPlan.weeklyNutritionalSummary.mealsWithNutrition}/{mealPlan.weeklyNutritionalSummary.totalMeals} meals)
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <div className="bg-zinc-800/60 rounded-lg p-3 text-center">
+                          <div className="text-2xl font-bold text-orange-400">
+                            {mealPlan.weeklyNutritionalSummary.dailyAvgCalories.toLocaleString()}
+                          </div>
+                          <div className="text-xs text-zinc-500 mt-1">Calories/day</div>
+                          <div className="text-[10px] text-zinc-600 mt-0.5">
+                            ({mealPlan.weeklyNutritionalSummary.totalCalories.toLocaleString()} weekly)
+                          </div>
+                        </div>
+                        <div className="bg-zinc-800/60 rounded-lg p-3 text-center">
+                          <div className="text-2xl font-bold text-blue-400">
+                            {mealPlan.weeklyNutritionalSummary.dailyAvgProtein}g
+                          </div>
+                          <div className="text-xs text-zinc-500 mt-1">Protein/day</div>
+                          <div className="text-[10px] text-zinc-600 mt-0.5">
+                            ({mealPlan.weeklyNutritionalSummary.totalProtein}g weekly)
+                          </div>
+                        </div>
+                        <div className="bg-zinc-800/60 rounded-lg p-3 text-center">
+                          <div className="text-2xl font-bold text-amber-400">
+                            {mealPlan.weeklyNutritionalSummary.dailyAvgCarbs}g
+                          </div>
+                          <div className="text-xs text-zinc-500 mt-1">Carbs/day</div>
+                          <div className="text-[10px] text-zinc-600 mt-0.5">
+                            ({mealPlan.weeklyNutritionalSummary.totalCarbs}g weekly)
+                          </div>
+                        </div>
+                        <div className="bg-zinc-800/60 rounded-lg p-3 text-center">
+                          <div className="text-2xl font-bold text-pink-400">
+                            {mealPlan.weeklyNutritionalSummary.dailyAvgFat}g
+                          </div>
+                          <div className="text-xs text-zinc-500 mt-1">Fat/day</div>
+                          <div className="text-[10px] text-zinc-600 mt-0.5">
+                            ({mealPlan.weeklyNutritionalSummary.totalFat}g weekly)
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )
             })()}

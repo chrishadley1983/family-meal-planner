@@ -3,7 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import jsPDF from 'jspdf'
-import { format, parseISO, addDays } from 'date-fns'
+import { format } from 'date-fns'
+import { getWeekDaysWithDates } from '@/lib/date-utils'
 
 // Brand colors - matching the design
 const COLORS = {
@@ -23,7 +24,7 @@ const COLORS = {
   white: [255, 255, 255] as [number, number, number],
 }
 
-const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+// DAYS_OF_WEEK removed - now using dynamic getWeekDaysWithDates() for correct day order
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner']
 const MEAL_TYPE_LABELS: Record<string, string> = {
   breakfast: 'BREAKFAST',
@@ -45,10 +46,7 @@ interface MealWithRecipe {
   } | null
 }
 
-function getDayDate(weekStartDate: string | Date, dayIndex: number): Date {
-  const startDate = typeof weekStartDate === 'string' ? parseISO(weekStartDate) : new Date(weekStartDate)
-  return addDays(startDate, dayIndex)
-}
+// getDayDate removed - now using getWeekDaysWithDates() which provides both day names and dates
 
 function formatTime(minutes: number | null | undefined): string {
   if (!minutes) return '-'
@@ -80,46 +78,25 @@ function extractBatchServings(notes: string | null, defaultServings: number | nu
   return defaultServings
 }
 
-// Draw a nice badge with icon
-function drawBadge(
+// Simple badge indicator - circle + text (no complex shapes that may overflow)
+function drawBadgeIndicator(
   doc: jsPDF,
   x: number,
   y: number,
   type: 'batch' | 'reheat'
 ) {
-  const colors = type === 'batch'
-    ? { bg: COLORS.amber, border: COLORS.amberDark }
-    : { bg: COLORS.emerald, border: COLORS.emeraldDark }
-
+  const color = type === 'batch' ? COLORS.amber : COLORS.emerald
   const text = type === 'batch' ? 'BATCH' : 'REHEAT'
-  const badgeWidth = 14
-  const badgeHeight = 3.5
 
-  // Draw badge background with slight border
-  doc.setFillColor(...colors.bg)
-  doc.roundedRect(x, y, badgeWidth, badgeHeight, 1, 1, 'F')
+  // Simple colored circle indicator
+  doc.setFillColor(...color)
+  doc.circle(x + 1.5, y + 1, 1.2, 'F')
 
-  // Draw small icon circle
-  doc.setFillColor(...COLORS.white)
-  doc.circle(x + 2.5, y + badgeHeight / 2, 1, 'F')
-
-  // Draw icon symbol inside circle
-  doc.setFillColor(...colors.bg)
-  if (type === 'batch') {
-    // Lightning bolt shape (simplified as a small triangle)
-    doc.triangle(x + 2.2, y + 0.8, x + 2.8, y + 1.5, x + 2.2, y + 2.7, 'F')
-  } else {
-    // Circular arrow (simplified as curved line)
-    doc.setDrawColor(...colors.bg)
-    doc.setLineWidth(0.3)
-    doc.circle(x + 2.5, y + badgeHeight / 2, 0.6, 'S')
-  }
-
-  // Badge text
+  // Text label next to circle
   doc.setFontSize(5)
   doc.setFont('helvetica', 'bold')
-  doc.setTextColor(...COLORS.white)
-  doc.text(text, x + 5, y + 2.6)
+  doc.setTextColor(...color)
+  doc.text(text, x + 4, y + 1.8)
 }
 
 export async function GET(
@@ -212,10 +189,13 @@ export async function GET(
 
     currentY += 14
 
+    // Get dynamic week days based on actual week start date
+    const weekDays = getWeekDaysWithDates(mealPlan.weekStartDate)
+
     // === DRAW EACH DAY ===
     for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
-      const dayName = DAYS_OF_WEEK[dayIndex]
-      const dayDate = getDayDate(mealPlan.weekStartDate, dayIndex)
+      const dayName = weekDays[dayIndex].day
+      const dayDate = weekDays[dayIndex].date
       const dayMeals = mealPlan.meals.filter((m: MealWithRecipe) => m.dayOfWeek === dayName)
 
       // Get meals by type
@@ -332,11 +312,11 @@ export async function GET(
         doc.setTextColor(...COLORS.textDark)
         doc.text(MEAL_TYPE_LABELS[mealType] || mealType.toUpperCase(), colX, currentY + 4)
 
-        // BATCH or REHEAT badge
+        // BATCH or REHEAT badge indicator (circle + text)
         if (isBatch) {
-          drawBadge(doc, colX, currentY + 5, 'batch')
+          drawBadgeIndicator(doc, colX, currentY + 5, 'batch')
         } else if (isReheat) {
-          drawBadge(doc, colX, currentY + 5, 'reheat')
+          drawBadgeIndicator(doc, colX, currentY + 5, 'reheat')
         }
 
         colX += colWidths.meal

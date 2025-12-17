@@ -44,6 +44,14 @@ QUANTITY PARSING:
 - Parse weight: "500g bag" → quantity: 500, unitOfMeasure: "g"
 - Parse counts: "Pack of 12" → quantity: 12, unitOfMeasure: "pieces"
 
+SERVINGS PER PACKAGE DETECTION (CRITICAL):
+- Look for "Servings per container: X" or "Servings: X" on nutrition labels
+- Calculate from pack size vs serving size: "250g pack, 50g serving" = 5 servings
+- If product is "4 x 30g bars", servingsPerPackage = 4 (one bar = one serving)
+- If product is "Case of 12", servingsPerPackage = 12 (one item = one serving)
+- For single-serving items, servingsPerPackage = 1
+- IMPORTANT: This field is essential for accurate nutrition calculations!
+
 IS_SNACK DETERMINATION:
 - Set isSnack=true for: snack bars, crisps, biscuits, yoghurts, nuts, chocolate, sweets, ice cream, smoothies, fruit snacks
 - Set isSnack=false for: ready meals, cooking ingredients, beverages (non-smoothie), household items
@@ -56,6 +64,7 @@ Return ONLY a valid JSON object with these fields:
   "unitOfMeasure": "string - e.g., pieces, bars, g, ml",
   "category": "string - from category list above",
   "servingSize": "string or null - e.g., 30g, 1 bar",
+  "servingsPerPackage": number - how many servings in the package (default 1 if unknown),
   "caloriesPerServing": number or null,
   "proteinPerServing": number or null,
   "carbsPerServing": number or null,

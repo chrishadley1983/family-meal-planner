@@ -49,6 +49,11 @@ export async function GET(req: NextRequest) {
           include: {
             recipe: true
           }
+        },
+        mealPlanProducts: {
+          include: {
+            product: true
+          }
         }
       },
       orderBy: {

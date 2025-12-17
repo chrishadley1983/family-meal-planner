@@ -55,6 +55,7 @@ export interface Product {
   saturatedFatPerServing: number | null
   sodiumPerServing: number | null
   servingSize: string | null
+  servingsPerPackage: number | null
 
   // Flags and metrics
   isSnack: boolean
@@ -106,6 +107,7 @@ export interface CreateProductRequest {
   saturatedFatPerServing?: number
   sodiumPerServing?: number
   servingSize?: string
+  servingsPerPackage?: number
 
   // Flags
   isSnack?: boolean
@@ -289,6 +291,7 @@ export interface ParsedProductFromUrl {
   unitOfMeasure?: string
   category?: string
   servingSize?: string
+  servingsPerPackage?: number
   caloriesPerServing?: number
   proteinPerServing?: number
   carbsPerServing?: number
@@ -311,6 +314,7 @@ export interface ParsedProductFromImage {
   unitOfMeasure?: string
   category?: string
   servingSize?: string
+  servingsPerPackage?: number
   caloriesPerServing?: number
   proteinPerServing?: number
   carbsPerServing?: number
@@ -333,6 +337,7 @@ export interface ParsedProductFromText {
   unitOfMeasure?: string
   category?: string
   servingSize?: string
+  servingsPerPackage?: number
   caloriesPerServing?: number
   proteinPerServing?: number
   carbsPerServing?: number

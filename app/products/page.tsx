@@ -138,6 +138,10 @@ export default function ProductsPage() {
   const [aiParsing, setAiParsing] = useState(false)
   const [aiParsedProduct, setAiParsedProduct] = useState<CreateProductRequest | null>(null)
 
+  // Multi-serving confirmation state
+  const [showServingsConfirmModal, setShowServingsConfirmModal] = useState(false)
+  const [pendingProductWithServings, setPendingProductWithServings] = useState<CreateProductRequest | null>(null)
+
   // Apply client-side filtering and sorting
   const filteredAndSortedProducts = useMemo(() => {
     let result = [...products]
@@ -318,28 +322,69 @@ export default function ProductsPage() {
   }
 
   const handleDeleteProduct = async (id: string, name: string) => {
-    const confirmed = await confirm({
-      title: 'Delete Product',
-      message: `Delete "${name}"? This cannot be undone.`,
-      confirmText: 'Delete',
-      confirmVariant: 'danger',
-    })
-    if (!confirmed) return
-
     try {
-      console.log('🔷 Deleting product:', name)
-      const response = await fetch(`/api/products?id=${id}`, { method: 'DELETE' })
+      console.log('🔷 Checking product for linked recipes:', name)
 
-      if (!response.ok) {
-        throw new Error('Failed to delete product')
+      // First, check if product has linked recipes
+      const checkResponse = await fetch(`/api/products/${id}/check-delete`)
+      if (!checkResponse.ok) {
+        throw new Error('Failed to check product dependencies')
       }
 
-      console.log('🟢 Product deleted')
+      const checkData = await checkResponse.json()
+
+      let confirmMessage: string
+      let confirmButtonText: string
+
+      if (checkData.hasLinkedRecipes) {
+        // Product has linked recipes - show detailed confirmation
+        const recipeList = checkData.linkedRecipes
+          .slice(0, 5)
+          .map((r: { name: string }) => r.name)
+          .join('\n- ')
+        const moreText = checkData.linkedRecipeCount > 5
+          ? `\n- ...and ${checkData.linkedRecipeCount - 5} more`
+          : ''
+
+        confirmMessage = `Deleting "${name}" will also delete ${checkData.linkedRecipeCount} linked recipe(s):\n\n- ${recipeList}${moreText}\n\nThis ensures nutrition calculations remain accurate.`
+        confirmButtonText = `Delete All (${checkData.linkedRecipeCount + 1} items)`
+      } else {
+        confirmMessage = `Delete "${name}"? This cannot be undone.`
+        confirmButtonText = 'Delete'
+      }
+
+      // Show confirmation dialog
+      const confirmed = await confirm({
+        title: checkData.hasLinkedRecipes ? 'Delete Product & Linked Recipes' : 'Delete Product',
+        message: confirmMessage,
+        confirmText: confirmButtonText,
+        confirmVariant: 'danger',
+      })
+
+      if (!confirmed) return
+
+      // Perform delete with cascade flag
+      console.log('🔷 Deleting product:', name, 'cascade:', checkData.hasLinkedRecipes)
+      const response = await fetch(`/api/products?id=${id}&confirmCascade=true`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to delete product')
+      }
+
+      const data = await response.json()
       setProducts(products.filter(p => p.id !== id))
-      success('Product deleted')
+
+      if (data.deletedRecipes > 0) {
+        success(`Product and ${data.deletedRecipes} linked recipe(s) deleted`)
+      } else {
+        success('Product deleted')
+      }
     } catch (err) {
       console.error('❌ Error deleting product:', err)
-      error('Failed to delete product')
+      error(err instanceof Error ? err.message : 'Failed to delete product')
     }
   }
 
@@ -558,6 +603,41 @@ export default function ProductsPage() {
   }
 
   // AI Import handlers
+  // Helper to handle parsed product and check for multi-serving
+  const handleParsedProduct = (product: CreateProductRequest, sourceUrl?: string) => {
+    const parsedProduct: CreateProductRequest = {
+      name: product.name || '',
+      brand: product.brand || '',
+      category: product.category || 'Other',
+      quantity: product.quantity || 1,
+      unitOfMeasure: product.unitOfMeasure || 'pieces',
+      servingSize: product.servingSize || undefined,
+      servingsPerPackage: product.servingsPerPackage || 1,
+      caloriesPerServing: product.caloriesPerServing || undefined,
+      proteinPerServing: product.proteinPerServing || undefined,
+      carbsPerServing: product.carbsPerServing || undefined,
+      fatPerServing: product.fatPerServing || undefined,
+      fiberPerServing: product.fiberPerServing || undefined,
+      sugarPerServing: product.sugarPerServing || undefined,
+      saturatedFatPerServing: product.saturatedFatPerServing || undefined,
+      sodiumPerServing: product.sodiumPerServing || undefined,
+      isSnack: product.isSnack ?? false,
+      imageUrl: product.imageUrl || undefined,
+      sourceUrl: sourceUrl || product.sourceUrl || undefined,
+    }
+
+    // Check if multi-serving product - show confirmation modal
+    const servings = parsedProduct.servingsPerPackage || 1
+    if (servings > 1) {
+      console.log('🔷 Multi-serving product detected:', servings, 'servings')
+      setPendingProductWithServings(parsedProduct)
+      setShowServingsConfirmModal(true)
+    } else {
+      setAiParsedProduct(parsedProduct)
+      success('Product info extracted! Review and save below.')
+    }
+  }
+
   const handleAIParseUrl = async () => {
     if (!aiParseUrl.trim()) return
 
@@ -577,26 +657,7 @@ export default function ProductsPage() {
 
       const data = await response.json()
       console.log('🟢 AI parsed product:', data.product)
-      setAiParsedProduct({
-        name: data.product.name || '',
-        brand: data.product.brand || '',
-        category: data.product.category || 'Other',
-        quantity: data.product.quantity || 1,
-        unitOfMeasure: data.product.unitOfMeasure || 'pieces',
-        servingSize: data.product.servingSize || undefined,
-        caloriesPerServing: data.product.caloriesPerServing || undefined,
-        proteinPerServing: data.product.proteinPerServing || undefined,
-        carbsPerServing: data.product.carbsPerServing || undefined,
-        fatPerServing: data.product.fatPerServing || undefined,
-        fiberPerServing: data.product.fiberPerServing || undefined,
-        sugarPerServing: data.product.sugarPerServing || undefined,
-        saturatedFatPerServing: data.product.saturatedFatPerServing || undefined,
-        sodiumPerServing: data.product.sodiumPerServing || undefined,
-        isSnack: data.product.isSnack ?? false,
-        imageUrl: data.product.imageUrl || undefined,
-        sourceUrl: data.product.sourceUrl || aiParseUrl,
-      })
-      success('Product info extracted! Review and save below.')
+      handleParsedProduct(data.product, aiParseUrl)
     } catch (err) {
       console.error('❌ Error AI parsing URL:', err)
       error(err instanceof Error ? err.message : 'Failed to parse URL')
@@ -626,24 +687,7 @@ export default function ProductsPage() {
 
       const data = await response.json()
       console.log('🟢 AI parsed product from image:', data.product)
-      setAiParsedProduct({
-        name: data.product.name || '',
-        brand: data.product.brand || '',
-        category: data.product.category || 'Other',
-        quantity: data.product.quantity || 1,
-        unitOfMeasure: data.product.unitOfMeasure || 'pieces',
-        servingSize: data.product.servingSize || undefined,
-        caloriesPerServing: data.product.caloriesPerServing || undefined,
-        proteinPerServing: data.product.proteinPerServing || undefined,
-        carbsPerServing: data.product.carbsPerServing || undefined,
-        fatPerServing: data.product.fatPerServing || undefined,
-        fiberPerServing: data.product.fiberPerServing || undefined,
-        sugarPerServing: data.product.sugarPerServing || undefined,
-        saturatedFatPerServing: data.product.saturatedFatPerServing || undefined,
-        sodiumPerServing: data.product.sodiumPerServing || undefined,
-        isSnack: data.product.isSnack ?? false,
-      })
-      success('Product info extracted from image! Review and save below.')
+      handleParsedProduct(data.product)
     } catch (err) {
       console.error('❌ Error AI parsing image:', err)
       error(err instanceof Error ? err.message : 'Failed to parse image')
@@ -671,24 +715,7 @@ export default function ProductsPage() {
 
       const data = await response.json()
       console.log('🟢 AI parsed product from text:', data.product)
-      setAiParsedProduct({
-        name: data.product.name || '',
-        brand: data.product.brand || '',
-        category: data.product.category || 'Other',
-        quantity: data.product.quantity || 1,
-        unitOfMeasure: data.product.unitOfMeasure || 'pieces',
-        servingSize: data.product.servingSize || undefined,
-        caloriesPerServing: data.product.caloriesPerServing || undefined,
-        proteinPerServing: data.product.proteinPerServing || undefined,
-        carbsPerServing: data.product.carbsPerServing || undefined,
-        fatPerServing: data.product.fatPerServing || undefined,
-        fiberPerServing: data.product.fiberPerServing || undefined,
-        sugarPerServing: data.product.sugarPerServing || undefined,
-        saturatedFatPerServing: data.product.saturatedFatPerServing || undefined,
-        sodiumPerServing: data.product.sodiumPerServing || undefined,
-        isSnack: data.product.isSnack ?? false,
-      })
-      success('Product info extracted from text! Review and save below.')
+      handleParsedProduct(data.product)
     } catch (err) {
       console.error('❌ Error AI parsing text:', err)
       error(err instanceof Error ? err.message : 'Failed to parse text')
@@ -2228,6 +2255,161 @@ export default function ProductsPage() {
                 </div>
               </div>
             )}
+          </div>
+        </Modal>
+
+        {/* Multi-Serving Confirmation Modal */}
+        <Modal
+          isOpen={showServingsConfirmModal}
+          onClose={() => {
+            setShowServingsConfirmModal(false)
+            setPendingProductWithServings(null)
+          }}
+          title="Multi-Serving Product Detected"
+          maxWidth="md"
+        >
+          <div className="p-6 space-y-4">
+            <div className="p-4 bg-amber-900/20 border border-amber-600/30 rounded-lg">
+              <div className="flex items-start gap-3">
+                <svg className="w-6 h-6 text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <h3 className="font-medium text-amber-300">
+                    This product contains {pendingProductWithServings?.servingsPerPackage || 1} servings per pack
+                  </h3>
+                  {pendingProductWithServings?.servingSize && (
+                    <p className="text-sm text-zinc-400 mt-1">
+                      Serving size: <span className="text-white">{pendingProductWithServings.servingSize}</span>
+                    </p>
+                  )}
+                  <p className="text-sm text-zinc-400 mt-2">
+                    How would you like to save this product?
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Per Serving Option */}
+            {pendingProductWithServings?.caloriesPerServing && (
+              <div className="p-4 bg-zinc-800/50 border border-zinc-700 rounded-lg hover:border-purple-500/50 transition-colors">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <h4 className="font-medium text-white">Save as Single Serving</h4>
+                    <p className="text-xs text-zinc-400 mt-1">
+                      Quantity: 1 {pendingProductWithServings.servingSize || 'serving'}
+                    </p>
+                  </div>
+                  <Badge variant="secondary" className="text-xs">Recommended</Badge>
+                </div>
+                <div className="flex flex-wrap gap-3 text-sm mb-3">
+                  <span className="text-orange-400">{pendingProductWithServings.caloriesPerServing} cal</span>
+                  <span className="text-blue-400">{pendingProductWithServings.proteinPerServing || 0}g protein</span>
+                  <span className="text-amber-400">{pendingProductWithServings.carbsPerServing || 0}g carbs</span>
+                  <span className="text-purple-400">{pendingProductWithServings.fatPerServing || 0}g fat</span>
+                </div>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => {
+                    if (pendingProductWithServings) {
+                      // Save as single serving - quantity=1, keep per-serving nutrition
+                      setAiParsedProduct({
+                        ...pendingProductWithServings,
+                        quantity: 1,
+                        unitOfMeasure: pendingProductWithServings.servingSize || pendingProductWithServings.unitOfMeasure || 'serving',
+                        servingsPerPackage: 1,
+                      })
+                      success('Product set as single serving. Review and save below.')
+                    }
+                    setShowServingsConfirmModal(false)
+                    setPendingProductWithServings(null)
+                  }}
+                  className="w-full bg-purple-500 hover:bg-purple-600"
+                >
+                  Add as Single Serving
+                </Button>
+              </div>
+            )}
+
+            {/* Whole Pack Option */}
+            {pendingProductWithServings?.caloriesPerServing && pendingProductWithServings?.servingsPerPackage && (
+              <div className="p-4 bg-zinc-800/50 border border-zinc-700 rounded-lg hover:border-blue-500/50 transition-colors">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <h4 className="font-medium text-white">Save as Whole Pack</h4>
+                    <p className="text-xs text-zinc-400 mt-1">
+                      Quantity: {pendingProductWithServings.quantity} {pendingProductWithServings.unitOfMeasure} ({pendingProductWithServings.servingsPerPackage} servings)
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-3 text-sm mb-3">
+                  <span className="text-orange-400">
+                    {Math.round((pendingProductWithServings.caloriesPerServing || 0) * pendingProductWithServings.servingsPerPackage)} cal
+                  </span>
+                  <span className="text-blue-400">
+                    {Math.round((pendingProductWithServings.proteinPerServing || 0) * pendingProductWithServings.servingsPerPackage)}g protein
+                  </span>
+                  <span className="text-amber-400">
+                    {Math.round((pendingProductWithServings.carbsPerServing || 0) * pendingProductWithServings.servingsPerPackage)}g carbs
+                  </span>
+                  <span className="text-purple-400">
+                    {Math.round((pendingProductWithServings.fatPerServing || 0) * pendingProductWithServings.servingsPerPackage)}g fat
+                  </span>
+                </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    if (pendingProductWithServings) {
+                      const servings = pendingProductWithServings.servingsPerPackage || 1
+                      // Save as whole pack - multiply nutrition by servings
+                      setAiParsedProduct({
+                        ...pendingProductWithServings,
+                        caloriesPerServing: Math.round((pendingProductWithServings.caloriesPerServing || 0) * servings),
+                        proteinPerServing: Math.round(((pendingProductWithServings.proteinPerServing || 0) * servings) * 10) / 10,
+                        carbsPerServing: Math.round(((pendingProductWithServings.carbsPerServing || 0) * servings) * 10) / 10,
+                        fatPerServing: Math.round(((pendingProductWithServings.fatPerServing || 0) * servings) * 10) / 10,
+                        fiberPerServing: pendingProductWithServings.fiberPerServing
+                          ? Math.round(((pendingProductWithServings.fiberPerServing) * servings) * 10) / 10
+                          : undefined,
+                        sugarPerServing: pendingProductWithServings.sugarPerServing
+                          ? Math.round(((pendingProductWithServings.sugarPerServing) * servings) * 10) / 10
+                          : undefined,
+                        saturatedFatPerServing: pendingProductWithServings.saturatedFatPerServing
+                          ? Math.round(((pendingProductWithServings.saturatedFatPerServing) * servings) * 10) / 10
+                          : undefined,
+                        sodiumPerServing: pendingProductWithServings.sodiumPerServing
+                          ? Math.round((pendingProductWithServings.sodiumPerServing) * servings)
+                          : undefined,
+                        servingSize: `${pendingProductWithServings.quantity} ${pendingProductWithServings.unitOfMeasure} (whole pack)`,
+                        servingsPerPackage: 1,
+                      })
+                      success('Product set as whole pack. Review and save below.')
+                    }
+                    setShowServingsConfirmModal(false)
+                    setPendingProductWithServings(null)
+                  }}
+                  className="w-full"
+                >
+                  Add as Whole Pack
+                </Button>
+              </div>
+            )}
+
+            <div className="flex justify-center pt-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setShowServingsConfirmModal(false)
+                  setPendingProductWithServings(null)
+                }}
+                className="text-zinc-500 hover:text-zinc-300"
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
         </Modal>
       </PageContainer>

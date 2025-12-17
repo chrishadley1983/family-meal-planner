@@ -27,6 +27,7 @@ const createProductSchema = z.object({
   saturatedFatPerServing: z.number().nonnegative().optional().nullable(),
   sodiumPerServing: z.number().nonnegative().optional().nullable(),
   servingSize: z.string().optional().nullable(),
+  servingsPerPackage: z.number().int().positive().optional().nullable(),
   // Flags
   isSnack: z.boolean().default(false),
   familyRating: z.number().int().min(1).max(10).optional().nullable(),
@@ -302,7 +303,7 @@ export async function PATCH(req: NextRequest) {
   }
 }
 
-// DELETE - Delete a product
+// DELETE - Delete a product (with optional cascade to linked recipes)
 export async function DELETE(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -312,13 +313,23 @@ export async function DELETE(req: NextRequest) {
 
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')
+    const confirmCascade = searchParams.get('confirmCascade') === 'true'
 
     if (!id) {
       return NextResponse.json({ error: 'Product ID required' }, { status: 400 })
     }
 
+    // Fetch product with all recipe relationships
     const existingProduct = await prisma.product.findUnique({
-      where: { id }
+      where: { id },
+      include: {
+        linkedRecipe: {
+          select: { id: true, recipeName: true }
+        },
+        sourceForRecipes: {
+          select: { id: true, recipeName: true }
+        }
+      }
     })
 
     if (!existingProduct) {
@@ -329,14 +340,69 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    console.log('🔷 Deleting product:', existingProduct.name)
+    // Collect all linked recipes
+    const linkedRecipes: { id: string; name: string }[] = []
 
-    await prisma.product.delete({
-      where: { id }
+    // Direct linked recipe (snack -> recipe)
+    if (existingProduct.linkedRecipe) {
+      linkedRecipes.push({
+        id: existingProduct.linkedRecipe.id,
+        name: existingProduct.linkedRecipe.recipeName
+      })
+    }
+
+    // Recipes sourced from this product
+    for (const recipe of existingProduct.sourceForRecipes) {
+      if (!linkedRecipes.some(r => r.id === recipe.id)) {
+        linkedRecipes.push({
+          id: recipe.id,
+          name: recipe.recipeName
+        })
+      }
+    }
+
+    // If there are linked recipes and cascade not confirmed, require confirmation
+    if (linkedRecipes.length > 0 && !confirmCascade) {
+      console.log('🔷 Product has linked recipes, requiring confirmation:', linkedRecipes.length)
+      return NextResponse.json({
+        requiresConfirmation: true,
+        linkedRecipeCount: linkedRecipes.length,
+        linkedRecipes: linkedRecipes,
+        message: `This product has ${linkedRecipes.length} linked recipe(s) that will also be deleted.`
+      })
+    }
+
+    console.log('🔷 Deleting product:', existingProduct.name, 'with cascade:', confirmCascade)
+
+    // Perform cascade delete within a transaction
+    await prisma.$transaction(async (tx) => {
+      // 1. Delete linked recipes (they depend on this product for nutrition)
+      if (linkedRecipes.length > 0) {
+        console.log('🔷 Deleting linked recipes:', linkedRecipes.map(r => r.name))
+        await tx.recipe.deleteMany({
+          where: {
+            id: { in: linkedRecipes.map(r => r.id) }
+          }
+        })
+      }
+
+      // 2. Clear product references in recipe ingredients (set to null, keep ingredient)
+      await tx.recipeIngredient.updateMany({
+        where: { productId: id },
+        data: { productId: null, isProduct: false }
+      })
+
+      // 3. Delete the product (MealPlanProduct cascade handles itself)
+      await tx.product.delete({
+        where: { id }
+      })
     })
 
-    console.log('🟢 Product deleted')
-    return NextResponse.json({ message: 'Product deleted successfully' })
+    console.log('🟢 Product and linked recipes deleted')
+    return NextResponse.json({
+      message: 'Product deleted successfully',
+      deletedRecipes: linkedRecipes.length
+    })
   } catch (error) {
     console.error('❌ Error deleting product:', error)
     return NextResponse.json(

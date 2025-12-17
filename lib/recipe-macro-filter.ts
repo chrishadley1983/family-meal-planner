@@ -12,8 +12,9 @@ const MEAL_PERCENTAGES = {
   snack: 0.20 // Combined for all snack types
 } as const
 
-// Filter tolerance - stricter than validation to give AI room to work
-const FILTER_TOLERANCE = 0.20 // ±20%
+// Filter tolerance - relaxed to allow more recipe options
+// Changed from 0.20 to 0.30 to prevent over-aggressive filtering
+const FILTER_TOLERANCE = 0.30 // ±30%
 
 /**
  * Recipe interface for filtering - minimal fields needed
@@ -68,18 +69,37 @@ export interface DailyMacroTargets {
 
 /**
  * Calculate per-meal macro ranges based on daily targets
- * Uses fixed ±20% tolerance for filtering
+ * Uses fixed ±30% tolerance for filtering
+ *
+ * When snacks are present in the plan, B+L+D are scaled to 80%
+ * so total = 80% (B+L+D) + 20% (snacks) = 100%
+ *
+ * @param dailyTargets - Daily macro targets
+ * @param hasSnacksInPlan - Whether the meal plan includes snacks/desserts
  */
 export function calculateMealTypeMacroRanges(
-  dailyTargets: DailyMacroTargets
+  dailyTargets: DailyMacroTargets,
+  hasSnacksInPlan: boolean = false
 ): Record<string, MealTypeMacroRange> {
   const ranges: Record<string, MealTypeMacroRange> = {}
 
+  // When snacks are present, scale B+L+D to 80% (Option B1)
+  // Without snacks: B:25% + L:35% + D:40% = 100%
+  // With snacks: B:20% + L:28% + D:32% + S:20% = 100%
+  const scaleFactor = hasSnacksInPlan ? 0.80 : 1.0
+
+  if (hasSnacksInPlan) {
+    console.log('🔄 Snacks detected: scaling B+L+D macro ranges to 80%')
+  }
+
   Object.entries(MEAL_PERCENTAGES).forEach(([mealType, percentage]) => {
-    const calorieTarget = Math.round(dailyTargets.calories * percentage)
-    const proteinTarget = Math.round(dailyTargets.protein * percentage)
-    const carbsTarget = Math.round(dailyTargets.carbs * percentage)
-    const fatTarget = Math.round(dailyTargets.fat * percentage)
+    // Apply scale factor to non-snack meal types only
+    const adjustedPercentage = mealType === 'snack' ? percentage : percentage * scaleFactor
+
+    const calorieTarget = Math.round(dailyTargets.calories * adjustedPercentage)
+    const proteinTarget = Math.round(dailyTargets.protein * adjustedPercentage)
+    const carbsTarget = Math.round(dailyTargets.carbs * adjustedPercentage)
+    const fatTarget = Math.round(dailyTargets.fat * adjustedPercentage)
 
     ranges[mealType] = {
       calories: {
@@ -146,9 +166,10 @@ export function isMacrosHighPriority(priorityOrder: string[]): boolean {
  *
  * Logic:
  * - If recipe has NO nutrition data at all, allow it (AI will handle)
- * - If recipe has data, check each macro against ±20% tolerance
- * - Recipe is rejected if it's ABOVE max OR BELOW min (both directions matter)
- * - This ensures the AI can actually meet targets with the available recipes
+ * - ONLY filter on CALORIES (P/C/F removed to allow more options)
+ * - Protein: Only reject if way over max (1.5x) or severely under min (0.5x)
+ * - Fat: Same lenient approach as protein (1.5x max, 0.5x min)
+ * - Carbs: Not filtered at all (removed to prevent over-aggressive filtering)
  */
 function recipeMacrosFitRange(
   recipe: RecipeForFilter,
@@ -163,7 +184,7 @@ function recipeMacrosFitRange(
     return { fits: true, reasons: [] }
   }
 
-  // Check calories (if present) - BOTH min and max
+  // Check calories (if present) - PRIMARY FILTER - both min and max
   if (recipe.caloriesPerServing) {
     if (recipe.caloriesPerServing > range.calories.max) {
       reasons.push(`${recipe.caloriesPerServing} cal > ${range.calories.max} cal max`)
@@ -172,8 +193,8 @@ function recipeMacrosFitRange(
     }
   }
 
-  // Check protein (if present) - be lenient with protein (high protein is usually OK)
-  // Only reject if way over max or significantly under min
+  // Check protein (if present) - LENIENT: only reject extremes
+  // High protein is usually OK, only reject if way over max (1.5x) or severely under min (0.5x)
   if (recipe.proteinPerServing) {
     if (recipe.proteinPerServing > range.protein.max * 1.5) {
       reasons.push(`${recipe.proteinPerServing}g protein > ${Math.round(range.protein.max * 1.5)}g max`)
@@ -183,21 +204,16 @@ function recipeMacrosFitRange(
     }
   }
 
-  // Check carbs (if present) - BOTH min and max
-  if (recipe.carbsPerServing) {
-    if (recipe.carbsPerServing > range.carbs.max) {
-      reasons.push(`${recipe.carbsPerServing}g carbs > ${range.carbs.max}g max`)
-    } else if (recipe.carbsPerServing < range.carbs.min) {
-      reasons.push(`${recipe.carbsPerServing}g carbs < ${range.carbs.min}g min`)
-    }
-  }
+  // Carbs - NOT FILTERED (Option A2: removed to prevent over-aggressive filtering)
+  // AI will balance carbs across the day/week
 
-  // Check fat (if present) - BOTH min and max
+  // Check fat (if present) - LENIENT like protein (Option A3)
+  // Only reject if way over max (1.5x) or severely under min (0.5x)
   if (recipe.fatPerServing) {
-    if (recipe.fatPerServing > range.fat.max) {
-      reasons.push(`${recipe.fatPerServing}g fat > ${range.fat.max}g max`)
-    } else if (recipe.fatPerServing < range.fat.min) {
-      reasons.push(`${recipe.fatPerServing}g fat < ${range.fat.min}g min`)
+    if (recipe.fatPerServing > range.fat.max * 1.5) {
+      reasons.push(`${recipe.fatPerServing}g fat > ${Math.round(range.fat.max * 1.5)}g max`)
+    } else if (recipe.fatPerServing < range.fat.min * 0.5) {
+      reasons.push(`${recipe.fatPerServing}g fat < ${Math.round(range.fat.min * 0.5)}g min`)
     }
   }
 
@@ -212,9 +228,13 @@ function recipeMacrosFitRange(
  * Only filters when macros is top-3 priority
  *
  * @param recipes - All available recipes
- * @param dailyTargets - Daily macro targets (calories, protein, carbs, fat)
+ * @param dailyCalorieTarget - Daily calorie target
  * @param macroMode - The macro tracking mode (used for logging, not tolerance)
  * @param priorityOrder - User's priority ordering
+ * @param dailyProteinTarget - Daily protein target in grams
+ * @param dailyCarbsTarget - Daily carbs target in grams
+ * @param dailyFatTarget - Daily fat target in grams
+ * @param hasSnacksInPlan - Whether the meal plan includes snacks/desserts (scales B+L+D to 80%)
  * @returns Filtered recipes and feasibility report
  */
 export function filterRecipesForMacroFeasibility(
@@ -224,7 +244,8 @@ export function filterRecipesForMacroFeasibility(
   priorityOrder: string[],
   dailyProteinTarget: number = 0,
   dailyCarbsTarget: number = 0,
-  dailyFatTarget: number = 0
+  dailyFatTarget: number = 0,
+  hasSnacksInPlan: boolean = false
 ): MacroFilterResult {
   // Check if macros is high priority - if not, return all recipes
   if (!isMacrosHighPriority(priorityOrder)) {
@@ -271,9 +292,12 @@ export function filterRecipesForMacroFeasibility(
 
   console.log(`🍽️ Macro filtering ACTIVE (±${FILTER_TOLERANCE * 100}% tolerance)`)
   console.log(`   Daily targets: ${dailyTargets.calories} cal, ${dailyTargets.protein}g protein, ${dailyTargets.carbs}g carbs, ${dailyTargets.fat}g fat`)
+  if (hasSnacksInPlan) {
+    console.log(`   📦 Snacks in plan: B+L+D targets scaled to 80%`)
+  }
 
-  // Calculate per-meal macro ranges
-  const ranges = calculateMealTypeMacroRanges(dailyTargets)
+  // Calculate per-meal macro ranges (with snack scaling if applicable)
+  const ranges = calculateMealTypeMacroRanges(dailyTargets, hasSnacksInPlan)
 
   console.log('📊 Per-meal macro ranges:')
   Object.entries(ranges).forEach(([mealType, range]) => {
@@ -293,11 +317,26 @@ export function filterRecipesForMacroFeasibility(
       return
     }
 
-    // Check if recipe fits ANY of its meal categories
+    // SNACK/DESSERT EXEMPTION: Never filter out snack recipes
+    // Snacks can have any calorie count - user chooses what fits their plan
+    // But snack calories still count toward daily totals
+    if (mealCategories.includes('snack') && mealCategories.length === 1) {
+      // Recipe is ONLY a snack (not dual-purpose like Lunch+Snack)
+      filteredRecipes.push(recipe)
+      return
+    }
+
+    // Check if recipe fits ANY of its non-snack meal categories
     let fitsAnyCategory = false
     const allFailedReasons: string[] = []
 
     mealCategories.forEach(category => {
+      // Skip snack validation - always allow snacks
+      if (category === 'snack') {
+        fitsAnyCategory = true
+        return
+      }
+
       const range = ranges[category]
       if (!range) {
         fitsAnyCategory = true // Unknown category - allow

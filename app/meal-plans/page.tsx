@@ -12,6 +12,20 @@ import { useSession } from 'next-auth/react'
 import { getWeekDaysWithDates } from '@/lib/date-utils'
 import { useAILoading } from '@/components/providers/AILoadingProvider'
 import { useNotification } from '@/components/providers/NotificationProvider'
+import { WeeklyNutritionalSummary } from '@/lib/types/meal-plan-settings'
+
+interface MealPlanProduct {
+  id: string
+  dayOfWeek: string
+  mealSlot: string
+  quantity: number
+  product: {
+    id: string
+    name: string
+    brand?: string | null
+    imageUrl?: string | null
+  }
+}
 
 interface MealPlan {
   id: string
@@ -29,6 +43,8 @@ interface MealPlan {
     notes?: string
     recipe?: any
   }>
+  mealPlanProducts?: MealPlanProduct[]
+  weeklyNutritionalSummary?: WeeklyNutritionalSummary | null
 }
 
 interface MealSchedule {
@@ -54,6 +70,12 @@ interface WeekProfileSchedule {
   schedule: MealSchedule
 }
 
+interface RecipeForAutocomplete {
+  id: string
+  recipeName: string
+  mealType: string[]
+}
+
 export default function MealPlansPage() {
   const router = useRouter()
   const { data: session } = useSession()
@@ -64,7 +86,8 @@ export default function MealPlansPage() {
   const [quickOptions, setQuickOptions] = useState({
     prioritizeShopping: false,
     useExpiring: false,
-    maximizeBatch: false
+    maximizeBatch: false,
+    allowDinnerForLunch: true // Default to true - dinner recipes can be used for lunch
   })
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
@@ -76,10 +99,17 @@ export default function MealPlansPage() {
   const [weekProfileSchedules, setWeekProfileSchedules] = useState<WeekProfileSchedule[]>([])
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [copyFromPlanId, setCopyFromPlanId] = useState<string>('')
+  const [showCustomInstructionsModal, setShowCustomInstructionsModal] = useState(false)
+  const [customInstructions, setCustomInstructions] = useState('')
+  const [recipes, setRecipes] = useState<RecipeForAutocomplete[]>([])
+  const [recipeSearchQuery, setRecipeSearchQuery] = useState('')
+  const [showRecipeSuggestions, setShowRecipeSuggestions] = useState(false)
+  const [linkedRecipes, setLinkedRecipes] = useState<Array<{ id: string; name: string }>>([])
 
   useEffect(() => {
     fetchMealPlans()
     fetchProfiles()
+    fetchRecipesForAutocomplete()
     setSelectedWeek(format(startOfWeek(new Date()), 'yyyy-MM-dd'))
   }, [])
 
@@ -153,6 +183,42 @@ export default function MealPlansPage() {
     } catch (error) {
       console.error('Error fetching profiles:', error)
     }
+  }
+
+  const fetchRecipesForAutocomplete = async () => {
+    try {
+      const response = await fetch('/api/recipes?select=id,recipeName,mealType')
+      const data = await response.json()
+      setRecipes(data.recipes || [])
+    } catch (error) {
+      console.error('Error fetching recipes for autocomplete:', error)
+    }
+  }
+
+  // Get filtered recipes for autocomplete suggestions
+  const getFilteredRecipes = () => {
+    if (!recipeSearchQuery || recipeSearchQuery.length < 2) return []
+    const query = recipeSearchQuery.toLowerCase()
+    return recipes
+      .filter(r =>
+        r.recipeName.toLowerCase().includes(query) &&
+        !linkedRecipes.some(lr => lr.id === r.id) // Exclude already linked recipes
+      )
+      .slice(0, 6) // Limit to 6 suggestions
+  }
+
+  // Add a linked recipe from autocomplete
+  const addLinkedRecipe = (recipe: RecipeForAutocomplete) => {
+    if (!linkedRecipes.some(lr => lr.id === recipe.id)) {
+      setLinkedRecipes([...linkedRecipes, { id: recipe.id, name: recipe.recipeName }])
+    }
+    setRecipeSearchQuery('')
+    setShowRecipeSuggestions(false)
+  }
+
+  // Remove a linked recipe
+  const removeLinkedRecipe = (recipeId: string) => {
+    setLinkedRecipes(linkedRecipes.filter(lr => lr.id !== recipeId))
   }
 
   // Toggle profile inclusion for the week
@@ -252,6 +318,8 @@ export default function MealPlansPage() {
         // Generate new plan with AI
         console.log('🔷 Generating new meal plan with AI...')
         console.log('🔷 Quick options:', quickOptions)
+        console.log('🔷 Custom instructions:', customInstructions || '(none)')
+        console.log('🔷 Linked recipes:', linkedRecipes.length > 0 ? linkedRecipes : '(none)')
         const response = await fetch('/api/meal-plans/generate', {
           method: 'POST',
           headers: {
@@ -260,7 +328,9 @@ export default function MealPlansPage() {
           body: JSON.stringify({
             weekStartDate: selectedWeek,
             weekProfileSchedules: weekProfileSchedules, // Send per-person schedules
-            quickOptions: quickOptions // Send quick options for temporary overrides
+            quickOptions: quickOptions, // Send quick options for temporary overrides
+            customInstructions: customInstructions.trim() || undefined, // Send custom AI instructions
+            linkedRecipes: linkedRecipes.length > 0 ? linkedRecipes : undefined // Send recipe IDs to enforce
           }),
         })
 
@@ -277,9 +347,11 @@ export default function MealPlansPage() {
         setMealPlans([data.mealPlan, ...mealPlans])
       }
 
-      // Reset schedule override after generating
+      // Reset schedule override and custom instructions after generating
       setShowScheduleOverride(false)
       resetToDefaultSchedules()
+      setCustomInstructions('')
+      setLinkedRecipes([])
     } catch (err) {
       console.error('❌ Error generating meal plan:', err)
       error('Failed to generate meal plan. Please try again.')
@@ -291,15 +363,17 @@ export default function MealPlansPage() {
 
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
-  // Meal type order for consistent display and sorting
-  const MEAL_TYPE_ORDER = ['breakfast', 'lunch', 'afternoon-snack', 'dinner', 'dessert']
+  // Meal type order for consistent display and sorting (snacks shown in separate section at bottom)
+  const MEAL_TYPE_ORDER = ['breakfast', 'lunch', 'dinner', 'dessert']
   const MEAL_TYPE_LABELS: Record<string, string> = {
     'breakfast': 'Breakfast',
     'lunch': 'Lunch',
-    'afternoon-snack': 'Afternoon snack',
     'dinner': 'Dinner',
     'dessert': 'Dessert'
   }
+
+  // Snack types to aggregate into a single "Snack" row
+  const SNACK_TYPES = ['morning-snack', 'afternoon-snack', 'evening-snack', 'snack']
 
   if (loading) {
     return (
@@ -366,7 +440,15 @@ export default function MealPlansPage() {
               </Select>
             </div>
             <button
-              onClick={handleGeneratePlan}
+              onClick={() => {
+                // If copying from previous plan, go directly (no custom instructions needed)
+                if (copyFromPlanId) {
+                  handleGeneratePlan()
+                } else {
+                  // Show custom instructions modal for AI generation
+                  setShowCustomInstructionsModal(true)
+                }
+              }}
               disabled={generating}
               className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-purple-500 text-white rounded-lg text-sm font-medium hover:from-orange-600 hover:to-purple-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
             >
@@ -426,6 +508,17 @@ export default function MealPlansPage() {
                   />
                   <span className="text-sm text-zinc-300">
                     Maximize batch cooking opportunities
+                  </span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={quickOptions.allowDinnerForLunch}
+                    onChange={(e) => setQuickOptions({ ...quickOptions, allowDinnerForLunch: e.target.checked })}
+                    className="rounded border-zinc-600 text-purple-600 focus:ring-purple-500"
+                  />
+                  <span className="text-sm text-zinc-300">
+                    Allow dinner recipes for lunch
                   </span>
                 </label>
               </div>
@@ -737,6 +830,72 @@ export default function MealPlansPage() {
                                 </tr>
                               </React.Fragment>
                             ))}
+                            {/* Snack Row - aggregates all snack types (recipes and products) */}
+                            <React.Fragment key="snacks">
+                              {/* Snack Type Header Row */}
+                              <tr className="border-b border-zinc-700" style={{ background: 'rgba(139, 92, 246, 0.05)' }}>
+                                <td
+                                  colSpan={7}
+                                  className="py-2 px-3 text-[10px] uppercase tracking-wider font-semibold text-zinc-500"
+                                >
+                                  Snacks
+                                </td>
+                              </tr>
+                              {/* Snack Content Row */}
+                              <tr className="border-b border-zinc-700 last:border-b-0">
+                                {weekDays.map(({ day }, idx) => {
+                                  const mealsByType = mealsByDayAndType.get(day)
+                                  // Get snack recipes for this day
+                                  const snackRecipes = SNACK_TYPES
+                                    .map(snackType => mealsByType?.get(snackType))
+                                    .filter(Boolean)
+                                    .map(meal => ({ type: 'recipe' as const, name: meal?.recipeName || 'No recipe', recipeId: meal?.recipe?.id }))
+
+                                  // Get snack products for this day
+                                  const snackSlots = ['Morning Snack', 'Afternoon Snack', 'Evening Snack']
+                                  const snackProducts = (plan.mealPlanProducts || [])
+                                    .filter(p => p.dayOfWeek === day && snackSlots.includes(p.mealSlot))
+                                    .map(p => ({
+                                      type: 'product' as const,
+                                      name: p.product.brand ? `${p.product.brand} ${p.product.name}` : p.product.name,
+                                      recipeId: null
+                                    }))
+
+                                  // Combine and limit to 3
+                                  const snacksForDay = [...snackRecipes, ...snackProducts].slice(0, 3)
+
+                                  return (
+                                    <td
+                                      key={`${day}-snacks`}
+                                      className={`py-2 px-2 align-top ${idx < weekDays.length - 1 ? 'border-r border-zinc-700' : ''}`}
+                                    >
+                                      {snacksForDay.length > 0 ? (
+                                        <div className="space-y-1">
+                                          {snacksForDay.map((snack, snackIdx) => (
+                                            <div
+                                              key={snackIdx}
+                                              className={`${snack.recipeId ? 'cursor-pointer hover:bg-zinc-800/50' : ''} rounded p-1 -m-1 transition-colors`}
+                                              onClick={(e) => {
+                                                e.stopPropagation()
+                                                if (snack.recipeId) {
+                                                  setSelectedRecipeId(snack.recipeId)
+                                                }
+                                              }}
+                                            >
+                                              <span className={`font-medium break-words leading-tight text-xs ${snack.type === 'product' ? 'text-emerald-400' : 'text-purple-400'}`}>
+                                                {snack.name}
+                                              </span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      ) : (
+                                        <div className="text-zinc-600 italic">-</div>
+                                      )}
+                                    </td>
+                                  )
+                                })}
+                              </tr>
+                            </React.Fragment>
                           </tbody>
                         </table>
                       </div>
@@ -746,6 +905,45 @@ export default function MealPlansPage() {
                         <span><span className="text-amber-500">⚡</span> Batch cook</span>
                         <span><span className="text-emerald-500">🔄</span> Reheat (from batch)</span>
                       </div>
+
+                      {/* Nutritional Summary */}
+                      {plan.weeklyNutritionalSummary && plan.weeklyNutritionalSummary.mealsWithNutrition > 0 && (
+                        <div className="mt-4 p-3 bg-gradient-to-r from-purple-900/20 to-orange-900/20 border border-purple-500/30 rounded-lg">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-purple-400">📊</span>
+                            <span className="text-sm font-medium text-white">Weekly Nutrition</span>
+                            <span className="text-xs text-zinc-500">
+                              ({plan.weeklyNutritionalSummary.nutritionCoveragePercent}% coverage)
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-4 gap-3 text-center">
+                            <div className="bg-zinc-800/50 rounded-lg p-2">
+                              <div className="text-lg font-bold text-orange-400">
+                                {plan.weeklyNutritionalSummary.dailyAvgCalories.toLocaleString()}
+                              </div>
+                              <div className="text-xs text-zinc-500">cal/day</div>
+                            </div>
+                            <div className="bg-zinc-800/50 rounded-lg p-2">
+                              <div className="text-lg font-bold text-blue-400">
+                                {plan.weeklyNutritionalSummary.dailyAvgProtein}g
+                              </div>
+                              <div className="text-xs text-zinc-500">protein/day</div>
+                            </div>
+                            <div className="bg-zinc-800/50 rounded-lg p-2">
+                              <div className="text-lg font-bold text-amber-400">
+                                {plan.weeklyNutritionalSummary.dailyAvgCarbs}g
+                              </div>
+                              <div className="text-xs text-zinc-500">carbs/day</div>
+                            </div>
+                            <div className="bg-zinc-800/50 rounded-lg p-2">
+                              <div className="text-lg font-bold text-pink-400">
+                                {plan.weeklyNutritionalSummary.dailyAvgFat}g
+                              </div>
+                              <div className="text-xs text-zinc-500">fat/day</div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )
@@ -766,6 +964,171 @@ export default function MealPlansPage() {
           isOpen={showSettingsModal}
           onClose={() => setShowSettingsModal(false)}
         />
+
+        {/* Custom Instructions Modal */}
+        <Modal
+          isOpen={showCustomInstructionsModal}
+          onClose={() => {
+            setShowCustomInstructionsModal(false)
+            setCustomInstructions('')
+          }}
+          title="Customize Your Meal Plan"
+          maxWidth="lg"
+        >
+          <div className="p-6 space-y-5">
+            <p className="text-zinc-400 text-sm">
+              Add any specific instructions for the AI to consider when generating your meal plan.
+              These are optional - the AI will still use your family profiles, recipes, and settings.
+            </p>
+
+            {/* Suggested Prompts */}
+            <div>
+              <label className="block text-sm font-medium text-zinc-300 mb-3">
+                Suggested prompts (click to add)
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  "Keep cooking time under 30 minutes on weekdays",
+                  "Focus on high-protein meals this week",
+                  "Make Tuesday and Thursday meals vegetarian",
+                  "We have guests on Saturday - plan something special",
+                  "Plan for batch cooking on Sunday for weekday lunches",
+                  "Use simple recipes with few ingredients",
+                ].map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    onClick={() => {
+                      const newText = customInstructions
+                        ? `${customInstructions}\n${suggestion}`
+                        : suggestion
+                      if (newText.length <= 500) {
+                        setCustomInstructions(newText)
+                      }
+                    }}
+                    className="px-3 py-1.5 text-xs bg-zinc-800 border border-zinc-700 rounded-full text-zinc-300 hover:bg-purple-900/30 hover:border-purple-500/50 hover:text-purple-300 transition-colors"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom Instructions Text Area */}
+            <div>
+              <label className="block text-sm font-medium text-zinc-300 mb-2">
+                Your instructions
+              </label>
+              <div className="relative">
+                <textarea
+                  value={customInstructions}
+                  onChange={(e) => {
+                    if (e.target.value.length <= 500) {
+                      setCustomInstructions(e.target.value)
+                    }
+                  }}
+                  placeholder="E.g., I want to eat porridge for breakfast every day this week, or I don't have much time on Tuesday so keep that meal quick..."
+                  rows={4}
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                />
+                <span className="absolute bottom-2 right-3 text-xs text-zinc-500">
+                  {customInstructions.length} / 500
+                </span>
+              </div>
+            </div>
+
+            {/* Recipe Linking Section */}
+            <div>
+              <label className="block text-sm font-medium text-zinc-300 mb-2">
+                Link specific recipes (AI will use these exact recipes)
+              </label>
+              <p className="text-zinc-500 text-xs mb-3">
+                Search and select recipes to ensure they are included in your meal plan.
+              </p>
+
+              {/* Recipe Search Input */}
+              <div className="relative">
+                <input
+                  type="text"
+                  value={recipeSearchQuery}
+                  onChange={(e) => {
+                    setRecipeSearchQuery(e.target.value)
+                    setShowRecipeSuggestions(true)
+                  }}
+                  onFocus={() => setShowRecipeSuggestions(true)}
+                  placeholder="Type to search recipes..."
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+
+                {/* Autocomplete Dropdown */}
+                {showRecipeSuggestions && getFilteredRecipes().length > 0 && (
+                  <div className="absolute z-50 mt-1 w-full bg-zinc-800 border border-zinc-600 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    {getFilteredRecipes().map((recipe) => (
+                      <button
+                        key={recipe.id}
+                        type="button"
+                        onClick={() => addLinkedRecipe(recipe)}
+                        className="w-full px-4 py-2.5 text-left hover:bg-zinc-700 transition-colors flex items-center justify-between group"
+                      >
+                        <span className="text-white">{recipe.recipeName}</span>
+                        <span className="text-xs text-zinc-500 group-hover:text-zinc-400">
+                          {recipe.mealType?.join(', ') || 'Any meal'}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Linked Recipes Display */}
+              {linkedRecipes.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {linkedRecipes.map((recipe) => (
+                    <span
+                      key={recipe.id}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-900/40 border border-purple-500/50 rounded-full text-sm text-purple-300"
+                    >
+                      <span>{recipe.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeLinkedRecipe(recipe.id)}
+                        className="ml-1 text-purple-400 hover:text-purple-200 transition-colors"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-3 pt-2">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShowCustomInstructionsModal(false)
+                  setCustomInstructions('')
+                  setLinkedRecipes([])
+                  setRecipeSearchQuery('')
+                }}
+              >
+                Cancel
+              </Button>
+              <button
+                onClick={() => {
+                  setShowCustomInstructionsModal(false)
+                  handleGeneratePlan()
+                }}
+                className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-purple-500 text-white rounded-lg text-sm font-medium hover:from-orange-600 hover:to-purple-600 transition-all"
+              >
+                Generate Plan
+              </button>
+            </div>
+          </div>
+        </Modal>
       </PageContainer>
     </AppLayout>
   )
