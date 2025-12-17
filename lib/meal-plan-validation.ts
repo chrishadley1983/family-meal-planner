@@ -266,40 +266,43 @@ export function autoFixBatchCooking(
 
     // Recipe used multiple times without batch cooking flags - need to fix or error
     const recipeName = groupMeals[0].recipeName || recipeId
+
+    // Sort meals by day index while keeping references to original objects
+    // IMPORTANT: We must modify the ORIGINAL meals, not copies!
     const mealsWithIndex = groupMeals.map(meal => ({
-      ...meal,
+      meal, // Keep reference to original
       dayIndex: getDayIndex(meal.dayOfWeek, weekStartDate)
     })).sort((a, b) => a.dayIndex - b.dayIndex)
 
-    const daysUsed = mealsWithIndex.map(m => m.dayOfWeek).join(', ')
+    const daysUsed = mealsWithIndex.map(m => m.meal.dayOfWeek).join(', ')
     console.log(`🔧 Recipe "${recipeName}" used ${groupMeals.length} times (${daysUsed}) - needs fix`)
 
     // OPTION 1: If batch cooking enabled, convert to batch cooking
     if (settings.batchCookingEnabled) {
       console.log(`   → Converting to batch cooking (enabled in settings)`)
 
-      const firstMeal = mealsWithIndex[0]
-      const subsequentMeals = mealsWithIndex.slice(1)
+      const firstMealRef = mealsWithIndex[0].meal // Original meal reference
+      const subsequentMealRefs = mealsWithIndex.slice(1).map(m => m.meal) // Original meal references
 
       // Calculate total servings needed
-      const totalServings = mealsWithIndex.reduce((sum, m) => sum + (m.servings || 4), 0)
+      const totalServings = mealsWithIndex.reduce((sum, m) => sum + (m.meal.servings || 4), 0)
 
-      // Fix first meal: set servings to total, add batch cook note
-      firstMeal.isLeftover = false
-      firstMeal.servings = totalServings
-      const servingsBreakdown = mealsWithIndex.map(m => `${m.dayOfWeek} (${m.servings || 4})`).join(' + ')
-      firstMeal.notes = `Batch cook ${totalServings} servings—covers ${servingsBreakdown}`
+      // Fix first meal: set servings to total, add batch cook note - MODIFYING ORIGINAL
+      firstMealRef.isLeftover = false
+      firstMealRef.servings = totalServings
+      const servingsBreakdown = mealsWithIndex.map(m => `${m.meal.dayOfWeek} (${m.meal.servings || 4})`).join(' + ')
+      firstMealRef.notes = `Batch cook ${totalServings} servings—covers ${servingsBreakdown}`
 
-      // Fix subsequent meals: mark as leftover
-      subsequentMeals.forEach(meal => {
+      // Fix subsequent meals: mark as leftover - MODIFYING ORIGINALS
+      subsequentMealRefs.forEach(meal => {
         meal.isLeftover = true
-        meal.batchCookSourceDay = firstMeal.dayOfWeek
-        meal.notes = `Reheat from ${firstMeal.dayOfWeek}`
+        meal.batchCookSourceDay = firstMealRef.dayOfWeek
+        meal.notes = `Reheat from ${firstMealRef.dayOfWeek}`
       })
 
       fixesApplied.push(
-        `Converted "${recipeName}" to batch cooking: cook on ${firstMeal.dayOfWeek}, ` +
-        `reheat on ${subsequentMeals.map(m => m.dayOfWeek).join(', ')}`
+        `Converted "${recipeName}" to batch cooking: cook on ${firstMealRef.dayOfWeek}, ` +
+        `reheat on ${subsequentMealRefs.map(m => m.dayOfWeek).join(', ')}`
       )
       return
     }
@@ -308,7 +311,7 @@ export function autoFixBatchCooking(
     console.log(`   → Batch cooking disabled, checking cooldowns...`)
 
     // Get cooldown for the meal type (use first meal's type)
-    const cooldownDays = getCooldownForMealType(mealsWithIndex[0].mealType, settings)
+    const cooldownDays = getCooldownForMealType(mealsWithIndex[0].meal.mealType, settings)
 
     // Check each pair of consecutive usages
     let cooldownViolated = false
@@ -316,7 +319,7 @@ export function autoFixBatchCooking(
       const daysBetween = mealsWithIndex[i + 1].dayIndex - mealsWithIndex[i].dayIndex
       if (daysBetween < cooldownDays) {
         cooldownViolated = true
-        console.log(`   ❌ Cooldown violated: ${daysBetween} days between ${mealsWithIndex[i].dayOfWeek} and ${mealsWithIndex[i + 1].dayOfWeek} (need ${cooldownDays})`)
+        console.log(`   ❌ Cooldown violated: ${daysBetween} days between ${mealsWithIndex[i].meal.dayOfWeek} and ${mealsWithIndex[i + 1].meal.dayOfWeek} (need ${cooldownDays})`)
         break
       }
     }

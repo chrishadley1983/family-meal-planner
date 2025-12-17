@@ -102,7 +102,10 @@ function adjustCooldownsForCustomInstructions(
   }
 
   // Also check linked recipes to infer meal type (user selected specific recipe via autocomplete)
-  // AND if the user has linked recipes with "every day" type instructions, skip batch cooking validation for that meal type
+  // KEY: When a user links a specific recipe, they WANT that recipe used.
+  // If the recipe appears multiple times, it's intentional - skip batch cooking validation for that meal type.
+  const linkedRecipeMealTypes: Set<string> = new Set()
+
   if (linkedRecipes && linkedRecipes.length > 0) {
     for (const linked of linkedRecipes) {
       const fullRecipe = recipes.find(r => r.id === linked.id)
@@ -122,6 +125,7 @@ function adjustCooldownsForCustomInstructions(
 
         if (linkedMealType) {
           console.log(`🔍 Detected meal type from linked recipe "${linked.name}": ${linkedMealType}`)
+          linkedRecipeMealTypes.add(linkedMealType)
 
           // If no meal type detected yet from text, use this one
           if (!mealTypeDetected) {
@@ -136,9 +140,32 @@ function adjustCooldownsForCustomInstructions(
   console.log(`🔍 Cooldown detection - wantsEveryDay: ${wantsEveryDay}, wantsMultipleDays: ${wantsMultipleDays}, mealTypeDetected: ${mealTypeDetected}`)
   console.log(`🔍 Instructions: "${instructionsLower}"`)
   console.log(`🔍 Linked recipes: ${linkedRecipes?.map(r => r.name).join(', ') || 'none'}`)
+  console.log(`🔍 Linked recipe meal types: ${Array.from(linkedRecipeMealTypes).join(', ') || 'none'}`)
 
   // Create adjusted settings
   const adjustedSettings = { ...settings }
+
+  // IMPORTANT: If user linked specific recipes, ALWAYS skip batch cooking validation for those meal types
+  // This handles the case where user selects "Standard Porridge" without saying "every day" in text
+  // The fact that they linked a specific recipe means they want it used, even if multiple times
+  if (linkedRecipeMealTypes.size > 0) {
+    linkedRecipeMealTypes.forEach(mealType => {
+      if (mealType === 'breakfast') {
+        skipBatchCookingForMealTypes.push('breakfast')
+        adjustments.push(`Skipping batch cooking validation for breakfast (linked recipe detected)`)
+      } else if (mealType === 'lunch') {
+        skipBatchCookingForMealTypes.push('lunch')
+        adjustments.push(`Skipping batch cooking validation for lunch (linked recipe detected)`)
+      } else if (mealType === 'dinner') {
+        skipBatchCookingForMealTypes.push('dinner')
+        adjustments.push(`Skipping batch cooking validation for dinner (linked recipe detected)`)
+      } else if (mealType === 'snack') {
+        skipBatchCookingForMealTypes.push('snack', 'morning-snack', 'afternoon-snack', 'evening-snack')
+        adjustments.push(`Skipping batch cooking validation for snacks (linked recipe detected)`)
+      }
+    })
+    console.log(`🔍 Added skip batch cooking for linked recipe meal types: ${Array.from(linkedRecipeMealTypes).join(', ')}`)
+  }
 
   if (wantsEveryDay || wantsMultipleDays) {
     // User wants repeated meals - ALWAYS skip batch cooking validation for the detected meal type
