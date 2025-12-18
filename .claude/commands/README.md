@@ -14,6 +14,7 @@ Type `/` in Claude Code followed by the command name. For example:
 | `/merge-feature` | Safely merge a feature branch to main | After completing feature work on a branch |
 | `/test-plan` | Analyze test coverage and generate manifests | Before releases, after feature changes, for test planning |
 | `/test-build` | Generate test files to fill coverage gaps | After `/test-plan analyze` identifies missing tests |
+| `/code-review` | Thorough code review with security, performance, and quality analysis | Before merging PRs, after significant changes |
 
 ## How Commands Work
 
@@ -54,7 +55,6 @@ You are a **[Role]** responsible for [task description].
 | Command | Purpose | Status |
 |---------|---------|--------|
 | `/test-execute` | Execute tests based on manifest from test-plan | Planned |
-| `/security-test` | Run security checks on codebase | Planned |
 | `/qa-review` | Quality assurance checklist | Planned |
 | `/update-docs` | Update documentation | Planned |
 
@@ -81,6 +81,59 @@ The test agents work together in a pipeline:
 | `type:<type>` | Build specific test type: `type:e2e`, `type:api`, `type:unit` |
 | `all` | Build all missing tests (large output) |
 
+## Code Review Workflow
+
+The code review agent provides thorough analysis of code changes:
+
+```
+/code-review <mode>     →  Analyzes changes for issues
+                            ↓
+                        Generates report in docs/reviews/
+                            ↓
+                        Fix critical/high issues
+                            ↓
+/code-review staged     →  Re-verify fixes
+                            ↓
+                        Human approval
+                            ↓
+/merge-feature          →  Merge to main
+```
+
+### Code Review Modes
+
+| Mode | Description |
+|------|-------------|
+| `staged` | Review only staged changes (`git diff --staged`) |
+| `branch` | Review all changes vs main/master branch |
+| `commit:<sha>` | Review a specific commit |
+| `pr:<number>` | Review a pull request (requires GitHub CLI) |
+| `file:<path>` | Deep review of a specific file |
+| `feature:<name>` | Review all files related to a feature module |
+| `security` | Security-focused review only |
+| `performance` | Performance-focused review only |
+| `dry` | DRY/duplication-focused review - find redundant code |
+| `architecture` | File organisation and structure review |
+| `full` | Complete review with all checks |
+
+### Review Severity Levels
+
+| Severity | Action Required |
+|----------|-----------------|
+| Critical | Must fix before merge |
+| High | Should fix before merge |
+| Medium | Fix or justify skip |
+| Low | Nice to have |
+| Info | No action required |
+
+### Configuration
+
+Review settings can be customised in `docs/reviews/config/review-config.ts`:
+- Strictness level (strict/moderate/relaxed)
+- Enabled categories (security, performance, DRY, etc.)
+- Critical paths (always reviewed thoroughly)
+- Code quality thresholds (complexity, function length, etc.)
+- Custom rules for project-specific checks
+
 ## Best Practices
 
 1. **Be explicit** - Commands should have clear steps, not vague instructions
@@ -93,4 +146,6 @@ The test agents work together in a pipeline:
 
 - `CLAUDE.md` - Project conventions and workflows (root level)
 - `.claude/settings.json` - Claude Code settings
+- `docs/testing/config/project-config.ts` - Test and feature configuration (shared with test agents)
+- `docs/reviews/config/review-config.ts` - Code review configuration
 - `docs/merge-branch-to-main-prompt_1.md` - Original merge prompt (archived reference)
