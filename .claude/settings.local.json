@@ -39,7 +39,12 @@
       "Bash(node test-cooldown-logic.js:*)",
       "Bash(powershell -Command:*)",
       "Bash(npm run build:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(git diff:*)",
+      "Bash(npm run lint)",
+      "Bash(npx jest --passWithNoTests --silent)",
+      "Bash(cut:*)",
+      "Bash(npx jest:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

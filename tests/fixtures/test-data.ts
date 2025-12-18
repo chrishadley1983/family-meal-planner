@@ -29,6 +29,7 @@ export const testMealPlanSettings: MealPlanSettings = {
   maxLeftoverDays: 4,
   priorityOrder: ['macros', 'ratings', 'variety', 'shopping', 'prep', 'time'],
   feedbackDetail: 'medium',
+  allowDinnerForLunch: true,
 }
 
 export const testMealsValid: GeneratedMeal[] = [
@@ -197,7 +198,7 @@ export const testInventoryItemWithExpiry: InventoryItemWithExpiry = {
   ...testInventoryItems[0],
   daysUntilExpiry: 4,
   shelfLifeDays: 4,
-  expiryStatus: 'expiring_soon',
+  expiryStatus: 'expiringSoon',
 }
 
 // ============================================================================

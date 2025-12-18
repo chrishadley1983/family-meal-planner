@@ -241,13 +241,13 @@ describe('Expiry Calculations', () => {
       const items: InventoryItemWithExpiry[] = [
         { ...testInventoryItems[0], daysUntilExpiry: 5, shelfLifeDays: 7, expiryStatus: 'fresh' },
         { ...testInventoryItems[1], daysUntilExpiry: -2, shelfLifeDays: 7, expiryStatus: 'expired' },
-        { ...testInventoryItems[2], daysUntilExpiry: 1, shelfLifeDays: 7, expiryStatus: 'expiring_soon' },
+        { ...testInventoryItems[2], daysUntilExpiry: 1, shelfLifeDays: 7, expiryStatus: 'expiringSoon' },
       ]
 
       const sorted = sortByExpiryPriority(items)
 
       expect(sorted[0].expiryStatus).toBe('expired')
-      expect(sorted[1].expiryStatus).toBe('expiring_soon')
+      expect(sorted[1].expiryStatus).toBe('expiringSoon')
       expect(sorted[2].expiryStatus).toBe('fresh')
     })
 

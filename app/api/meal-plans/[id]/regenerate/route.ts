@@ -9,9 +9,10 @@ import { subWeeks } from 'date-fns'
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -20,7 +21,7 @@ export async function POST(
     // Verify ownership and get existing plan
     const existingPlan = await prisma.mealPlan.findFirst({
       where: {
-        id: params.id,
+        id,
         userId: session.user.id
       },
       include: {
@@ -249,7 +250,7 @@ export async function POST(
     // Delete existing unlocked meals
     await prisma.meal.deleteMany({
       where: {
-        mealPlanId: params.id,
+        mealPlanId: id,
         isLocked: false
       }
     })
@@ -257,14 +258,14 @@ export async function POST(
     // Create new meals
     await prisma.meal.createMany({
       data: newMeals.map((meal: any) => ({
-        mealPlanId: params.id,
+        mealPlanId: id,
         ...meal
       }))
     })
 
     // Fetch updated meal plan
     const updatedPlan = await prisma.mealPlan.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         meals: {
           include: {

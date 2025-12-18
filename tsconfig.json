@@ -37,6 +37,9 @@
     "**/*.mts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "docs/testing/templates",
+    "tests/fixtures/seeders",
+    "**/seeders/**"
   ]
 }

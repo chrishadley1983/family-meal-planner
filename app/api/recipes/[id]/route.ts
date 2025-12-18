@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { getRecipeNutrition, calculateIngredientsHash } from '@/lib/nutrition/nutrition-service'
 
@@ -198,13 +199,13 @@ export async function PUT(
         ...(shouldRecalculateNutrition && {
           aiOverallRating: null,
           aiOverallExplanation: null,
-          aiIngredientRatings: null,
+          aiIngredientRatings: Prisma.DbNull,
           aiNutritionistFeedback: null,
           aiAnalysisCalculatedAt: null,
         }),
         ...(ingredients !== undefined && {
           ingredients: {
-            create: ingredients.map((ing, index) => ({
+            create: ingredients.map((ing: any, index: number) => ({
               ingredientName: ing.ingredientName,
               quantity: ing.quantity,
               unit: ing.unit,
@@ -216,7 +217,7 @@ export async function PUT(
         }),
         ...(instructions !== undefined && {
           instructions: {
-            create: instructions.map((inst, index) => ({
+            create: instructions.map((inst: any, index: number) => ({
               stepNumber: inst.stepNumber,
               instruction: inst.instruction,
               timerMinutes: inst.timerMinutes,

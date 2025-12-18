@@ -28,20 +28,20 @@ export function createMockRequest(
   })
 
   // Create request init
-  const init: RequestInit = {
+  const init = {
     method,
     headers: {
       'Content-Type': 'application/json',
       ...headers,
     },
-  }
+  } as RequestInit
 
   // Add body for non-GET requests
   if (body && method !== 'GET') {
     init.body = JSON.stringify(body)
   }
 
-  return new NextRequest(urlObj.toString(), init)
+  return new NextRequest(urlObj.toString(), init as any)
 }
 
 /**
@@ -204,6 +204,8 @@ export const testDataFactories = {
     itemName: string
     quantity: number
     unit: string
+    isActive: boolean
+    addedBy: string
   }> = {}) => ({
     id: 'inventory-123',
     userId: 'test-user-123',
@@ -224,6 +226,7 @@ export const testDataFactories = {
     id: string
     userId: string
     weekStarting: Date
+    name: string
   }> = {}) => ({
     id: 'mealplan-123',
     userId: 'test-user-123',

@@ -5,9 +5,10 @@ import { prisma } from '@/lib/prisma'
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -18,7 +19,7 @@ export async function PATCH(
     // Verify ownership through meal plan
     const existingMeal = await prisma.meal.findFirst({
       where: {
-        id: params.id,
+        id,
         mealPlan: {
           userId: session.user.id
         }
@@ -36,19 +37,19 @@ export async function PATCH(
     // This prevents auto-recalculation from overwriting user's custom value
     if ('servings' in updates && updates.servings !== existingMeal.servings) {
       updates.servingsManuallySet = true
-      console.log(`🔧 Servings manually updated for meal ${params.id}, setting flag`)
+      console.log(`🔧 Servings manually updated for meal ${id}, setting flag`)
     }
 
     // Update the meal
     const meal = await prisma.meal.update({
-      where: { id: params.id },
+      where: { id },
       data: updates,
       include: {
         recipe: true
       }
     })
 
-    console.log(`✅ Meal ${params.id} updated`)
+    console.log(`✅ Meal ${id} updated`)
 
     return NextResponse.json({ meal })
   } catch (error: any) {
@@ -62,9 +63,10 @@ export async function PATCH(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -73,7 +75,7 @@ export async function DELETE(
     // Verify ownership
     const existingMeal = await prisma.meal.findFirst({
       where: {
-        id: params.id,
+        id,
         mealPlan: {
           userId: session.user.id
         }
@@ -88,10 +90,10 @@ export async function DELETE(
     }
 
     await prisma.meal.delete({
-      where: { id: params.id }
+      where: { id }
     })
 
-    console.log(`✅ Meal ${params.id} deleted`)
+    console.log(`✅ Meal ${id} deleted`)
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

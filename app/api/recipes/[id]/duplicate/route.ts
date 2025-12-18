@@ -53,7 +53,7 @@ export async function POST(
         instructions: {
           create: instructions.map(({ id: _, recipeId: __, ...inst }) => inst)
         }
-      },
+      } as any,
       include: {
         ingredients: {
           orderBy: { sortOrder: 'asc' }

@@ -235,13 +235,15 @@ export interface InventoryItem {
   quantity: number
   unit: string
   category: string
-  location: string
+  location: string | null
   expiryDate: Date | null
-  autoPopulatedExpiry: boolean
-  dateAdded: Date
+  expiryIsEstimated: boolean
+  isActive: boolean
+  purchaseDate?: Date
   addedBy: string
   notes: string | null
   isUsedInPlannedMeal: boolean
+  createdAt: Date
   updatedAt: Date
 }
 

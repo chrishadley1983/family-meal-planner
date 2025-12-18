@@ -297,9 +297,10 @@ describe('Meal Plan Settings', () => {
       })
 
       it('should show increasing intensity', () => {
-        expect(SHOPPING_MODE_DESCRIPTIONS.mild).toContain('0.3')
-        expect(SHOPPING_MODE_DESCRIPTIONS.moderate).toContain('0.5')
-        expect(SHOPPING_MODE_DESCRIPTIONS.aggressive).toContain('0.8')
+        // Descriptions use user-friendly text showing increasing preference for shopping efficiency
+        expect(SHOPPING_MODE_DESCRIPTIONS.mild).toContain('Slight')
+        expect(SHOPPING_MODE_DESCRIPTIONS.moderate).toContain('Moderate')
+        expect(SHOPPING_MODE_DESCRIPTIONS.aggressive).toContain('Strong')
       })
     })
 
@@ -311,9 +312,10 @@ describe('Meal Plan Settings', () => {
       })
 
       it('should show increasing priority', () => {
-        expect(EXPIRY_PRIORITY_DESCRIPTIONS.soft).toContain('0.3')
-        expect(EXPIRY_PRIORITY_DESCRIPTIONS.moderate).toContain('0.5')
-        expect(EXPIRY_PRIORITY_DESCRIPTIONS.strong).toContain('1.0')
+        // Descriptions use user-friendly text showing increasing priority for expiring items
+        expect(EXPIRY_PRIORITY_DESCRIPTIONS.soft).toContain('Consider')
+        expect(EXPIRY_PRIORITY_DESCRIPTIONS.moderate).toContain('Prioritize')
+        expect(EXPIRY_PRIORITY_DESCRIPTIONS.strong).toContain('Strongly')
       })
     })
   })

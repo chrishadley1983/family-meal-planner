@@ -676,11 +676,11 @@ export default function InventoryPage() {
           successCount++
         } else {
           errorCount++
-          console.error('❌ Failed to import:', item.itemName)
+          console.error('❌ Failed to import:', item.data.itemName)
         }
       } catch (error) {
         errorCount++
-        console.error('❌ Error importing item:', item.itemName, error)
+        console.error('❌ Error importing item:', item.data.itemName, error)
       }
     }
 

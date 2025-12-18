@@ -6,9 +6,10 @@ import { calculateMealServings } from '@/lib/meal-utils'
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -26,7 +27,7 @@ export async function PATCH(
     // Verify ownership
     const existingPlan = await prisma.mealPlan.findFirst({
       where: {
-        id: params.id,
+        id,
         userId: session.user.id
       }
     })
@@ -48,7 +49,7 @@ export async function PATCH(
     }
 
     const mealPlan = await prisma.mealPlan.update({
-      where: { id: params.id },
+      where: { id },
       data: updateData,
       include: {
         meals: {
@@ -59,7 +60,7 @@ export async function PATCH(
       }
     })
 
-    console.log(`✅ Meal plan ${params.id} status changed to ${status}`)
+    console.log(`✅ Meal plan ${id} status changed to ${status}`)
 
     return NextResponse.json({ mealPlan })
   } catch (error: any) {

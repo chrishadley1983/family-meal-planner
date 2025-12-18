@@ -216,8 +216,8 @@ export async function GET(
         doc.setTextColor(BRAND_COLORS.grayLight)
         doc.text('Powered by FamilyFuel', pageWidth / 2, footerY, { align: 'center' })
 
-        const pageNum = doc.getCurrentPageInfo().pageNumber
-        const totalPages = doc.getNumberOfPages()
+        const pageNum = (doc as any).getCurrentPageInfo().pageNumber
+        const totalPages = (doc as any).getNumberOfPages()
         doc.text(`Page ${pageNum} of ${totalPages}`, pageWidth - margin, footerY, { align: 'right' })
       },
     })

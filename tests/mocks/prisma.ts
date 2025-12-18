@@ -5,8 +5,11 @@
 
 import { jest } from '@jest/globals'
 
+// Define mock function type that returns any
+type MockFn = jest.Mock<any>
+
 // Mock Prisma client with all models
-export const mockPrismaClient = {
+export const mockPrismaClient: Record<string, any> = {
   user: {
     findUnique: jest.fn(),
     findFirst: jest.fn(),
@@ -170,7 +173,7 @@ export const mockPrismaClient = {
     create: jest.fn(),
     createMany: jest.fn(),
   },
-  $transaction: jest.fn((fn) => fn(mockPrismaClient)),
+  $transaction: jest.fn((fn: (client: typeof mockPrismaClient) => any) => fn(mockPrismaClient)),
   $connect: jest.fn(),
   $disconnect: jest.fn(),
 }

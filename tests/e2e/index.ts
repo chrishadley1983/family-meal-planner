@@ -20,7 +20,7 @@ import { shoppingListE2ETests } from './shopping-list.spec'
 import { staplesE2ETests } from './staples.spec'
 
 // Import types
-import type { E2ETestSpec } from '../../docs/testing/templates/e2e-test-template'
+import type { E2ETestSpec } from './types'
 
 // =============================================================================
 // EXPORT INDIVIDUAL TEST SUITES

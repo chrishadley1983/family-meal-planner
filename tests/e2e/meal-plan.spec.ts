@@ -14,7 +14,7 @@
  * NOTE: Requires test recipes to be seeded before running
  */
 
-import type { E2ETestSpec } from '../../docs/testing/templates/e2e-test-template'
+import type { E2ETestSpec } from './types'
 
 // =============================================================================
 // MEAL PLAN GENERATION JOURNEY

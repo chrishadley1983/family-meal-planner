@@ -563,6 +563,84 @@ export async function POST(req: NextRequest) {
     // Track invalid recipes for warning generation
     const invalidRecipes: Array<{ recipeName: string; day: string; mealType: string }> = []
 
+    // Track recovered recipes (fuzzy matched)
+    const recoveredRecipes: Array<{ originalName: string; matchedName: string; day: string; mealType: string }> = []
+
+    /**
+     * Normalize a string for comparison:
+     * - lowercase
+     * - replace & with 'and'
+     * - remove special characters except spaces
+     * - collapse multiple spaces
+     */
+    function normalizeForComparison(str: string): string {
+      return str
+        .toLowerCase()
+        .replace(/&/g, 'and')
+        .replace(/[^a-z0-9\s]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+    }
+
+    /**
+     * Calculate word overlap between two strings
+     * Returns a score from 0 to 1
+     */
+    function calculateWordOverlap(str1: string, str2: string): number {
+      const words1 = new Set(normalizeForComparison(str1).split(' ').filter(w => w.length > 2))
+      const words2 = new Set(normalizeForComparison(str2).split(' ').filter(w => w.length > 2))
+
+      if (words1.size === 0 || words2.size === 0) return 0
+
+      let matchCount = 0
+      for (const word of words1) {
+        if (words2.has(word)) matchCount++
+      }
+
+      // Use the smaller set size as denominator for more forgiving matching
+      const denominator = Math.min(words1.size, words2.size)
+      return matchCount / denominator
+    }
+
+    /**
+     * Find a recipe by fuzzy name matching when the ID is invalid
+     * Returns the matched recipe or null if no good match found
+     */
+    function findRecipeByFuzzyName(recipeName: string | null | undefined): typeof recipes[0] | null {
+      if (!recipeName || recipeName.length < 3) return null
+
+      const normalizedSearch = normalizeForComparison(recipeName)
+
+      // Try exact match (case-insensitive, normalized)
+      for (const recipe of recipes) {
+        if (normalizeForComparison(recipe.recipeName) === normalizedSearch) {
+          return recipe
+        }
+      }
+
+      // Try contains match (one contains the other)
+      for (const recipe of recipes) {
+        const normalizedRecipe = normalizeForComparison(recipe.recipeName)
+        if (normalizedRecipe.includes(normalizedSearch) || normalizedSearch.includes(normalizedRecipe)) {
+          return recipe
+        }
+      }
+
+      // Try word overlap matching (threshold: 70%)
+      let bestMatch: typeof recipes[0] | null = null
+      let bestScore = 0
+
+      for (const recipe of recipes) {
+        const score = calculateWordOverlap(recipeName, recipe.recipeName)
+        if (score > bestScore && score >= 0.7) {
+          bestScore = score
+          bestMatch = recipe
+        }
+      }
+
+      return bestMatch
+    }
+
     // Define the type for validated meals
     interface ValidatedMeal {
       dayOfWeek: string
@@ -574,25 +652,46 @@ export async function POST(req: NextRequest) {
       batchCookSourceDay: string | null
     }
 
-    // Validate and clean up meals - EXCLUDE meals with invalid recipe IDs entirely
-    // Invalid recipes should not appear in the meal plan at all (not even with null recipeId)
+    // Validate and clean up meals - try fuzzy matching before excluding
     console.log('🔍 AI Response - Checking for batch cooking data...')
     const validatedMeals: ValidatedMeal[] = generatedPlan.meals
-      .filter((meal: any) => {
+      .map((meal: any) => {
         const isValidRecipe = meal.recipeId && validRecipeIds.has(meal.recipeId)
 
         if (meal.recipeId && !isValidRecipe) {
-          console.warn(`⚠️ Claude suggested invalid recipe ID: ${meal.recipeId} for ${meal.recipeName} - EXCLUDING from plan`)
-          invalidRecipes.push({
-            recipeName: meal.recipeName || 'Unknown recipe',
-            day: meal.dayOfWeek,
-            mealType: meal.mealType
-          })
-          return false // Exclude this meal entirely
+          // Invalid recipe ID - try fuzzy matching by name
+          console.warn(`⚠️ Invalid recipe ID: ${meal.recipeId} for "${meal.recipeName}" - attempting fuzzy match...`)
+
+          const matchedRecipe = findRecipeByFuzzyName(meal.recipeName)
+
+          if (matchedRecipe) {
+            console.log(`✅ Fuzzy match found: "${meal.recipeName}" → "${matchedRecipe.recipeName}" (ID: ${matchedRecipe.id})`)
+            recoveredRecipes.push({
+              originalName: meal.recipeName || 'Unknown',
+              matchedName: matchedRecipe.recipeName,
+              day: meal.dayOfWeek,
+              mealType: meal.mealType
+            })
+            // Return meal with corrected recipe ID
+            return {
+              ...meal,
+              recipeId: matchedRecipe.id,
+              recipeName: matchedRecipe.recipeName // Use the actual recipe name
+            }
+          } else {
+            console.warn(`❌ No fuzzy match found for "${meal.recipeName}" - excluding from plan`)
+            invalidRecipes.push({
+              recipeName: meal.recipeName || 'Unknown recipe',
+              day: meal.dayOfWeek,
+              mealType: meal.mealType
+            })
+            return null // Mark for exclusion
+          }
         }
 
-        return true // Keep valid meals
+        return meal // Keep valid meals as-is
       })
+      .filter((meal: any) => meal !== null) // Remove excluded meals
       .map((meal: any) => {
         // Log batch cooking info
         if (meal.isLeftover) {
@@ -611,6 +710,16 @@ export async function POST(req: NextRequest) {
       })
 
     console.log(`📊 Batch cooking summary: ${validatedMeals.filter((m) => m.isLeftover).length} leftover meals out of ${validatedMeals.length} total`)
+
+    // Log fuzzy match recovery stats
+    if (recoveredRecipes.length > 0) {
+      console.log(`🔧 Fuzzy match recovery: ${recoveredRecipes.length} recipe(s) recovered from invalid IDs:`)
+      recoveredRecipes.forEach(r => console.log(`   - "${r.originalName}" → "${r.matchedName}" (${r.day} ${r.mealType})`))
+    }
+    if (invalidRecipes.length > 0) {
+      console.log(`❌ Unrecoverable recipes: ${invalidRecipes.length} recipe(s) could not be matched:`)
+      invalidRecipes.forEach(r => console.log(`   - "${r.recipeName}" (${r.day} ${r.mealType})`))
+    }
 
     // Calculate servings based on who's eating each meal
     console.log('🧮 Calculating servings for all meals...')
@@ -756,9 +865,13 @@ export async function POST(req: NextRequest) {
       totalMeals: 0
     }
 
-    // Only count non-leftover meals (leftovers are reheats, not additional calories)
-    const mealsToCount = mealPlan.meals.filter(m => !m.isLeftover)
+    // Count ALL meals including leftovers
+    // Each meal row represents food consumed on that day - leftovers are still eaten!
+    // The isLeftover flag just indicates it was cooked earlier, not that it shouldn't be counted
+    const mealsToCount = mealPlan.meals
     macroTotals.totalMeals = mealsToCount.length
+    const leftoverMealsCount = mealPlan.meals.filter(m => m.isLeftover).length
+    console.log(`📊 Total meals: ${mealsToCount.length}, of which ${leftoverMealsCount} are leftovers (all counted)`)
 
     for (const meal of mealsToCount) {
       if (meal.recipe) {
@@ -809,26 +922,32 @@ export async function POST(req: NextRequest) {
         macroStatement = `Only ${nutritionCoverage}% of recipes have nutrition data. Add calorie/macro information to your recipes for accurate tracking.`
       }
 
-      // Replace the first sentence if it contains calorie/macro claims
-      // Pattern matches phrases like "Your week averages X calories" or "averaging Xg protein"
-      const macroClaimPattern = /Your week averages[^.]*calories[^.]*\./i
-      const proteinClaimPattern = /averaging \d+g?\)?,? ?(with|hitting|strong|protein)[^.]*\./gi
-      const carbsFatPattern = /Carbs average[^.]*fat averages[^.]*\./i
+      // FIRST: Strip ALL calorie/macro claims from AI summary to avoid duplicates
+      // These patterns match various ways AI might state calorie/macro information
+      const calorieClaimPatterns = [
+        /Your week averages[^.]*calories[^.]*\./gi,
+        /averaging approximately \d[,\d]* calories[^.]*\./gi,
+        /averages? (?:about |approximately |around )?\d[,\d]* calories?[^.]*\./gi,
+        /\d[,\d]* calories? per day[^.]*\./gi,
+        /daily (?:calorie )?(?:average|total)[^.]*\d[,\d]* cal[^.]*\./gi,
+        /Carbs average[^.]*fat averages[^.]*\./gi,
+        /with \d+g protein[^.]*\./gi,
+        /hitting \d+g[^.]*protein[^.]*\./gi,
+      ]
 
-      if (macroClaimPattern.test(finalSummary)) {
-        finalSummary = finalSummary.replace(macroClaimPattern, macroStatement)
-      } else if (proteinClaimPattern.test(finalSummary)) {
-        // If the summary starts with macro claims embedded differently
-        finalSummary = macroStatement + ' ' + finalSummary.replace(proteinClaimPattern, '')
-      } else {
-        // Prepend accurate macro info if no existing claim found
-        finalSummary = macroStatement + ' ' + finalSummary
+      // Remove all AI calorie claims
+      let cleanedSummary = finalSummary
+      for (const pattern of calorieClaimPatterns) {
+        cleanedSummary = cleanedSummary.replace(pattern, '')
       }
 
-      // Remove any duplicate carbs/fat statements that may have been left
-      finalSummary = finalSummary.replace(carbsFatPattern, '')
+      // Clean up any double spaces or leading/trailing whitespace
+      cleanedSummary = cleanedSummary.replace(/\s{2,}/g, ' ').trim()
 
-      console.log('✅ Updated summary with accurate macro data')
+      // Prepend our accurate macro statement
+      finalSummary = macroStatement + (cleanedSummary ? ' ' + cleanedSummary : '')
+
+      console.log('✅ Updated summary with accurate macro data (stripped AI claims first)')
     } else {
       console.log('⚠️ No nutrition data available - keeping original summary')
     }

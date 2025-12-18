@@ -29,7 +29,7 @@ describe('API Integration Tests (Mocked)', () => {
 
         ;(mockPrismaClient.recipe.findMany as jest.Mock).mockResolvedValue(mockRecipes)
 
-        const result = await mockPrismaClient.recipe.findMany({
+        const result: any = await mockPrismaClient.recipe.findMany({
           where: { userId, isActive: true },
           orderBy: { updatedAt: 'desc' },
         })
@@ -45,7 +45,7 @@ describe('API Integration Tests (Mocked)', () => {
         const vegetarianRecipes = testRecipes.filter(r => r.isVegetarian)
         ;(mockPrismaClient.recipe.findMany as jest.Mock).mockResolvedValue(vegetarianRecipes)
 
-        const result = await mockPrismaClient.recipe.findMany({
+        const result: any = await mockPrismaClient.recipe.findMany({
           where: { isVegetarian: true, isActive: true },
         })
 
@@ -55,7 +55,7 @@ describe('API Integration Tests (Mocked)', () => {
       it('should return empty array when no recipes found', async () => {
         ;(mockPrismaClient.recipe.findMany as jest.Mock).mockResolvedValue([])
 
-        const result = await mockPrismaClient.recipe.findMany({
+        const result: any = await mockPrismaClient.recipe.findMany({
           where: { userId: 'non-existent-user' },
         })
 
@@ -68,7 +68,7 @@ describe('API Integration Tests (Mocked)', () => {
         const newRecipe = createTestRecipe({ recipeName: 'New Recipe' })
         ;(mockPrismaClient.recipe.create as jest.Mock).mockResolvedValue(newRecipe)
 
-        const result = await mockPrismaClient.recipe.create({
+        const result: any = await mockPrismaClient.recipe.create({
           data: {
             userId: 'test-user-id',
             recipeName: 'New Recipe',
@@ -99,7 +99,7 @@ describe('API Integration Tests (Mocked)', () => {
 
         ;(mockPrismaClient.recipe.update as jest.Mock).mockResolvedValue(updatedRecipe)
 
-        const result = await mockPrismaClient.recipe.update({
+        const result: any = await mockPrismaClient.recipe.update({
           where: { id: originalRecipe.id },
           data: { recipeName: 'Updated Recipe' },
         })
@@ -115,7 +115,7 @@ describe('API Integration Tests (Mocked)', () => {
 
         ;(mockPrismaClient.recipe.update as jest.Mock).mockResolvedValue(archivedRecipe)
 
-        const result = await mockPrismaClient.recipe.update({
+        const result: any = await mockPrismaClient.recipe.update({
           where: { id: recipe.id },
           data: { isActive: false },
         })
@@ -133,7 +133,7 @@ describe('API Integration Tests (Mocked)', () => {
 
         ;(mockPrismaClient.familyProfile.findMany as jest.Mock).mockResolvedValue(mockProfiles)
 
-        const result = await mockPrismaClient.familyProfile.findMany({
+        const result: any = await mockPrismaClient.familyProfile.findMany({
           where: { userId, isActive: true },
         })
 
@@ -146,7 +146,7 @@ describe('API Integration Tests (Mocked)', () => {
         const newProfile = createTestProfile({ profileName: 'New Family Member' })
         ;(mockPrismaClient.familyProfile.create as jest.Mock).mockResolvedValue(newProfile)
 
-        const result = await mockPrismaClient.familyProfile.create({
+        const result: any = await mockPrismaClient.familyProfile.create({
           data: {
             userId: 'test-user-id',
             profileName: 'New Family Member',
@@ -169,7 +169,7 @@ describe('API Integration Tests (Mocked)', () => {
 
         ;(mockPrismaClient.familyProfile.update as jest.Mock).mockResolvedValue(updatedProfile)
 
-        const result = await mockPrismaClient.familyProfile.update({
+        const result: any = await mockPrismaClient.familyProfile.update({
           where: { id: profile.id },
           data: {
             caloriesTarget: 2000,
@@ -189,7 +189,7 @@ describe('API Integration Tests (Mocked)', () => {
         const activeItems = testInventoryItems.filter(i => i.isActive)
         ;(mockPrismaClient.inventoryItem.findMany as jest.Mock).mockResolvedValue(activeItems)
 
-        const result = await mockPrismaClient.inventoryItem.findMany({
+        const result: any = await mockPrismaClient.inventoryItem.findMany({
           where: { isActive: true },
         })
 
@@ -206,7 +206,7 @@ describe('API Integration Tests (Mocked)', () => {
         }
         ;(mockPrismaClient.inventoryItem.create as jest.Mock).mockResolvedValue(newItem)
 
-        const result = await mockPrismaClient.inventoryItem.create({
+        const result: any = await mockPrismaClient.inventoryItem.create({
           data: {
             userId: 'test-user-id',
             itemName: 'Fresh Eggs',
@@ -228,7 +228,7 @@ describe('API Integration Tests (Mocked)', () => {
 
         ;(mockPrismaClient.inventoryItem.update as jest.Mock).mockResolvedValue(updatedItem)
 
-        const result = await mockPrismaClient.inventoryItem.update({
+        const result: any = await mockPrismaClient.inventoryItem.update({
           where: { id: item.id },
           data: { quantity: 300 },
         })
@@ -248,7 +248,7 @@ describe('API Integration Tests (Mocked)', () => {
 
         ;(mockPrismaClient.mealPlan.findMany as jest.Mock).mockResolvedValue(mockMealPlans)
 
-        const result = await mockPrismaClient.mealPlan.findMany({
+        const result: any = await mockPrismaClient.mealPlan.findMany({
           orderBy: { weekStartDate: 'desc' },
         })
 
@@ -272,7 +272,7 @@ describe('API Integration Tests (Mocked)', () => {
 
         ;(mockPrismaClient.mealPlan.create as jest.Mock).mockResolvedValue(newPlan)
 
-        const result = await mockPrismaClient.mealPlan.create({
+        const result: any = await mockPrismaClient.mealPlan.create({
           data: {
             userId: 'test-user-id',
             weekStartDate: weekStart,
@@ -294,7 +294,7 @@ describe('API Integration Tests (Mocked)', () => {
 
         ;(mockPrismaClient.mealPlan.update as jest.Mock).mockResolvedValue(updatedPlan)
 
-        const result = await mockPrismaClient.mealPlan.update({
+        const result: any = await mockPrismaClient.mealPlan.update({
           where: { id: 'plan-id' },
           data: { status: 'Finalized' },
         })
@@ -314,7 +314,7 @@ describe('API Integration Tests (Mocked)', () => {
 
         ;(mockPrismaClient.shoppingList.findMany as jest.Mock).mockResolvedValue(mockLists)
 
-        const result = await mockPrismaClient.shoppingList.findMany({
+        const result: any = await mockPrismaClient.shoppingList.findMany({
           include: { _count: { select: { items: true } } },
         })
 
@@ -335,7 +335,7 @@ describe('API Integration Tests (Mocked)', () => {
 
         ;(mockPrismaClient.shoppingListItem.create as jest.Mock).mockResolvedValue(newItem)
 
-        const result = await mockPrismaClient.shoppingListItem.create({
+        const result: any = await mockPrismaClient.shoppingListItem.create({
           data: {
             shoppingListId: 'list-id',
             itemName: 'Milk',
@@ -360,7 +360,7 @@ describe('API Integration Tests (Mocked)', () => {
 
         ;(mockPrismaClient.staple.findMany as jest.Mock).mockResolvedValue(mockStaples)
 
-        const result = await mockPrismaClient.staple.findMany({
+        const result: any = await mockPrismaClient.staple.findMany({
           where: { isActive: true },
         })
 
@@ -377,7 +377,7 @@ describe('API Integration Tests (Mocked)', () => {
 
         ;(mockPrismaClient.staple.update as jest.Mock).mockResolvedValue(updatedStaple)
 
-        const result = await mockPrismaClient.staple.update({
+        const result: any = await mockPrismaClient.staple.update({
           where: { id: 'staple-id' },
           data: { frequency: 'every_2_weeks' },
         })
@@ -394,7 +394,7 @@ describe('API Integration Tests (Mocked)', () => {
 
         ;(mockPrismaClient.staple.update as jest.Mock).mockResolvedValue(updatedStaple)
 
-        const result = await mockPrismaClient.staple.update({
+        const result: any = await mockPrismaClient.staple.update({
           where: { id: 'staple-id' },
           data: { lastAddedDate: now },
         })
@@ -432,7 +432,7 @@ describe('API Integration Tests (Mocked)', () => {
     it('should handle not found errors', async () => {
       ;(mockPrismaClient.recipe.findUnique as jest.Mock).mockResolvedValue(null)
 
-      const result = await mockPrismaClient.recipe.findUnique({
+      const result: any = await mockPrismaClient.recipe.findUnique({
         where: { id: 'non-existent-id' },
       })
 

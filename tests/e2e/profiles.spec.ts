@@ -14,7 +14,7 @@
  * NOTE: App must be running on localhost:3000 for E2E tests
  */
 
-import type { E2ETestSpec } from '../../docs/testing/templates/e2e-test-template'
+import type { E2ETestSpec } from './types'
 
 // =============================================================================
 // PROFILES LIST VIEWING

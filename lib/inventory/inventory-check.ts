@@ -201,6 +201,74 @@ export async function getExcludedItems(shoppingListId: string) {
 }
 
 /**
+ * Shopping list inventory check report
+ */
+export interface InventoryCheckReport {
+  checkedItems: Array<{
+    itemName: string
+    recipeQuantity: number
+    recipeUnit: string
+    inventoryMatch: { id: string; quantity: number; unit: string } | null
+    inventoryQuantity: number
+    action: 'exclude' | 'reduce' | 'add'
+    netQuantityNeeded: number
+  }>
+  excludedCount: number
+  reducedCount: number
+  addedCount: number
+}
+
+/**
+ * Check inventory for shopping list items and return a detailed report
+ */
+export async function checkInventoryForShoppingList(
+  userId: string,
+  items: Array<{
+    itemName: string
+    quantity: number
+    unit: string
+  }>
+): Promise<InventoryCheckReport> {
+  const checkResults = await checkInventoryForItems(userId, items)
+
+  const checkedItems = checkResults.map(result => {
+    let action: 'exclude' | 'reduce' | 'add' = 'add'
+    let netQuantityNeeded = result.requestedQuantity
+
+    if (result.isSufficientQuantity) {
+      action = 'exclude'
+      netQuantityNeeded = 0
+    } else if (result.isPartiallyCovered) {
+      action = 'reduce'
+      netQuantityNeeded = result.remainingQuantity
+    }
+
+    return {
+      itemName: result.itemName,
+      recipeQuantity: result.requestedQuantity,
+      recipeUnit: result.requestedUnit,
+      inventoryMatch: result.inventoryItemId
+        ? {
+            id: result.inventoryItemId,
+            quantity: result.availableQuantity,
+            unit: result.availableUnit,
+          }
+        : null,
+      inventoryQuantity: result.availableQuantity,
+      action,
+      netQuantityNeeded,
+    }
+  })
+
+  return {
+    checkedItems,
+    excludedCount: checkedItems.filter(i => i.action === 'exclude').length,
+    reducedCount: checkedItems.filter(i => i.action === 'reduce').length,
+    addedCount: checkedItems.filter(i => i.action === 'add').length,
+  }
+}
+
+/**
  * Add back an excluded item to the shopping list
  */
 export async function addBackExcludedItem(

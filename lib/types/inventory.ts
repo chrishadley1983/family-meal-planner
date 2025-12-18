@@ -7,7 +7,8 @@
 export type StorageLocation = 'fridge' | 'freezer' | 'cupboard' | 'pantry'
 
 // Expiry status for display
-export type ExpiryStatus = 'expired' | 'expiring_soon' | 'fresh'
+// Note: Using camelCase 'expiringSoon' for consistency with calculations code
+export type ExpiryStatus = 'expired' | 'expiringSoon' | 'fresh'
 
 // Source of how item was added
 export type AddedBySource = 'manual' | 'csv' | 'photo' | 'shopping_list'
@@ -137,12 +138,13 @@ export interface InventoryFilters {
   expiryStatus?: ExpiryStatus
   isActive?: boolean
   searchTerm?: string
+  search?: string  // Alias for searchTerm for convenience
 }
 
 /**
  * Sort options for inventory list
  */
-export type InventorySortField = 'itemName' | 'expiryDate' | 'purchaseDate' | 'category' | 'quantity'
+export type InventorySortField = 'itemName' | 'expiryDate' | 'purchaseDate' | 'category' | 'quantity' | 'location'
 
 export interface InventorySortOptions {
   field: InventorySortField
@@ -163,30 +165,42 @@ export interface DuplicateMatch {
  */
 export interface CSVInventoryRow {
   name: string
-  quantity: number
+  quantity: string  // String from CSV, parsed to number during validation
   unit: string
   category: string
   location?: string
   expiryDate?: string
   notes?: string
+  // Aliases for backwards compatibility
+  expiry_date?: string
+  active?: string
 }
 
 export interface CSVValidationResult {
   row: number
   data: CSVInventoryRow
-  isValid: boolean
+  status: 'valid' | 'warning' | 'error'
   errors: string[]
   warnings: string[]
+  parsedData?: CreateInventoryItemRequest
   calculatedExpiry?: Date
+  expiryIsEstimated?: boolean
   calculatedLocation?: StorageLocation
+  // Backwards compat alias
+  isValid?: boolean
 }
 
 export interface CSVImportSummary {
   totalRows: number
-  validRows: number
-  invalidRows: number
-  warningRows: number
+  validCount: number
+  warningCount: number
+  errorCount: number
+  duplicateCount: number
   results: CSVValidationResult[]
+  // Backwards compat aliases
+  validRows?: number
+  invalidRows?: number
+  warningRows?: number
 }
 
 /**
@@ -257,13 +271,13 @@ export const STORAGE_LOCATION_LABELS: Record<StorageLocation, string> = {
  */
 export const EXPIRY_STATUS_LABELS: Record<ExpiryStatus, string> = {
   expired: 'Expired',
-  expiring_soon: 'Expiring Soon',
+  expiringSoon: 'Expiring Soon',
   fresh: 'Fresh',
 }
 
 export const EXPIRY_STATUS_COLORS: Record<ExpiryStatus, { bg: string; text: string; border: string }> = {
   expired: { bg: 'bg-red-900/20', text: 'text-red-400', border: 'border-red-500' },
-  expiring_soon: { bg: 'bg-yellow-900/20', text: 'text-yellow-400', border: 'border-yellow-500' },
+  expiringSoon: { bg: 'bg-yellow-900/20', text: 'text-yellow-400', border: 'border-yellow-500' },
   fresh: { bg: 'bg-green-900/20', text: 'text-green-400', border: 'border-green-500' },
 }
 
@@ -332,4 +346,64 @@ export interface InventoryStatistics {
   freshCount: number
   byCategory: Record<string, number>
   byLocation: Record<StorageLocation | 'unassigned', number>
+}
+
+/**
+ * Photo/AI extraction types
+ */
+export interface ExtractedInventoryItem {
+  name: string
+  quantity?: number
+  unit?: string
+  category?: string
+  location?: StorageLocation | null
+  expiryDate?: string | null
+  confidence: 'high' | 'medium' | 'low'
+}
+
+/**
+ * CSV Import summary (alias for CSVImportSummary for backwards compatibility)
+ */
+export type CSVInventoryImportSummary = CSVImportSummary
+export type CSVInventoryValidationResult = CSVValidationResult
+
+/**
+ * Inventory match info for cooking deduction
+ */
+export interface CookingDeductionInventoryMatch {
+  id: string
+  itemName: string
+  quantity: number
+  unit: string
+}
+
+/**
+ * Cooking deduction types
+ */
+export interface CookingDeductionItem {
+  ingredientName: string
+  recipeQuantity: number
+  recipeUnit: string
+  inventoryMatch: CookingDeductionInventoryMatch | null
+  currentInventoryQuantity: number
+  quantityAfterDeduction: number
+  shortfall: number
+  isSmallQuantity: boolean
+  selected: boolean
+  // Legacy fields for backwards compatibility
+  inventoryItemId?: string | null
+  inventoryQuantity?: number
+  deductionAmount?: number
+  willBeFullyUsed?: boolean
+}
+
+export interface CookingDeductionResult {
+  success: boolean
+  deductions: CookingDeductionItem[]
+  itemsToRemove?: string[]
+  message?: string
+  // Legacy fields for backwards compatibility
+  itemsUpdated?: number
+  itemsDeleted?: number
+  errors?: string[]
 }

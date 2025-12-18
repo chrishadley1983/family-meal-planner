@@ -52,10 +52,10 @@ import {
 
 /**
  * Create route context for dynamic routes
- * The API routes expect params as a direct object, not a Promise
+ * Next.js 15 expects params as a Promise
  */
-function createRouteContext(params: Record<string, string>): { params: { id: string } } {
-  return { params: { id: params.id } }
+function createRouteContext(params: Record<string, string>): { params: Promise<{ id: string }> } {
+  return { params: Promise.resolve({ id: params.id }) }
 }
 
 describe('Meals API', () => {

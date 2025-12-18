@@ -39,7 +39,7 @@ export async function GET(
           select: { userId: true },
         },
         recipe: {
-          select: { id: true, name: true },
+          select: { id: true, recipeName: true },
         },
       },
     })
@@ -144,7 +144,7 @@ export async function GET(
         id: meal.id,
         dayOfWeek: meal.dayOfWeek,
         mealType: meal.mealType,
-        recipeName: meal.recipe.name,
+        recipeName: meal.recipe.recipeName,
         scalingFactor,
       },
       hasRecipe: true,
@@ -187,7 +187,7 @@ export async function POST(
           select: { userId: true },
         },
         recipe: {
-          select: { id: true, name: true },
+          select: { id: true, recipeName: true },
         },
       },
     })
@@ -217,7 +217,7 @@ export async function POST(
       const ingredients = await getRecipeIngredientsForDeduction(meal.recipeId, scalingFactor)
 
       if (ingredients.length > 0) {
-        console.log('🔷 Deducting ingredients for meal:', meal.recipe.name)
+        console.log('🔷 Deducting ingredients for meal:', meal.recipe.recipeName)
         deductionResult = await performDeduction(session.user.id, ingredients, {
           allowPartial: data.allowPartialDeduction,
           removeEmptyItems: true,
@@ -265,7 +265,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       mealId,
-      recipeName: meal.recipe?.name || meal.recipeName,
+      recipeName: meal.recipe?.recipeName || meal.recipeName,
       cookedAt: new Date().toISOString(),
       deduction: deductionResult,
     })

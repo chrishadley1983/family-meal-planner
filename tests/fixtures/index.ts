@@ -113,24 +113,26 @@ export {
 } from '../factories/mealPlanFactory'
 
 // ============================================================================
-// SEEDERS
+// SEEDERS (commented out - these require @supabase/supabase-js which is not installed)
+// To use seeders, install: npm install @supabase/supabase-js
+// Then uncomment the exports below
 // ============================================================================
 
-export {
-  E2E_TEST_USER,
-  seedTestUser,
-  seedTestRecipes as seedTestRecipesForUser,
-  cleanupTestUser,
-  cleanupAllTestData,
-  cleanupTestRecipes as cleanupE2ETestRecipes,
-} from './seeders/authSeeder'
+// export {
+//   E2E_TEST_USER,
+//   seedTestUser,
+//   seedTestRecipes as seedTestRecipesForUser,
+//   cleanupTestUser,
+//   cleanupAllTestData,
+//   cleanupTestRecipes as cleanupE2ETestRecipes,
+// } from './seeders/authSeeder'
 
-export {
-  seedTestRecipes,
-  seedMinimalRecipes,
-  cleanupTestRecipes,
-  cleanupUserRecipes,
-} from './seeders/recipeSeeder'
+// export {
+//   seedTestRecipes,
+//   seedMinimalRecipes,
+//   cleanupTestRecipes,
+//   cleanupUserRecipes,
+// } from './seeders/recipeSeeder'
 
 // ============================================================================
 // API TEST HELPERS (re-exported for convenience)

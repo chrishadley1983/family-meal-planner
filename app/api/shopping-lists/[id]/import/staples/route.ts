@@ -350,7 +350,7 @@ Respond with ONLY valid JSON array: [{"index": 1, "category": "Category Name"}, 
               data: {
                 quantity: combinedQuantity,
                 unit: combinedUnit,
-                sourceDetails: combinedSourceDetails,
+                sourceDetails: combinedSourceDetails as any,
               },
             })
 

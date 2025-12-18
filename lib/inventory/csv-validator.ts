@@ -4,11 +4,15 @@
 
 import type {
   CSVInventoryRow,
-  CSVInventoryValidationResult,
-  CSVInventoryImportSummary,
+  CSVValidationResult,
+  CSVImportSummary,
   CreateInventoryItemRequest,
   StorageLocation,
 } from '@/lib/types/inventory'
+
+// Use base types directly (aliases removed for cleaner code)
+type CSVInventoryValidationResult = CSVValidationResult
+type CSVInventoryImportSummary = CSVImportSummary
 import { parseBoolean, parseStorageLocation, calculateEstimatedExpiry } from './calculations'
 import { fuzzyLookupShelfLife } from './shelf-life-data'
 import { DEFAULT_CATEGORIES } from '@/lib/unit-conversion'
@@ -68,19 +72,21 @@ export function validateRow(
 
   // Validate location (optional)
   let location: StorageLocation | null = null
-  if (row.location.trim()) {
-    location = parseStorageLocation(row.location)
+  const locationStr = row.location?.trim() || ''
+  if (locationStr) {
+    location = parseStorageLocation(locationStr)
     if (!location) {
-      warnings.push(`Invalid location "${row.location}". Use: fridge, freezer, cupboard, or pantry`)
+      warnings.push(`Invalid location "${locationStr}". Use: fridge, freezer, cupboard, or pantry`)
     }
   }
 
   // Validate/calculate expiry date
   let expiryDate: Date | null = null
-  if (row.expiry_date.trim()) {
-    const parsed = new Date(row.expiry_date.trim())
+  const expiryStr = (row.expiry_date || row.expiryDate || '').trim()
+  if (expiryStr) {
+    const parsed = new Date(expiryStr)
     if (isNaN(parsed.getTime())) {
-      errors.push(`Invalid date format "${row.expiry_date}". Use YYYY-MM-DD`)
+      errors.push(`Invalid date format "${expiryStr}". Use YYYY-MM-DD`)
     } else {
       expiryDate = parsed
       // Warn if date is in the past
@@ -103,7 +109,8 @@ export function validateRow(
   }
 
   // Parse active status
-  const isActive = row.active.trim() ? parseBoolean(row.active) : true
+  const activeStr = row.active?.trim() || ''
+  const isActive = activeStr ? parseBoolean(activeStr) : true
 
   // Check for duplicates
   const normalizedName = name.toLowerCase()
@@ -224,22 +231,22 @@ export function getImportableItems(
 export function generateErrorReport(summary: CSVInventoryImportSummary): string {
   const headers = ['Row', 'Name', 'Quantity', 'Unit', 'Category', 'Location', 'Expiry', 'Active', 'Status', 'Issues']
 
-  const rows = summary.results.map(r => [
+  const rows = summary.results.map((r: CSVValidationResult) => [
     r.row.toString(),
-    r.data.name,
-    r.data.quantity,
-    r.data.unit,
-    r.data.category,
-    r.data.location,
-    r.data.expiry_date,
-    r.data.active,
+    r.data.name || '',
+    String(r.data.quantity || ''),
+    r.data.unit || '',
+    r.data.category || '',
+    r.data.location || '',
+    r.data.expiry_date || r.data.expiryDate || '',
+    r.data.active || '',
     r.status.toUpperCase(),
     [...r.errors, ...r.warnings].join('; '),
   ])
 
   const csvLines = [
     headers.join(','),
-    ...rows.map(row => row.map(escapeCSVValue).join(','))
+    ...rows.map((row: string[]) => row.map(escapeCSVValue).join(','))
   ]
 
   return csvLines.join('\n')

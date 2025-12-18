@@ -56,7 +56,7 @@ describe('Emilia Arithmetic Accuracy', () => {
     it('should calculate correct average macros with single recipe', () => {
       const recipes: RecipeContext[] = [
         {
-          recipeId: '1',
+          id: '1',
           name: 'Chicken Stir Fry',
           mealType: ['dinner'],
           servings: 4,
@@ -83,7 +83,7 @@ describe('Emilia Arithmetic Accuracy', () => {
     it('should calculate correct average macros with multiple recipes', () => {
       const recipes: RecipeContext[] = [
         {
-          recipeId: '1',
+          id: '1',
           name: 'Chicken Stir Fry',
           mealType: ['dinner'],
           servings: 4,
@@ -97,7 +97,7 @@ describe('Emilia Arithmetic Accuracy', () => {
           isFavorite: false,
         },
         {
-          recipeId: '2',
+          id: '2',
           name: 'Beef Tacos',
           mealType: ['dinner'],
           servings: 4,
@@ -111,7 +111,7 @@ describe('Emilia Arithmetic Accuracy', () => {
           isFavorite: true,
         },
         {
-          recipeId: '3',
+          id: '3',
           name: 'Salmon Bowl',
           mealType: ['dinner'],
           servings: 2,
@@ -143,7 +143,7 @@ describe('Emilia Arithmetic Accuracy', () => {
     it('should handle recipes with null/undefined macro values', () => {
       const recipes: RecipeContext[] = [
         {
-          recipeId: '1',
+          id: '1',
           name: 'Chicken Stir Fry',
           mealType: ['dinner'],
           servings: 4,
@@ -157,7 +157,7 @@ describe('Emilia Arithmetic Accuracy', () => {
           isFavorite: false,
         },
         {
-          recipeId: '2',
+          id: '2',
           name: 'Mystery Dish',
           mealType: ['dinner'],
           servings: 4,
@@ -193,7 +193,7 @@ describe('Emilia Arithmetic Accuracy', () => {
     it('should handle all recipes having null macros', () => {
       const recipes: RecipeContext[] = [
         {
-          recipeId: '1',
+          id: '1',
           name: 'Recipe 1',
           mealType: ['dinner'],
           servings: 4,
@@ -223,7 +223,7 @@ describe('Emilia Arithmetic Accuracy', () => {
     it('should count meal types correctly', () => {
       const recipes: RecipeContext[] = [
         {
-          recipeId: '1',
+          id: '1',
           name: 'Eggs Benedict',
           mealType: ['breakfast'],
           servings: 2,
@@ -237,7 +237,7 @@ describe('Emilia Arithmetic Accuracy', () => {
           isFavorite: true,
         },
         {
-          recipeId: '2',
+          id: '2',
           name: 'Caesar Salad',
           mealType: ['lunch'],
           servings: 2,
@@ -251,7 +251,7 @@ describe('Emilia Arithmetic Accuracy', () => {
           isFavorite: false,
         },
         {
-          recipeId: '3',
+          id: '3',
           name: 'Grilled Steak',
           mealType: ['dinner'],
           servings: 4,
@@ -265,7 +265,7 @@ describe('Emilia Arithmetic Accuracy', () => {
           isFavorite: true,
         },
         {
-          recipeId: '4',
+          id: '4',
           name: 'Trail Mix',
           mealType: ['snack'],
           servings: 8,
@@ -291,7 +291,7 @@ describe('Emilia Arithmetic Accuracy', () => {
     it('should handle recipes with multiple meal types', () => {
       const recipes: RecipeContext[] = [
         {
-          recipeId: '1',
+          id: '1',
           name: 'Versatile Wrap',
           mealType: ['lunch', 'dinner'], // Counts for both
           servings: 2,
@@ -317,7 +317,7 @@ describe('Emilia Arithmetic Accuracy', () => {
     it('should handle case-insensitive meal type matching', () => {
       const recipes: RecipeContext[] = [
         {
-          recipeId: '1',
+          id: '1',
           name: 'Breakfast Bowl',
           mealType: ['Breakfast'], // Capital B
           servings: 2,
@@ -331,7 +331,7 @@ describe('Emilia Arithmetic Accuracy', () => {
           isFavorite: false,
         },
         {
-          recipeId: '2',
+          id: '2',
           name: 'LUNCH SPECIAL',
           mealType: ['LUNCH'], // All caps
           servings: 2,
@@ -362,7 +362,7 @@ describe('Emilia Arithmetic Accuracy', () => {
     it('should correctly count protein sources', () => {
       const recipes: RecipeContext[] = [
         {
-          recipeId: '1',
+          id: '1',
           name: 'Grilled Salmon',
           mealType: ['dinner'],
           servings: 2,
@@ -376,7 +376,7 @@ describe('Emilia Arithmetic Accuracy', () => {
           isFavorite: true,
         },
         {
-          recipeId: '2',
+          id: '2',
           name: 'Chicken Caesar',
           mealType: ['lunch'],
           servings: 2,
@@ -390,7 +390,7 @@ describe('Emilia Arithmetic Accuracy', () => {
           isFavorite: false,
         },
         {
-          recipeId: '3',
+          id: '3',
           name: 'Tuna Salad',
           mealType: ['lunch'],
           servings: 2,
@@ -420,7 +420,7 @@ describe('Emilia Arithmetic Accuracy', () => {
     it('should count multiple occurrences of same protein', () => {
       const recipes: RecipeContext[] = [
         {
-          recipeId: '1',
+          id: '1',
           name: 'Chicken Stir Fry',
           mealType: ['dinner'],
           servings: 4,
@@ -434,7 +434,7 @@ describe('Emilia Arithmetic Accuracy', () => {
           isFavorite: false,
         },
         {
-          recipeId: '2',
+          id: '2',
           name: 'Chicken Tacos',
           mealType: ['dinner'],
           servings: 4,
@@ -448,7 +448,7 @@ describe('Emilia Arithmetic Accuracy', () => {
           isFavorite: true,
         },
         {
-          recipeId: '3',
+          id: '3',
           name: 'Lemon Chicken',
           mealType: ['dinner'],
           servings: 4,
@@ -477,10 +477,10 @@ describe('Emilia Arithmetic Accuracy', () => {
   describe('Percentage Calculations', () => {
     it('should calculate cuisine breakdown percentages correctly', () => {
       const recipes: RecipeContext[] = [
-        { recipeId: '1', name: 'R1', mealType: ['dinner'], servings: 4, caloriesPerServing: 400, proteinPerServing: 30, carbsPerServing: 30, fatPerServing: 15, fiberPerServing: 5, cuisineType: 'Italian', timesUsed: 1, isFavorite: false },
-        { recipeId: '2', name: 'R2', mealType: ['dinner'], servings: 4, caloriesPerServing: 400, proteinPerServing: 30, carbsPerServing: 30, fatPerServing: 15, fiberPerServing: 5, cuisineType: 'Italian', timesUsed: 1, isFavorite: false },
-        { recipeId: '3', name: 'R3', mealType: ['dinner'], servings: 4, caloriesPerServing: 400, proteinPerServing: 30, carbsPerServing: 30, fatPerServing: 15, fiberPerServing: 5, cuisineType: 'Mexican', timesUsed: 1, isFavorite: false },
-        { recipeId: '4', name: 'R4', mealType: ['dinner'], servings: 4, caloriesPerServing: 400, proteinPerServing: 30, carbsPerServing: 30, fatPerServing: 15, fiberPerServing: 5, cuisineType: 'Asian', timesUsed: 1, isFavorite: false },
+        { id: '1', name: 'R1', mealType: ['dinner'], servings: 4, caloriesPerServing: 400, proteinPerServing: 30, carbsPerServing: 30, fatPerServing: 15, fiberPerServing: 5, cuisineType: 'Italian', timesUsed: 1, isFavorite: false },
+        { id: '2', name: 'R2', mealType: ['dinner'], servings: 4, caloriesPerServing: 400, proteinPerServing: 30, carbsPerServing: 30, fatPerServing: 15, fiberPerServing: 5, cuisineType: 'Italian', timesUsed: 1, isFavorite: false },
+        { id: '3', name: 'R3', mealType: ['dinner'], servings: 4, caloriesPerServing: 400, proteinPerServing: 30, carbsPerServing: 30, fatPerServing: 15, fiberPerServing: 5, cuisineType: 'Mexican', timesUsed: 1, isFavorite: false },
+        { id: '4', name: 'R4', mealType: ['dinner'], servings: 4, caloriesPerServing: 400, proteinPerServing: 30, carbsPerServing: 30, fatPerServing: 15, fiberPerServing: 5, cuisineType: 'Asian', timesUsed: 1, isFavorite: false },
       ]
 
       const result = analyzeRecipes(recipes, testProfile)
@@ -501,10 +501,10 @@ describe('Emilia Arithmetic Accuracy', () => {
   describe('Inventory Analysis - Counting', () => {
     it('should count items by location correctly', () => {
       const inventory: InventoryContext[] = [
-        { itemId: '1', itemName: 'Milk', quantity: 2, unit: 'litres', category: 'Dairy', location: 'fridge', daysUntilExpiry: 5 },
-        { itemId: '2', itemName: 'Chicken', quantity: 1, unit: 'kg', category: 'Protein', location: 'fridge', daysUntilExpiry: 3 },
-        { itemId: '3', itemName: 'Frozen Peas', quantity: 500, unit: 'g', category: 'Vegetables', location: 'freezer', daysUntilExpiry: 90 },
-        { itemId: '4', itemName: 'Rice', quantity: 1, unit: 'kg', category: 'Grains', location: 'cupboard', daysUntilExpiry: null },
+        { id: '1', itemName: 'Milk', quantity: 2, unit: 'litres', category: 'Dairy', location: 'fridge', daysUntilExpiry: 5 },
+        { id: '2', itemName: 'Chicken', quantity: 1, unit: 'kg', category: 'Protein', location: 'fridge', daysUntilExpiry: 3 },
+        { id: '3', itemName: 'Frozen Peas', quantity: 500, unit: 'g', category: 'Vegetables', location: 'freezer', daysUntilExpiry: 90 },
+        { id: '4', itemName: 'Rice', quantity: 1, unit: 'kg', category: 'Grains', location: 'cupboard', daysUntilExpiry: null },
       ]
 
       const result = analyzeInventory(inventory)
@@ -517,10 +517,10 @@ describe('Emilia Arithmetic Accuracy', () => {
 
     it('should count items by category correctly', () => {
       const inventory: InventoryContext[] = [
-        { itemId: '1', itemName: 'Milk', quantity: 2, unit: 'litres', category: 'Dairy', location: 'fridge', daysUntilExpiry: 5 },
-        { itemId: '2', itemName: 'Cheese', quantity: 200, unit: 'g', category: 'Dairy', location: 'fridge', daysUntilExpiry: 14 },
-        { itemId: '3', itemName: 'Yogurt', quantity: 4, unit: 'pots', category: 'Dairy', location: 'fridge', daysUntilExpiry: 7 },
-        { itemId: '4', itemName: 'Chicken', quantity: 1, unit: 'kg', category: 'Protein', location: 'fridge', daysUntilExpiry: 3 },
+        { id: '1', itemName: 'Milk', quantity: 2, unit: 'litres', category: 'Dairy', location: 'fridge', daysUntilExpiry: 5 },
+        { id: '2', itemName: 'Cheese', quantity: 200, unit: 'g', category: 'Dairy', location: 'fridge', daysUntilExpiry: 14 },
+        { id: '3', itemName: 'Yogurt', quantity: 4, unit: 'pots', category: 'Dairy', location: 'fridge', daysUntilExpiry: 7 },
+        { id: '4', itemName: 'Chicken', quantity: 1, unit: 'kg', category: 'Protein', location: 'fridge', daysUntilExpiry: 3 },
       ]
 
       const result = analyzeInventory(inventory)
@@ -531,10 +531,10 @@ describe('Emilia Arithmetic Accuracy', () => {
 
     it('should identify expiring items correctly', () => {
       const inventory: InventoryContext[] = [
-        { itemId: '1', itemName: 'Milk', quantity: 2, unit: 'litres', category: 'Dairy', location: 'fridge', daysUntilExpiry: 2 },
-        { itemId: '2', itemName: 'Chicken', quantity: 1, unit: 'kg', category: 'Protein', location: 'fridge', daysUntilExpiry: 1 },
-        { itemId: '3', itemName: 'Cheese', quantity: 200, unit: 'g', category: 'Dairy', location: 'fridge', daysUntilExpiry: 14 },
-        { itemId: '4', itemName: 'Lettuce', quantity: 1, unit: 'head', category: 'Vegetables', location: 'fridge', daysUntilExpiry: 5 },
+        { id: '1', itemName: 'Milk', quantity: 2, unit: 'litres', category: 'Dairy', location: 'fridge', daysUntilExpiry: 2 },
+        { id: '2', itemName: 'Chicken', quantity: 1, unit: 'kg', category: 'Protein', location: 'fridge', daysUntilExpiry: 1 },
+        { id: '3', itemName: 'Cheese', quantity: 200, unit: 'g', category: 'Dairy', location: 'fridge', daysUntilExpiry: 14 },
+        { id: '4', itemName: 'Lettuce', quantity: 1, unit: 'head', category: 'Vegetables', location: 'fridge', daysUntilExpiry: 5 },
       ]
 
       const result = analyzeInventory(inventory)
@@ -549,8 +549,8 @@ describe('Emilia Arithmetic Accuracy', () => {
 
     it('should handle null expiry dates', () => {
       const inventory: InventoryContext[] = [
-        { itemId: '1', itemName: 'Rice', quantity: 1, unit: 'kg', category: 'Grains', location: 'cupboard', daysUntilExpiry: null },
-        { itemId: '2', itemName: 'Pasta', quantity: 500, unit: 'g', category: 'Grains', location: 'cupboard', daysUntilExpiry: null },
+        { id: '1', itemName: 'Rice', quantity: 1, unit: 'kg', category: 'Grains', location: 'cupboard', daysUntilExpiry: null },
+        { id: '2', itemName: 'Pasta', quantity: 500, unit: 'g', category: 'Grains', location: 'cupboard', daysUntilExpiry: null },
       ]
 
       const result = analyzeInventory(inventory)
@@ -566,10 +566,10 @@ describe('Emilia Arithmetic Accuracy', () => {
   describe('Staples Analysis - Counting', () => {
     it('should count staples by frequency correctly', () => {
       const staples: StapleContext[] = [
-        { stapleId: '1', itemName: 'Milk', quantity: 2, unit: 'litres', category: 'Dairy', frequency: 'weekly' },
-        { stapleId: '2', itemName: 'Eggs', quantity: 12, unit: 'pieces', category: 'Dairy', frequency: 'weekly' },
-        { stapleId: '3', itemName: 'Chicken', quantity: 1, unit: 'kg', category: 'Protein', frequency: 'weekly' },
-        { stapleId: '4', itemName: 'Olive Oil', quantity: 1, unit: 'bottle', category: 'Oils', frequency: 'every_4_weeks' },
+        { id: '1', itemName: 'Milk', quantity: 2, unit: 'litres', category: 'Dairy', frequency: 'weekly' },
+        { id: '2', itemName: 'Eggs', quantity: 12, unit: 'pieces', category: 'Dairy', frequency: 'weekly' },
+        { id: '3', itemName: 'Chicken', quantity: 1, unit: 'kg', category: 'Protein', frequency: 'weekly' },
+        { id: '4', itemName: 'Olive Oil', quantity: 1, unit: 'bottle', category: 'Oils', frequency: 'every_4_weeks' },
       ]
 
       const result = analyzeStaples(staples)
@@ -581,9 +581,9 @@ describe('Emilia Arithmetic Accuracy', () => {
 
     it('should count staples by category correctly', () => {
       const staples: StapleContext[] = [
-        { stapleId: '1', itemName: 'Milk', quantity: 2, unit: 'litres', category: 'Dairy', frequency: 'weekly' },
-        { stapleId: '2', itemName: 'Cheese', quantity: 200, unit: 'g', category: 'Dairy', frequency: 'weekly' },
-        { stapleId: '3', itemName: 'Butter', quantity: 250, unit: 'g', category: 'Dairy', frequency: 'every_2_weeks' },
+        { id: '1', itemName: 'Milk', quantity: 2, unit: 'litres', category: 'Dairy', frequency: 'weekly' },
+        { id: '2', itemName: 'Cheese', quantity: 200, unit: 'g', category: 'Dairy', frequency: 'weekly' },
+        { id: '3', itemName: 'Butter', quantity: 250, unit: 'g', category: 'Dairy', frequency: 'every_2_weeks' },
       ]
 
       const result = analyzeStaples(staples)
@@ -593,7 +593,7 @@ describe('Emilia Arithmetic Accuracy', () => {
 
     it('should handle uncategorized staples', () => {
       const staples: StapleContext[] = [
-        { stapleId: '1', itemName: 'Something', quantity: 1, unit: 'pack', category: null, frequency: 'weekly' },
+        { id: '1', itemName: 'Something', quantity: 1, unit: 'pack', category: null, frequency: 'weekly' },
       ]
 
       const result = analyzeStaples(staples)
@@ -618,7 +618,7 @@ describe('Emilia Arithmetic Accuracy', () => {
     it('should handle decimal rounding consistently', () => {
       const recipes: RecipeContext[] = [
         {
-          recipeId: '1',
+          id: '1',
           name: 'Recipe 1',
           mealType: ['dinner'],
           servings: 4,
@@ -632,7 +632,7 @@ describe('Emilia Arithmetic Accuracy', () => {
           isFavorite: false,
         },
         {
-          recipeId: '2',
+          id: '2',
           name: 'Recipe 2',
           mealType: ['dinner'],
           servings: 4,
@@ -646,7 +646,7 @@ describe('Emilia Arithmetic Accuracy', () => {
           isFavorite: false,
         },
         {
-          recipeId: '3',
+          id: '3',
           name: 'Recipe 3',
           mealType: ['dinner'],
           servings: 4,
@@ -678,9 +678,9 @@ describe('Emilia Arithmetic Accuracy', () => {
   describe('Usage Sorting', () => {
     it('should sort most used recipes correctly', () => {
       const recipes: RecipeContext[] = [
-        { recipeId: '1', name: 'Used 5 times', mealType: ['dinner'], servings: 4, caloriesPerServing: 400, proteinPerServing: 30, carbsPerServing: 30, fatPerServing: 15, fiberPerServing: 5, cuisineType: null, timesUsed: 5, isFavorite: false },
-        { recipeId: '2', name: 'Used 10 times', mealType: ['dinner'], servings: 4, caloriesPerServing: 400, proteinPerServing: 30, carbsPerServing: 30, fatPerServing: 15, fiberPerServing: 5, cuisineType: null, timesUsed: 10, isFavorite: false },
-        { recipeId: '3', name: 'Used 3 times', mealType: ['dinner'], servings: 4, caloriesPerServing: 400, proteinPerServing: 30, carbsPerServing: 30, fatPerServing: 15, fiberPerServing: 5, cuisineType: null, timesUsed: 3, isFavorite: false },
+        { id: '1', name: 'Used 5 times', mealType: ['dinner'], servings: 4, caloriesPerServing: 400, proteinPerServing: 30, carbsPerServing: 30, fatPerServing: 15, fiberPerServing: 5, cuisineType: null, timesUsed: 5, isFavorite: false },
+        { id: '2', name: 'Used 10 times', mealType: ['dinner'], servings: 4, caloriesPerServing: 400, proteinPerServing: 30, carbsPerServing: 30, fatPerServing: 15, fiberPerServing: 5, cuisineType: null, timesUsed: 10, isFavorite: false },
+        { id: '3', name: 'Used 3 times', mealType: ['dinner'], servings: 4, caloriesPerServing: 400, proteinPerServing: 30, carbsPerServing: 30, fatPerServing: 15, fiberPerServing: 5, cuisineType: null, timesUsed: 3, isFavorite: false },
       ]
 
       const result = analyzeRecipes(recipes, testProfile)
@@ -692,9 +692,9 @@ describe('Emilia Arithmetic Accuracy', () => {
 
     it('should identify least used recipes correctly', () => {
       const recipes: RecipeContext[] = [
-        { recipeId: '1', name: 'Never used', mealType: ['dinner'], servings: 4, caloriesPerServing: 400, proteinPerServing: 30, carbsPerServing: 30, fatPerServing: 15, fiberPerServing: 5, cuisineType: null, timesUsed: 0, isFavorite: false },
-        { recipeId: '2', name: 'Used once', mealType: ['dinner'], servings: 4, caloriesPerServing: 400, proteinPerServing: 30, carbsPerServing: 30, fatPerServing: 15, fiberPerServing: 5, cuisineType: null, timesUsed: 1, isFavorite: false },
-        { recipeId: '3', name: 'Used many times', mealType: ['dinner'], servings: 4, caloriesPerServing: 400, proteinPerServing: 30, carbsPerServing: 30, fatPerServing: 15, fiberPerServing: 5, cuisineType: null, timesUsed: 50, isFavorite: false },
+        { id: '1', name: 'Never used', mealType: ['dinner'], servings: 4, caloriesPerServing: 400, proteinPerServing: 30, carbsPerServing: 30, fatPerServing: 15, fiberPerServing: 5, cuisineType: null, timesUsed: 0, isFavorite: false },
+        { id: '2', name: 'Used once', mealType: ['dinner'], servings: 4, caloriesPerServing: 400, proteinPerServing: 30, carbsPerServing: 30, fatPerServing: 15, fiberPerServing: 5, cuisineType: null, timesUsed: 1, isFavorite: false },
+        { id: '3', name: 'Used many times', mealType: ['dinner'], servings: 4, caloriesPerServing: 400, proteinPerServing: 30, carbsPerServing: 30, fatPerServing: 15, fiberPerServing: 5, cuisineType: null, timesUsed: 50, isFavorite: false },
       ]
 
       const result = analyzeRecipes(recipes, testProfile)

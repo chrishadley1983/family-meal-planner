@@ -72,7 +72,7 @@ export function calculateExpiryStatus(
   const expiringThreshold = Math.max(2, shelfLifeThreshold)
 
   // Expiring soon
-  if (daysUntilExpiry <= expiringThreshold) return 'expiring_soon'
+  if (daysUntilExpiry <= expiringThreshold) return 'expiringSoon'
 
   // Fresh
   return 'fresh'
@@ -151,10 +151,10 @@ export function filterInventoryItems(
  */
 export function sortByExpiryPriority(items: InventoryItemWithExpiry[]): InventoryItemWithExpiry[] {
   return [...items].sort((a, b) => {
-    // Status priority: expired > expiring_soon > fresh
+    // Status priority: expired > expiringSoon > fresh
     const statusPriority: Record<ExpiryStatus, number> = {
       expired: 0,
-      expiring_soon: 1,
+      expiringSoon: 1,
       fresh: 2,
     }
 
@@ -323,7 +323,7 @@ export function getInventoryStats(items: InventoryItemWithExpiry[]): {
     total: items.length,
     active: activeItems.length,
     expired: activeItems.filter(i => i.expiryStatus === 'expired').length,
-    expiringSoon: activeItems.filter(i => i.expiryStatus === 'expiring_soon').length,
+    expiringSoon: activeItems.filter(i => i.expiryStatus === 'expiringSoon').length,
     fresh: activeItems.filter(i => i.expiryStatus === 'fresh').length,
   }
 }

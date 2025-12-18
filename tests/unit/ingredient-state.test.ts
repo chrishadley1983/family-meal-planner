@@ -258,12 +258,13 @@ describe('Ingredient State Management', () => {
       manager.addIngredient({ name: 'Chicken', quantity: 500, unit: 'g' })
 
       // Callback should have current state
-      expect(callbackState?.ingredients.length).toBe(1)
+      expect(callbackState).not.toBeNull()
+      expect(callbackState!.ingredients.length).toBe(1)
 
       manager.addIngredient({ name: 'Rice', quantity: 200, unit: 'g' })
 
       // Callback should have updated state
-      expect(callbackState?.ingredients.length).toBe(2)
+      expect(callbackState!.ingredients.length).toBe(2)
     })
 
     it('should handle rapid sequential updates', () => {

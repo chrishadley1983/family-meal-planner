@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
 
     // If mealId is provided, fetch ingredients and scaling from meal
     if (data.mealId && ingredients.length === 0) {
-      const meal = await prisma.mealPlanMeal.findUnique({
+      const meal = await prisma.meal.findUnique({
         where: { id: data.mealId },
         include: {
           recipe: {
@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
       }
 
-      const scalingFactor = meal.servings / (meal.recipe.servings || 4)
+      const scalingFactor = (meal.servings || 1) / (meal.recipe.servings || 4)
 
       ingredients = meal.recipe.ingredients.map((i: { ingredientName: string; quantity: number; unit: string }) => ({
         ingredientName: i.ingredientName,

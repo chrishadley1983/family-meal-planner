@@ -2300,7 +2300,7 @@ export default function ProductsPage() {
                       Quantity: 1 {pendingProductWithServings.servingSize || 'serving'}
                     </p>
                   </div>
-                  <Badge variant="secondary" className="text-xs">Recommended</Badge>
+                  <Badge variant="purple" className="text-xs">Recommended</Badge>
                 </div>
                 <div className="flex flex-wrap gap-3 text-sm mb-3">
                   <span className="text-orange-400">{pendingProductWithServings.caloriesPerServing} cal</span>
